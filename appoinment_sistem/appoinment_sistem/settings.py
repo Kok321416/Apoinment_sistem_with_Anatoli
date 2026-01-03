@@ -117,3 +117,18 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+
+
+# Добавьте в конец файла:
+
+# Настройки для Django REST Framework
+REST_FRAMEWORK = {
+    # Используем Session Authentication - это встроено в Django
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',  # Авторизация через сессию (cookie)
+    ],
+    # По умолчанию API требуют авторизацию (можно отключить в конкретных views)
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # Только авторизованные пользователи
+    ],
+}
