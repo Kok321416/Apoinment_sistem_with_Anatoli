@@ -21,12 +21,14 @@ services:
   web:
     build: .
     command: >
-      sh -c "python manage.py collectstatic --noinput &&
+      sh -c "cd /app/appoinment_sistem &&
+             python manage.py collectstatic --noinput &&
              python manage.py migrate &&
              gunicorn --bind 0.0.0.0:8000 --workers 3 appoinment_sistem.wsgi:application"
     volumes:
       - .:/app
-      - static_volume:/app/staticfiles
+      - static_volume:/app/appoinment_sistem/staticfiles
+    working_dir: /app/appoinment_sistem
     ports:
       - "8000:8000"
     depends_on:
