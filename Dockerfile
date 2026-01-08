@@ -5,17 +5,24 @@ WORKDIR /app
 # Установка зависимостей системы
 RUN apt-get update && apt-get install -y \
     postgresql-client \
+    gcc \
+    python3-dev \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Копирование requirements
+# Копирование requirements (из корня проекта)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Копирование проекта
+# Копирование всего проекта
 COPY . .
 
+# Переходим в директорию Django проекта
+WORKDIR /app/appoinment_sistem
+
 # Создание директории для статики
-RUN mkdir -p /app/staticfiles
+RUN mkdir -p /app/appoinment_sistem/staticfiles
 
 EXPOSE 8000
 
