@@ -540,8 +540,74 @@ def services_view(request):
     })
 
 
-def clients_view(request):
-    """Страница клиентов (временная заглушка)"""
+
+def  booking_view(request):
+    '''Страница клиенты, которые уже записались и проведеннные консультации'''
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, 'consultant_menu/home.html')  # Пока возвращаем на главную
+
+    try:
+        consultant = Consultant.objects.get(user=request.user)
+    except Consultant.DoesNotExist:
+        return redirect('home')
+
+    calendars = Calendar.objects.filter(consultant=consultant)
+    bookings = Booking.objects.filter(calendar__in = calendars).order_by('booking_date', 'booking_time')
+    status_filter = request.GET.get('status', 'all')
+
+    if status_filter != 'all':
+        bookings = bookings.filter(status=status_filter)
+
+    today = date.today()
+    now = datetime.now().time()
+
+    if status_filter == 'cancelled':
+        upcoming_bookings = bookings
+        past_bookings = Booking.objects.none()
+    else:
+        upcoming_bookings = bookings.filter(
+            booking_date__gte=today
+        ).exclude(status='cancelled')
+
+        past_bookings = bookings.filter(
+            booking_date__lt=today
+        ) | bookings.filter(
+            booking_date=today,
+            booking_time__lt=now
+        )
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        booking_id = request.POST.get('booking_id')
+
+        try:
+            booking = Booking.objects.get(id=booking_id, calendar__in=calendars)
+
+            if action == 'confirm':
+                booking.status = 'confirmed'
+                booking.save()
+            elif action == 'cancel':
+                booking.status = 'cancelled'
+                booking.save()
+            elif action == 'complete':
+                booking.status = 'completed'
+                booking.save()
+
+        except Booking.DoesNotExist:
+            pass
+
+
+        bookings = Booking.objects.filter(calendar__in = calendars).order_by('booking_date', 'booking_time')
+        if status_filter:
+            bookings = bookings.filter(status=status_filter)
+
+    return render(request, 'consultant_menu/booking.html', {
+        'upcoming_bookings': upcoming_bookings,
+        'past_bookings': past_bookings,
+        'status_filter': status_filter,
+        'today': today
+    })
+
+
+
+

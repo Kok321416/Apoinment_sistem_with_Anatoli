@@ -19,8 +19,8 @@ from django.contrib import admin
 from django.urls import path
 from consultant_menu.views import (
     ConsultantAPIView, RegisterView, LoginView, LogoutView,
-    home_view, calendars_view, services_view, clients_view, logout_view,
-    register_view, login_view, calendar_view, public_booking_view, get_available_slots_api
+    home_view, calendars_view, services_view, logout_view,
+    register_view, login_view, calendar_view, public_booking_view, get_available_slots_api, booking_view
 )
 
 urlpatterns = [
@@ -31,7 +31,6 @@ urlpatterns = [
     path("logout/", logout_view, name="logout"),
     path("calendars/", calendars_view, name="calendars"),
     path("services/", services_view, name="services"),
-    path("clients/", clients_view, name="clients"),
     
     # API авторизация
     path('api/auth/register/', RegisterView.as_view(), name='api_register'),
@@ -50,6 +49,10 @@ urlpatterns = [
     # Публичная страница записи
     path("book/<int:calendar_id>/", public_booking_view, name="public_booking"),
     path("book/<int:calendar_id>/slots/", get_available_slots_api, name="get_available_slots"),
+
+    # Записи, клиенты
+    path("booking/", booking_view, name="booking")
+
 ]
 
 
