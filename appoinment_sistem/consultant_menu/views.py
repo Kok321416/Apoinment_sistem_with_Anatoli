@@ -211,8 +211,18 @@ def calendars_view(request):
         # Перезагружаем календари после изменений
         calendars = Calendar.objects.filter(consultant=consultant).order_by('name')
     
+    # Генерируем абсолютные ссылки для каждого календаря
+    calendars_with_links = []
+    for calendar in calendars:
+        booking_url = request.build_absolute_uri(f'/book/{calendar.id}/')
+        calendars_with_links.append({
+            'calendar': calendar,
+            'booking_url': booking_url
+        })
+    
     return render(request, 'consultant_menu/calendars.html', {
-        'calendars': calendars,
+        'calendars_with_links': calendars_with_links,
+        'calendars': calendars,  # Оставляем для обратной совместимости
         'success': success,
         'error': error
     })

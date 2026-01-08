@@ -49,7 +49,42 @@
         <div class="list-section" style="margin-top: 40px;">
             <h2>Мои календари</h2>
             
-            {% if calendars %}
+            {% if calendars_with_links %}
+            <div class="items-grid">
+                {% for item in calendars_with_links %}
+                {% with calendar=item.calendar %}
+                <div class="item-card" style="border-left: 5px solid {{ calendar.color }};">
+                    <div class="item-header">
+                        <h3>{{ calendar.name }}</h3>
+                        <span class="status-badge" style="background: {{ calendar.color }};">
+                            {{ calendar.time_slots.count }} временных окон
+                        </span>
+                    </div>
+                    
+                    <div class="item-info">
+                        <p><strong>Цвет:</strong> <span style="display: inline-block; width: 30px; height: 20px; background: {{ calendar.color }}; border-radius: 4px;"></span></p>
+                        <p><strong>Статус:</strong> {% if calendar.is_active %}Активен{% else %}Неактивен{% endif %}</p>
+                        <p><strong>Создан:</strong> {{ calendar.created_at|date:"d.m.Y" }}</p>
+                        <p><strong>Ссылка:</strong> <small style="word-break: break-all; color: #666;">{{ item.booking_url }}</small></p>
+                    </div>
+                    
+                    <div class="item-actions">
+                        <button onclick="copyLink('{{ item.booking_url }}')" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px; margin-right: 10px;">
+                            📋 Скопировать ссылку
+                        </button>
+                        <a href="{% url 'calendar_detail' calendar.id %}" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px; margin-right: 10px;">Управление временем</a>
+                        <form method="POST" action="{% url 'calendars' %}" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_calendar">
+                            <input type="hidden" name="calendar_id" value="{{ calendar.id }}">
+                            <button type="submit" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px; background: #dc3545; border-color: #dc3545;" onclick="return confirm('Удалить календарь?')">Удалить</button>
+                        </form>
+                    </div>
+                </div>
+                {% endwith %}
+                {% endfor %}
+            </div>
+            {% elif calendars %}
             <div class="items-grid">
                 {% for calendar in calendars %}
                 <div class="item-card" style="border-left: 5px solid {{ calendar.color }};">
@@ -67,7 +102,7 @@
                     </div>
                     
                     <div class="item-actions">
-                        <button onclick="copyLink({{ calendar.id }})" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px; margin-right: 10px;">
+                        <button onclick="copyLink('{% url 'public_booking' calendar.id %}')" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px; margin-right: 10px;">
                             📋 Скопировать ссылку
                         </button>
                         <a href="{% url 'calendar_detail' calendar.id %}" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px; margin-right: 10px;">Управление временем</a>
@@ -88,10 +123,10 @@
     </div>
 
     <script>
-        function copyLink(calendarId) {
-            const link = `${window.location.origin}/book/${calendarId}/`;
+        function copyLink(link) {
+            // link уже должен быть абсолютным URL от Django
             navigator.clipboard.writeText(link).then(() => {
-                alert('Ссылка скопирована!');
+                alert('Ссылка скопирована!\n\n' + link);
             }).catch(() => {
                 // Fallback для старых браузеров
                 const textArea = document.createElement('textarea');
@@ -100,7 +135,7 @@
                 textArea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
-                alert('Ссылка скопирована!');
+                alert('Ссылка скопирована!\n\n' + link);
             });
         }
     </script>
