@@ -24,7 +24,7 @@ services:
       sh -c "cd /app/appoinment_sistem &&
              python manage.py collectstatic --noinput &&
              python manage.py migrate &&
-             gunicorn --bind 0.0.0.0:8000 --workers 3 appoinment_sistem.wsgi:application"
+             gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout 120 --worker-class sync appoinment_sistem.wsgi:application"
     volumes:
       - .:/app
       - static_volume:/app/appoinment_sistem/staticfiles

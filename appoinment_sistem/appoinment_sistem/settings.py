@@ -162,9 +162,10 @@ REST_FRAMEWORK = {
 
 # Безопасность для продакшена
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Отключаем принудительный HTTPS редирект (SSL не настроен)
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False  # Отключаем, т.к. нет SSL
+    CSRF_COOKIE_SECURE = False  # Отключаем, т.к. нет SSL
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
