@@ -2,7 +2,7 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, develop ]
 
 jobs:
   deploy:
@@ -35,7 +35,7 @@ jobs:
           EOF
           
           # Обновляем код
-          git pull origin main || git clone https://github.com/${{ github.repository }}.git .
+          git pull origin develop || git pull origin main || git clone https://github.com/${{ github.repository }}.git .
           
           # Останавливаем старые контейнеры
           docker-compose down
