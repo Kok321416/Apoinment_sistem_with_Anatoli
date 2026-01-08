@@ -28,7 +28,6 @@ services:
     volumes:
       - .:/app
       - static_volume:/app/appoinment_sistem/staticfiles
-    working_dir: /app/appoinment_sistem
     ports:
       - "8000:8000"
     depends_on:
