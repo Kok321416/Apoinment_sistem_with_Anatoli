@@ -57,7 +57,7 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - static_volume:/app/appoinment_sistem/staticfiles:ro
       - ./certbot/conf:/etc/letsencrypt:rw
-      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/www:/var/www/certbot:rw
     depends_on:
       - web
     networks:
@@ -65,20 +65,7 @@ services:
     restart: unless-stopped
     entrypoint: >
       /bin/sh -c "
-      echo 'Checking for certificate...';
-      if [ ! -f /etc/letsencrypt/live/selfsigned/fullchain.pem ] || [ ! -f /etc/letsencrypt/live/selfsigned/privkey.pem ]; then
-        echo 'ERROR: Certificate not found!';
-        echo 'Please create certificate on host first:';
-        echo '  ./scripts/create-cert-on-host.sh';
-        echo 'Or create manually:';
-        echo '  mkdir -p certbot/conf/live/selfsigned';
-        echo '  openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout certbot/conf/live/selfsigned/privkey.pem -out certbot/conf/live/selfsigned/fullchain.pem -subj "/C=RU/ST=Moscow/L=Moscow/O=Appointment/CN=localhost"';
-        exit 1;
-      else
-        echo 'Certificate found:';
-        ls -la /etc/letsencrypt/live/selfsigned/;
-      fi;
-      echo 'Starting nginx...';
+      echo 'Starting nginx (HTTP mode for Let's Encrypt)...';
       exec nginx -g 'daemon off;'
       "
 
@@ -90,6 +77,7 @@ services:
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
       - app_network
+    # НЕ пробрасываем порты - certbot нужен только для renew, не для постоянной работы
 
   pgadmin:
     image: dpage/pgadmin4:latest
