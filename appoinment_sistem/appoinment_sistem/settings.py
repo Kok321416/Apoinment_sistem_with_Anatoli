@@ -167,12 +167,14 @@ if not DEBUG:
     
     if USE_HTTPS:
         # HTTPS настройки
-        SECURE_SSL_REDIRECT = True  # Редирект с HTTP на HTTPS (через nginx)
+        # SECURE_SSL_REDIRECT отключен, т.к. редирект делает nginx
+        SECURE_SSL_REDIRECT = False  # Nginx делает редирект 301
         SESSION_COOKIE_SECURE = True  # Cookies только через HTTPS
         CSRF_COOKIE_SECURE = True  # CSRF cookies только через HTTPS
-        SECURE_HSTS_SECONDS = 31536000  # 1 год
-        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-        SECURE_HSTS_PRELOAD = True
+        # HSTS отключен для самоподписанного сертификата (включите с Let's Encrypt)
+        SECURE_HSTS_SECONDS = 0  # Отключено для самоподписанного сертификата
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+        SECURE_HSTS_PRELOAD = False
         SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # Для работы за nginx
     else:
         # HTTP настройки (для разработки или до настройки SSL)
