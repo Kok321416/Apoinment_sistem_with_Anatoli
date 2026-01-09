@@ -65,7 +65,7 @@ services:
     restart: unless-stopped
     entrypoint: >
       /bin/sh -c "
-      echo 'Starting nginx (HTTP mode for Let's Encrypt)...';
+      echo 'Starting nginx (HTTP mode for Lets Encrypt)...';
       exec nginx -g 'daemon off;'
       "
 
