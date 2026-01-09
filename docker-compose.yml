@@ -17,6 +17,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app_network
 
   web:
     build: .
@@ -28,8 +30,8 @@ services:
     volumes:
       - .:/app
       - static_volume:/app/appoinment_sistem/staticfiles
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     depends_on:
       db:
         condition: service_healthy
@@ -42,6 +44,53 @@ services:
       - DB_PORT=5432
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+    networks:
+      - app_network
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - static_volume:/app/appoinment_sistem/staticfiles:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - web
+    networks:
+      - app_network
+    restart: unless-stopped
+    entrypoint: >
+      /bin/sh -c "
+      apk add --no-cache openssl > /dev/null 2>&1 || true;
+      if [ ! -f /etc/letsencrypt/live/selfsigned/fullchain.pem ]; then
+        echo 'Creating self-signed certificate...';
+        mkdir -p /etc/letsencrypt/live/selfsigned;
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout /etc/letsencrypt/live/selfsigned/privkey.pem \
+          -out /etc/letsencrypt/live/selfsigned/fullchain.pem \
+          -subj '/C=RU/ST=Moscow/L=Moscow/O=Appointment System/CN=localhost' \
+          2>/dev/null || \
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout /etc/letsencrypt/live/selfsigned/privkey.pem \
+          -out /etc/letsencrypt/live/selfsigned/fullchain.pem \
+          -subj '/C=RU/ST=Moscow/L=Moscow/O=Appointment System/CN=localhost';
+        echo 'Self-signed certificate created';
+      fi;
+      exec nginx -g 'daemon off;'
+      "
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - app_network
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -54,8 +103,14 @@ services:
       - db
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - app_network
 
 volumes:
   postgres_data:
   static_volume:
   pgadmin_data:
+
+networks:
+  app_network:
+    driver: bridge

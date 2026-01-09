@@ -162,10 +162,26 @@ REST_FRAMEWORK = {
 
 # Безопасность для продакшена
 if not DEBUG:
-    # Отключаем принудительный HTTPS редирект (SSL не настроен)
-    SECURE_SSL_REDIRECT = False
-    SESSION_COOKIE_SECURE = False  # Отключаем, т.к. нет SSL
-    CSRF_COOKIE_SECURE = False  # Отключаем, т.к. нет SSL
+    # Проверяем, используется ли HTTPS через переменную окружения
+    USE_HTTPS = os.getenv('USE_HTTPS', 'False') == 'True'
+    
+    if USE_HTTPS:
+        # HTTPS настройки
+        SECURE_SSL_REDIRECT = True  # Редирект с HTTP на HTTPS (через nginx)
+        SESSION_COOKIE_SECURE = True  # Cookies только через HTTPS
+        CSRF_COOKIE_SECURE = True  # CSRF cookies только через HTTPS
+        SECURE_HSTS_SECONDS = 31536000  # 1 год
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+        SECURE_HSTS_PRELOAD = True
+        SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # Для работы за nginx
+    else:
+        # HTTP настройки (для разработки или до настройки SSL)
+        SECURE_SSL_REDIRECT = False
+        SESSION_COOKIE_SECURE = False
+        CSRF_COOKIE_SECURE = False
+    
+    # Общие настройки безопасности
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
