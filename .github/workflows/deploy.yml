@@ -7,14 +7,54 @@ on:
       - main
 
 jobs:
+  check-approval:
+    runs-on: ubuntu-latest
+    outputs:
+      is-approved: ${{ steps.check.outputs.is-approved }}
+      pr-number: ${{ github.event.pull_request.number }}
+    
+    steps:
+      - name: Check PR approval
+        id: check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const baseRef = context.payload.pull_request.base.ref;
+            const headRef = context.payload.pull_request.head.ref;
+            
+            // Проверяем, что это PR из develop в main
+            if (baseRef !== 'main' || headRef !== 'develop') {
+              console.log(`Skipping: PR from ${headRef} to ${baseRef} (expected: develop -> main)`);
+              core.setOutput('is-approved', 'false');
+              return;
+            }
+            
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            
+            // Проверяем, есть ли хотя бы один APPROVED review
+            const hasApproval = reviews.some(review => review.state === 'APPROVED');
+            
+            console.log(`PR #${context.issue.number} from ${headRef} to ${baseRef}`);
+            console.log(`Has approval: ${hasApproval}`);
+            console.log(`Reviews: ${JSON.stringify(reviews.map(r => ({state: r.state, author: r.user.login})))}`);
+            
+            core.setOutput('is-approved', hasApproval.toString());
+    
   deploy:
     runs-on: ubuntu-latest
+    needs: check-approval
     
-    # Запускаем только при слиянии PR из develop в main
+    # Запускаем только при слиянии PR из develop в main с approval
     if: |
       github.event.pull_request.merged == true &&
       github.event.pull_request.base.ref == 'main' &&
-      github.event.pull_request.head.ref == 'develop'
+      github.event.pull_request.head.ref == 'develop' &&
+      needs.check-approval.outputs.is-approved == 'true'
     
     steps:
     - uses: actions/checkout@v3
