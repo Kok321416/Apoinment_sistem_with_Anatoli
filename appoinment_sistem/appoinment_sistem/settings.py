@@ -28,10 +28,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-f29bdmik6$bq4-y&%u$ht7k$4kb=-fkuz(+ct$gpy)+4zh*aua')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+# По умолчанию DEBUG=True для удобства разработки, в продакшене установите DEBUG=False через переменную окружения
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 # Парсим ALLOWED_HOSTS, убирая пробелы
-ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '').split(',') if host.strip()] if os.getenv('ALLOWED_HOSTS') else []
+# Если DEBUG=True, Django автоматически разрешит localhost, поэтому для разработки можно оставить пустым
+if DEBUG:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']  # Для разработки разрешаем все хосты
+else:
+    ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '').split(',') if host.strip()] if os.getenv('ALLOWED_HOSTS') else []
 
 
 # Application definition
