@@ -146,6 +146,10 @@ STATICFILES_DIRS = [
 # WhiteNoise для статических файлов в продакшене
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# Настройки для медиа файлов (загружаемые пользователями)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 
 # Добавьте в конец файла:
 

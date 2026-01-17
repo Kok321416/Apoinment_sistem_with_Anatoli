@@ -5,9 +5,12 @@ from rest_framework.permissions import AllowAny
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
-from consultant_menu.models import Consultant, Clients, Category, Calendar, Service, TimeSlot, Booking
+from consultant_menu.models import Consultant, Clients, Category, Calendar, Service, TimeSlot, Booking, Integration
 from django.http import Http404, JsonResponse
 from datetime import datetime, date, timedelta
+from django.conf import settings
+from django.core.files.storage import default_storage
+import os
 
 
 # ========== РЕГИСТРАЦИЯ (HTML) ==========
@@ -19,10 +22,18 @@ def register_view(request):
     if request.method == 'POST':
         email = request.POST.get('email')
         password = request.POST.get('password')
+        phone = request.POST.get('phone', '').strip()
+        telegram_nickname = request.POST.get('telegram_nickname', '').strip()
+
         
         if not email or not password:
             return render(request, 'consultant_menu/register.html', {'error': 'Заполните все поля'})
-        
+
+        if not phone and not telegram_nickname:
+            return render (request, 'consultant_menu/register.html', {
+                'error': 'Необходимо указать телефон или Telegram username'
+            })
+
         if User.objects.filter(username=email).exists():
             return render(request, 'consultant_menu/register.html', {'error': 'Пользователь с таким email уже зарегистрирован'})
         
@@ -37,8 +48,8 @@ def register_view(request):
             last_name="",
             middle_name="",
             email=email,
-            phone="",
-            telegram_nickname="",
+            phone=phone or "",
+            telegram_nickname=telegram_nickname or "",
             category_of_specialist=category
         )
         
@@ -310,14 +321,23 @@ def public_booking_view(request, calendar_id):
     if request.method == 'POST':
         service_id = request.POST.get('service_id')
         booking_date = request.POST.get('booking_date')
-        booking_time = request.POST.get('booking_time')  # "09:00"
-        booking_end_time = request.POST.get('booking_end_time')  # "09:15"
+        booking_time = request.POST.get('booking_time')
+        booking_end_time = request.POST.get('booking_end_time')
 
         client_name = request.POST.get('client_name')
-        client_phone = request.POST.get('client_phone')
+        client_phone = request.POST.get('client_phone', '').strip()
+        client_telegram = request.POST.get('client_telegram', '').strip()
         client_email = request.POST.get('client_email', '')
 
-        if not all([service_id, booking_date, booking_time, booking_end_time, client_name, client_phone]):
+        # Проверка: телефон ИЛИ telegram обязательны
+        if not client_phone and not client_telegram:
+            return render(request, 'consultant_menu/public_booking.html', {
+                'calendar': calendar,
+                'services': services,
+                'error': 'Необходимо указать телефон или Telegram для связи'
+            })
+
+        if not all([service_id, booking_date, booking_time, booking_end_time, client_name]):
             return render(request, 'consultant_menu/public_booking.html', {
                 'calendar': calendar,
                 'services': services,
@@ -374,7 +394,8 @@ def public_booking_view(request, calendar_id):
                 booking_time=booking_time,
                 booking_end_time=booking_end_time,  # НОВОЕ ПОЛЕ
                 client_name=client_name,
-                client_phone=client_phone,
+                client_phone=client_phone or "",
+                client_telegram=client_telegram or "",
                 client_email=client_email,
                 status='pending'
             )
@@ -620,4 +641,128 @@ def  booking_view(request):
 
 
 
+def profile_view(request):
+    '''Страница профиля консультанта'''
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    try:
+        consultant = Consultant.objects.get(user=request.user)
+    except Consultant.DoesNotExist:
+        return redirect('home')
+
+    success = None
+    error = None
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'update_profile':
+            # Обновляем основную информацию о консультанте
+            consultant.first_name = request.POST.get('first_name', '')
+            consultant.last_name = request.POST.get('last_name', '')
+            consultant.middle_name = request.POST.get('middle_name', '')
+            consultant.phone = request.POST.get('phone', '')
+            consultant.telegram_nickname = request.POST.get('telegram_nickname', '')
+            consultant.email = request.POST.get('email', '')
+
+            # Обновляем поля профиля
+            consultant.profile_description = request.POST.get('profile_description', '')
+            consultant.video_link = request.POST.get('video_link', '')
+            consultant.social_instagram = request.POST.get('social_instagram', '')
+            consultant.social_facebook = request.POST.get('social_facebook', '')
+            consultant.social_vk = request.POST.get('social_vk', '')
+            consultant.social_telegram = request.POST.get('social_telegram', '')
+            consultant.social_youtube = request.POST.get('social_youtube', '')
+            consultant.website = request.POST.get('website', '')
+
+            if 'profile_photo' in request.FILES:
+                if consultant.profile_photo:
+                    try:
+                        if os.path.isfile(consultant.profile_photo.path):
+                            os.remove(consultant.profile_photo.path)
+                    except:
+                        pass
+
+                consultant.profile_photo = request.FILES['profile_photo']
+
+            try:
+                consultant.save()
+                success = 'Профиль успешно обновлен!'
+            except Exception as e:
+                error = f'Ошибка при обновлении: {str(e)}'
+
+    return render(request, 'consultant_menu/profile.html', {
+        'consultant': consultant,
+        'success': success,
+        'error': error
+    })
+
+
+# ========== ИНТЕГРАЦИИ ==========
+def integrations_view(request):
+    """Страница интеграций с сервисами"""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    try:
+        consultant = Consultant.objects.get(user=request.user)
+    except Consultant.DoesNotExist:
+        return redirect('home')
+    
+    # Создаем или получаем объект интеграции для консультанта
+    integration, created = Integration.objects.get_or_create(consultant=consultant)
+    
+    success = None
+    error = None
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'toggle_google':
+            integration.google_calendar_enabled = not integration.google_calendar_enabled
+            integration.save()
+            if integration.google_calendar_enabled:
+                success = 'Google Calendar включен (пока в режиме заглушки)'
+            else:
+                success = 'Google Calendar отключен'
+        
+        elif action == 'connect_google':
+            integration.google_calendar_connected = True
+            integration.google_calendar_id = request.POST.get('calendar_id', '')
+            integration.save()
+            success = 'Google Calendar подключен (заглушка - реальное подключение будет добавлено позже)'
+        
+        elif action == 'disconnect_google':
+            integration.google_calendar_connected = False
+            integration.google_calendar_id = None
+            integration.save()
+            success = 'Google Calendar отключен'
+        
+        elif action == 'toggle_telegram':
+            integration.telegram_enabled = not integration.telegram_enabled
+            integration.save()
+            if integration.telegram_enabled:
+                success = 'Telegram уведомления включены (пока в режиме заглушки)'
+            else:
+                success = 'Telegram уведомления отключены'
+        
+        elif action == 'connect_telegram':
+            integration.telegram_connected = True
+            integration.telegram_bot_token = request.POST.get('bot_token', '')
+            integration.telegram_chat_id = request.POST.get('chat_id', '')
+            integration.save()
+            success = 'Telegram подключен (заглушка - реальное подключение будет добавлено позже)'
+        
+        elif action == 'disconnect_telegram':
+            integration.telegram_connected = False
+            integration.telegram_bot_token = None
+            integration.telegram_chat_id = None
+            integration.save()
+            success = 'Telegram отключен'
+    
+    return render(request, 'consultant_menu/integrations.html', {
+        'integration': integration,
+        'success': success,
+        'error': error
+    })
 

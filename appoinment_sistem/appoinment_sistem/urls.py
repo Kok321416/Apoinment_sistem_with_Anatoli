@@ -17,10 +17,12 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
+from django.conf import settings
+from django.conf.urls.static import static
 from consultant_menu.views import (
     ConsultantAPIView, RegisterView, LoginView, LogoutView,
     home_view, calendars_view, services_view, logout_view,
-    register_view, login_view, calendar_view, public_booking_view, get_available_slots_api, booking_view
+    register_view, login_view, calendar_view, public_booking_view, get_available_slots_api, booking_view, profile_view, integrations_view
 )
 
 urlpatterns = [
@@ -51,8 +53,18 @@ urlpatterns = [
     path("book/<int:calendar_id>/slots/", get_available_slots_api, name="get_available_slots"),
 
     # Записи, клиенты
-    path("booking/", booking_view, name="booking")
+    path("booking/", booking_view, name="booking"),
+    
+    # Профиль специалиста
+    path("profile/", profile_view, name="profile"),
+    
+    # Интеграции
+    path("integrations/", integrations_view, name="integrations"),
 
 ]
+
+# Добавляем обработку медиа файлов в режиме разработки
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 

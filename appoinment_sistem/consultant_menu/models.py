@@ -28,9 +28,23 @@ class Consultant(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     category_of_specialist = models.ForeignKey(on_delete=models.PROTECT, to="Category")
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, related_name='consultant')
+    profile_description = models.TextField(blank=True, null=True, verbose_name='Описание профиля')
+    profile_photo = models.ImageField(upload_to='consultant_photos/', blank=True, null=True, verbose_name='Фото специалиста/организации')
+    video_link = models.URLField(blank=True, null=True, verbose_name='Ссылка на видео')
+    social_instagram = models.URLField(blank=True, null=True, verbose_name='Instagram')
+    social_facebook = models.URLField(blank=True, null=True, verbose_name='Facebook')
+    social_vk = models.URLField(blank=True, null=True, verbose_name='VK')
+    social_telegram = models.URLField(blank=True, null=True, verbose_name='Telegram')
+    social_youtube = models.URLField(blank=True, null=True, verbose_name='YouTube')
+    website = models.URLField(blank=True, null=True, verbose_name='Веб-сайт')
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+    def __repr__(self):
+        if self.user:
+            return f"{self.first_name} {self.last_name} ({self.user.username})"
+        else:
+            return f"{self.first_name} {self.last_name}"
 
     class Meta:
         db_table = "consultants"
@@ -132,6 +146,7 @@ class Booking(models.Model):
     # Информация о клиенте
     client_name = models.CharField(max_length=255, verbose_name='Имя клиента')
     client_phone = models.CharField(max_length=20, verbose_name='Телефон клиента')
+    client_telegram = models.CharField(max_length=255, blank=True, null=True, verbose_name='Telegram клиента')
     client_email = models.EmailField(blank=True, null=True, verbose_name='Email клиента')
 
     # Дата и время записи (конкретная дата)
@@ -153,3 +168,30 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.client_name} - {self.service.name} ({self.booking_date} {self.booking_time})"
+
+
+class Integration(models.Model):
+    """Модель для хранения настроек интеграций специалиста"""
+    consultant = models.OneToOneField(Consultant, on_delete=models.CASCADE, related_name='integration')
+    
+    # Google Calendar
+    google_calendar_enabled = models.BooleanField(default=False, verbose_name='Google Calendar включен')
+    google_calendar_connected = models.BooleanField(default=False, verbose_name='Google Calendar подключен')
+    google_calendar_id = models.CharField(max_length=255, blank=True, null=True, verbose_name='ID календаря Google')
+    
+    # Telegram
+    telegram_enabled = models.BooleanField(default=False, verbose_name='Telegram уведомления включены')
+    telegram_connected = models.BooleanField(default=False, verbose_name='Telegram подключен')
+    telegram_bot_token = models.CharField(max_length=255, blank=True, null=True, verbose_name='Токен бота Telegram')
+    telegram_chat_id = models.CharField(max_length=255, blank=True, null=True, verbose_name='Chat ID Telegram')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'integrations'
+        verbose_name = 'Интеграция'
+        verbose_name_plural = 'Интеграции'
+
+    def __str__(self):
+        return f"Интеграции для {self.consultant}"
