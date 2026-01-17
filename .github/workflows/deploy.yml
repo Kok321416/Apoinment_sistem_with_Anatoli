@@ -103,38 +103,49 @@ jobs:
           EOF
           
           # Обновляем код из main (так как PR уже влит)
+          echo "📥 Updating code from main branch..."
           git fetch origin
           git checkout main
-          git pull origin main
+          git reset --hard origin/main
+          echo "✅ Code updated to latest main branch"
           
           # Определяем команду docker-compose (поддерживаем v1 и v2)
           if command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
-            # Используем docker compose v2
-            docker compose down
-            docker compose build --no-cache
-            docker compose up -d
-            sleep 10
-            docker compose exec -T web python manage.py migrate
-            docker compose exec -T web python manage.py collectstatic --noinput
+            DOCKER_COMPOSE="docker compose"
           elif command -v docker-compose &> /dev/null; then
-            # Используем docker-compose v1
-            docker-compose down
-            docker-compose build --no-cache
-            docker-compose up -d
-            sleep 10
-            docker-compose exec -T web python manage.py migrate
-            docker-compose exec -T web python manage.py collectstatic --noinput
+            DOCKER_COMPOSE="docker-compose"
           else
-            # Устанавливаем docker-compose если не установлен
             echo "Installing docker-compose..."
             sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
             sudo chmod +x /usr/local/bin/docker-compose
-            docker-compose down
-            docker-compose build --no-cache
-            docker-compose up -d
-            sleep 10
-            docker-compose exec -T web python manage.py migrate
-            docker-compose exec -T web python manage.py collectstatic --noinput
+            DOCKER_COMPOSE="docker-compose"
           fi
+          
+          echo "🛑 Stopping containers..."
+          $DOCKER_COMPOSE down
+          
+          echo "🔨 Rebuilding Docker images (no cache)..."
+          $DOCKER_COMPOSE build --no-cache web
+          
+          echo "🚀 Starting containers..."
+          $DOCKER_COMPOSE up -d
+          
+          echo "⏳ Waiting for services to start..."
+          sleep 15
+          
+          echo "🗄️ Running migrations..."
+          $DOCKER_COMPOSE exec -T web python manage.py migrate
+          
+          echo "📦 Collecting static files..."
+          $DOCKER_COMPOSE exec -T web python manage.py collectstatic --noinput
+          
+          echo "🔄 Restarting web container to load new code..."
+          $DOCKER_COMPOSE restart web
+          
+          echo "✅ Checking container status..."
+          $DOCKER_COMPOSE ps
+          
+          echo "📋 Recent logs..."
+          $DOCKER_COMPOSE logs --tail=30 web
           
           echo "Deployment completed!"
