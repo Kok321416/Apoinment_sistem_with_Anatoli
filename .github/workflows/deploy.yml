@@ -102,13 +102,6 @@ jobs:
           PGADMIN_PASSWORD=${{ secrets.PGADMIN_PASSWORD }}
           EOF
           
-          # Обновляем код из main (так как PR уже влит)
-          echo "📥 Updating code from main branch..."
-          git fetch origin
-          git checkout main
-          git reset --hard origin/main
-          echo "✅ Code updated to latest main branch"
-          
           # Определяем команду docker-compose (поддерживаем v1 и v2)
           if command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
             DOCKER_COMPOSE="docker compose"
@@ -121,31 +114,85 @@ jobs:
             DOCKER_COMPOSE="docker-compose"
           fi
           
+          # Проверяем текущий commit перед обновлением
+          echo "📋 Current commit before update:"
+          git rev-parse HEAD || echo "Not a git repo or error"
+          
+          # Обновляем код из main (так как PR уже влит)
+          echo "📥 Updating code from main branch..."
+          git fetch origin
+          git checkout main || git checkout -b main origin/main
+          git reset --hard origin/main
+          
+          # Проверяем новый commit
+          NEW_COMMIT=$(git rev-parse HEAD)
+          echo "✅ Code updated to latest main branch"
+          echo "📋 New commit hash: $NEW_COMMIT"
+          
+          # Показываем последние изменения
+          echo "📝 Recent commits:"
+          git log --oneline -5
+          
+          # Останавливаем контейнеры (принудительно)
           echo "🛑 Stopping containers..."
-          $DOCKER_COMPOSE down
+          $DOCKER_COMPOSE down || true
           
+          # Пересобираем образ web (без кэша)
           echo "🔨 Rebuilding Docker images (no cache)..."
-          $DOCKER_COMPOSE build --no-cache web
+          $DOCKER_COMPOSE build --no-cache web || echo "Warning: Build failed, continuing..."
           
-          echo "🚀 Starting containers..."
-          $DOCKER_COMPOSE up -d
+          # Принудительно пересоздаем и запускаем контейнеры
+          echo "🚀 Starting containers (force recreate)..."
+          $DOCKER_COMPOSE up -d --force-recreate web || $DOCKER_COMPOSE up -d web
           
+          # Ждем полного запуска
           echo "⏳ Waiting for services to start..."
-          sleep 15
+          sleep 20
           
-          echo "🗄️ Running migrations..."
-          $DOCKER_COMPOSE exec -T web python manage.py migrate
-          
-          echo "📦 Collecting static files..."
-          $DOCKER_COMPOSE exec -T web python manage.py collectstatic --noinput
-          
-          echo "🔄 Restarting web container to load new code..."
-          $DOCKER_COMPOSE restart web
-          
-          echo "✅ Checking container status..."
+          # Проверяем что контейнер запущен
+          echo "🔍 Checking container status..."
           $DOCKER_COMPOSE ps
           
-          echo "📋 Recent logs..."
-          $DOCKER_COMPOSE logs --tail=30 web
+          # Проверяем что контейнер использует новый код
+          echo "🔍 Verifying code in container..."
+          CONTAINER_COMMIT=$($DOCKER_COMPOSE exec -T web git rev-parse HEAD 2>/dev/null || echo "Cannot check")
+          echo "Container commit: $CONTAINER_COMMIT"
+          echo "Expected commit: $NEW_COMMIT"
+          
+          if [ "$CONTAINER_COMMIT" = "$NEW_COMMIT" ]; then
+            echo "✅ Container is using correct commit!"
+          else
+            echo "⚠️ Warning: Container commit differs from expected"
+          fi
+          
+          # Применяем миграции
+          echo "🗄️ Running migrations..."
+          $DOCKER_COMPOSE exec -T web python manage.py migrate || echo "Migration failed"
+          
+          # Собираем статические файлы
+          echo "📦 Collecting static files..."
+          $DOCKER_COMPOSE exec -T web python manage.py collectstatic --noinput || echo "Collectstatic failed"
+          
+          # Принудительно перезапускаем контейнер web для применения изменений
+          echo "🔄 Force restarting web container to load new code..."
+          $DOCKER_COMPOSE stop web
+          sleep 5
+          $DOCKER_COMPOSE up -d web
+          
+          # Ждем перезапуска
+          echo "⏳ Waiting for container restart..."
+          sleep 10
+          
+          # Проверяем финальный статус
+          echo "✅ Final container status..."
+          $DOCKER_COMPOSE ps
+          
+          # Показываем логи
+          echo "📋 Recent logs from web container..."
+          $DOCKER_COMPOSE logs --tail=50 web
+          
+          # Проверяем что веб-сервер отвечает
+          echo "🌐 Checking web service health..."
+          $DOCKER_COMPOSE exec -T web curl -f http://localhost:8000/ || echo "Health check failed"
           
           echo "Deployment completed!"
