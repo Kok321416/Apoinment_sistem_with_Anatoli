@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интеграции - Система записи</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <style>
+        .integrations-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .integration-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .integration-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .integration-header h3 {
+            margin: 0;
+            color: #764ba2;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .integration-icon {
+            font-size: 32px;
+        }
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .status-enabled {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-disabled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status-connected {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .integration-description {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .connect-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .placeholder-note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            <h1>Интеграции</h1>
+            <div class="user-info">
+                <a href="{% url 'home' %}" class="btn btn-secondary">← На главную</a>
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        {% if success %}
+        <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            {{ success }}
+        </div>
+        {% endif %}
+
+        <div class="integrations-container">
+            <div class="placeholder-note">
+                <strong>⚠️ Внимание:</strong> Интеграции находятся в режиме разработки. 
+                Сейчас доступны заглушки для подключения. Полная функциональность будет добавлена позже.
+            </div>
+
+            <!-- Google Calendar -->
+            <div class="integration-card">
+                <div class="integration-header">
+                    <h3>
+                        <span class="integration-icon">📅</span>
+                        Google Calendar
+                    </h3>
+                    {% if integration.google_calendar_enabled %}
+                    <span class="status-badge status-enabled">Включено</span>
+                    {% else %}
+                    <span class="status-badge status-disabled">Отключено</span>
+                    {% endif %}
+                </div>
+
+                <div class="integration-description">
+                    <p>Синхронизируйте свои записи с Google Calendar. Новые записи автоматически 
+                    будут добавлены в ваш календарь, а изменения в календаре будут отражены в системе.</p>
+                </div>
+
+                {% if integration.google_calendar_connected %}
+                <div>
+                    <span class="status-badge status-connected">Подключено</span>
+                    {% if integration.google_calendar_id %}
+                    <p style="margin-top: 10px; color: #666;">Календарь: {{ integration.google_calendar_id }}</p>
+                    {% endif %}
+                    <form method="POST" style="margin-top: 15px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="disconnect_google">
+                        <button type="submit" class="btn btn-secondary">Отключить</button>
+                    </form>
+                </div>
+                {% else %}
+                <div>
+                    {% if integration.google_calendar_enabled %}
+                    <form method="POST" class="connect-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="connect_google">
+                        <div class="form-group">
+                            <label>ID календаря (заглушка):</label>
+                            <input type="text" name="calendar_id" placeholder="primary" value="primary">
+                            <small>В будущем здесь будет OAuth авторизация</small>
+                        </div>
+                        <button type="submit" class="btn">🔗 Подключить Google Calendar</button>
+                    </form>
+                    {% else %}
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="toggle_google">
+                        <button type="submit" class="btn">Включить интеграцию</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Telegram -->
+            <div class="integration-card">
+                <div class="integration-header">
+                    <h3>
+                        <span class="integration-icon">✈️</span>
+                        Telegram
+                    </h3>
+                    {% if integration.telegram_enabled %}
+                    <span class="status-badge status-enabled">Включено</span>
+                    {% else %}
+                    <span class="status-badge status-disabled">Отключено</span>
+                    {% endif %}
+                </div>
+
+                <div class="integration-description">
+                    <p>Получайте уведомления о новых записях в Telegram. Создайте бота через @BotFather 
+                    и подключите его к системе для автоматических уведомлений.</p>
+                </div>
+
+                {% if integration.telegram_connected %}
+                <div>
+                    <span class="status-badge status-connected">Подключено</span>
+                    {% if integration.telegram_chat_id %}
+                    <p style="margin-top: 10px; color: #666;">Chat ID: {{ integration.telegram_chat_id }}</p>
+                    {% endif %}
+                    <form method="POST" style="margin-top: 15px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="disconnect_telegram">
+                        <button type="submit" class="btn btn-secondary">Отключить</button>
+                    </form>
+                </div>
+                {% else %}
+                <div>
+                    {% if integration.telegram_enabled %}
+                    <form method="POST" class="connect-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="connect_telegram">
+                        <div class="form-group">
+                            <label>Токен бота (заглушка):</label>
+                            <input type="text" name="bot_token" placeholder="123456:ABC-DEF..." value="">
+                            <small>Получите токен у @BotFather в Telegram</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Chat ID (заглушка):</label>
+                            <input type="text" name="chat_id" placeholder="123456789" value="">
+                            <small>ID чата для отправки уведомлений</small>
+                        </div>
+                        <button type="submit" class="btn">🔗 Подключить Telegram</button>
+                    </form>
+                    {% else %}
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="toggle_telegram">
+                        <button type="submit" class="btn">Включить интеграцию</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

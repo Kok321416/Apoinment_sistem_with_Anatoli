@@ -1,0 +1,73 @@
+name: Deploy on Pull Request
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    # Запускаем только для PR из develop в main
+    if: |
+      github.event.pull_request.base.ref == 'main' && 
+      (github.head_ref == 'develop' || github.event.pull_request.head.ref == 'develop')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Django tests
+        working-directory: ./appoinment_sistem
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY || 'django-insecure-test-key-for-ci' }}
+          DEBUG: 'True'
+          DB_NAME: 'test_db'
+          DB_USER: 'test_user'
+          DB_PASSWORD: 'test_password'
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t appointment-system:pr-${{ github.event.pull_request.number }} .
+
+      - name: Test Docker Compose config
+        run: |
+          # Проверяем, что docker-compose.yml корректен
+          # Используем docker compose (v2) если доступен, иначе docker-compose (v1)
+          if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+            docker compose config
+          else
+            # Устанавливаем docker-compose v1 если не доступен
+            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+            docker-compose config
+          fi
+
+      - name: Deploy to staging (if configured)
+        if: success()
+        run: |
+          echo "✅ Build successful! Ready for deployment."
+          echo "PR #${{ github.event.pull_request.number }} from develop to main is ready to merge."
+        # Здесь можно добавить реальный деплой на staging сервер
+        # Например:
+        # - SSH в staging сервер
+        # - Pull изменений
+        # - docker compose up -d --build

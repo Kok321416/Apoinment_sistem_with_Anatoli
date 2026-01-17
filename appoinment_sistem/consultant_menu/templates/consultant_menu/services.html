@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Услуги</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+</head>
+<body>
+    <div class="container" style="max-width: 1000px;">
+        <div class="page-header">
+            <h1>Услуги</h1>
+            <div>
+                <a href="{% url 'home' %}" class="btn btn-secondary" style="padding: 8px 16px;">На главную</a>
+            </div>
+        </div>
+
+        {% if success %}
+        <div class="success-message">{{ success }}</div>
+        {% endif %}
+
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        <!-- Форма создания услуги -->
+        <div class="form-section">
+            <h2>Создать услугу</h2>
+            <form method="POST" action="{% url 'services' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_service">
+                
+                <div class="form-group">
+                    <label for="service_name">Название услуги:</label>
+                    <input type="text" id="service_name" name="name" required placeholder="Например: Консультация">
+                </div>
+                
+                <div class="form-group">
+                    <label for="service_description">Описание:</label>
+                    <textarea id="service_description" name="description" rows="3" style="width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;"></textarea>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label for="duration">Длительность (минуты):</label>
+                        <input type="number" id="duration" name="duration_minutes" value="60" min="15" step="15" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="price">Цена (руб.):</label>
+                        <input type="number" id="price" name="price" step="0.01" min="0" placeholder="Необязательно">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn">Создать услугу</button>
+            </form>
+        </div>
+
+        <!-- Список услуг -->
+        <div class="list-section" style="margin-top: 40px;">
+            <h2>Мои услуги</h2>
+            
+            {% if services %}
+            <div class="items-grid">
+                {% for service in services %}
+                <div class="item-card">
+                    <div class="item-header">
+                        <h3>{{ service.name }}</h3>
+                        <span class="status-badge {% if service.is_active %}active{% else %}inactive{% endif %}">
+                            {% if service.is_active %}Активна{% else %}Неактивна{% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="item-info">
+                        {% if service.description %}
+                        <p><strong>Описание:</strong> {{ service.description|truncatewords:20 }}</p>
+                        {% endif %}
+                        <p><strong>Длительность:</strong> {{ service.duration_minutes }} мин.</p>
+                        {% if service.price %}
+                        <p><strong>Цена:</strong> {{ service.price }} ₽</p>
+                        {% endif %}
+                        <p><strong>Создана:</strong> {{ service.created_at|date:"d.m.Y" }}</p>
+                    </div>
+                    
+                    <div class="item-actions">
+                        <form method="POST" action="{% url 'services' %}" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="toggle_service">
+                            <input type="hidden" name="service_id" value="{{ service.id }}">
+                            <button type="submit" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;">
+                                {% if service.is_active %}Деактивировать{% else %}Активировать{% endif %}
+                            </button>
+                        </form>
+                        <form method="POST" action="{% url 'services' %}" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_service">
+                            <input type="hidden" name="service_id" value="{{ service.id }}">
+                            <button type="submit" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px; background: #dc3545; border-color: #dc3545;" onclick="return confirm('Удалить услугу?')">Удалить</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="text-align: center; color: #666; padding: 40px;">Услуг пока нет. Создайте первую услугу!</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
+
