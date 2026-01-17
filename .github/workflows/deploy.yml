@@ -14,10 +14,17 @@ jobs:
     if: |
       github.event.pull_request.merged == true &&
       github.event.pull_request.base.ref == 'main' &&
-      (github.head_ref == 'develop' || github.event.pull_request.head.ref == 'develop')
+      github.event.pull_request.head.ref == 'develop'
     
     steps:
     - uses: actions/checkout@v3
+    
+    - name: Debug PR information
+      run: |
+        echo "PR Base Ref: ${{ github.event.pull_request.base.ref }}"
+        echo "PR Head Ref: ${{ github.event.pull_request.head.ref }}"
+        echo "PR Merged: ${{ github.event.pull_request.merged }}"
+        echo "PR State: ${{ github.event.pull_request.state }}"
     
     - name: Create .env file and deploy
       uses: appleboy/ssh-action@master
