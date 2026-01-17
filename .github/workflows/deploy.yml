@@ -1,12 +1,20 @@
 name: Deploy to VPS
 
 on:
-  push:
-    branches: [ main, master, develop ]
+  pull_request:
+    types: [closed]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    
+    # Запускаем только при слиянии PR из develop в main
+    if: |
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      (github.head_ref == 'develop' || github.event.pull_request.head.ref == 'develop')
     
     steps:
     - uses: actions/checkout@v3
@@ -34,23 +42,39 @@ jobs:
           PGADMIN_PASSWORD=${{ secrets.PGADMIN_PASSWORD }}
           EOF
           
-          # Обновляем код
-          git pull origin develop || git pull origin main || git clone https://github.com/${{ github.repository }}.git .
+          # Обновляем код из main (так как PR уже влит)
+          git fetch origin
+          git checkout main
+          git pull origin main
           
-          # Останавливаем старые контейнеры
-          docker-compose down
-          
-          # Собираем и запускаем
-          docker-compose build --no-cache
-          docker-compose up -d
-          
-          # Ждем запуска БД
-          sleep 10
-          
-          # Применяем миграции
-          docker-compose exec -T web python manage.py migrate
-          
-          # Собираем статику
-          docker-compose exec -T web python manage.py collectstatic --noinput
+          # Определяем команду docker-compose (поддерживаем v1 и v2)
+          if command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
+            # Используем docker compose v2
+            docker compose down
+            docker compose build --no-cache
+            docker compose up -d
+            sleep 10
+            docker compose exec -T web python manage.py migrate
+            docker compose exec -T web python manage.py collectstatic --noinput
+          elif command -v docker-compose &> /dev/null; then
+            # Используем docker-compose v1
+            docker-compose down
+            docker-compose build --no-cache
+            docker-compose up -d
+            sleep 10
+            docker-compose exec -T web python manage.py migrate
+            docker-compose exec -T web python manage.py collectstatic --noinput
+          else
+            # Устанавливаем docker-compose если не установлен
+            echo "Installing docker-compose..."
+            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+            docker-compose down
+            docker-compose build --no-cache
+            docker-compose up -d
+            sleep 10
+            docker-compose exec -T web python manage.py migrate
+            docker-compose exec -T web python manage.py collectstatic --noinput
+          fi
           
           echo "Deployment completed!"
