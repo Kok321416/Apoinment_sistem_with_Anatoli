@@ -126,6 +126,10 @@ jobs:
           python manage.py collectstatic --noinput
           cd ..
 
+          # Passenger restart hook (safe even if Passenger is not used)
+          mkdir -p tmp
+          touch tmp/restart.txt
+
           # Restart gunicorn (simple, without systemd)
           PIDFILE="$APP_DIR/gunicorn.pid"
           LOGFILE="$APP_DIR/gunicorn.log"
