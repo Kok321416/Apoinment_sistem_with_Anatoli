@@ -13,6 +13,21 @@ from django.core.files.storage import default_storage
 import os
 
 
+def _normalize_url(value: str | None) -> str | None:
+    """
+    Make profile link fields optional and forgiving.
+
+    - Empty -> None
+    - Missing scheme -> prepend https://
+    """
+    value = (value or "").strip()
+    if not value:
+        return None
+    if value.startswith(("http://", "https://")):
+        return value
+    return f"https://{value.lstrip('/')}"
+
+
 # ========== РЕГИСТРАЦИЯ (HTML) ==========
 def register_view(request):
     """Регистрация через HTML форму"""
@@ -667,13 +682,13 @@ def profile_view(request):
 
             # Обновляем поля профиля
             consultant.profile_description = request.POST.get('profile_description', '')
-            consultant.video_link = request.POST.get('video_link', '')
-            consultant.social_instagram = request.POST.get('social_instagram', '')
-            consultant.social_facebook = request.POST.get('social_facebook', '')
-            consultant.social_vk = request.POST.get('social_vk', '')
-            consultant.social_telegram = request.POST.get('social_telegram', '')
-            consultant.social_youtube = request.POST.get('social_youtube', '')
-            consultant.website = request.POST.get('website', '')
+            consultant.video_link = _normalize_url(request.POST.get('video_link'))
+            consultant.social_instagram = _normalize_url(request.POST.get('social_instagram'))
+            consultant.social_facebook = _normalize_url(request.POST.get('social_facebook'))
+            consultant.social_vk = _normalize_url(request.POST.get('social_vk'))
+            consultant.social_telegram = _normalize_url(request.POST.get('social_telegram'))
+            consultant.social_youtube = _normalize_url(request.POST.get('social_youtube'))
+            consultant.website = _normalize_url(request.POST.get('website'))
 
             if 'profile_photo' in request.FILES:
                 if consultant.profile_photo:
