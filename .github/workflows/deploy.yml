@@ -87,9 +87,19 @@ jobs:
           ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
           EOF
 
-          # Python deps (Python 3.10)
-          python3 --version
-          python3 -m venv venv || true
+          # Python deps (prefer python3.10 on hosting)
+          if command -v python3.10 >/dev/null 2>&1; then
+            PYTHON_BIN="python3.10"
+          elif command -v python3 >/dev/null 2>&1; then
+            PYTHON_BIN="python3"
+          else
+            echo "❌ Python not found on server"
+            exit 1
+          fi
+
+          echo "🐍 Using $PYTHON_BIN"
+          $PYTHON_BIN --version
+          $PYTHON_BIN -m venv venv || true
           . venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
