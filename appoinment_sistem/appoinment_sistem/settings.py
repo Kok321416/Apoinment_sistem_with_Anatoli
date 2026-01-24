@@ -86,20 +86,22 @@ WSGI_APPLICATION = "appoinment_sistem.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# Используем PostgreSQL в продакшене, SQLite для разработки (если нет переменных окружения)
+# MySQL на хостинге (reg.ru и др.), SQLite для локальной разработки
 if os.getenv('DB_NAME'):
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
+            'ENGINE': 'django.db.backends.mysql',
             'NAME': os.getenv('DB_NAME', 'appointment_db'),
             'USER': os.getenv('DB_USER', 'appointment_user'),
             'PASSWORD': os.getenv('DB_PASSWORD', ''),
             'HOST': os.getenv('DB_HOST', 'db'),
-            'PORT': os.getenv('DB_PORT', '5432'),
+            'PORT': os.getenv('DB_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+            },
         }
     }
 else:
-    # Для локальной разработки используем SQLite
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",

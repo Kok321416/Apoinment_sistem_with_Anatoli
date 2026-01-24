@@ -15,10 +15,14 @@ Django приложение для управления записями на к
 
 - Django 6.0
 - Django REST Framework
-- PostgreSQL
+- MySQL
 - Docker & Docker Compose
-- Gunicorn
+- Gunicorn, Nginx
 - WhiteNoise (для статических файлов)
+
+## Деплой на хостинг (reg.ru и др.)
+
+Инструкция по запуску через Git и консоль: [DEPLOY_REGRU.md](DEPLOY_REGRU.md)
 
 ## Быстрый старт
 

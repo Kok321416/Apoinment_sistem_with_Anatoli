@@ -88,18 +88,16 @@ jobs:
         script: |
           cd /opt/appointment-system
           
-          # Создаем .env файл из секретов
+          # Создаем .env файл из секретов (MySQL)
           cat > .env << EOF
           DB_NAME=appointment_db
           DB_USER=appointment_user
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           DB_HOST=db
-          DB_PORT=5432
+          DB_PORT=3306
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           DEBUG=False
           ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
-          PGADMIN_DEFAULT_EMAIL=admin@admin.com
-          PGADMIN_PASSWORD=${{ secrets.PGADMIN_PASSWORD }}
           EOF
           
           # Определяем команду docker-compose (поддерживаем v1 и v2)
@@ -133,9 +131,23 @@ jobs:
           echo "📝 Recent commits:"
           git log --oneline -5
           
+          # Проверяем свободное место на диске
+          echo "💾 Checking disk space..."
+          df -h
+          
           # Останавливаем контейнеры (принудительно)
           echo "🛑 Stopping containers..."
           $DOCKER_COMPOSE down || true
+          
+          # Очищаем Docker для освобождения места
+          echo "🧹 Cleaning Docker resources..."
+          docker system prune -f || echo "Docker prune warning"
+          docker image prune -a -f || echo "Docker image prune warning"
+          docker volume prune -f || echo "Docker volume prune warning"
+          
+          # Проверяем свободное место после очистки
+          echo "💾 Disk space after cleanup:"
+          df -h
           
           # Пересобираем образ web (без кэша)
           echo "🔨 Rebuilding Docker images (no cache)..."

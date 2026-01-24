@@ -4,10 +4,10 @@ WORKDIR /app
 
 # Установка зависимостей системы
 RUN apt-get update && apt-get install -y \
-    postgresql-client \
+    default-libmysqlclient-dev \
+    pkg-config \
     gcc \
     python3-dev \
-    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Копирование requirements (из корня проекта)
