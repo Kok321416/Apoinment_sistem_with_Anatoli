@@ -120,6 +120,21 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
+          # Configure Passenger (shared hosting) via .htaccess
+          # This is safe even if Passenger is not used, and helps when the hosting expects .htaccess directives.
+          cat > .htaccess << EOF
+          # Django (Passenger / WSGI)
+          PassengerEnabled on
+          PassengerAppRoot $APP_DIR
+          PassengerPython $PYTHON_BIN
+          PassengerStartupFile passenger_wsgi.py
+
+          # Redirect http -> https (remove if you debug over http)
+          RewriteEngine On
+          RewriteCond %{SERVER_PORT} !^443\$
+          RewriteRule .* https://%{SERVER_NAME}%{REQUEST_URI} [R,L]
+          EOF
+
           # Django migrate + collectstatic
           cd appoinment_sistem
           python manage.py migrate --noinput
