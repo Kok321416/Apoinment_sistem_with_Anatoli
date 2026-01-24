@@ -85,7 +85,13 @@
 <body>
     <div class="container">
         <div class="nav-header">
-            <h1>Мой профиль</h1>
+            <h1 class="brand-title">
+                <a href="{% url 'home' %}" class="brand-link" aria-label="allyourclients — на главную">
+                    <span class="brand-badge" aria-hidden="true">a</span>
+                    <span class="brand-name">allyourclients</span>
+                </a>
+                <span class="brand-page">/ Мой профиль</span>
+            </h1>
             <div class="user-info">
                 <a href="{% url 'home' %}" class="btn btn-secondary">← На главную</a>
             </div>
