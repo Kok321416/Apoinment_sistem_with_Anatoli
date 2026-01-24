@@ -10,7 +10,12 @@
 <body>
     <div class="container">
         <div class="nav-header">
-            <h1>Система онлайн записи</h1>
+            <h1 class="brand-title">
+                <a href="{% url 'home' %}" class="brand-link" aria-label="allyourclients — на главную">
+                    <span class="brand-badge" aria-hidden="true">a</span>
+                    <span class="brand-name">allyourclients</span>
+                </a>
+            </h1>
             <div class="user-info">
                 {% if user.is_authenticated %}
                     <span>{{ user.email }}</span> | 
