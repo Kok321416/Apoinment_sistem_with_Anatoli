@@ -70,7 +70,7 @@ jobs:
       needs.check-approval.outputs.is-approved == 'true'
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Debug PR information
       run: |
@@ -78,133 +78,90 @@ jobs:
         echo "PR Head Ref: ${{ github.event.pull_request.head.ref }}"
         echo "PR Merged: ${{ github.event.pull_request.merged }}"
         echo "PR State: ${{ github.event.pull_request.state }}"
-    
-    - name: Create .env file and deploy
+
+    - name: Ensure app directory exists
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USER }}
         key: ${{ secrets.VPS_SSH_KEY }}
         script: |
-          cd /opt/appointment-system
-          
-          # Создаем .env файл из секретов (MySQL)
+          set -e
+          APP_DIR="${{ secrets.APP_DIR }}"
+          if [ -z "$APP_DIR" ]; then
+            echo "❌ Secret APP_DIR is required (example: /home/<user>/appointment-system)"
+            exit 1
+          fi
+          mkdir -p "$APP_DIR"
+          echo "APP_DIR=$APP_DIR"
+
+    - name: Upload project files to server
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        source: "."
+        target: ${{ secrets.APP_DIR }}
+    
+    - name: Deploy (Python 3.10 + MySQL, no Docker)
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          set -e
+          APP_DIR="${{ secrets.APP_DIR }}"
+          if [ -z "$APP_DIR" ]; then
+            echo "❌ Secret APP_DIR is required (example: /home/<user>/appointment-system)"
+            exit 1
+          fi
+
+          echo "📁 Using APP_DIR=$APP_DIR"
+          cd "$APP_DIR"
+
+          # Создаем .env из Secrets (MySQL reg.ru)
           cat > .env << EOF
-          DB_NAME=appointment_db
-          DB_USER=appointment_user
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          DB_HOST=db
-          DB_PORT=3306
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_PORT=${{ secrets.DB_PORT }}
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           DEBUG=False
           ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
           EOF
-          
-          # Определяем команду docker-compose (поддерживаем v1 и v2)
-          if command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
-            DOCKER_COMPOSE="docker compose"
-          elif command -v docker-compose &> /dev/null; then
-            DOCKER_COMPOSE="docker-compose"
-          else
-            echo "Installing docker-compose..."
-            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
-            DOCKER_COMPOSE="docker-compose"
+
+          # Python deps (Python 3.10)
+          python3 --version
+          python3 -m venv venv || true
+          . venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+          # Django migrate + collectstatic
+          cd appoinment_sistem
+          python manage.py migrate --noinput
+          python manage.py collectstatic --noinput
+          cd ..
+
+          # Restart gunicorn (simple, without systemd)
+          PIDFILE="$APP_DIR/gunicorn.pid"
+          LOGFILE="$APP_DIR/gunicorn.log"
+
+          if [ -f "$PIDFILE" ]; then
+            echo "🛑 Stopping old gunicorn (pidfile)"
+            kill -TERM "$(cat "$PIDFILE")" || true
+            rm -f "$PIDFILE"
+            sleep 2
           fi
-          
-          # Проверяем текущий commit перед обновлением
-          echo "📋 Current commit before update:"
-          git rev-parse HEAD || echo "Not a git repo or error"
-          
-          # Обновляем код из main (так как PR уже влит)
-          echo "📥 Updating code from main branch..."
-          git fetch origin
-          git checkout main || git checkout -b main origin/main
-          git reset --hard origin/main
-          
-          # Проверяем новый commit
-          NEW_COMMIT=$(git rev-parse HEAD)
-          echo "✅ Code updated to latest main branch"
-          echo "📋 New commit hash: $NEW_COMMIT"
-          
-          # Показываем последние изменения
-          echo "📝 Recent commits:"
-          git log --oneline -5
-          
-          # Проверяем свободное место на диске
-          echo "💾 Checking disk space..."
-          df -h
-          
-          # Останавливаем контейнеры (принудительно)
-          echo "🛑 Stopping containers..."
-          $DOCKER_COMPOSE down || true
-          
-          # Очищаем Docker для освобождения места
-          echo "🧹 Cleaning Docker resources..."
-          docker system prune -f || echo "Docker prune warning"
-          docker image prune -a -f || echo "Docker image prune warning"
-          docker volume prune -f || echo "Docker volume prune warning"
-          
-          # Проверяем свободное место после очистки
-          echo "💾 Disk space after cleanup:"
-          df -h
-          
-          # Пересобираем образ web (без кэша)
-          echo "🔨 Rebuilding Docker images (no cache)..."
-          $DOCKER_COMPOSE build --no-cache web || echo "Warning: Build failed, continuing..."
-          
-          # Принудительно пересоздаем и запускаем контейнеры
-          echo "🚀 Starting containers (force recreate)..."
-          $DOCKER_COMPOSE up -d --force-recreate web || $DOCKER_COMPOSE up -d web
-          
-          # Ждем полного запуска
-          echo "⏳ Waiting for services to start..."
-          sleep 20
-          
-          # Проверяем что контейнер запущен
-          echo "🔍 Checking container status..."
-          $DOCKER_COMPOSE ps
-          
-          # Проверяем что контейнер использует новый код
-          echo "🔍 Verifying code in container..."
-          CONTAINER_COMMIT=$($DOCKER_COMPOSE exec -T web git rev-parse HEAD 2>/dev/null || echo "Cannot check")
-          echo "Container commit: $CONTAINER_COMMIT"
-          echo "Expected commit: $NEW_COMMIT"
-          
-          if [ "$CONTAINER_COMMIT" = "$NEW_COMMIT" ]; then
-            echo "✅ Container is using correct commit!"
-          else
-            echo "⚠️ Warning: Container commit differs from expected"
-          fi
-          
-          # Применяем миграции
-          echo "🗄️ Running migrations..."
-          $DOCKER_COMPOSE exec -T web python manage.py migrate || echo "Migration failed"
-          
-          # Собираем статические файлы
-          echo "📦 Collecting static files..."
-          $DOCKER_COMPOSE exec -T web python manage.py collectstatic --noinput || echo "Collectstatic failed"
-          
-          # Принудительно перезапускаем контейнер web для применения изменений
-          echo "🔄 Force restarting web container to load new code..."
-          $DOCKER_COMPOSE stop web
-          sleep 5
-          $DOCKER_COMPOSE up -d web
-          
-          # Ждем перезапуска
-          echo "⏳ Waiting for container restart..."
-          sleep 10
-          
-          # Проверяем финальный статус
-          echo "✅ Final container status..."
-          $DOCKER_COMPOSE ps
-          
-          # Показываем логи
-          echo "📋 Recent logs from web container..."
-          $DOCKER_COMPOSE logs --tail=50 web
-          
-          # Проверяем что веб-сервер отвечает
-          echo "🌐 Checking web service health..."
-          $DOCKER_COMPOSE exec -T web curl -f http://localhost:8000/ || echo "Health check failed"
-          
-          echo "Deployment completed!"
+
+          echo "🚀 Starting gunicorn"
+          nohup "$APP_DIR/venv/bin/gunicorn" appoinment_sistem.wsgi:application \
+            --bind 127.0.0.1:8000 \
+            --workers 2 \
+            --pid "$PIDFILE" \
+            > "$LOGFILE" 2>&1 &
+
+          echo "✅ Deploy completed. Logs: $LOGFILE"

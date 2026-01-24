@@ -13,7 +13,7 @@ Django приложение для управления записями на к
 
 ## Технологии
 
-- Django 6.0
+- Django 4.2 (LTS) — совместимо с Python 3.10.x (reg.ru)
 - Django REST Framework
 - MySQL
 - Docker & Docker Compose
