@@ -87,19 +87,32 @@ jobs:
           ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
           EOF
 
+          # Ensure predictable PATH in non-interactive SSH
+          export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
           # Python deps (prefer python3.10 on hosting)
-          if command -v python3.10 >/dev/null 2>&1; then
-            PYTHON_BIN="python3.10"
-          elif command -v python3 >/dev/null 2>&1; then
-            PYTHON_BIN="python3"
-          else
-            echo "❌ Python not found on server"
-            exit 1
+          # You can override via Secrets:
+          #   PYTHON_BIN=/full/path/to/python3.10
+          PYTHON_BIN="${{ secrets.PYTHON_BIN }}"
+
+          if [ -z "$PYTHON_BIN" ]; then
+            if command -v python3.10 >/dev/null 2>&1; then
+              PYTHON_BIN="python3.10"
+            elif command -v python3 >/dev/null 2>&1; then
+              PYTHON_BIN="python3"
+            else
+              echo "❌ Python not found on server"
+              exit 1
+            fi
           fi
 
-          echo "🐍 Using $PYTHON_BIN"
-          $PYTHON_BIN --version
-          $PYTHON_BIN -m venv venv || true
+          echo "🐍 Using PYTHON_BIN=$PYTHON_BIN"
+          command -v "$PYTHON_BIN" || true
+          "$PYTHON_BIN" --version
+
+          # Recreate venv to ensure correct Python version
+          rm -rf venv
+          "$PYTHON_BIN" -m venv venv
           . venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
