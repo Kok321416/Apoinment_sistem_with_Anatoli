@@ -144,6 +144,9 @@ jobs:
           # Passenger restart hook (safe even if Passenger is not used)
           mkdir -p tmp
           touch tmp/restart.txt
+          # reg.ru (ispmanager) restart trigger for Django apps
+          # File is removed automatically after restart
+          touch .restart-app
 
           # Restart gunicorn (simple, without systemd)
           PIDFILE="$APP_DIR/gunicorn.pid"
