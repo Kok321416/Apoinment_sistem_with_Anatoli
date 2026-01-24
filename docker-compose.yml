@@ -1,19 +1,17 @@
-version: '3.8'
-
 services:
   db:
-    image: postgres:15-alpine
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./backups:/backups
+    image: mysql:8.0
     environment:
-      POSTGRES_DB: ${DB_NAME:-appointment_db}
-      POSTGRES_USER: ${DB_USER:-appointment_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-appointment_db}
+      MYSQL_USER: ${DB_USER:-appointment_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
     ports:
-      - "5432:5432"
+      - "3306:3306"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-appointment_user}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,7 +39,7 @@ services:
       - DB_USER=${DB_USER:-appointment_user}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=db
-      - DB_PORT=5432
+      - DB_PORT=3306
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
     networks:
@@ -51,53 +49,19 @@ services:
     image: nginx:alpine
     ports:
       - "80:80"
-      # Порт 443 временно закомментирован (HTTPS отключен для проверки)
-      # - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - static_volume:/app/appoinment_sistem/staticfiles:ro
-      - ./certbot/conf:/etc/letsencrypt:rw
-      - ./certbot/www:/var/www/certbot:rw
     depends_on:
       - web
     networks:
       - app_network
     restart: unless-stopped
-    entrypoint: >
-      /bin/sh -c "
-      echo 'Starting nginx (HTTP mode for Lets Encrypt)...';
-      exec nginx -g 'daemon off;'
-      "
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    networks:
-      - app_network
-    # НЕ пробрасываем порты - certbot нужен только для renew, не для постоянной работы
-
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
-    ports:
-      - "5050:80"
-    depends_on:
-      - db
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    networks:
-      - app_network
 
 volumes:
-  postgres_data:
+  mysql_data:
   static_volume:
-  pgadmin_data:
 
 networks:
   app_network:
