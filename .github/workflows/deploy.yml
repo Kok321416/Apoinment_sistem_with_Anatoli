@@ -129,11 +129,12 @@ jobs:
           # Restart gunicorn (simple, without systemd)
           PIDFILE="$APP_DIR/gunicorn.pid"
           LOGFILE="$APP_DIR/gunicorn.log"
-          DJANGO_DIR="$APP_DIR/appoinment_sistem"
+          DJANGO_DIR="appoinment_sistem"
 
+          echo "📌 PWD: $(pwd)"
           if [ ! -d "$DJANGO_DIR" ]; then
-            echo "❌ Django directory not found: $DJANGO_DIR"
-            echo "Contents of APP_DIR:"
+            echo "❌ Django directory not found: $(pwd)/$DJANGO_DIR"
+            echo "Contents of current directory:"
             ls -la
             exit 1
           fi
