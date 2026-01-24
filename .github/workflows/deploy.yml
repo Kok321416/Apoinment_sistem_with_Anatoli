@@ -87,9 +87,35 @@ jobs:
           ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
           EOF
 
-          # Python deps (Python 3.10)
-          python3 --version
-          python3 -m venv venv || true
+          # Ensure predictable PATH in non-interactive SSH
+          export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+          # Python deps (prefer python3.10 on hosting)
+          # You can override via Secrets:
+          #   PYTHON_BIN=/full/path/to/python3.10
+          PYTHON_BIN="${{ secrets.PYTHON_BIN }}"
+
+          if [ -z "$PYTHON_BIN" ]; then
+            # reg.ru often provides Python in /opt/python/*
+            if [ -x "/opt/python/python-3.10.1/bin/python" ]; then
+              PYTHON_BIN="/opt/python/python-3.10.1/bin/python"
+            elif command -v python3.10 >/dev/null 2>&1; then
+              PYTHON_BIN="python3.10"
+            elif command -v python3 >/dev/null 2>&1; then
+              PYTHON_BIN="python3"
+            else
+              echo "❌ Python not found on server"
+              exit 1
+            fi
+          fi
+
+          echo "🐍 Using PYTHON_BIN=$PYTHON_BIN"
+          command -v "$PYTHON_BIN" || true
+          "$PYTHON_BIN" --version
+
+          # Recreate venv to ensure correct Python version
+          rm -rf venv
+          "$PYTHON_BIN" -m venv venv
           . venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
@@ -103,6 +129,14 @@ jobs:
           # Restart gunicorn (simple, without systemd)
           PIDFILE="$APP_DIR/gunicorn.pid"
           LOGFILE="$APP_DIR/gunicorn.log"
+          DJANGO_DIR="$APP_DIR/appoinment_sistem"
+
+          if [ ! -d "$DJANGO_DIR" ]; then
+            echo "❌ Django directory not found: $DJANGO_DIR"
+            echo "Contents of APP_DIR:"
+            ls -la
+            exit 1
+          fi
 
           if [ -f "$PIDFILE" ]; then
             echo "🛑 Stopping old gunicorn (pidfile)"
@@ -112,7 +146,7 @@ jobs:
           fi
 
           echo "🚀 Starting gunicorn"
-          nohup "$APP_DIR/venv/bin/gunicorn" appoinment_sistem.wsgi:application \
+          nohup "$APP_DIR/venv/bin/gunicorn" --chdir "$DJANGO_DIR" appoinment_sistem.wsgi:application \
             --bind 127.0.0.1:8000 \
             --workers 2 \
             --pid "$PIDFILE" \
