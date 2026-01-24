@@ -96,7 +96,10 @@ jobs:
           PYTHON_BIN="${{ secrets.PYTHON_BIN }}"
 
           if [ -z "$PYTHON_BIN" ]; then
-            if command -v python3.10 >/dev/null 2>&1; then
+            # reg.ru often provides Python in /opt/python/*
+            if [ -x "/opt/python/python-3.10.1/bin/python" ]; then
+              PYTHON_BIN="/opt/python/python-3.10.1/bin/python"
+            elif command -v python3.10 >/dev/null 2>&1; then
               PYTHON_BIN="python3.10"
             elif command -v python3 >/dev/null 2>&1; then
               PYTHON_BIN="python3"
@@ -126,6 +129,14 @@ jobs:
           # Restart gunicorn (simple, without systemd)
           PIDFILE="$APP_DIR/gunicorn.pid"
           LOGFILE="$APP_DIR/gunicorn.log"
+          DJANGO_DIR="$APP_DIR/appoinment_sistem"
+
+          if [ ! -d "$DJANGO_DIR" ]; then
+            echo "❌ Django directory not found: $DJANGO_DIR"
+            echo "Contents of APP_DIR:"
+            ls -la
+            exit 1
+          fi
 
           if [ -f "$PIDFILE" ]; then
             echo "🛑 Stopping old gunicorn (pidfile)"
@@ -135,7 +146,7 @@ jobs:
           fi
 
           echo "🚀 Starting gunicorn"
-          nohup "$APP_DIR/venv/bin/gunicorn" appoinment_sistem.wsgi:application \
+          nohup "$APP_DIR/venv/bin/gunicorn" --chdir "$DJANGO_DIR" appoinment_sistem.wsgi:application \
             --bind 127.0.0.1:8000 \
             --workers 2 \
             --pid "$PIDFILE" \
