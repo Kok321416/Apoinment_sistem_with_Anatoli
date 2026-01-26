@@ -85,7 +85,13 @@
 <body>
     <div class="container">
         <div class="nav-header">
-            <h1>Мой профиль</h1>
+            <h1 class="brand-title">
+                <a href="{% url 'home' %}" class="brand-link" aria-label="allyourclients — на главную">
+                    <span class="brand-badge" aria-hidden="true">a</span>
+                    <span class="brand-name">allyourclients</span>
+                </a>
+                <span class="brand-page">/ Мой профиль</span>
+            </h1>
             <div class="user-info">
                 <a href="{% url 'home' %}" class="btn btn-secondary">← На главную</a>
             </div>
@@ -233,7 +239,7 @@
                     <div class="profile-section">
                         <h3>Видео</h3>
                         <div class="form-group">
-                            <input type="url" name="video_link" value="{{ consultant.video_link }}" placeholder="https://youtube.com/watch?v=...">
+                            <input type="text" name="video_link" value="{{ consultant.video_link }}" placeholder="https://youtube.com/watch?v=...">
                             <small>Ссылка на YouTube или другое видео</small>
                         </div>
                     </div>
@@ -243,27 +249,27 @@
                         <div class="social-links">
                             <div class="form-group">
                                 <label>Instagram</label>
-                                <input type="url" name="social_instagram" value="{{ consultant.social_instagram }}" placeholder="https://instagram.com/...">
+                                <input type="text" name="social_instagram" value="{{ consultant.social_instagram }}" placeholder="https://instagram.com/...">
                             </div>
                             <div class="form-group">
                                 <label>Facebook</label>
-                                <input type="url" name="social_facebook" value="{{ consultant.social_facebook }}" placeholder="https://facebook.com/...">
+                                <input type="text" name="social_facebook" value="{{ consultant.social_facebook }}" placeholder="https://facebook.com/...">
                             </div>
                             <div class="form-group">
                                 <label>VK</label>
-                                <input type="url" name="social_vk" value="{{ consultant.social_vk }}" placeholder="https://vk.com/...">
+                                <input type="text" name="social_vk" value="{{ consultant.social_vk }}" placeholder="https://vk.com/...">
                             </div>
                             <div class="form-group">
                                 <label>Telegram</label>
-                                <input type="url" name="social_telegram" value="{{ consultant.social_telegram }}" placeholder="https://t.me/...">
+                                <input type="text" name="social_telegram" value="{{ consultant.social_telegram }}" placeholder="https://t.me/...">
                             </div>
                             <div class="form-group">
                                 <label>YouTube</label>
-                                <input type="url" name="social_youtube" value="{{ consultant.social_youtube }}" placeholder="https://youtube.com/...">
+                                <input type="text" name="social_youtube" value="{{ consultant.social_youtube }}" placeholder="https://youtube.com/...">
                             </div>
                             <div class="form-group">
                                 <label>Веб-сайт</label>
-                                <input type="url" name="website" value="{{ consultant.website }}" placeholder="https://example.com">
+                                <input type="text" name="website" value="{{ consultant.website }}" placeholder="https://example.com">
                             </div>
                         </div>
                     </div>

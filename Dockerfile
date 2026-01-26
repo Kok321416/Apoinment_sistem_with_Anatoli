@@ -1,14 +1,6 @@
-FROM python:3.12-slim
+FROM python:3.10-slim
 
 WORKDIR /app
-
-# Установка зависимостей системы
-RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    gcc \
-    python3-dev \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
 
 # Копирование requirements (из корня проекта)
 COPY requirements.txt .

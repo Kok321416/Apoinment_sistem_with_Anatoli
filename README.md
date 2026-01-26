@@ -13,12 +13,16 @@ Django приложение для управления записями на к
 
 ## Технологии
 
-- Django 6.0
+- Django 4.2 (LTS) — совместимо с Python 3.10.x (reg.ru)
 - Django REST Framework
-- PostgreSQL
+- MySQL
 - Docker & Docker Compose
-- Gunicorn
+- Gunicorn, Nginx
 - WhiteNoise (для статических файлов)
+
+## Деплой на хостинг (reg.ru и др.)
+
+Инструкция по запуску через Git и консоль: [DEPLOY_REGRU.md](DEPLOY_REGRU.md)
 
 ## Быстрый старт
 
