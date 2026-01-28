@@ -6,3 +6,7 @@ class TelegramBotConfig(AppConfig):
     name = 'telegram_bot'
     verbose_name = 'Telegram Bot'
 
+    def ready(self):
+        # noqa: F401
+        from . import signals  # Import signals
+

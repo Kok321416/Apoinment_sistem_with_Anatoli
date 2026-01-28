@@ -150,39 +150,34 @@
 <body>
     <div class="container">
         <h1>📅 Запись на консультацию</h1>
-        
+
+        <div id="empty-linked" class="empty-state" style="display:none;">
+            Пока что вас еще ниразу не записывали и ваших данных нет у специалистов
+        </div>
+
         <div class="service-select">
-            <label for="service-select">Выберите услугу:</label>
-            <select id="service-select">
-                <option value="">-- Выберите услугу --</option>
-                {% for service in services %}
-                <option value="{{ service.id }}" {% if selected_service.id == service.id %}selected{% endif %}>
-                    {{ service.name }} - {{ service.specialist.user.get_full_name|default:service.specialist.user.username }}
-                </option>
-                {% endfor %}
+            <label for="specialist-select">Специалист:</label>
+            <select id="specialist-select">
+                <option value="">-- Выберите специалиста --</option>
             </select>
         </div>
-        
+
+        <div class="service-select">
+            <label for="calendar-select">Календарь:</label>
+            <select id="calendar-select" disabled>
+                <option value="">-- Выберите календарь --</option>
+            </select>
+        </div>
+
+        <div class="service-select">
+            <label for="service-select">Услуга:</label>
+            <select id="service-select" disabled>
+                <option value="">-- Выберите услугу --</option>
+            </select>
+        </div>
+
         <div id="slots-container" class="slots-container">
-            {% if slots_by_service %}
-                {% for service_id, data in slots_by_service.items %}
-                <div class="service-slots" data-service-id="{{ service_id }}" {% if selected_service.id != service_id %}style="display: none;"{% endif %}>
-                    <h3>{{ data.service.name }}</h3>
-                    {% if data.slots %}
-                        {% for slot in data.slots %}
-                        <div class="slot-item" data-slot-id="{{ slot.id }}" onclick="selectSlot({{ slot.id }})">
-                            <div class="slot-date">{{ slot.date|date:"d.m.Y" }}</div>
-                            <div class="slot-time">{{ slot.start_time|time:"H:i" }} - {{ slot.end_time|time:"H:i" }}</div>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="empty-state">Нет доступных слотов</div>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-state">Выберите услугу для просмотра доступных слотов</div>
-            {% endif %}
+            <div class="empty-state">Выберите специалиста, затем календарь и услугу</div>
         </div>
         
         <form id="appointment-form">
@@ -221,8 +216,11 @@
         tg.ready();
         tg.expand();
         
+        let selectedSpecialistId = null;
+        let selectedCalendarId = null;
         let selectedServiceId = null;
         let selectedSlotId = null;
+        let initData = tg.initData || '';
         
         // Получаем данные пользователя из Telegram
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -235,25 +233,115 @@
             }
         }
         
-        // Обработчик выбора услуги
-        document.getElementById('service-select').addEventListener('change', function() {
-            selectedServiceId = this.value;
-            selectedSlotId = null;
-            
-            // Показываем/скрываем слоты
-            document.querySelectorAll('.service-slots').forEach(div => {
-                div.style.display = div.dataset.serviceId === selectedServiceId ? 'block' : 'none';
-            });
-            
-            // Сбрасываем выбранный слот
-            document.querySelectorAll('.slot-item').forEach(item => {
-                item.classList.remove('selected');
-            });
-            
-            // Загружаем слоты через API, если нужно
-            if (selectedServiceId) {
-                loadSlots(selectedServiceId);
+        const qs = new URLSearchParams(window.location.search);
+        const preSpecialistId = qs.get('specialist_id');
+
+        // Загружаем "кто я" и список связанных специалистов
+        fetch('/telegram/api/me/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({init_data: initData})
+        })
+        .then(r => r.json())
+        .then(me => {
+            if (!me.success) {
+                document.getElementById('empty-linked').style.display = 'block';
+                return;
             }
+
+            const linked = me.linked_specialists || [];
+            if (linked.length === 0) {
+                document.getElementById('empty-linked').style.display = 'block';
+                return;
+            }
+
+            const specialistSelect = document.getElementById('specialist-select');
+            specialistSelect.innerHTML = '<option value="">-- Выберите специалиста --</option>';
+            linked.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                specialistSelect.appendChild(opt);
+            });
+
+            // Автовыбор: specialist_id из query либо last_specialist_id либо если 1 специалист
+            const autoId = preSpecialistId || me.last_specialist_id || (linked.length === 1 ? linked[0].id : null);
+            if (autoId) {
+                specialistSelect.value = String(autoId);
+                specialistSelect.dispatchEvent(new Event('change'));
+            }
+        })
+        .catch(() => {
+            document.getElementById('empty-linked').style.display = 'block';
+        });
+
+        document.getElementById('specialist-select').addEventListener('change', function() {
+            selectedSpecialistId = this.value || null;
+            selectedCalendarId = null;
+            selectedServiceId = null;
+            selectedSlotId = null;
+
+            const calendarSelect = document.getElementById('calendar-select');
+            const serviceSelect = document.getElementById('service-select');
+            calendarSelect.disabled = !selectedSpecialistId;
+            serviceSelect.disabled = true;
+            calendarSelect.innerHTML = '<option value="">-- Выберите календарь --</option>';
+            serviceSelect.innerHTML = '<option value="">-- Выберите услугу --</option>';
+            document.getElementById('slots-container').innerHTML = '<div class="empty-state">Выберите календарь</div>';
+
+            if (!selectedSpecialistId) return;
+
+            fetch(`/telegram/api/calendars/?specialist_id=${selectedSpecialistId}`)
+              .then(r => r.json())
+              .then(data => {
+                if (!data.success) return;
+                data.calendars.forEach(c => {
+                  const opt = document.createElement('option');
+                  opt.value = c.id;
+                  opt.textContent = c.name;
+                  calendarSelect.appendChild(opt);
+                });
+                if (data.calendars.length === 1) {
+                  calendarSelect.value = String(data.calendars[0].id);
+                  calendarSelect.dispatchEvent(new Event('change'));
+                }
+              });
+        });
+
+        document.getElementById('calendar-select').addEventListener('change', function() {
+            selectedCalendarId = this.value || null;
+            selectedServiceId = null;
+            selectedSlotId = null;
+
+            const serviceSelect = document.getElementById('service-select');
+            serviceSelect.disabled = !selectedCalendarId;
+            serviceSelect.innerHTML = '<option value="">-- Выберите услугу --</option>';
+            document.getElementById('slots-container').innerHTML = '<div class="empty-state">Выберите услугу</div>';
+            if (!selectedCalendarId) return;
+
+            fetch(`/telegram/api/services/?calendar_id=${selectedCalendarId}`)
+              .then(r => r.json())
+              .then(data => {
+                if (!data.success) return;
+                data.services.forEach(s => {
+                  const opt = document.createElement('option');
+                  opt.value = s.id;
+                  opt.textContent = s.name;
+                  serviceSelect.appendChild(opt);
+                });
+                if (data.services.length === 1) {
+                  serviceSelect.value = String(data.services[0].id);
+                  serviceSelect.dispatchEvent(new Event('change'));
+                }
+              });
+        });
+
+        // Выбор услуги -> загрузка слотов
+        document.getElementById('service-select').addEventListener('change', function() {
+            selectedServiceId = this.value || null;
+            selectedSlotId = null;
+            document.querySelectorAll('.slot-item').forEach(item => item.classList.remove('selected'));
+            if (selectedServiceId) loadSlots(selectedServiceId);
         });
         
         function selectSlot(slotId) {
@@ -300,8 +388,8 @@
         document.getElementById('appointment-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            if (!selectedServiceId || !selectedSlotId) {
-                showMessage('Пожалуйста, выберите услугу и временной слот', 'error');
+            if (!selectedSpecialistId || !selectedCalendarId || !selectedServiceId || !selectedSlotId) {
+                showMessage('Пожалуйста, выберите специалиста, календарь, услугу и временной слот', 'error');
                 return;
             }
             
@@ -310,6 +398,9 @@
             submitBtn.textContent = 'Отправка...';
             
             const formData = {
+                init_data: initData,
+                specialist_id: selectedSpecialistId,
+                calendar_id: selectedCalendarId,
                 service_id: selectedServiceId,
                 time_slot_id: selectedSlotId,
                 client_name: document.getElementById('client-name').value,

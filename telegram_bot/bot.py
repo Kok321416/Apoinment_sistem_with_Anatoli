@@ -8,6 +8,8 @@ from bookings.models import UserProfile, Appointment, Specialist, Service, TimeS
 from django.contrib.auth.models import User
 import requests
 
+from telegram_bot.models import TelegramClient, TelegramClientSpecialist
+
 logger = logging.getLogger(__name__)
 
 TELEGRAM_BOT_TOKEN = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
@@ -144,15 +146,36 @@ def handle_telegram_update(update_data):
 def handle_start_command(chat_id, user_id, username, first_name):
     """Обработка команды /start"""
     try:
+        # Обновляем/создаем TelegramClient и пытаемся найти связь со специалистом
+        tg_client, _ = TelegramClient.objects.get_or_create(
+            telegram_id=user_id,
+            defaults={"telegram_username": username or "", "first_name": first_name or ""},
+        )
+        tg_client.telegram_username = username or tg_client.telegram_username
+        tg_client.first_name = first_name or tg_client.first_name
+        tg_client.last_seen_at = timezone.now()
+
+        if not tg_client.last_specialist and username:
+            maybe = Appointment.objects.filter(client_telegram__iexact=f"@{username}").order_by("-appointment_date").first()
+            if maybe:
+                tg_client.last_specialist = maybe.specialist
+                TelegramClientSpecialist.objects.get_or_create(client=tg_client, specialist=maybe.specialist)
+
+        tg_client.save()
+
         profile = UserProfile.objects.filter(telegram_id=user_id).first()
         
         # Кнопка для мини-приложения записи
+        webapp_url = f"{get_site_url()}/telegram/appointment/"
+        if tg_client.last_specialist_id:
+            webapp_url = f"{webapp_url}?specialist_id={tg_client.last_specialist_id}"
+
         keyboard = {
             'inline_keyboard': [
                 [
                     {
                         'text': '📱 Записаться на консультацию',
-                            'web_app': {'url': f'{get_site_url()}/telegram/appointment/'}
+                        'web_app': {'url': webapp_url}
                     }
                 ],
                 [
@@ -170,7 +193,11 @@ def handle_start_command(chat_id, user_id, username, first_name):
 Используйте кнопки ниже для работы с ботом.
 """
         else:
-            message = f"""
+            # Если нет связей со специалистами — показать нужный текст
+            if not tg_client.last_specialist_id and not TelegramClientSpecialist.objects.filter(client=tg_client).exists():
+                message = "Пока что вас еще ниразу не записывали и ваших данных нет у специалистов."
+            else:
+                message = f"""
 👋 Добро пожаловать, {first_name}!
 
 Для полной регистрации перейдите на сайт и создайте аккаунт.

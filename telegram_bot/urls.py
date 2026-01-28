@@ -8,5 +8,8 @@ urlpatterns = [
     path('appointment/', views.telegram_appointment, name='telegram_appointment'),
     path('appointment/create/', views.telegram_appointment_create, name='telegram_appointment_create'),
     path('api/slots/', views.telegram_get_slots, name='telegram_get_slots'),
+    path('api/me/', views.telegram_me, name='telegram_me'),
+    path('api/calendars/', views.telegram_specialist_calendars, name='telegram_specialist_calendars'),
+    path('api/services/', views.telegram_calendar_services, name='telegram_calendar_services'),
 ]
 
