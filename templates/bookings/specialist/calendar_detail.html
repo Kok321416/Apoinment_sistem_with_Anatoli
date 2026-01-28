@@ -1,0 +1,375 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}{{ calendar.name }} - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>{{ calendar.name }}</h1>
+        <a href="{% url 'specialist_calendars' %}" class="btn btn-secondary">Назад</a>
+    </div>
+    
+    {% if calendar.description %}
+        <p style="color: #6b21a8; margin-bottom: 20px;">{{ calendar.description }}</p>
+    {% endif %}
+    
+    <div style="margin-bottom: 30px;">
+        <button type="button" class="btn" onclick="addNewDay()" style="margin-bottom: 20px;">+ Добавить день</button>
+        <div id="days-container">
+            {% if slots_by_date %}
+                {% for date_key, slots in slots_by_date.items %}
+                    <div class="day-card" data-date="{{ date_key|date:'Y-m-d' }}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h2 style="margin: 0; color: #6b21a8;">{{ date_key|date:"d.m.Y" }}</h2>
+                            <button type="button" class="btn" onclick="addSlotToExistingDay(this)" style="font-size: 20px; padding: 5px 15px;">+</button>
+                        </div>
+                        
+                        <div class="existing-slots" style="margin-bottom: 15px;">
+                            {% for slot in slots %}
+                                <div class="existing-slot">
+                                    <span><strong>{{ slot.start_time|time:"H:i" }} - {{ slot.end_time|time:"H:i" }}</strong></span>
+                                    {% if slot.service %}
+                                        <span style="color: #6b7280; margin-left: 10px;">({{ slot.service.name }})</span>
+                                    {% endif %}
+                                    <span class="badge {% if slot.is_booked %}danger{% else %}success{% endif %}" style="margin-left: 10px;">
+                                        {% if slot.is_booked %}Занят{% else %}Свободен{% endif %}
+                                    </span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="new-slots-container" style="display: none;">
+                            <!-- Новые слоты будут добавляться сюда -->
+                        </div>
+                        
+                        <form method="post" class="day-form" style="display: none;" onsubmit="event.preventDefault(); submitSlotsSequentially(this, this.querySelector('.slots-container'), this.querySelector('input[name=\"date\"]'), this.closest('.day-card'));">
+                            {% csrf_token %}
+                            <input type="hidden" name="date" value="{{ date_key|date:'Y-m-d' }}">
+                            <div class="slots-container"></div>
+                            <button type="submit" class="btn" style="margin-top: 10px;">Сохранить слоты</button>
+                            <button type="button" class="btn btn-secondary" onclick="cancelNewSlots(this)" style="margin-top: 10px; margin-left: 10px;">Отмена</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+let slotCounter = 0;
+
+function addNewDay() {
+    const container = document.getElementById('days-container');
+    const dayCard = document.createElement('div');
+    dayCard.className = 'day-card';
+    dayCard.style.marginBottom = '20px';
+    dayCard.style.padding = '20px';
+    dayCard.style.border = '2px solid #8b5cf6';
+    dayCard.style.borderRadius = '8px';
+    dayCard.style.background = '#faf5ff';
+    
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.required = true;
+    dateInput.style.marginBottom = '15px';
+    dateInput.style.padding = '8px';
+    dateInput.style.width = '100%';
+    dateInput.style.border = '1px solid #d1d5db';
+    dateInput.style.borderRadius = '5px';
+    
+    const slotsContainer = document.createElement('div');
+    slotsContainer.className = 'slots-container';
+    slotsContainer.style.marginTop = '15px';
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.className = 'day-form';
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken.value;
+        form.appendChild(csrfInput);
+    }
+    
+    const dateField = document.createElement('input');
+    dateField.type = 'hidden';
+    dateField.name = 'date';
+    dateField.value = '';
+    dateInput.addEventListener('change', function() {
+        dateField.value = this.value;
+    });
+    form.appendChild(dateField);
+    
+    const addSlotBtn = document.createElement('button');
+    addSlotBtn.type = 'button';
+    addSlotBtn.className = 'btn';
+    addSlotBtn.textContent = '+ Добавить слот';
+    addSlotBtn.style.marginTop = '10px';
+    addSlotBtn.onclick = function() { addSlotForm(slotsContainer, dateInput); };
+    
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'submit';
+    saveBtn.className = 'btn';
+    saveBtn.textContent = 'Сохранить слоты';
+    saveBtn.style.marginTop = '10px';
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-secondary';
+    cancelBtn.textContent = 'Отмена';
+    cancelBtn.style.marginTop = '10px';
+    cancelBtn.style.marginLeft = '10px';
+    cancelBtn.onclick = function() { dayCard.remove(); };
+    
+    // Обработчик отправки формы - отправляем слоты по одному
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitSlotsSequentially(form, slotsContainer, dateInput, dayCard);
+    });
+    
+    const label = document.createElement('label');
+    label.textContent = 'Выберите дату:';
+    label.style.display = 'block';
+    label.style.marginBottom = '10px';
+    label.style.fontWeight = 'bold';
+    
+    dayCard.appendChild(label);
+    dayCard.appendChild(dateInput);
+    dayCard.appendChild(form);
+    form.appendChild(slotsContainer);
+    dayCard.appendChild(addSlotBtn);
+    dayCard.appendChild(saveBtn);
+    dayCard.appendChild(cancelBtn);
+    
+    container.appendChild(dayCard);
+    
+    // Автоматически добавляем первый слот
+    addSlotForm(slotsContainer, dateInput);
+}
+
+function addSlotToExistingDay(button) {
+    const dayCard = button.closest('.day-card');
+    const form = dayCard.querySelector('.day-form');
+    const dateInput = form.querySelector('input[name="date"]');
+    const slotsContainer = form.querySelector('.slots-container');
+    
+    // Показываем форму
+    form.style.display = 'block';
+    
+    // Добавляем обработчик submit, если его еще нет
+    if (!form.hasAttribute('data-submit-handler')) {
+        form.setAttribute('data-submit-handler', 'true');
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitSlotsSequentially(form, slotsContainer, dateInput, dayCard);
+        });
+    }
+    
+    // Добавляем слот
+    addSlotForm(slotsContainer, dateInput);
+}
+
+function cancelNewSlots(button) {
+    const dayCard = button.closest('.day-card');
+    const form = dayCard.querySelector('.day-form');
+    const slotsContainer = form.querySelector('.slots-container');
+    
+    // Очищаем контейнер слотов
+    slotsContainer.innerHTML = '';
+    form.style.display = 'none';
+}
+
+function submitSlotsSequentially(form, slotsContainer, dateInput, dayCard) {
+    const slots = slotsContainer.querySelectorAll('.slot-form');
+    // Получаем значение даты (может быть из input или hidden field)
+    let dateValue = '';
+    if (dateInput) {
+        if (dateInput.type === 'date') {
+            dateValue = dateInput.value;
+        } else {
+            dateValue = dateInput.value || dateInput.getAttribute('value');
+        }
+    } else {
+        // Если dateInput не передан, пытаемся найти в форме
+        const dateField = form.querySelector('input[name="date"]');
+        if (dateField) {
+            dateValue = dateField.value || dateField.getAttribute('value');
+        }
+    }
+    
+    if (!dateValue) {
+        alert('Пожалуйста, выберите дату');
+        return;
+    }
+    
+    if (slots.length === 0) {
+        alert('Пожалуйста, добавьте хотя бы один слот');
+        return;
+    }
+    
+    // Проверяем все слоты перед отправкой
+    let hasErrors = false;
+    slots.forEach(slotForm => {
+        const startTime = slotForm.querySelector('.slot-start-time').value;
+        const endTime = slotForm.querySelector('.slot-end-time').value;
+        
+        if (!startTime || !endTime) {
+            hasErrors = true;
+        } else if (startTime >= endTime) {
+            alert('Время окончания должно быть позже времени начала');
+            hasErrors = true;
+        }
+    });
+    
+    if (hasErrors) {
+        return;
+    }
+    
+    // Отправляем слоты последовательно
+    let index = 0;
+    function submitNext() {
+        if (index >= slots.length) {
+            // Все слоты отправлены, перезагружаем страницу
+            window.location.reload();
+            return;
+        }
+        
+        const slotForm = slots[index];
+        const startTime = slotForm.querySelector('.slot-start-time').value;
+        const endTime = slotForm.querySelector('.slot-end-time').value;
+        const service = slotForm.querySelector('.slot-service').value;
+        
+        const submitForm = document.createElement('form');
+        submitForm.method = 'POST';
+        submitForm.style.display = 'none';
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken.value;
+            submitForm.appendChild(csrfInput);
+        }
+        
+        const dateField = document.createElement('input');
+        dateField.type = 'hidden';
+        dateField.name = 'date';
+        dateField.value = dateValue;
+        submitForm.appendChild(dateField);
+        
+        const startField = document.createElement('input');
+        startField.type = 'hidden';
+        startField.name = 'start_time';
+        startField.value = startTime;
+        submitForm.appendChild(startField);
+        
+        const endField = document.createElement('input');
+        endField.type = 'hidden';
+        endField.name = 'end_time';
+        endField.value = endTime;
+        submitForm.appendChild(endField);
+        
+        if (service) {
+            const serviceField = document.createElement('input');
+            serviceField.type = 'hidden';
+            serviceField.name = 'service';
+            serviceField.value = service;
+            submitForm.appendChild(serviceField);
+        }
+        
+        document.body.appendChild(submitForm);
+        submitForm.submit();
+        
+        index++;
+        if (index < slots.length) {
+            setTimeout(submitNext, 200);
+        }
+    }
+    
+    submitNext();
+}
+
+function addSlotForm(container, dateInput) {
+    const slotForm = document.createElement('div');
+    slotForm.className = 'slot-form';
+    slotForm.style.marginTop = '15px';
+    slotForm.style.padding = '15px';
+    slotForm.style.background = 'white';
+    slotForm.style.borderRadius = '5px';
+    slotForm.style.border = '1px solid #e5e7eb';
+    
+    const slotId = 'slot_' + slotCounter++;
+    
+    // Получаем значение даты (может быть из input или hidden field)
+    const dateValue = dateInput ? (dateInput.value || dateInput.getAttribute('value')) : '';
+    
+    slotForm.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
+            <div class="form-group">
+                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Время начала:</label>
+                <input type="time" name="start_time" required class="slot-start-time" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 5px;">
+            </div>
+            <div class="form-group">
+                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Время окончания:</label>
+                <input type="time" name="end_time" required class="slot-end-time" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 5px;">
+            </div>
+            <div class="form-group">
+                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Услуга (необязательно):</label>
+                <select name="service" class="slot-service" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 5px;">
+                    <option value="">Без привязки к услуге</option>
+                    {% for service in services %}
+                    <option value="{{ service.id }}">{{ service.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="button" class="btn btn-secondary" onclick="this.closest('.slot-form').remove()" style="height: fit-content; padding: 8px 15px;">Удалить</button>
+        </div>
+    `;
+    
+    container.appendChild(slotForm);
+}
+</script>
+
+<style>
+.day-card {
+    margin-bottom: 20px;
+    padding: 20px;
+    border: 2px solid #8b5cf6;
+    border-radius: 8px;
+    background: #faf5ff;
+}
+
+.slot-form {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 5px;
+    border: 1px solid #e5e7eb;
+}
+
+.slots-container {
+    margin-top: 15px;
+}
+
+.existing-slot {
+    display: inline-block;
+    padding: 10px 15px;
+    margin: 5px;
+    background: white;
+    border-radius: 5px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+}
+
+.existing-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+</style>
+{% endblock %}

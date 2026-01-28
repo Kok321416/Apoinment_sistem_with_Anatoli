@@ -1,0 +1,55 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Календарь специалиста - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>Календарь специалиста</h1>
+        <a href="{% url 'specialist_dashboard' %}" class="btn btn-secondary">Назад</a>
+    </div>
+    
+    <div class="card" style="background: #faf5ff;">
+        <h2>Создать временной слот</h2>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Дата:</label>
+                <input type="date" name="date" required>
+            </div>
+            <div class="form-group">
+                <label>Время начала:</label>
+                <input type="time" name="start_time" required>
+            </div>
+            <div class="form-group">
+                <label>Время окончания:</label>
+                <input type="time" name="end_time" required>
+            </div>
+            <button type="submit" class="btn">Создать слот</button>
+        </form>
+    </div>
+    
+    {% if time_slots %}
+        <h2 style="margin-top: 30px;">Временные слоты:</h2>
+        <div class="grid">
+            {% for slot in time_slots %}
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <h3>{{ slot.date|date:"d.m.Y" }}</h3>
+                        <p><strong>Время:</strong> {{ slot.start_time }} - {{ slot.end_time }}</p>
+                        <span class="badge {% if slot.is_booked %}danger{% else %}success{% endif %}">
+                            {% if slot.is_booked %}Занят{% else %}Свободен{% endif %}
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>Нет временных слотов.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+

@@ -1,0 +1,62 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Создать услугу - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 700px; margin: 0 auto;">
+    <h1>Создать услугу</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>{{ form.calendar.label }}</label>
+            {{ form.calendar }}
+            {% if form.calendar.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.calendar.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ form.name.label }}</label>
+            {{ form.name }}
+            {% if form.name.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.name.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ form.description.label }}</label>
+            {{ form.description }}
+        </div>
+        <div class="form-group">
+            <label>{{ form.duration.label }}</label>
+            {{ form.duration }}
+        </div>
+        <div class="form-group">
+            <label>{{ form.price.label }}</label>
+            {{ form.price }}
+        </div>
+        <div class="form-group">
+            <label>{{ form.work_hours_start.label }}</label>
+            {{ form.work_hours_start }}
+        </div>
+        <div class="form-group">
+            <label>{{ form.work_hours_end.label }}</label>
+            {{ form.work_hours_end }}
+        </div>
+        <div class="form-group">
+            <label>{{ form.buffer_time.label }}</label>
+            {{ form.buffer_time }}
+        </div>
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 10px;">
+                {{ form.is_active }}
+                {{ form.is_active.label }}
+            </label>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button type="submit" class="btn">Создать</button>
+            <a href="{% url 'specialist_services' %}" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+

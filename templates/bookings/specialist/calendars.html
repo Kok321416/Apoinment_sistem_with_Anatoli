@@ -1,0 +1,41 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Календари - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>Мои календари</h1>
+        <div style="display: flex; gap: 10px;">
+            <a href="{% url 'specialist_dashboard' %}" class="btn btn-secondary">Назад</a>
+            <a href="{% url 'calendar_create' %}" class="btn">+ Создать календарь</a>
+        </div>
+    </div>
+    
+    {% if calendars %}
+        <div class="grid">
+            {% for calendar in calendars %}
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <h3><a href="{% url 'calendar_detail' calendar.id %}" style="color: #8b5cf6; text-decoration: none;">{{ calendar.name }}</a></h3>
+                        {% if calendar.description %}
+                            <p>{{ calendar.description|truncatewords:20 }}</p>
+                        {% endif %}
+                        <span class="badge {% if calendar.is_active %}success{% else %}danger{% endif %}">
+                            {% if calendar.is_active %}Активен{% else %}Неактивен{% endif %}
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h2>📅</h2>
+            <p>У вас пока нет календарей.</p>
+            <a href="{% url 'calendar_create' %}" class="btn" style="margin-top: 20px;">Создать первый календарь</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+

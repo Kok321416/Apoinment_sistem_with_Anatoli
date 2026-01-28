@@ -1,0 +1,356 @@
+"""
+Telegram бот для системы записи на консультации
+"""
+import os
+import logging
+from django.conf import settings
+from django.utils import timezone
+from datetime import datetime
+from .models import UserProfile, Appointment, Specialist, Service, TimeSlot
+from django.contrib.auth.models import User
+import requests
+
+logger = logging.getLogger(__name__)
+
+TELEGRAM_BOT_TOKEN = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+
+
+def send_telegram_message(chat_id, text, reply_markup=None):
+    """Отправить сообщение в Telegram"""
+    if not TELEGRAM_BOT_TOKEN:
+        logger.error("TELEGRAM_BOT_TOKEN не установлен")
+        return False
+    
+    url = f"{TELEGRAM_API_URL}/sendMessage"
+    data = {
+        'chat_id': chat_id,
+        'text': text,
+        'parse_mode': 'HTML'
+    }
+    
+    if reply_markup:
+        data['reply_markup'] = reply_markup
+    
+    try:
+        response = requests.post(url, json=data, timeout=10)
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка отправки сообщения в Telegram: {e}")
+        return False
+
+
+def send_appointment_notification(appointment):
+    """Отправить уведомление о записи на консультацию"""
+    if not appointment.client_telegram:
+        return False
+    
+    # Пытаемся найти пользователя по telegram
+    telegram_id = None
+    
+    # Проверяем, есть ли telegram_id в профиле
+    if appointment.client:
+        try:
+            profile = appointment.client.profile
+            if profile.telegram_id:
+                telegram_id = profile.telegram_id
+        except UserProfile.DoesNotExist:
+            pass
+    
+    # Если telegram_id не найден, пытаемся найти по username
+    if not telegram_id:
+        # Здесь можно добавить логику поиска по telegram_username
+        # Пока используем только telegram_id из профиля
+        pass
+    
+    if not telegram_id:
+        logger.warning(f"Не найден telegram_id для клиента {appointment.client_name}")
+        return False
+    
+    specialist_name = appointment.specialist.user.get_full_name() or appointment.specialist.user.username
+    service_name = appointment.service.name if appointment.service else "Консультация"
+    date_str = appointment.appointment_date.strftime("%d.%m.%Y %H:%M")
+    
+    message = f"""
+🎉 <b>Запись подтверждена!</b>
+
+📅 <b>Дата и время:</b> {date_str}
+👤 <b>Специалист:</b> {specialist_name}
+💼 <b>Услуга:</b> {service_name}
+⏱ <b>Длительность:</b> {appointment.duration} минут
+
+📍 <b>Место проведения:</b> Уточняется
+
+Если у вас возникли вопросы, свяжитесь с нами.
+"""
+    
+    # Кнопки для управления записью
+    keyboard = {
+        'inline_keyboard': [
+            [
+                {'text': '📋 Мои записи', 'callback_data': 'my_appointments'},
+                {'text': '❌ Отменить', 'callback_data': f'cancel_{appointment.id}'}
+            ]
+        ]
+    }
+    
+    return send_telegram_message(telegram_id, message, keyboard)
+
+
+def send_admin_message(telegram_id, message):
+    """Отправить информационное сообщение от администрации"""
+    return send_telegram_message(telegram_id, f"📢 <b>Сообщение от администрации:</b>\n\n{message}")
+
+
+def handle_telegram_update(update_data):
+    """Обработка обновлений от Telegram"""
+    try:
+        if 'message' in update_data:
+            message = update_data['message']
+            chat_id = message['chat']['id']
+            text = message.get('text', '')
+            username = message.get('from', {}).get('username', '')
+            user_id = message.get('from', {}).get('id')
+            first_name = message.get('from', {}).get('first_name', '')
+            
+            # Команда /start
+            if text == '/start':
+                handle_start_command(chat_id, user_id, username, first_name)
+            
+            # Команда /register
+            elif text == '/register':
+                handle_register_command(chat_id, user_id, username, first_name)
+            
+            # Команда /appointments
+            elif text == '/appointments' or text == '📋 Мои записи':
+                handle_appointments_command(chat_id, user_id)
+            
+            # Команда /help
+            elif text == '/help':
+                handle_help_command(chat_id)
+            
+            else:
+                send_telegram_message(chat_id, "Неизвестная команда. Используйте /help для списка команд.")
+        
+        elif 'callback_query' in update_data:
+            callback_query = update_data['callback_query']
+            chat_id = callback_query['message']['chat']['id']
+            data = callback_query['data']
+            
+            if data == 'my_appointments':
+                user_id = callback_query['from']['id']
+                handle_appointments_command(chat_id, user_id)
+            
+            elif data.startswith('cancel_'):
+                appointment_id = int(data.split('_')[1])
+                handle_cancel_appointment(chat_id, appointment_id)
+            
+            elif data.startswith('book_'):
+                service_id = int(data.split('_')[1])
+                handle_book_appointment(chat_id, service_id)
+    
+    except Exception as e:
+        logger.error(f"Ошибка обработки обновления Telegram: {e}")
+
+
+def handle_start_command(chat_id, user_id, username, first_name):
+    """Обработка команды /start"""
+    # Регистрируем пользователя в системе
+    try:
+        # Пытаемся найти пользователя по telegram_id
+        profile = UserProfile.objects.filter(telegram_id=user_id).first()
+        
+        if profile:
+            message = f"""
+👋 Добро пожаловать, {first_name}!
+
+Вы уже зарегистрированы в системе.
+Используйте команды:
+/help - Список команд
+/appointments - Мои записи
+"""
+        else:
+            # Создаем новую запись или обновляем существующую
+            message = f"""
+👋 Добро пожаловать, {first_name}!
+
+Для полной регистрации перейдите на сайт и создайте аккаунт.
+После регистрации ваш Telegram будет автоматически привязан.
+
+Используйте команды:
+/help - Список команд
+/register - Регистрация
+"""
+        
+        send_telegram_message(chat_id, message)
+    
+    except Exception as e:
+        logger.error(f"Ошибка обработки /start: {e}")
+        send_telegram_message(chat_id, "Произошла ошибка. Попробуйте позже.")
+
+
+def handle_register_command(chat_id, user_id, username, first_name):
+    """Обработка команды /register"""
+    message = f"""
+📝 <b>Регистрация</b>
+
+Для регистрации в системе:
+1. Перейдите на сайт
+2. Создайте аккаунт
+3. Укажите ваш Telegram: @{username if username else 'username'}
+
+После регистрации вы сможете:
+• Записываться на консультации
+• Получать уведомления
+• Управлять записями
+"""
+    send_telegram_message(chat_id, message)
+
+
+def handle_appointments_command(chat_id, user_id):
+    """Показать записи пользователя"""
+    try:
+        # Находим пользователя по telegram_id
+        profile = UserProfile.objects.filter(telegram_id=user_id).first()
+        
+        if not profile or not profile.user:
+            send_telegram_message(
+                chat_id,
+                "❌ Вы не зарегистрированы в системе.\nИспользуйте /register для регистрации."
+            )
+            return
+        
+        user = profile.user
+        appointments = Appointment.objects.filter(client=user).order_by('-appointment_date')[:10]
+        
+        if not appointments:
+            send_telegram_message(chat_id, "📋 У вас пока нет записей.")
+            return
+        
+        message = "📋 <b>Ваши записи:</b>\n\n"
+        for appointment in appointments:
+            specialist_name = appointment.specialist.user.get_full_name() or appointment.specialist.user.username
+            service_name = appointment.service.name if appointment.service else "Консультация"
+            date_str = appointment.appointment_date.strftime("%d.%m.%Y %H:%M")
+            status_emoji = {
+                'pending': '⏳',
+                'confirmed': '✅',
+                'cancelled': '❌',
+                'completed': '✔️'
+            }.get(appointment.status, '📅')
+            
+            message += f"{status_emoji} <b>{date_str}</b>\n"
+            message += f"👤 {specialist_name}\n"
+            message += f"💼 {service_name}\n"
+            message += f"Статус: {appointment.get_status_display()}\n\n"
+        
+        send_telegram_message(chat_id, message)
+    
+    except Exception as e:
+        logger.error(f"Ошибка получения записей: {e}")
+        send_telegram_message(chat_id, "Произошла ошибка при получении записей.")
+
+
+def handle_cancel_appointment(chat_id, appointment_id):
+    """Отменить запись"""
+    try:
+        profile = UserProfile.objects.filter(telegram_id=chat_id).first()
+        if not profile or not profile.user:
+            send_telegram_message(chat_id, "❌ Вы не зарегистрированы в системе.")
+            return
+        
+        appointment = Appointment.objects.filter(id=appointment_id, client=profile.user).first()
+        if not appointment:
+            send_telegram_message(chat_id, "❌ Запись не найдена.")
+            return
+        
+        appointment.status = 'cancelled'
+        appointment.save()
+        
+        send_telegram_message(chat_id, "✅ Запись отменена.")
+    
+    except Exception as e:
+        logger.error(f"Ошибка отмены записи: {e}")
+        send_telegram_message(chat_id, "Произошла ошибка при отмене записи.")
+
+
+def handle_book_appointment(chat_id, service_id):
+    """Записаться на консультацию"""
+    try:
+        profile = UserProfile.objects.filter(telegram_id=chat_id).first()
+        if not profile or not profile.user:
+            send_telegram_message(
+                chat_id,
+                "❌ Вы не зарегистрированы в системе.\nИспользуйте /register для регистрации."
+            )
+            return
+        
+        service = Service.objects.filter(id=service_id, is_active=True).first()
+        if not service:
+            send_telegram_message(chat_id, "❌ Услуга не найдена.")
+            return
+        
+        # Получаем доступные слоты
+        time_slots = TimeSlot.objects.filter(
+            service=service,
+            is_available=True,
+            is_booked=False,
+            date__gte=timezone.now().date()
+        ).order_by('date', 'start_time')[:5]
+        
+        if not time_slots:
+            send_telegram_message(chat_id, "❌ Нет доступных слотов для записи.")
+            return
+        
+        message = f"📅 <b>Доступные слоты для {service.name}:</b>\n\n"
+        for slot in time_slots:
+            date_str = slot.date.strftime("%d.%m.%Y")
+            time_str = f"{slot.start_time.strftime('%H:%M')} - {slot.end_time.strftime('%H:%M')}"
+            message += f"📆 {date_str} в {time_str}\n"
+        
+        message += "\nДля записи перейдите на сайт по ссылке услуги."
+        send_telegram_message(chat_id, message)
+    
+    except Exception as e:
+        logger.error(f"Ошибка записи: {e}")
+        send_telegram_message(chat_id, "Произошла ошибка при получении слотов.")
+
+
+def handle_help_command(chat_id):
+    """Показать справку"""
+    message = """
+📖 <b>Справка по командам:</b>
+
+/start - Начать работу с ботом
+/register - Регистрация в системе
+/appointments - Мои записи
+/help - Эта справка
+
+<b>Возможности:</b>
+• Получение уведомлений о записях
+• Просмотр своих записей
+• Управление записями
+• Информационные сообщения от администрации
+"""
+    send_telegram_message(chat_id, message)
+
+
+def send_broadcast_message(message_text, user_type=None):
+    """Отправить массовое сообщение пользователям"""
+    try:
+        profiles = UserProfile.objects.filter(telegram_id__isnull=False)
+        
+        if user_type:
+            profiles = profiles.filter(user_type=user_type)
+        
+        sent_count = 0
+        for profile in profiles:
+            if send_telegram_message(profile.telegram_id, message_text):
+                sent_count += 1
+        
+        return sent_count
+    except Exception as e:
+        logger.error(f"Ошибка массовой рассылки: {e}")
+        return 0
+
