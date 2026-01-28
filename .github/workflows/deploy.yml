@@ -1,0 +1,173 @@
+name: Deploy to VPS
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    # Запускаем только при слиянии PR из develop в main
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.base.ref == 'main' &&
+        github.event.pull_request.head.ref == 'develop'
+      )
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Debug PR information
+      run: |
+        echo "PR Base Ref: ${{ github.event.pull_request.base.ref }}"
+        echo "PR Head Ref: ${{ github.event.pull_request.head.ref }}"
+        echo "PR Merged: ${{ github.event.pull_request.merged }}"
+        echo "PR State: ${{ github.event.pull_request.state }}"
+
+    - name: Ensure app directory exists
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          set -e
+          APP_DIR="${{ secrets.APP_DIR }}"
+          if [ -z "$APP_DIR" ]; then
+            echo "❌ Secret APP_DIR is required (example: /home/<user>/appointment-system)"
+            exit 1
+          fi
+          mkdir -p "$APP_DIR"
+          echo "APP_DIR=$APP_DIR"
+
+    - name: Upload project files to server
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        source: "."
+        target: ${{ secrets.APP_DIR }}
+    
+    - name: Deploy (Python 3.10 + MySQL, no Docker)
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          set -e
+          APP_DIR="${{ secrets.APP_DIR }}"
+          if [ -z "$APP_DIR" ]; then
+            echo "❌ Secret APP_DIR is required (example: /home/<user>/appointment-system)"
+            exit 1
+          fi
+
+          echo "📁 Using APP_DIR=$APP_DIR"
+          cd "$APP_DIR"
+
+          # Создаем .env из Secrets (MySQL reg.ru)
+          cat > .env << EOF
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_PORT=${{ secrets.DB_PORT }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DEBUG=False
+          ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
+          EOF
+
+          # Ensure predictable PATH in non-interactive SSH
+          export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+          # Python deps (prefer python3.10 on hosting)
+          # You can override via Secrets:
+          #   PYTHON_BIN=/full/path/to/python3.10
+          PYTHON_BIN="${{ secrets.PYTHON_BIN }}"
+
+          if [ -z "$PYTHON_BIN" ]; then
+            # reg.ru often provides Python in /opt/python/*
+            if [ -x "/opt/python/python-3.10.1/bin/python" ]; then
+              PYTHON_BIN="/opt/python/python-3.10.1/bin/python"
+            elif command -v python3.10 >/dev/null 2>&1; then
+              PYTHON_BIN="python3.10"
+            elif command -v python3 >/dev/null 2>&1; then
+              PYTHON_BIN="python3"
+            else
+              echo "❌ Python not found on server"
+              exit 1
+            fi
+          fi
+
+          echo "🐍 Using PYTHON_BIN=$PYTHON_BIN"
+          command -v "$PYTHON_BIN" || true
+          "$PYTHON_BIN" --version
+
+          # Recreate venv to ensure correct Python version
+          rm -rf venv
+          "$PYTHON_BIN" -m venv venv
+          . venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+          # Do NOT overwrite hosting .htaccess.
+          # On reg.ru nginx-fronted hosting, an invalid .htaccess often causes 500.
+          # If previous deploy created a broken .htaccess, move it aside and restore backup.
+          if [ -f .htaccess ] && grep -q "PassengerEnabled" .htaccess; then
+            mv .htaccess ".htaccess.broken.$(date +%s)" || true
+          fi
+          if [ ! -f .htaccess ] && [ -f .htaccess.bak ]; then
+            cp .htaccess.bak .htaccess
+          fi
+
+          # Django migrate + collectstatic
+          cd appoinment_sistem
+          python manage.py migrate --noinput
+          python manage.py collectstatic --noinput
+          cd ..
+
+          # Passenger restart hook (safe even if Passenger is not used)
+          mkdir -p tmp
+          touch tmp/restart.txt
+          # reg.ru (ispmanager) restart trigger for Django apps
+          # File is removed automatically after restart
+          touch .restart-app
+
+          # Restart gunicorn (simple, without systemd)
+          PIDFILE="$APP_DIR/gunicorn.pid"
+          LOGFILE="$APP_DIR/gunicorn.log"
+          DJANGO_DIR="appoinment_sistem"
+
+          echo "📌 PWD: $(pwd)"
+          if [ ! -d "$DJANGO_DIR" ]; then
+            echo "❌ Django directory not found: $(pwd)/$DJANGO_DIR"
+            echo "Contents of current directory:"
+            ls -la
+            exit 1
+          fi
+
+          if [ -f "$PIDFILE" ]; then
+            echo "🛑 Stopping old gunicorn (pidfile)"
+            kill -TERM "$(cat "$PIDFILE")" || true
+            rm -f "$PIDFILE"
+            sleep 2
+          fi
+
+          echo "🚀 Starting gunicorn"
+          nohup "$APP_DIR/venv/bin/gunicorn" --chdir "$DJANGO_DIR" appoinment_sistem.wsgi:application \
+            --bind 127.0.0.1:8000 \
+            --workers 2 \
+            --pid "$PIDFILE" \
+            > "$LOGFILE" 2>&1 &
+
+          echo "✅ Deploy completed. Logs: $LOGFILE"

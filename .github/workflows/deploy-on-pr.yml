@@ -1,0 +1,39 @@
+name: CI on Pull Request
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    
+    # Запускаем только для PR из develop в main
+    if: |
+      github.event.pull_request.base.ref == 'main' && 
+      github.event.pull_request.head.ref == 'develop'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Django checks (no DB)
+        working-directory: ./appoinment_sistem
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY || 'django-insecure-test-key-for-ci' }}
+          DEBUG: 'True'
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой профиль - Система записи</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <style>
+        .profile-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .profile-header {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .profile-photo {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #764ba2;
+        }
+        .profile-info h2 {
+            margin-top: 0;
+            color: #764ba2;
+        }
+        .profile-section {
+            background: white;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .profile-section h3 {
+            margin-top: 0;
+            color: #764ba2;
+            border-bottom: 2px solid #764ba2;
+            padding-bottom: 10px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .social-links {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .social-links input {
+            width: 100%;
+        }
+        .video-preview {
+            margin-top: 15px;
+            text-align: center;
+        }
+        .edit-mode-toggle {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+        #profileView {
+            display: block;
+        }
+        #profileEdit {
+            display: none;
+        }
+        .photo-upload {
+            margin-bottom: 15px;
+        }
+        .social-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            <h1 class="brand-title">
+                <a href="{% url 'home' %}" class="brand-link" aria-label="allyourclients — на главную">
+                    <span class="brand-badge" aria-hidden="true">a</span>
+                    <span class="brand-name">allyourclients</span>
+                </a>
+                <span class="brand-page">/ Мой профиль</span>
+            </h1>
+            <div class="user-info">
+                <a href="{% url 'home' %}" class="btn btn-secondary">← На главную</a>
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        {% if success %}
+        <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            {{ success }}
+        </div>
+        {% endif %}
+
+        <div class="profile-container">
+            <!-- Режим просмотра -->
+            <div id="profileView">
+                <div class="edit-mode-toggle">
+                    <button class="btn" onclick="toggleEditMode()">✏️ Редактировать профиль</button>
+                </div>
+
+                <div class="profile-header">
+                    {% if consultant.profile_photo %}
+                    <img src="{{ consultant.profile_photo.url }}" alt="Фото" class="profile-photo">
+                    {% else %}
+                    <div class="profile-photo" style="background: #ddd; display: flex; align-items: center; justify-content: center; color: #999;">
+                        Нет фото
+                    </div>
+                    {% endif %}
+
+                    <div class="profile-info">
+                        <h2>{{ consultant.first_name }} {{ consultant.last_name }}</h2>
+                        <p><strong>Email:</strong> {{ consultant.email }}</p>
+                        <p><strong>Телефон:</strong> {{ consultant.phone|default:"Не указан" }}</p>
+                        <p><strong>Telegram:</strong> {{ consultant.telegram_nickname|default:"Не указан" }}</p>
+                    </div>
+                </div>
+
+                {% if consultant.profile_description %}
+                <div class="profile-section">
+                    <h3>О специалисте</h3>
+                    <p style="white-space: pre-wrap;">{{ consultant.profile_description }}</p>
+                </div>
+                {% endif %}
+
+                {% if consultant.video_link %}
+                <div class="profile-section">
+                    <h3>Видео</h3>
+                    <div class="video-preview">
+                        <a href="{{ consultant.video_link }}" target="_blank" class="btn">📹 Посмотреть видео</a>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if consultant.social_instagram or consultant.social_facebook or consultant.social_vk or consultant.social_telegram or consultant.social_youtube or consultant.website %}
+                <div class="profile-section">
+                    <h3>Социальные сети и контакты</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                        {% if consultant.social_instagram %}
+                        <a href="{{ consultant.social_instagram }}" target="_blank" class="btn btn-secondary">📷 Instagram</a>
+                        {% endif %}
+                        {% if consultant.social_facebook %}
+                        <a href="{{ consultant.social_facebook }}" target="_blank" class="btn btn-secondary">📘 Facebook</a>
+                        {% endif %}
+                        {% if consultant.social_vk %}
+                        <a href="{{ consultant.social_vk }}" target="_blank" class="btn btn-secondary">🔵 VK</a>
+                        {% endif %}
+                        {% if consultant.social_telegram %}
+                        <a href="{{ consultant.social_telegram }}" target="_blank" class="btn btn-secondary">✈️ Telegram</a>
+                        {% endif %}
+                        {% if consultant.social_youtube %}
+                        <a href="{{ consultant.social_youtube }}" target="_blank" class="btn btn-secondary">📺 YouTube</a>
+                        {% endif %}
+                        {% if consultant.website %}
+                        <a href="{{ consultant.website }}" target="_blank" class="btn btn-secondary">🌐 Веб-сайт</a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Режим редактирования -->
+            <div id="profileEdit">
+                <div class="edit-mode-toggle">
+                    <button class="btn btn-secondary" onclick="toggleEditMode()">❌ Отменить</button>
+                </div>
+
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_profile">
+
+                    <div class="profile-section">
+                        <h3>Основная информация</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Имя *</label>
+                                <input type="text" name="first_name" value="{{ consultant.first_name }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Фамилия *</label>
+                                <input type="text" name="last_name" value="{{ consultant.last_name }}" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Отчество</label>
+                                <input type="text" name="middle_name" value="{{ consultant.middle_name }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Email *</label>
+                                <input type="email" name="email" value="{{ consultant.email }}" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Телефон *</label>
+                                <input type="tel" name="phone" value="{{ consultant.phone }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Telegram username</label>
+                                <input type="text" name="telegram_nickname" value="{{ consultant.telegram_nickname }}" placeholder="@username">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <h3>Фото</h3>
+                        <div class="photo-upload">
+                            {% if consultant.profile_photo %}
+                            <p>Текущее фото: <a href="{{ consultant.profile_photo.url }}" target="_blank">Посмотреть</a></p>
+                            {% endif %}
+                            <input type="file" name="profile_photo" accept="image/*">
+                            <small>Рекомендуемый размер: 400x400px или больше</small>
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <h3>Описание</h3>
+                        <div class="form-group">
+                            <textarea name="profile_description" rows="6" placeholder="Расскажите о себе, своих услугах, опыте...">{{ consultant.profile_description }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <h3>Видео</h3>
+                        <div class="form-group">
+                            <input type="text" name="video_link" value="{{ consultant.video_link }}" placeholder="https://youtube.com/watch?v=...">
+                            <small>Ссылка на YouTube или другое видео</small>
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <h3>Социальные сети</h3>
+                        <div class="social-links">
+                            <div class="form-group">
+                                <label>Instagram</label>
+                                <input type="text" name="social_instagram" value="{{ consultant.social_instagram }}" placeholder="https://instagram.com/...">
+                            </div>
+                            <div class="form-group">
+                                <label>Facebook</label>
+                                <input type="text" name="social_facebook" value="{{ consultant.social_facebook }}" placeholder="https://facebook.com/...">
+                            </div>
+                            <div class="form-group">
+                                <label>VK</label>
+                                <input type="text" name="social_vk" value="{{ consultant.social_vk }}" placeholder="https://vk.com/...">
+                            </div>
+                            <div class="form-group">
+                                <label>Telegram</label>
+                                <input type="text" name="social_telegram" value="{{ consultant.social_telegram }}" placeholder="https://t.me/...">
+                            </div>
+                            <div class="form-group">
+                                <label>YouTube</label>
+                                <input type="text" name="social_youtube" value="{{ consultant.social_youtube }}" placeholder="https://youtube.com/...">
+                            </div>
+                            <div class="form-group">
+                                <label>Веб-сайт</label>
+                                <input type="text" name="website" value="{{ consultant.website }}" placeholder="https://example.com">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">
+                        💾 Сохранить изменения
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleEditMode() {
+            const view = document.getElementById('profileView');
+            const edit = document.getElementById('profileEdit');
+
+            if (view.style.display === 'none') {
+                view.style.display = 'block';
+                edit.style.display = 'none';
+            } else {
+                view.style.display = 'none';
+                edit.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

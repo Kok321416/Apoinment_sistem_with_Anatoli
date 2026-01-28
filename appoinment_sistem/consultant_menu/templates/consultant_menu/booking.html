@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Записи (Консультации)</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <style>
+        .bookings-container {
+            margin-top: 30px;
+        }
+        .filter-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .filter-tab {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .filter-tab:hover {
+            background: #e0e0e0;
+        }
+        .filter-tab.active {
+            background: #764ba2;
+            color: white;
+            border-color: #764ba2;
+        }
+        .booking-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            transition: box-shadow 0.3s;
+        }
+        .booking-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .booking-info {
+            flex: 1;
+        }
+        .booking-info h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .booking-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+            color: #666;
+        }
+        .booking-details p {
+            margin: 5px 0;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-confirmed {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-cancelled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .booking-actions {
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+        }
+        .btn-small {
+            padding: 6px 14px;
+            font-size: 13px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .btn-confirm {
+            background: #28a745;
+            color: white;
+        }
+        .btn-confirm:hover {
+            background: #218838;
+        }
+        .btn-cancel {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-cancel:hover {
+            background: #c82333;
+        }
+        .btn-complete {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-complete:hover {
+            background: #138496;
+        }
+        .section-title {
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #764ba2;
+        }
+        .empty-message {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width: 1200px;">
+        <div class="page-header">
+            <h1>Записи (Консультации)</h1>
+            <div>
+                <a href="{% url 'home' %}" class="btn btn-secondary" style="padding: 8px 16px;">На главную</a>
+            </div>
+        </div>
+
+        <!-- Фильтры по статусу -->
+        <div class="filter-tabs">
+            <a href="{% url 'booking' %}" class="filter-tab {% if not status_filter %}active{% endif %}">
+                Все
+            </a>
+            <a href="{% url 'booking' %}?status=pending" class="filter-tab {% if status_filter == 'pending' %}active{% endif %}">
+                Ожидают
+            </a>
+            <a href="{% url 'booking' %}?status=confirmed" class="filter-tab {% if status_filter == 'confirmed' %}active{% endif %}">
+                Подтверждены
+            </a>
+            <a href="{% url 'booking' %}?status=completed" class="filter-tab {% if status_filter == 'completed' %}active{% endif %}">
+                Завершены
+            </a>
+            <a href="{% url 'booking' %}?status=cancelled" class="filter-tab {% if status_filter == 'cancelled' %}active{% endif %}">
+                Отменены
+            </a>
+        </div>
+
+        <div class="bookings-container">
+            <!-- Запланированные консультации -->
+            <h2 class="section-title">📅 Запланированные консультации</h2>
+            {% if upcoming_bookings %}
+                {% for booking in upcoming_bookings %}
+                <div class="booking-card">
+                    <div class="booking-info">
+                        <h3>{{ booking.client_name }}</h3>
+                        <div class="booking-details">
+                            <p><strong>Услуга:</strong> {{ booking.service.name }}</p>
+                            <p><strong>Дата:</strong> {{ booking.booking_date|date:"d.m.Y" }}</p>
+                            <p><strong>Время:</strong>
+                                {{ booking.booking_time|time:"H:i" }}
+                                {% if booking.booking_end_time %}
+                                - {{ booking.booking_end_time|time:"H:i" }}
+                                {% endif %}
+                            </p>
+                            <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
+                            {% if booking.client_email %}
+                            <p><strong>Email:</strong> {{ booking.client_email }}</p>
+                            {% endif %}
+                            <p><strong>Календарь:</strong> {{ booking.calendar.name }}</p>
+                        </div>
+                        {% if booking.notes %}
+                        <p style="margin-top: 10px;"><strong>Примечания:</strong> {{ booking.notes }}</p>
+                        {% endif %}
+                        <span class="status-badge status-{{ booking.status }}">
+                            {{ booking.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="booking-actions">
+                        {% if booking.status == 'pending' %}
+                        <form method="POST" style="margin: 0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="confirm">
+                            <input type="hidden" name="booking_id" value="{{ booking.id }}">
+                            <button type="submit" class="btn-small btn-confirm">✓ Подтвердить</button>
+                        </form>
+                        {% endif %}
+                        {% if booking.status != 'cancelled' and booking.status != 'completed' %}
+                        <form method="POST" style="margin: 0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="cancel">
+                            <input type="hidden" name="booking_id" value="{{ booking.id }}">
+                            <button type="submit" class="btn-small btn-cancel" onclick="return confirm('Отменить запись?')">✕ Отменить</button>
+                        </form>
+                        {% endif %}
+                        {% if booking.status == 'confirmed' %}
+                        <form method="POST" style="margin: 0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="complete">
+                            <input type="hidden" name="booking_id" value="{{ booking.id }}">
+                            <button type="submit" class="btn-small btn-complete">✓ Завершить</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-message">Нет запланированных консультаций</div>
+            {% endif %}
+
+            <!-- Прошедшие консультации -->
+            <h2 class="section-title">📋 Прошедшие консультации</h2>
+            {% if past_bookings %}
+                {% for booking in past_bookings %}
+                <div class="booking-card">
+                    <div class="booking-info">
+                        <h3>{{ booking.client_name }}</h3>
+                        <div class="booking-details">
+                            <p><strong>Услуга:</strong> {{ booking.service.name }}</p>
+                            <p><strong>Дата:</strong> {{ booking.booking_date|date:"d.m.Y" }}</p>
+                            <p><strong>Время:</strong>
+                                {{ booking.booking_time|time:"H:i" }}
+                                {% if booking.booking_end_time %}
+                                - {{ booking.booking_end_time|time:"H:i" }}
+                                {% endif %}
+                            </p>
+                            <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
+                            {% if booking.client_email %}
+                            <p><strong>Email:</strong> {{ booking.client_email }}</p>
+                            {% endif %}
+                            <p><strong>Календарь:</strong> {{ booking.calendar.name }}</p>
+                        </div>
+                        {% if booking.notes %}
+                        <p style="margin-top: 10px;"><strong>Примечания:</strong> {{ booking.notes }}</p>
+                        {% endif %}
+                        <span class="status-badge status-{{ booking.status }}">
+                            {{ booking.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-message">Нет прошедших консультаций</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

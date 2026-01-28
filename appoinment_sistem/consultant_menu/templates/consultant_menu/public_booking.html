@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Запись - {{ calendar.name }}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <style>
+        .calendar-info {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .calendar-info h1 {
+            color: #764ba2;
+            margin-bottom: 15px;
+        }
+        .booking-form {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .service-select {
+            margin-bottom: 25px;
+        }
+        .service-option {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .service-option:hover {
+            border-color: #764ba2;
+            background: #f0f0ff;
+        }
+        .service-option.selected {
+            border-color: #764ba2;
+            background: #764ba2;
+            color: white;
+        }
+        .time-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .slot-btn {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .slot-btn:hover {
+            border-color: #764ba2;
+            background: #f0f0ff;
+        }
+        .slot-btn.selected {
+            border-color: #764ba2;
+            background: #764ba2;
+            color: white;
+        }
+        .slot-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width: 800px;">
+        <!-- Информация о календаре -->
+        <div class="calendar-info">
+            <h1>{{ calendar.name }}</h1>
+        </div>
+
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        <!-- Форма записи -->
+        <div class="booking-form">
+            <form method="POST" id="bookingForm">
+                {% csrf_token %}
+                
+                <!-- Выбор услуги -->
+                <div class="service-select">
+                    <h2 style="margin-bottom: 20px;">Выберите услугу</h2>
+                    {% for service in services %}
+                    <div class="service-option" onclick="selectService({{ service.id }})">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>{{ service.name }}</strong>
+                                {% if service.description %}
+                                <p style="margin: 5px 0; font-size: 14px; opacity: 0.8;">{{ service.description }}</p>
+                                {% endif %}
+                                <div style="display: flex; gap: 20px; margin-top: 10px; font-size: 14px;">
+                                    <span>Длительность: {{ service.duration_minutes }} мин.</span>
+                                    {% if service.price %}
+                                    <span>Цена: {{ service.price }} ₽</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if not services %}
+                    <p style="color: #999;">Нет доступных услуг</p>
+                    {% endif %}
+                    <input type="hidden" id="service_id" name="service_id" required>
+                </div>
+
+                <!-- Выбор даты -->
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label for="booking_date">Дата записи:</label>
+                    <input type="date" id="booking_date" name="booking_date" required 
+                           min="{% now 'Y-m-d' %}" 
+                           onchange="loadTimeSlots()">
+                </div>
+
+                <!-- Доступные временные слоты -->
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label>Выберите время:</label>
+                    <div id="timeSlots" class="time-slots">
+                        <p style="color: #999;">Сначала выберите услугу и дату</p>
+                    </div>
+                    <input type="hidden" id="booking_time" name="booking_time" required>
+                    <input type="hidden" id="booking_end_time" name="booking_end_time" required>
+                </div>
+
+                <!-- Данные клиента -->
+                <h3 style="margin-top: 30px; margin-bottom: 20px;">Ваши данные</h3>
+                
+                <div class="form-group">
+                    <label for="client_name">Имя *</label>
+                    <input type="text" id="client_name" name="client_name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="client_phone">Телефон</label>
+                    <input type="tel" id="client_phone" name="client_phone" 
+                           placeholder="+7 (999) 123-45-67">
+                    <small>Укажите телефон ИЛИ Telegram</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="client_telegram">Telegram username</label>
+                    <input type="text" id="client_telegram" name="client_telegram" 
+                           placeholder="@username или username">
+                    <small>Без @</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="client_email">Email (необязательно)</label>
+                    <input type="email" id="client_email" name="client_email">
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">
+                    Записаться
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let selectedServiceId = null;
+
+        function selectService(serviceId) {
+            selectedServiceId = serviceId;
+            
+            // Убираем выделение с других услуг
+            document.querySelectorAll('.service-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Выделяем выбранную услугу
+            event.currentTarget.classList.add('selected');
+            document.getElementById('service_id').value = serviceId;
+            
+            // Перезагружаем слоты, если дата уже выбрана
+            const date = document.getElementById('booking_date').value;
+            if (date) {
+                loadTimeSlots();
+            }
+        }
+        
+        function loadTimeSlots() {
+            const dateInput = document.getElementById('booking_date');
+            const date = dateInput.value;
+            const calendarId = {{ calendar.id }};
+            
+            if (!date || !selectedServiceId) {
+                const slotsContainer = document.getElementById('timeSlots');
+                slotsContainer.innerHTML = '<p style="color: #999;">Сначала выберите услугу и дату</p>';
+                return;
+            }
+            
+            const slotsContainer = document.getElementById('timeSlots');
+            slotsContainer.innerHTML = '<p style="color: #999;">Загрузка...</p>';
+            
+            fetch(`/book/${calendarId}/slots/?date=${date}&service_id=${selectedServiceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        slotsContainer.innerHTML = `<p style="color: #dc3545;">${data.error}</p>`;
+                        return;
+                    }
+                    
+                    if (data.available_slots.length === 0) {
+                        slotsContainer.innerHTML = '<p style="color: #999;">Нет доступного времени на эту дату</p>';
+                        return;
+                    }
+                    
+                    let html = '';
+                    data.available_slots.forEach(slot => {
+                        html += `<div class="slot-btn" onclick="selectSlot('${slot.start_time}', '${slot.end_time}')">
+                            ${slot.start_time} - ${slot.end_time}
+                        </div>`;
+                    });
+                    slotsContainer.innerHTML = html;
+                })
+                .catch(error => {
+                    slotsContainer.innerHTML = '<p style="color: #dc3545;">Ошибка загрузки</p>';
+                });
+        }
+        
+        function selectSlot(startTime, endTime) {
+            // Убираем выделение с других кнопок
+            document.querySelectorAll('.slot-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            // Выделяем выбранную
+            event.target.classList.add('selected');
+            
+            // Сохраняем в скрытые поля
+            document.getElementById('booking_time').value = startTime;
+            document.getElementById('booking_end_time').value = endTime;
+        }
+    </script>
+</body>
+</html>
