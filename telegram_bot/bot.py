@@ -132,6 +132,11 @@ def handle_telegram_update(update_data):
             if data == 'my_appointments':
                 user_id = callback_query['from']['id']
                 handle_appointments_command(chat_id, user_id)
+            elif data == 'spec_next':
+                user_id = callback_query['from']['id']
+                handle_specialist_next_appointments(chat_id, user_id)
+            elif data == 'help':
+                handle_help_command(chat_id)
             elif data.startswith('cancel_'):
                 appointment_id = int(data.split('_')[1])
                 handle_cancel_appointment(chat_id, appointment_id)
@@ -165,6 +170,25 @@ def handle_start_command(chat_id, user_id, username, first_name):
 
         profile = UserProfile.objects.filter(telegram_id=user_id).first()
         
+        # Если это специалист — показываем меню специалиста
+        if profile and profile.user_type == "specialist":
+            web_stats = f"{get_site_url()}/telegram/specialist/stats/"
+            web_upcoming = f"{get_site_url()}/telegram/specialist/upcoming/"
+            keyboard = {
+                "inline_keyboard": [
+                    [
+                        {"text": "📊 Статистика", "web_app": {"url": web_stats}},
+                        {"text": "📅 Ближайшие записи", "web_app": {"url": web_upcoming}},
+                    ],
+                    [
+                        {"text": "📅 Показать 5 ближайших (в чат)", "callback_data": "spec_next"},
+                    ],
+                ]
+            }
+            msg = f"👋 Добро пожаловать, {first_name}!\n\nВы вошли как <b>специалист</b>.\nВыберите действие:"
+            send_telegram_message(chat_id, msg, keyboard)
+            return
+
         # Кнопка для мини-приложения записи
         webapp_url = f"{get_site_url()}/telegram/appointment/"
         if tg_client.last_specialist_id:
@@ -408,6 +432,46 @@ def handle_help_command(chat_id):
 • Информационные сообщения от администрации
 """
     send_telegram_message(chat_id, message, keyboard)
+
+
+def handle_specialist_next_appointments(chat_id, user_id):
+    """
+    Быстрый вывод ближайших записей специалиста прямо в чат.
+    """
+    try:
+        profile = UserProfile.objects.filter(telegram_id=user_id, user_type="specialist").select_related("user").first()
+        if not profile:
+            send_telegram_message(chat_id, "❌ Вы не являетесь специалистом.")
+            return
+        specialist = getattr(profile.user, "specialist", None)
+        if not specialist:
+            send_telegram_message(chat_id, "❌ Профиль специалиста не найден.")
+            return
+
+        items = (
+            Appointment.objects.filter(
+                specialist=specialist,
+                status__in=["pending", "confirmed"],
+                appointment_date__gte=timezone.now(),
+            )
+            .order_by("appointment_date")[:5]
+        )
+        if not items:
+            send_telegram_message(chat_id, "📭 Ближайших записей нет.")
+            return
+
+        text = "📅 <b>5 ближайших записей:</b>\n\n"
+        for a in items:
+            text += f"• <b>{a.appointment_date.strftime('%d.%m.%Y %H:%M')}</b> — {a.client_name}"
+            if a.client_telegram:
+                text += f" ({a.client_telegram})"
+            if a.service:
+                text += f"\n  Услуга: {a.service.name}"
+            text += "\n\n"
+
+        send_telegram_message(chat_id, text)
+    except Exception as e:
+        send_telegram_message(chat_id, f"Ошибка: {e}")
 
 
 def send_broadcast_message(message_text, user_type=None):

@@ -7,7 +7,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.conf import settings
-from bookings.models import Service, TimeSlot, Appointment, Specialist, Calendar
+from django.db.models import Count
+from bookings.models import Service, TimeSlot, Appointment, Specialist, Calendar, UserProfile
 from bookings.forms import AppointmentForm
 import json
 
@@ -325,4 +326,106 @@ def telegram_calendar_services(request):
             ],
         }
     )
+
+
+def _get_specialist_by_init_data(init_data: str):
+    """
+    Специалист определяется по telegram_id, который хранится в UserProfile.telegram_id.
+    """
+    parsed = validate_telegram_webapp_init_data(init_data, getattr(settings, "TELEGRAM_BOT_TOKEN", ""))
+    user = None
+    if "user" in parsed:
+        user = json.loads(parsed["user"])
+    if not user or "id" not in user:
+        raise ValueError("Telegram user not found")
+    telegram_id = int(user["id"])
+    profile = UserProfile.objects.filter(telegram_id=telegram_id, user_type="specialist").select_related("user").first()
+    if not profile:
+        raise ValueError("Вы не являетесь специалистом")
+    specialist = getattr(profile.user, "specialist", None)
+    if not specialist:
+        raise ValueError("Профиль специалиста не найден")
+    return specialist, telegram_id
+
+
+def telegram_specialist_stats_page(request):
+    return render(request, "telegram_bot/specialist_stats.html", {"site_url": getattr(settings, "SITE_URL", "https://allyourclients.ru")})
+
+
+def telegram_specialist_upcoming_page(request):
+    return render(request, "telegram_bot/specialist_upcoming.html", {"site_url": getattr(settings, "SITE_URL", "https://allyourclients.ru")})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def telegram_specialist_stats_api(request):
+    """
+    Статистика специалиста (для мини-приложения).
+    """
+    try:
+        data = json.loads(request.body)
+        init_data = data.get("init_data", "")
+        specialist, _ = _get_specialist_by_init_data(init_data)
+
+        total = Appointment.objects.filter(specialist=specialist).count()
+        by_status = (
+            Appointment.objects.filter(specialist=specialist)
+            .values("status")
+            .annotate(cnt=Count("id"))
+        )
+        upcoming = Appointment.objects.filter(
+            specialist=specialist,
+            status__in=["pending", "confirmed"],
+            appointment_date__gte=timezone.now(),
+        ).count()
+
+        return JsonResponse(
+            {
+                "success": True,
+                "total_appointments": total,
+                "upcoming_appointments": upcoming,
+                "by_status": {row["status"]: row["cnt"] for row in by_status},
+            }
+        )
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def telegram_specialist_upcoming_api(request):
+    """
+    Ближайшие записи специалиста (для мини-приложения).
+    """
+    try:
+        data = json.loads(request.body)
+        init_data = data.get("init_data", "")
+        specialist, _ = _get_specialist_by_init_data(init_data)
+
+        items = (
+            Appointment.objects.filter(
+                specialist=specialist,
+                status__in=["pending", "confirmed"],
+                appointment_date__gte=timezone.now(),
+            )
+            .select_related("service", "calendar")
+            .order_by("appointment_date")[:20]
+        )
+        result = []
+        for a in items:
+            result.append(
+                {
+                    "id": a.id,
+                    "date": a.appointment_date.isoformat(),
+                    "client_name": a.client_name,
+                    "client_telegram": a.client_telegram,
+                    "service_name": a.service.name if a.service else "",
+                    "calendar_name": a.calendar.name if a.calendar else "",
+                    "status": a.status,
+                }
+            )
+
+        return JsonResponse({"success": True, "appointments": result})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
 

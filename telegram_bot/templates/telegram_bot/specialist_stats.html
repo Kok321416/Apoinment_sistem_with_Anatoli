@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Статистика специалиста</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 12px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+    .k { color: #6b7280; font-size: 14px; }
+    .v { font-size: 20px; font-weight: 700; }
+    .err { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <h2>📊 Статистика</h2>
+  <div id="err" class="err"></div>
+  <div class="card"><div class="k">Всего записей</div><div class="v" id="total">—</div></div>
+  <div class="card"><div class="k">Ближайшие (pending/confirmed)</div><div class="v" id="upcoming">—</div></div>
+  <div class="card"><div class="k">По статусам</div><pre id="by_status">—</pre></div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready(); tg.expand();
+    fetch('/telegram/api/specialist/stats/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({init_data: tg.initData || ''})
+    }).then(r => r.json()).then(data => {
+      if (!data.success) {
+        document.getElementById('err').textContent = data.error || 'Ошибка';
+        return;
+      }
+      document.getElementById('total').textContent = data.total_appointments;
+      document.getElementById('upcoming').textContent = data.upcoming_appointments;
+      document.getElementById('by_status').textContent = JSON.stringify(data.by_status, null, 2);
+    }).catch(() => {
+      document.getElementById('err').textContent = 'Ошибка загрузки';
+    });
+  </script>
+</body>
+</html>
+
+
