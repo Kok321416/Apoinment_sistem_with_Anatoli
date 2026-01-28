@@ -143,9 +143,8 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Site URL for Telegram Web App (опционально)
-# Читается из переменной окружения SITE_URL, иначе используется значение по умолчанию
-# Можно не указывать, будет использоваться значение по умолчанию для локальной разработки
-SITE_URL = os.environ.get('SITE_URL', 'http://127.0.0.1:8000')
+# В production должно быть https://allyourclients.ru (или ваш домен).
+SITE_URL = os.environ.get('SITE_URL', 'https://allyourclients.ru')
 
 # Telegram Webhook settings (опционально)
 TELEGRAM_USE_WEBHOOK = os.environ.get('TELEGRAM_USE_WEBHOOK', 'False').lower() == 'true'
