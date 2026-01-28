@@ -1,0 +1,41 @@
+# GitHub Actions workflow для автоматического деплоя Telegram бота
+# Используйте этот файл, если используете GitHub Actions
+
+name: Deploy Telegram Bot
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy to server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        envs: TELEGRAM_BOT_TOKEN
+        script: |
+          cd ${{ secrets.DEPLOY_PATH }}
+          git pull origin main
+          source venv/bin/activate
+          pip install -r requirements.txt
+          python manage.py migrate
+          python manage.py collectstatic --noinput
+          # Обновляем переменные окружения в systemd service
+          sudo systemctl set-environment TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN"
+          # SITE_URL опционально, обновляем только если указан
+          if [ ! -z "$SITE_URL" ]; then
+            sudo systemctl set-environment SITE_URL="$SITE_URL"
+          fi
+          sudo systemctl daemon-reload
+          sudo systemctl restart telegram-bot
+          sudo systemctl status telegram-bot
+

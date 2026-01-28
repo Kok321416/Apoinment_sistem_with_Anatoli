@@ -1,0 +1,45 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Услуги - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>Мои услуги</h1>
+        <div style="display: flex; gap: 10px;">
+            <a href="{% url 'specialist_dashboard' %}" class="btn btn-secondary">Назад</a>
+            <a href="{% url 'service_create' %}" class="btn">+ Создать услугу</a>
+        </div>
+    </div>
+    
+    {% if services %}
+        <div class="grid">
+            {% for service in services %}
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <h3><a href="{% url 'service_detail' service.id %}" style="color: #8b5cf6; text-decoration: none;">{{ service.name }}</a></h3>
+                        {% if service.description %}
+                            <p>{{ service.description|truncatewords:15 }}</p>
+                        {% endif %}
+                        <p><strong>Длительность:</strong> {{ service.duration }} мин.</p>
+                        {% if service.price %}
+                            <p><strong>Цена:</strong> {{ service.price }} руб.</p>
+                        {% endif %}
+                        <span class="badge {% if service.is_active %}success{% else %}danger{% endif %}">
+                            {% if service.is_active %}Активна{% else %}Неактивна{% endif %}
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h2>💼</h2>
+            <p>У вас пока нет услуг.</p>
+            <a href="{% url 'service_create' %}" class="btn" style="margin-top: 20px;">Создать первую услугу</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+

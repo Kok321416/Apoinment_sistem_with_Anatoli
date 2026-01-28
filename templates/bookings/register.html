@@ -1,0 +1,95 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Регистрация - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <h1>Регистрация</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>{{ form.username.label }}</label>
+            {{ form.username }}
+            {% if form.username.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.username.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ form.email.label }}</label>
+            {{ form.email }}
+            {% if form.email.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.email.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ form.first_name.label }}</label>
+            {{ form.first_name }}
+        </div>
+        <div class="form-group">
+            <label>{{ form.last_name.label }}</label>
+            {{ form.last_name }}
+        </div>
+        <div class="form-group">
+            <label>{{ form.user_type.label }}</label>
+            <div class="checkbox-group">
+                {% for choice in form.user_type %}
+                    {{ choice }}
+                {% endfor %}
+            </div>
+        </div>
+        <div class="form-group" id="specialization-group" style="display: none;">
+            <label>{{ form.specialization.label }}</label>
+            {{ form.specialization }}
+        </div>
+        <div class="form-group">
+            <label>{{ form.telegram_username.label }}</label>
+            {{ form.telegram_username }}
+            <small style="color: #a78bfa;">{{ form.telegram_username.help_text }}</small>
+        </div>
+        <div class="form-group">
+            <label>{{ form.password1.label }}</label>
+            {{ form.password1 }}
+            {% if form.password1.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.password1.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ form.password2.label }}</label>
+            {{ form.password2 }}
+            {% if form.password2.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.password2.errors }}</div>
+            {% endif %}
+        </div>
+        <button type="submit" class="btn" style="width: 100%;">Зарегистрироваться</button>
+    </form>
+    <div style="text-align: center; margin-top: 20px;">
+        <p style="color: #6b21a8;">Уже есть аккаунт? <a href="{% url 'login' %}" style="color: #8b5cf6;">Войти</a></p>
+        <p style="margin-top: 10px;"><a href="{% url 'home' %}" style="color: #8b5cf6;">На главную</a></p>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const userTypeInputs = document.querySelectorAll('input[name="user_type"]');
+        const specializationGroup = document.getElementById('specialization-group');
+        
+        userTypeInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                if (this.value === 'specialist') {
+                    specializationGroup.style.display = 'block';
+                } else {
+                    specializationGroup.style.display = 'none';
+                }
+            });
+        });
+        
+        // Проверяем при загрузке страницы
+        const checkedType = document.querySelector('input[name="user_type"]:checked');
+        if (checkedType && checkedType.value === 'specialist') {
+            specializationGroup.style.display = 'block';
+        }
+    });
+</script>
+{% endblock %}
+
+

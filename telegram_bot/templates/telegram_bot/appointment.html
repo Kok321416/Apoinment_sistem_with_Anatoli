@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Запись на консультацию</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 10px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .service-select {
+            margin-bottom: 20px;
+        }
+        
+        .service-select select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--tg-theme-hint-color, #999999);
+            border-radius: 8px;
+            font-size: 16px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+        }
+        
+        .slots-container {
+            margin-bottom: 20px;
+        }
+        
+        .slot-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 2px solid var(--tg-theme-button-color, #3390ec);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--tg-theme-bg-color, #ffffff);
+        }
+        
+        .slot-item:hover {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+        
+        .slot-item.selected {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+        
+        .slot-date {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .slot-time {
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--tg-theme-hint-color, #999999);
+            border-radius: 8px;
+            font-size: 16px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .error {
+            color: #ff3333;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        
+        .success {
+            color: #00aa00;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📅 Запись на консультацию</h1>
+        
+        <div class="service-select">
+            <label for="service-select">Выберите услугу:</label>
+            <select id="service-select">
+                <option value="">-- Выберите услугу --</option>
+                {% for service in services %}
+                <option value="{{ service.id }}" {% if selected_service.id == service.id %}selected{% endif %}>
+                    {{ service.name }} - {{ service.specialist.user.get_full_name|default:service.specialist.user.username }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div id="slots-container" class="slots-container">
+            {% if slots_by_service %}
+                {% for service_id, data in slots_by_service.items %}
+                <div class="service-slots" data-service-id="{{ service_id }}" {% if selected_service.id != service_id %}style="display: none;"{% endif %}>
+                    <h3>{{ data.service.name }}</h3>
+                    {% if data.slots %}
+                        {% for slot in data.slots %}
+                        <div class="slot-item" data-slot-id="{{ slot.id }}" onclick="selectSlot({{ slot.id }})">
+                            <div class="slot-date">{{ slot.date|date:"d.m.Y" }}</div>
+                            <div class="slot-time">{{ slot.start_time|time:"H:i" }} - {{ slot.end_time|time:"H:i" }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">Нет доступных слотов</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">Выберите услугу для просмотра доступных слотов</div>
+            {% endif %}
+        </div>
+        
+        <form id="appointment-form">
+            <div class="form-group">
+                <label for="client-name">Ваше имя *</label>
+                <input type="text" id="client-name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="client-email">Email *</label>
+                <input type="email" id="client-email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="client-phone">Телефон</label>
+                <input type="tel" id="client-phone">
+            </div>
+            
+            <div class="form-group">
+                <label for="client-telegram">Telegram *</label>
+                <input type="text" id="client-telegram" placeholder="@username" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="notes">Дополнительная информация</label>
+                <textarea id="notes"></textarea>
+            </div>
+            
+            <button type="submit" class="submit-btn" id="submit-btn">Записаться</button>
+            <div id="message"></div>
+        </form>
+    </div>
+    
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        let selectedServiceId = null;
+        let selectedSlotId = null;
+        
+        // Получаем данные пользователя из Telegram
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const user = tg.initDataUnsafe.user;
+            if (user.first_name) {
+                document.getElementById('client-name').value = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+            }
+            if (user.username) {
+                document.getElementById('client-telegram').value = '@' + user.username;
+            }
+        }
+        
+        // Обработчик выбора услуги
+        document.getElementById('service-select').addEventListener('change', function() {
+            selectedServiceId = this.value;
+            selectedSlotId = null;
+            
+            // Показываем/скрываем слоты
+            document.querySelectorAll('.service-slots').forEach(div => {
+                div.style.display = div.dataset.serviceId === selectedServiceId ? 'block' : 'none';
+            });
+            
+            // Сбрасываем выбранный слот
+            document.querySelectorAll('.slot-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // Загружаем слоты через API, если нужно
+            if (selectedServiceId) {
+                loadSlots(selectedServiceId);
+            }
+        });
+        
+        function selectSlot(slotId) {
+            selectedSlotId = slotId;
+            
+            // Обновляем визуальное выделение
+            document.querySelectorAll('.slot-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            document.querySelector(`[data-slot-id="${slotId}"]`).classList.add('selected');
+        }
+        
+        function loadSlots(serviceId) {
+            fetch(`/telegram/api/slots/?service_id=${serviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const container = document.getElementById('slots-container');
+                        container.innerHTML = '<h3>' + data.service.name + '</h3>';
+                        
+                        if (data.slots.length > 0) {
+                            data.slots.forEach(slot => {
+                                const slotDiv = document.createElement('div');
+                                slotDiv.className = 'slot-item';
+                                slotDiv.dataset.slotId = slot.id;
+                                slotDiv.onclick = () => selectSlot(slot.id);
+                                slotDiv.innerHTML = `
+                                    <div class="slot-date">${slot.date_display}</div>
+                                    <div class="slot-time">${slot.start_time} - ${slot.end_time}</div>
+                                `;
+                                container.appendChild(slotDiv);
+                            });
+                        } else {
+                            container.innerHTML += '<div class="empty-state">Нет доступных слотов</div>';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки слотов:', error);
+                });
+        }
+        
+        // Обработчик отправки формы
+        document.getElementById('appointment-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!selectedServiceId || !selectedSlotId) {
+                showMessage('Пожалуйста, выберите услугу и временной слот', 'error');
+                return;
+            }
+            
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Отправка...';
+            
+            const formData = {
+                service_id: selectedServiceId,
+                time_slot_id: selectedSlotId,
+                client_name: document.getElementById('client-name').value,
+                client_email: document.getElementById('client-email').value,
+                client_phone: document.getElementById('client-phone').value,
+                client_telegram: document.getElementById('client-telegram').value,
+                notes: document.getElementById('notes').value,
+            };
+            
+            fetch('/telegram/appointment/create/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('✅ Запись успешно создана!', 'success');
+                    tg.showAlert('Запись успешно создана!');
+                    setTimeout(() => {
+                        tg.close();
+                    }, 2000);
+                } else {
+                    showMessage('❌ Ошибка: ' + data.error, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Записаться';
+                }
+            })
+            .catch(error => {
+                showMessage('❌ Ошибка при отправке данных', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Записаться';
+            });
+        });
+        
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = type;
+        }
+    </script>
+</body>
+</html>
+

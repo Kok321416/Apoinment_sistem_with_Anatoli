@@ -1,0 +1,54 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Панель специалиста - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Панель специалиста</h1>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <h3>{{ total_appointments }}</h3>
+            <p>Всего записей</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ total_calendars }}</h3>
+            <p>Календарей</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ total_services }}</h3>
+            <p>Услуг</p>
+        </div>
+    </div>
+    
+    <div style="display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap;">
+        <a href="{% url 'specialist_calendars' %}" class="btn">📅 Календари</a>
+        <a href="{% url 'specialist_services' %}" class="btn">💼 Услуги</a>
+        <a href="{% url 'specialist_appointments' %}" class="btn">📋 Записи</a>
+    </div>
+    
+    <h2>Ближайшие записи:</h2>
+    {% if upcoming_appointments %}
+        <div class="grid">
+            {% for appointment in upcoming_appointments %}
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <h3>{{ appointment.client_name }}</h3>
+                        <p><strong>Дата:</strong> {{ appointment.appointment_date|date:"d.m.Y H:i" }}</p>
+                        <p><strong>Услуга:</strong> {{ appointment.service.name|default:"Консультация" }}</p>
+                        <span class="badge {% if appointment.status == 'confirmed' %}success{% else %}warning{% endif %}">
+                            {{ appointment.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>Нет предстоящих записей.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+

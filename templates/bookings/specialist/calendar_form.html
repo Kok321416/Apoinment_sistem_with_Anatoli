@@ -1,0 +1,39 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Создать календарь - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <h1>Создать календарь</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>{{ form.name.label }}</label>
+            {{ form.name }}
+            {% if form.name.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.name.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ form.description.label }}</label>
+            {{ form.description }}
+        </div>
+        <div class="form-group">
+            <label>{{ form.color.label }}</label>
+            {{ form.color }}
+        </div>
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 10px;">
+                {{ form.is_active }}
+                {{ form.is_active.label }}
+            </label>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button type="submit" class="btn">Создать</button>
+            <a href="{% url 'specialist_calendars' %}" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+

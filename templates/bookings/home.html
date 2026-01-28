@@ -1,0 +1,29 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Главная - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Добро пожаловать в систему записи на консультации</h1>
+    <p style="font-size: 18px; color: #6b21a8; margin-bottom: 30px;">
+        Удобная платформа для записи на консультации со специалистами
+    </p>
+    
+    {% if not user.is_authenticated %}
+        <div style="text-align: center; margin-top: 40px;">
+            <a href="{% url 'register' %}" class="btn">Начать работу</a>
+            <a href="{% url 'login' %}" class="btn btn-secondary" style="margin-left: 15px;">Войти</a>
+        </div>
+    {% else %}
+        <div style="text-align: center; margin-top: 40px;">
+            {% if user.profile.user_type == 'specialist' %}
+                <a href="{% url 'specialist_dashboard' %}" class="btn">Перейти в панель специалиста</a>
+            {% else %}
+                <a href="{% url 'client_appointments' %}" class="btn">Мои записи</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+

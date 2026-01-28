@@ -1,0 +1,49 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Записи специалиста - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>Записи</h1>
+        <a href="{% url 'specialist_dashboard' %}" class="btn btn-secondary">Назад</a>
+    </div>
+    
+    {% if appointments %}
+        <div class="grid">
+            {% for appointment in appointments %}
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <h3>{{ appointment.client_name }}</h3>
+                        <p><strong>Дата и время:</strong> {{ appointment.appointment_date|date:"d.m.Y H:i" }}</p>
+                        <p><strong>Услуга:</strong> {{ appointment.service.name|default:"Консультация" }}</p>
+                        <p><strong>Email:</strong> {{ appointment.client_email }}</p>
+                        {% if appointment.client_phone %}
+                            <p><strong>Телефон:</strong> {{ appointment.client_phone }}</p>
+                        {% endif %}
+                        <span class="badge {% if appointment.status == 'confirmed' %}success{% elif appointment.status == 'cancelled' %}danger{% elif appointment.status == 'completed' %}success{% else %}warning{% endif %}">
+                            {{ appointment.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="list-item-actions">
+                        {% if appointment.status == 'pending' %}
+                            <form method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
+                                <input type="hidden" name="action" value="confirm">
+                                <button type="submit" class="btn" style="padding: 8px 16px; font-size: 14px;">Подтвердить</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>Нет записей.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+

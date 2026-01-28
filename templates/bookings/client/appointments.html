@@ -1,0 +1,43 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Мои записи - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Мои записи</h1>
+    
+    {% if appointments %}
+        <div class="grid">
+            {% for appointment in appointments %}
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <h3>{{ appointment.service.name|default:"Консультация" }}</h3>
+                        <p><strong>Дата и время:</strong> {{ appointment.appointment_date|date:"d.m.Y H:i" }}</p>
+                        <p><strong>Специалист:</strong> {{ appointment.specialist.user.get_full_name|default:appointment.specialist.user.username }}</p>
+                        <span class="badge {% if appointment.status == 'confirmed' %}success{% elif appointment.status == 'cancelled' %}danger{% elif appointment.status == 'completed' %}success{% else %}warning{% endif %}">
+                            {{ appointment.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="list-item-actions">
+                        {% if appointment.status == 'pending' or appointment.status == 'confirmed' %}
+                            <form method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
+                                <input type="hidden" name="action" value="cancel">
+                                <button type="submit" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;">Отменить</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h2>📅</h2>
+            <p>У вас пока нет записей.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+

@@ -1,0 +1,63 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Запись на консультацию - {{ service.name }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 700px; margin: 0 auto;">
+    <h1>Запись на консультацию</h1>
+    
+    <div style="background: #faf5ff; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #8b5cf6;">
+        <h2 style="color: #6b21a8; margin-bottom: 15px;">{{ service.name }}</h2>
+        <p><strong>Специалист:</strong> {{ specialist.user.get_full_name|default:specialist.user.username }}</p>
+        {% if service.description %}
+            <p><strong>Описание:</strong> {{ service.description }}</p>
+        {% endif %}
+        <p><strong>Длительность:</strong> {{ service.duration }} минут</p>
+        {% if service.price %}
+            <p><strong>Цена:</strong> {{ service.price }} руб.</p>
+        {% endif %}
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>{{ form.client_name.label }}</label>
+            {{ form.client_name }}
+            {% if form.client_name.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.client_name.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ form.client_email.label }}</label>
+            {{ form.client_email }}
+            {% if form.client_email.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.client_email.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ form.client_phone.label }}</label>
+            {{ form.client_phone }}
+        </div>
+        <div class="form-group">
+            <label>{{ form.appointment_date.label }}</label>
+            {{ form.appointment_date }}
+            {% if form.appointment_date.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.appointment_date.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ form.notes.label }}</label>
+            {{ form.notes }}
+        </div>
+        <button type="submit" class="btn" style="width: 100%;">Записаться</button>
+    </form>
+    
+    {% if not user.is_authenticated %}
+        <div style="text-align: center; margin-top: 20px; padding: 15px; background: #faf5ff; border-radius: 8px;">
+            <p style="color: #6b21a8;">Для удобства рекомендуем <a href="{% url 'login' %}" style="color: #8b5cf6;">войти</a> или <a href="{% url 'register' %}" style="color: #8b5cf6;">зарегистрироваться</a></p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+

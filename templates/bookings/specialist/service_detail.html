@@ -1,0 +1,89 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}{{ service.name }} - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>{{ service.name }}</h1>
+        <a href="{% url 'specialist_services' %}" class="btn btn-secondary">Назад</a>
+    </div>
+    
+    <div style="background: #faf5ff; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #8b5cf6;">
+        {% if service.description %}
+            <p><strong>Описание:</strong> {{ service.description }}</p>
+        {% endif %}
+        <p><strong>Длительность:</strong> {{ service.duration }} минут</p>
+        <p><strong>Цена:</strong> {{ service.price|default:"Не указана" }} {% if service.price %}руб.{% endif %}</p>
+        <p><strong>Пригласительная ссылка:</strong><br>
+            <a href="{% url 'book_appointment' service.invite_link %}" style="color: #8b5cf6; word-break: break-all;">
+                {{ request.scheme }}://{{ request.get_host }}{% url 'book_appointment' service.invite_link %}
+            </a>
+        </p>
+    </div>
+    
+    <div class="card" style="background: #faf5ff;">
+        <h2>Генерация временных слотов</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="generate_slots_calendar" value="1">
+            <div class="form-group">
+                <label>Дни недели:</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" name="days" value="0"> Понедельник</label>
+                    <label><input type="checkbox" name="days" value="1"> Вторник</label>
+                    <label><input type="checkbox" name="days" value="2"> Среда</label>
+                    <label><input type="checkbox" name="days" value="3"> Четверг</label>
+                    <label><input type="checkbox" name="days" value="4"> Пятница</label>
+                    <label><input type="checkbox" name="days" value="5"> Суббота</label>
+                    <label><input type="checkbox" name="days" value="6"> Воскресенье</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Время начала:</label>
+                <input type="time" name="time_start" required>
+            </div>
+            <div class="form-group">
+                <label>Время окончания:</label>
+                <input type="time" name="time_end" required>
+            </div>
+            <div class="form-group">
+                <label>Интервал (минуты):</label>
+                <input type="number" name="interval" value="{{ service.duration }}" required>
+            </div>
+            <div class="form-group">
+                <label>Период начала:</label>
+                <input type="date" name="period_start" required>
+            </div>
+            <div class="form-group">
+                <label>Период окончания:</label>
+                <input type="date" name="period_end" required>
+            </div>
+            <button type="submit" class="btn">Создать слоты</button>
+        </form>
+    </div>
+    
+    <h2 style="margin-top: 30px;">Временные слоты</h2>
+    {% if time_slots %}
+        <div class="grid">
+            {% for slot in time_slots %}
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <h3>{{ slot.date|date:"d.m.Y" }}</h3>
+                        <p><strong>Время:</strong> {{ slot.start_time }} - {{ slot.end_time }}</p>
+                        <span class="badge {% if slot.is_booked %}danger{% else %}success{% endif %}">
+                            {% if slot.is_booked %}Занят{% else %}Свободен{% endif %}
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>Нет временных слотов.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+
