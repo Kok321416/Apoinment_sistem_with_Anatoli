@@ -15,15 +15,35 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Check required secrets
+      run: |
+        # Поддерживаем оба набора: DEPLOY_* и VPS_* (одинаковые значения)
+        HOST="${{ secrets.DEPLOY_HOST || secrets.VPS_HOST }}"
+        USER="${{ secrets.DEPLOY_USER || secrets.VPS_USER }}"
+        KEY="${{ secrets.DEPLOY_SSH_KEY || secrets.VPS_SSH_KEY }}"
+        PATH_SECRET="${{ secrets.DEPLOY_PATH || secrets.APP_DIR }}"
+        MISSING=""
+        [ -z "$HOST" ] && MISSING="${MISSING}DEPLOY_HOST or VPS_HOST "
+        [ -z "$USER" ] && MISSING="${MISSING}DEPLOY_USER or VPS_USER "
+        [ -z "$KEY" ] && MISSING="${MISSING}DEPLOY_SSH_KEY or VPS_SSH_KEY "
+        [ -z "$PATH_SECRET" ] && MISSING="${MISSING}DEPLOY_PATH or APP_DIR "
+        if [ -n "$MISSING" ]; then
+          echo "::error::Missing GitHub Actions secrets: $MISSING"
+          echo "Add them in: Repository → Settings → Secrets and variables → Actions"
+          echo "Use either DEPLOY_HOST/DEPLOY_USER/... or VPS_HOST/VPS_USER/VPS_SSH_KEY/APP_DIR"
+          exit 1
+        fi
+        echo "Required bot deploy secrets are set (host length: ${#HOST})"
+
     - name: Deploy to server
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USER }}
-        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        host: ${{ secrets.DEPLOY_HOST || secrets.VPS_HOST }}
+        username: ${{ secrets.DEPLOY_USER || secrets.VPS_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY || secrets.VPS_SSH_KEY }}
         envs: TELEGRAM_BOT_TOKEN
         script: |
-          cd ${{ secrets.DEPLOY_PATH }}
+          cd ${{ secrets.DEPLOY_PATH || secrets.APP_DIR }}
           git pull origin main
           source venv/bin/activate
           pip install -r requirements.txt
