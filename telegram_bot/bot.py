@@ -1,6 +1,7 @@
 """
 Telegram бот для системы записи на консультации
 """
+import json
 import logging
 from django.conf import settings
 from django.utils import timezone
@@ -21,7 +22,7 @@ def get_site_url():
 
 
 def send_telegram_message(chat_id, text, reply_markup=None):
-    """Отправить сообщение в Telegram"""
+    """Отправить сообщение в Telegram. reply_markup — dict (inline_keyboard или keyboard)."""
     if not TELEGRAM_BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN не установлен")
         return False
@@ -32,9 +33,9 @@ def send_telegram_message(chat_id, text, reply_markup=None):
         'text': text,
         'parse_mode': 'HTML'
     }
-    
     if reply_markup:
-        data['reply_markup'] = reply_markup
+        # Telegram API принимает reply_markup как JSON-строку
+        data['reply_markup'] = json.dumps(reply_markup)
     
     try:
         response = requests.post(url, json=data, timeout=10)
@@ -43,6 +44,34 @@ def send_telegram_message(chat_id, text, reply_markup=None):
     except Exception as e:
         logger.error(f"Ошибка отправки сообщения в Telegram: {e}")
         return False
+
+
+def answer_callback_query(callback_query_id, text=None):
+    """Убрать «загрузку» после нажатия inline-кнопки."""
+    if not TELEGRAM_BOT_TOKEN:
+        return False
+    url = f"{TELEGRAM_API_URL}/answerCallbackQuery"
+    payload = {'callback_query_id': callback_query_id}
+    if text:
+        payload['text'] = text[:200]
+    try:
+        requests.post(url, json=payload, timeout=5)
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка answerCallbackQuery: {e}")
+        return False
+
+
+def get_main_reply_keyboard():
+    """Постоянное меню внизу экрана (кнопки всегда видны)."""
+    return {
+        'keyboard': [
+            [{'text': '📱 Записаться'}, {'text': '📋 Мои записи'}],
+            [{'text': '❓ Помощь'}],
+        ],
+        'resize_keyboard': True,
+        'persistent': True,
+    }
 
 
 def send_appointment_notification(appointment):
@@ -102,6 +131,16 @@ def send_admin_message(telegram_id, message):
     return send_telegram_message(telegram_id, f"📢 <b>Сообщение от администрации:</b>\n\n{message}")
 
 
+def _send_webapp_button(chat_id):
+    """Отправить сообщение с кнопкой открытия мини-приложения записи."""
+    webapp_url = f"{get_site_url()}/telegram/appointment/"
+    keyboard = {
+        'inline_keyboard': [[{'text': '📱 Открыть запись на консультацию', 'web_app': {'url': webapp_url}}]]
+    }
+    send_telegram_message(chat_id, "Нажмите кнопку ниже, чтобы записаться:", keyboard)
+    send_telegram_message(chat_id, "Меню:", get_main_reply_keyboard())
+
+
 def handle_telegram_update(update_data):
     """Обработка обновлений от Telegram"""
     try:
@@ -119,16 +158,20 @@ def handle_telegram_update(update_data):
                 handle_register_command(chat_id, user_id, username, first_name)
             elif text == '/appointments' or text == '📋 Мои записи':
                 handle_appointments_command(chat_id, user_id)
-            elif text == '/help':
+            elif text == '/help' or text == '❓ Помощь':
                 handle_help_command(chat_id)
+            elif text == '📱 Записаться':
+                _send_webapp_button(chat_id)
             else:
-                send_telegram_message(chat_id, "Неизвестная команда. Используйте /help для списка команд.")
+                send_telegram_message(chat_id, "Неизвестная команда. Нажмите кнопку внизу или /help.", get_main_reply_keyboard())
         
         elif 'callback_query' in update_data:
             callback_query = update_data['callback_query']
+            callback_query_id = callback_query['id']
             chat_id = callback_query['message']['chat']['id']
-            data = callback_query['data']
-            
+            data = callback_query.get('data', '')
+            answer_callback_query(callback_query_id)
+
             if data == 'my_appointments':
                 user_id = callback_query['from']['id']
                 handle_appointments_command(chat_id, user_id)
@@ -143,6 +186,8 @@ def handle_telegram_update(update_data):
             elif data.startswith('book_'):
                 service_id = int(data.split('_')[1])
                 handle_book_appointment(chat_id, service_id)
+            else:
+                send_telegram_message(chat_id, "Выберите действие в меню.", get_main_reply_keyboard())
     
     except Exception as e:
         logger.error(f"Ошибка обработки обновления Telegram: {e}")
@@ -187,9 +232,10 @@ def handle_start_command(chat_id, user_id, username, first_name):
             }
             msg = f"👋 Добро пожаловать, {first_name}!\n\nВы вошли как <b>специалист</b>.\nВыберите действие:"
             send_telegram_message(chat_id, msg, keyboard)
+            send_telegram_message(chat_id, "Или используйте меню внизу:", get_main_reply_keyboard())
             return
 
-        # Кнопка для мини-приложения записи
+        # Кнопки: inline под сообщением + постоянное меню внизу
         webapp_url = f"{get_site_url()}/telegram/appointment/"
         if tg_client.last_specialist_id:
             webapp_url = f"{webapp_url}?specialist_id={tg_client.last_specialist_id}"
@@ -231,10 +277,11 @@ def handle_start_command(chat_id, user_id, username, first_name):
 """
         
         send_telegram_message(chat_id, message, keyboard)
+        send_telegram_message(chat_id, "Или выберите действие в меню внизу:", get_main_reply_keyboard())
     
     except Exception as e:
-        logger.error(f"Ошибка обработки /start: {e}")
-        send_telegram_message(chat_id, "Произошла ошибка. Попробуйте позже.")
+        logger.error(f"Ошибка обработки /start: {e}", exc_info=True)
+        send_telegram_message(chat_id, "Произошла ошибка. Попробуйте позже или нажмите /start.", get_main_reply_keyboard())
 
 
 def handle_register_command(chat_id, user_id, username, first_name):
@@ -432,6 +479,7 @@ def handle_help_command(chat_id):
 • Информационные сообщения от администрации
 """
     send_telegram_message(chat_id, message, keyboard)
+    send_telegram_message(chat_id, "Меню:", get_main_reply_keyboard())
 
 
 def handle_specialist_next_appointments(chat_id, user_id):
