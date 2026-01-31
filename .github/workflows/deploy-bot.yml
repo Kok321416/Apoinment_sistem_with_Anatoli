@@ -41,21 +41,34 @@ jobs:
         host: ${{ secrets.DEPLOY_HOST || secrets.VPS_HOST }}
         username: ${{ secrets.DEPLOY_USER || secrets.VPS_USER }}
         key: ${{ secrets.DEPLOY_SSH_KEY || secrets.VPS_SSH_KEY }}
-        envs: TELEGRAM_BOT_TOKEN
+        envs: TELEGRAM_BOT_TOKEN,SITE_URL
         script: |
-          cd ${{ secrets.DEPLOY_PATH || secrets.APP_DIR }}
-          git pull origin main
-          source venv/bin/activate
-          pip install -r requirements.txt
-          python manage.py migrate
-          python manage.py collectstatic --noinput
-          # Обновляем переменные окружения в systemd service
-          sudo systemctl set-environment TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN"
-          # SITE_URL опционально, обновляем только если указан
-          if [ ! -z "$SITE_URL" ]; then
-            sudo systemctl set-environment SITE_URL="$SITE_URL"
+          set -e
+          APP_DIR="${{ secrets.DEPLOY_PATH || secrets.APP_DIR }}"
+          cd "$APP_DIR"
+
+          # На reg.ru нет sudo и нет доступа к systemd — не используем sudo
+          # Код на сервер попадает через основной workflow (deploy.yml, SCP), git pull на shared-хостинге часто без учётки
+          git pull origin main || true
+
+          export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+          [ -d venv ] && . venv/bin/activate || true
+          pip install -q -r requirements.txt
+
+          # migrate/collectstatic делаются в основном деплое (deploy.yml); здесь только перезапуск бота
+          # Чтобы не падать на старом SQLite и отсутствии .env
+          python manage.py migrate --noinput 2>/dev/null || true
+          python manage.py collectstatic --noinput 2>/dev/null || true
+
+          # Перезапуск бота без sudo (reg.ru: нет прав суперпользователя)
+          BOT_PIDFILE="$APP_DIR/bot.pid"
+          if [ -f "$BOT_PIDFILE" ]; then
+            OLD_PID=$(cat "$BOT_PIDFILE")
+            kill -TERM "$OLD_PID" 2>/dev/null || true
+            rm -f "$BOT_PIDFILE"
+            sleep 2
           fi
-          sudo systemctl daemon-reload
-          sudo systemctl restart telegram-bot
-          sudo systemctl status telegram-bot
+          nohup python manage.py run_bot >> "$APP_DIR/bot.log" 2>&1 &
+          echo $! > "$BOT_PIDFILE"
+          echo "Bot restarted, PID $(cat $BOT_PIDFILE)"
 

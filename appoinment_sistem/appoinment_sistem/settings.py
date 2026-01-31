@@ -14,11 +14,12 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Загружаем переменные окружения из .env файла
-load_dotenv()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Загружаем .env: сначала из папки проекта, затем из родителя (при деплое .env часто в APP_DIR, а manage.py в appoinment_sistem/)
+load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env")
 
 
 # Quick-start development settings - unsuitable for production
