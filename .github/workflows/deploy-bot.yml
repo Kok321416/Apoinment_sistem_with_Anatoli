@@ -60,12 +60,9 @@ jobs:
           [ -d venv ] && . venv/bin/activate || true
           pip install -q -r requirements.txt
 
-          # .env создаётся основным деплоем (deploy.yml); бот использует те же DB_* и TELEGRAM_BOT_TOKEN из env
-          if [ -f "$APP_DIR/.env" ]; then
-            set -a
-            . "$APP_DIR/.env"
-            set +a
-          fi
+          # Не делаем source .env — в нём SECRET_KEY и др. с символами (), $; оболочка падает с syntax error.
+          # Django загружает .env сам через load_dotenv() в appoiment_system/settings.py.
+          # TELEGRAM_BOT_TOKEN и SITE_URL уже в окружении (envs в workflow).
           export TELEGRAM_BOT_TOKEN
           export SITE_URL
 
