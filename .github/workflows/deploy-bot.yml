@@ -60,20 +60,35 @@ jobs:
           [ -d venv ] && . venv/bin/activate || true
           pip install -q -r requirements.txt
 
-          # migrate/collectstatic делаются в основном деплое (deploy.yml); здесь только перезапуск бота
-          # Чтобы не падать на старом SQLite и отсутствии .env
+          # .env создаётся основным деплоем (deploy.yml); бот использует те же DB_* и TELEGRAM_BOT_TOKEN из env
+          if [ -f "$APP_DIR/.env" ]; then
+            set -a
+            . "$APP_DIR/.env"
+            set +a
+          fi
+          export TELEGRAM_BOT_TOKEN
+          export SITE_URL
+
           python manage.py migrate --noinput 2>/dev/null || true
           python manage.py collectstatic --noinput 2>/dev/null || true
 
-          # Перезапуск бота без sudo (reg.ru: нет прав суперпользователя)
           BOT_PIDFILE="$APP_DIR/bot.pid"
+          BOT_LOG="$APP_DIR/bot.log"
           if [ -f "$BOT_PIDFILE" ]; then
             OLD_PID=$(cat "$BOT_PIDFILE")
             kill -TERM "$OLD_PID" 2>/dev/null || true
             rm -f "$BOT_PIDFILE"
             sleep 2
           fi
-          nohup python manage.py run_bot >> "$APP_DIR/bot.log" 2>&1 &
-          echo $! > "$BOT_PIDFILE"
-          echo "Bot restarted, PID $(cat $BOT_PIDFILE)"
+          nohup python manage.py run_bot >> "$BOT_LOG" 2>&1 &
+          BOT_PID=$!
+          echo $BOT_PID > "$BOT_PIDFILE"
+          sleep 3
+          if kill -0 $BOT_PID 2>/dev/null; then
+            echo "Bot started, PID $BOT_PID"
+          else
+            echo "::error::Bot process exited. Last 30 lines of bot.log:"
+            tail -30 "$BOT_LOG" 2>/dev/null || true
+            exit 1
+          fi
 
