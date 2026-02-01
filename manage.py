@@ -3,6 +3,13 @@
 import os
 import sys
 
+# До загрузки Django: подменяем MySQLdb на PyMySQL (иначе ImproperlyConfigured на сервере)
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass
+
 
 def main():
     """Run administrative tasks."""
