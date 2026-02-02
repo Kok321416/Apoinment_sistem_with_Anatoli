@@ -8,6 +8,7 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.conf import settings
 from django.db.models import Count
+from datetime import timedelta
 from bookings.models import Service, TimeSlot, Appointment, Specialist, Calendar, UserProfile
 from bookings.forms import AppointmentForm
 import json
@@ -72,7 +73,7 @@ def telegram_appointment_create(request):
         
         # Получаем объекты
         try:
-            service = Service.objects.get(id=service_id, is_active=True)
+            service = Service.objects.select_related('calendar').get(id=service_id, is_active=True)
             if specialist_id and int(specialist_id) != service.specialist_id:
                 return JsonResponse({'success': False, 'error': 'Услуга не принадлежит специалисту'}, status=400)
             if calendar_id and int(calendar_id) != service.calendar_id:
@@ -83,7 +84,22 @@ def telegram_appointment_create(request):
                 'success': False,
                 'error': 'Услуга или временной слот не найдены'
             }, status=404)
-        
+
+        calendar = service.calendar
+        max_per_day = getattr(calendar, 'max_services_per_day', 0) or 0
+        if max_per_day > 0:
+            slot_date = time_slot.date
+            existing_count = Appointment.objects.filter(
+                calendar=service.calendar,
+                appointment_date__date=slot_date,
+                status__in=['pending', 'confirmed']
+            ).count()
+            if existing_count >= max_per_day:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'На эту дату достигнут лимит записей ({max_per_day} в день). Выберите другой день.'
+                }, status=400)
+
         # Создаем запись
         appointment = Appointment.objects.create(
             specialist=service.specialist,
@@ -177,23 +193,41 @@ def telegram_get_slots(request):
         }, status=400)
     
     try:
-        service = Service.objects.get(id=service_id, is_active=True)
+        service = Service.objects.select_related('calendar').get(id=service_id, is_active=True)
     except Service.DoesNotExist:
         return JsonResponse({
             'success': False,
             'error': 'Услуга не найдена'
         }, status=404)
-    
-    # Получаем доступные слоты
+
+    calendar = service.calendar
+    book_ahead_hours = getattr(calendar, 'book_ahead_hours', 24) or 24
+    max_services_per_day = getattr(calendar, 'max_services_per_day', 0) or 0
+    now = timezone.now()
+    min_slot_datetime = now + timedelta(hours=book_ahead_hours)
+
     time_slots = TimeSlot.objects.filter(
         service=service,
         is_available=True,
         is_booked=False,
-        date__gte=timezone.now().date()
+        date__gte=now.date()
     ).order_by('date', 'start_time')
-    
+
     slots_data = []
     for slot in time_slots:
+        slot_datetime = timezone.make_aware(
+            timezone.datetime.combine(slot.date, slot.start_time)
+        )
+        if slot_datetime < min_slot_datetime:
+            continue
+        if max_services_per_day > 0:
+            appointments_that_day = Appointment.objects.filter(
+                calendar=service.calendar,
+                appointment_date__date=slot.date,
+                status__in=['pending', 'confirmed']
+            ).count()
+            if appointments_that_day >= max_services_per_day:
+                continue
         slots_data.append({
             'id': slot.id,
             'date': slot.date.isoformat(),

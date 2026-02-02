@@ -17,6 +17,10 @@
         </div>
         <button type="submit" class="btn" style="width: 100%;">Войти</button>
     </form>
+    <div style="text-align: center; margin-top: 15px;">
+        <p style="margin-bottom: 10px;">или</p>
+        <a href="{% provider_login_url 'google' %}" class="btn" style="width: 100%; background: #4285f4; color: #fff;">Войти через Google</a>
+    </div>
     <div style="text-align: center; margin-top: 20px;">
         <p style="color: #6b21a8;">Нет аккаунта? <a href="{% url 'register' %}" style="color: #8b5cf6;">Зарегистрироваться</a></p>
         <p style="margin-top: 10px;"><a href="{% url 'home' %}" style="color: #8b5cf6;">На главную</a></p>

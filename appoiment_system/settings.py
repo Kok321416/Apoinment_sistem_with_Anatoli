@@ -26,12 +26,19 @@ load_dotenv(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-0yh88asx9m$ad7^6+2(41a6#u0r2fanl^%*oycno+fdv480f3t"
+# На сервере задайте SECRET_KEY в .env
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "django-insecure-0yh88asx9m$ad7^6+2(41a6#u0r2fanl^%*oycno+fdv480f3t",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# На сервере: DEBUG=False (или не задавать)
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = []
+# На сервере: ALLOWED_HOSTS=ваш-домен.ru,www.ваш-домен.ru,127.0.0.1
+_allowed = os.environ.get("ALLOWED_HOSTS", "").strip()
+ALLOWED_HOSTS = [h.strip() for h in _allowed.split(",") if h.strip()] if _allowed else []
 
 
 # Application definition
@@ -43,10 +50,44 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
     "rest_framework",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     "bookings",
     "telegram_bot",
 ]
+
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.socialaccount.auth_backends.AuthenticationBackend",
+]
+
+# Google OAuth (вход через Google) — client_id/secret из .env или из Social Application в админке
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "APP": {
+            "client_id": os.environ.get("GOOGLE_OAUTH_CLIENT_ID", ""),
+            "secret": os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", ""),
+            "key": "",
+        },
+    }
+}
+ACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+LOGIN_REDIRECT_URL = "/"
+ACCOUNT_LOGOUT_REDIRECT_URL = "/"
+
+# Google Calendar API (из .env: GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET)
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
+GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")
+GOOGLE_CALENDAR_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 
 # Telegram Bot Settings
 # Токен читается из переменной окружения TELEGRAM_BOT_TOKEN

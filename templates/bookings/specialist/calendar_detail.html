@@ -6,7 +6,10 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h1>{{ calendar.name }}</h1>
-        <a href="{% url 'specialist_calendars' %}" class="btn btn-secondary">Назад</a>
+        <div style="display: flex; gap: 10px;">
+            <a href="{% url 'calendar_edit' calendar_id=calendar.id %}" class="btn btn-secondary">Настройки календаря</a>
+            <a href="{% url 'specialist_calendars' %}" class="btn btn-secondary">Назад</a>
+        </div>
     </div>
     
     {% if calendar.description %}

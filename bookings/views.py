@@ -4,6 +4,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.conf import settings
+from django.urls import reverse
 from datetime import datetime, date, time, timedelta
 from .models import Specialist, Appointment, UserProfile, TimeSlot, Calendar, Service
 from telegram_bot.bot import send_appointment_notification
@@ -81,6 +83,102 @@ def user_logout(request):
     from django.contrib.auth import logout
     logout(request)
     return redirect('home')
+
+
+@login_required
+def google_calendar_connect(request):
+    """Редирект на Google OAuth для доступа к календарю (scope calendar.events)."""
+    try:
+        specialist = request.user.specialist
+    except Specialist.DoesNotExist:
+        messages.error(request, 'Доступно только для специалистов.')
+        return redirect('home')
+    client_id = getattr(settings, 'GOOGLE_OAUTH_CLIENT_ID', '') or ''
+    client_secret = getattr(settings, 'GOOGLE_OAUTH_CLIENT_SECRET', '') or ''
+    if not client_id or not client_secret:
+        messages.error(request, 'Google Calendar не настроен. Обратитесь к администратору.')
+        return redirect('specialist_calendars')
+    try:
+        from google_auth_oauthlib.flow import Flow
+        redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback'))
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [redirect_uri],
+                }
+            },
+            scopes=getattr(settings, 'GOOGLE_CALENDAR_SCOPES', ['https://www.googleapis.com/auth/calendar.events']),
+        )
+        flow.redirect_uri = redirect_uri
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            prompt='consent',
+            state=str(specialist.id),
+        )
+        request.session['google_calendar_oauth_state'] = state
+        return redirect(authorization_url)
+    except Exception as e:
+        messages.error(request, f'Ошибка подключения Google Calendar: {e}')
+        return redirect('specialist_calendars')
+
+
+@login_required
+def google_calendar_callback(request):
+    """Callback после авторизации Google: сохраняем refresh_token у специалиста."""
+    if request.GET.get('error'):
+        messages.error(request, 'Доступ к Google Calendar не был предоставлен.')
+        return redirect('specialist_calendars')
+    state = request.session.get('google_calendar_oauth_state')
+    code = request.GET.get('code')
+    if not code or not state:
+        messages.error(request, 'Неверный ответ от Google.')
+        return redirect('specialist_calendars')
+    try:
+        specialist_id = int(state)
+        specialist = Specialist.objects.get(id=specialist_id)
+        if specialist.user_id != request.user.id:
+            messages.error(request, 'Доступ запрещён.')
+            return redirect('specialist_calendars')
+    except (ValueError, Specialist.DoesNotExist):
+        messages.error(request, 'Сессия истекла. Попробуйте снова.')
+        return redirect('specialist_calendars')
+    client_id = getattr(settings, 'GOOGLE_OAUTH_CLIENT_ID', '') or ''
+    client_secret = getattr(settings, 'GOOGLE_OAUTH_CLIENT_SECRET', '') or ''
+    if not client_id or not client_secret:
+        messages.error(request, 'Google Calendar не настроен.')
+        return redirect('specialist_calendars')
+    try:
+        from google_auth_oauthlib.flow import Flow
+        redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback'))
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [redirect_uri],
+                }
+            },
+            scopes=getattr(settings, 'GOOGLE_CALENDAR_SCOPES', ['https://www.googleapis.com/auth/calendar.events']),
+        )
+        flow.redirect_uri = redirect_uri
+        flow.fetch_token(code=code)
+        credentials = flow.credentials
+        specialist.google_refresh_token = credentials.refresh_token or ''
+        specialist.google_calendar_id = specialist.google_calendar_id or 'primary'
+        specialist.save()
+        if 'google_calendar_oauth_state' in request.session:
+            del request.session['google_calendar_oauth_state']
+        messages.success(request, 'Google Calendar успешно подключён. Новые записи будут отображаться в календаре.')
+        return redirect('specialist_calendars')
+    except Exception as e:
+        messages.error(request, f'Ошибка сохранения доступа: {e}')
+        return redirect('specialist_calendars')
 
 
 @login_required
@@ -213,6 +311,24 @@ def book_appointment(request, invite_link):
     if request.method == 'POST':
         form = AppointmentForm(request.POST, service=service)
         if form.is_valid():
+            calendar = service.calendar
+            max_per_day = getattr(calendar, 'max_services_per_day', 0) or 0
+            if max_per_day > 0:
+                appt_date = form.cleaned_data.get('appointment_date')
+                if appt_date:
+                    slot_date = appt_date.date() if hasattr(appt_date, 'date') else appt_date
+                    existing = Appointment.objects.filter(
+                        calendar=calendar,
+                        appointment_date__date=slot_date,
+                        status__in=['pending', 'confirmed']
+                    ).count()
+                    if existing >= max_per_day:
+                        messages.error(
+                            request,
+                            f'На эту дату достигнут лимит записей ({max_per_day} в день). Выберите другой день.'
+                        )
+                        context = {'service': service, 'specialist': service.specialist, 'form': form}
+                        return render(request, 'bookings/book_appointment.html', context)
             appointment = form.save(commit=False)
             if request.user.is_authenticated:
                 appointment.client = request.user
@@ -286,6 +402,28 @@ def calendar_create(request):
         else:
             form = CalendarForm()
         return render(request, 'bookings/specialist/calendar_form.html', {'form': form, 'specialist': specialist})
+    except Specialist.DoesNotExist:
+        messages.error(request, 'Вы не являетесь специалистом')
+        return redirect('home')
+
+
+@login_required
+def calendar_edit(request, calendar_id):
+    """Редактирование календаря (в т.ч. настройки на каждый день)"""
+    try:
+        specialist = request.user.specialist
+        calendar = get_object_or_404(Calendar, id=calendar_id, specialist=specialist)
+        if request.method == 'POST':
+            form = CalendarForm(request.POST, instance=calendar)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Настройки календаря сохранены.')
+                return redirect('calendar_detail', calendar_id=calendar.id)
+        else:
+            form = CalendarForm(instance=calendar)
+        return render(request, 'bookings/specialist/calendar_form.html', {
+            'form': form, 'specialist': specialist, 'calendar': calendar,
+        })
     except Specialist.DoesNotExist:
         messages.error(request, 'Вы не являетесь специалистом')
         return redirect('home')
@@ -427,10 +565,14 @@ def service_detail(request, service_id):
             days = request.POST.getlist('days')  # Дни недели (0=Пн, 6=Вс)
             time_start_str = request.POST.get('time_start')
             time_end_str = request.POST.get('time_end')
-            interval = int(request.POST.get('interval', service.duration))
+            calendar = service.calendar
+            # Интервал = длительность услуги + перерыв между услугами (настройка календаря)
+            interval = service.duration + getattr(calendar, 'break_between_services_minutes', 0)
+            interval = int(request.POST.get('interval', interval))
             period_start = request.POST.get('period_start')
             period_end = request.POST.get('period_end')
-            
+            max_per_day = getattr(calendar, 'max_services_per_day', 0) or 0
+
             if days and time_start_str and time_end_str and period_start and period_end:
                 try:
                     start_date = date.fromisoformat(period_start)
@@ -438,25 +580,23 @@ def service_detail(request, service_id):
                     time_start = time.fromisoformat(time_start_str)
                     time_end = time.fromisoformat(time_end_str)
                     selected_days = [int(d) for d in days]
-                    
+
                     slots_created = 0
                     current_date = start_date
-                    
+
                     while current_date <= end_date:
-                        # Проверяем, является ли текущий день выбранным днем недели
-                        # Python: 0=Понедельник, 6=Воскресенье
                         day_of_week = current_date.weekday()
-                        
                         if day_of_week in selected_days:
-                            # Генерируем слоты для этого дня
                             current_time = datetime.combine(current_date, time_start)
                             end_datetime = datetime.combine(current_date, time_end)
-                            
+                            day_slots_count = 0
+
                             while current_time + timedelta(minutes=service.duration) <= end_datetime:
+                                if max_per_day > 0 and day_slots_count >= max_per_day:
+                                    break
                                 slot_start = current_time.time()
                                 slot_end = (current_time + timedelta(minutes=service.duration)).time()
-                                
-                                # Проверяем, не существует ли уже такой слот
+
                                 if not TimeSlot.objects.filter(
                                     calendar=service.calendar,
                                     service=service,
@@ -473,12 +613,12 @@ def service_detail(request, service_id):
                                         is_booked=False
                                     )
                                     slots_created += 1
-                                
-                                # Переходим к следующему слоту с учетом интервала
+                                    day_slots_count += 1
+
                                 current_time += timedelta(minutes=interval)
-                        
+
                         current_date += timedelta(days=1)
-                    
+
                     messages.success(request, f'Создано {slots_created} временных слотов!')
                 except Exception as e:
                     messages.error(request, f'Ошибка при создании слотов: {str(e)}')
@@ -487,24 +627,27 @@ def service_detail(request, service_id):
         elif request.method == 'POST' and 'generate_slots' in request.POST:
             start_date = request.POST.get('start_date')
             end_date = request.POST.get('end_date')
-            
+            calendar = service.calendar
+            break_minutes = getattr(calendar, 'break_between_services_minutes', 0) or service.buffer_time
+            max_per_day = getattr(calendar, 'max_services_per_day', 0) or 0
+
             if start_date and end_date:
                 try:
                     start = date.fromisoformat(start_date)
                     end = date.fromisoformat(end_date)
                     current_date = start
-                    
                     slots_created = 0
                     while current_date <= end:
-                        # Генерируем слоты для каждого дня в рабочее время
                         current_time = datetime.combine(current_date, service.work_hours_start)
-                        end_time = datetime.combine(current_date, service.work_hours_end)
-                        
-                        while current_time + timedelta(minutes=service.duration) <= end_time:
+                        end_time_dt = datetime.combine(current_date, service.work_hours_end)
+                        day_slots_count = 0
+
+                        while current_time + timedelta(minutes=service.duration) <= end_time_dt:
+                            if max_per_day > 0 and day_slots_count >= max_per_day:
+                                break
                             slot_start = current_time.time()
                             slot_end = (current_time + timedelta(minutes=service.duration)).time()
-                            
-                            # Проверяем, не существует ли уже такой слот
+
                             if not TimeSlot.objects.filter(
                                 calendar=service.calendar,
                                 service=service,
@@ -521,11 +664,12 @@ def service_detail(request, service_id):
                                     is_booked=False
                                 )
                                 slots_created += 1
-                            
-                            current_time += timedelta(minutes=service.duration + service.buffer_time)
-                        
+                                day_slots_count += 1
+
+                            current_time += timedelta(minutes=service.duration + break_minutes)
+
                         current_date += timedelta(days=1)
-                    
+
                     messages.success(request, f'Создано {slots_created} временных слотов!')
                 except Exception as e:
                     messages.error(request, f'Ошибка при создании слотов: {str(e)}')
