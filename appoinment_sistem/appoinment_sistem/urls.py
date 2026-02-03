@@ -16,7 +16,7 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from consultant_menu.views import (
@@ -45,6 +45,8 @@ urlpatterns = [
     
     # Админ панель
     path("admin/", admin.site.urls),
+    # Вход через Google (django-allauth)
+    path("accounts/", include("allauth.urls")),
 
     # Календарь
     path("calendars/<int:calendar_id>/", calendar_view, name="calendar_detail"),
