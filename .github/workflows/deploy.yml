@@ -189,4 +189,23 @@ jobs:
             --pid "$PIDFILE" \
             > "$LOGFILE" 2>&1 &
 
-          echo "✅ Deploy completed. Logs: $LOGFILE"
+          # Перезапуск Telegram-бота (тот же venv, корневой manage.py → appoiment_system)
+          BOT_PIDFILE="$APP_DIR/bot.pid"
+          BOT_LOG="$APP_DIR/bot.log"
+          if [ -f "$BOT_PIDFILE" ]; then
+            OLD_PID=$(cat "$BOT_PIDFILE")
+            kill -TERM "$OLD_PID" 2>/dev/null || true
+            rm -f "$BOT_PIDFILE"
+            sleep 2
+          fi
+          nohup python manage.py run_bot >> "$BOT_LOG" 2>&1 &
+          BOT_PID=$!
+          echo $BOT_PID > "$BOT_PIDFILE"
+          sleep 2
+          if kill -0 $BOT_PID 2>/dev/null; then
+            echo "✅ Telegram bot restarted, PID $BOT_PID"
+          else
+            echo "⚠️ Bot may have exited. Check $BOT_LOG"
+          fi
+
+          echo "✅ Deploy completed. Gunicorn: $LOGFILE, Bot: $BOT_LOG"

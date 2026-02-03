@@ -42,11 +42,7 @@ if [ -f "manage.py" ]; then
   if [ $MIGRATE_R -ne 0 ]; then
     if echo "$MIGRATE_OUT" | grep -q "Conflicting migrations\|multiple leaf"; then
       echo "⚠️ Conflicting migration names (old 0002/0003/0004 vs new 0003/0004/0005). Fixing: remove old rows, then --fake new."
-      python manage.py shell -c "
-from django.db import connection
-with connection.cursor() as c:
-  c.execute(\"DELETE FROM django_migrations WHERE app='bookings' AND name IN ('0002_calendar_day_settings', '0003_google_calendar_fields', '0004_telegram_link_token')\")
-"
+      python manage.py shell < scripts/fix_bookings_migration_names_inline.py
       python manage.py migrate bookings 0005_telegram_link_token --fake
     else
       echo "$MIGRATE_OUT"
