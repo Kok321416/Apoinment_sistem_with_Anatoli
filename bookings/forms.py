@@ -87,16 +87,30 @@ class CalendarForm(forms.ModelForm):
     """Форма создания/редактирования календаря"""
     class Meta:
         model = Calendar
-        fields = ('name', 'description', 'color', 'is_active')
+        fields = (
+            'name', 'description', 'color', 'is_active',
+            'break_between_services_minutes', 'book_ahead_hours', 'max_services_per_day',
+        )
         labels = {
             'name': 'Название календаря',
             'description': 'Описание',
             'color': 'Цвет',
             'is_active': 'Активен',
+            'break_between_services_minutes': 'Перерыв между услугами (минуты)',
+            'book_ahead_hours': 'Запись не позднее чем за (часов)',
+            'max_services_per_day': 'Лимит записей в день (0 — без лимита)',
         }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
             'color': forms.TextInput(attrs={'type': 'color'}),
+            'break_between_services_minutes': forms.NumberInput(attrs={'min': 0}),
+            'book_ahead_hours': forms.NumberInput(attrs={'min': 0}),
+            'max_services_per_day': forms.NumberInput(attrs={'min': 0}),
+        }
+        help_texts = {
+            'break_between_services_minutes': 'Минут между окончанием одной записи и началом следующей.',
+            'book_ahead_hours': 'Клиент может записаться только на слоты не раньше чем через N часов (24 = за сутки).',
+            'max_services_per_day': 'Максимум записей в один день по этому календарю. 0 = без лимита.',
         }
 
 

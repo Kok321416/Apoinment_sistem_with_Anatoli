@@ -1,0 +1,15 @@
+{% extends 'bookings/base.html' %}
+
+{% block title %}Привязать Telegram - Система записи на консультации{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Привязать Telegram</h1>
+    <p style="margin: 15px 0;">Чтобы получать уведомления и управлять записями из бота, откройте ссылку ниже в Telegram (на телефоне или в десктопе). Ссылка одноразовая и действительна до использования.</p>
+    <div style="background: #f5f3ff; padding: 20px; border-radius: 12px; margin: 20px 0; word-break: break-all;">
+        <a href="{{ link }}" target="_blank" rel="noopener" style="color: #6b21a8; font-weight: 600;">{{ link }}</a>
+    </div>
+    <p style="margin: 15px 0; font-size: 14px; color: #666;">После перехода по ссылке и нажатия «Start» в боте ваш аккаунт специалиста будет привязан к этому Telegram.</p>
+    <a href="{% url 'specialist_dashboard' %}" class="btn btn-secondary" style="margin-top: 20px;">Назад в панель</a>
+</div>
+{% endblock %}

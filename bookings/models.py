@@ -43,6 +43,9 @@ class Specialist(models.Model):
     invite_link = models.CharField(max_length=100, unique=True, verbose_name='Пригласительная ссылка')
     is_active = models.BooleanField(default=True, verbose_name='Активен')
     created_at = models.DateTimeField(auto_now_add=True)
+    # Google Calendar: токен и id календаря (primary или свой)
+    google_refresh_token = models.CharField(max_length=500, blank=True, verbose_name='Google refresh token')
+    google_calendar_id = models.CharField(max_length=255, blank=True, default='primary', verbose_name='Google Calendar ID')
     
     def save(self, *args, **kwargs):
         if not self.invite_link:
@@ -62,7 +65,24 @@ class Calendar(models.Model):
     color = models.CharField(max_length=7, default='#8b5cf6', verbose_name='Цвет календаря')
     is_active = models.BooleanField(default=True, verbose_name='Активен')
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
+    # Настройки на каждый день (применяются ко всем датам календаря)
+    break_between_services_minutes = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Перерыв между услугами (минуты)',
+        help_text='Минут между окончанием одной записи и началом следующей.',
+    )
+    book_ahead_hours = models.PositiveIntegerField(
+        default=24,
+        verbose_name='Запись не позднее чем за (часов)',
+        help_text='Клиент может записаться только на слоты не раньше чем через N часов (например 24 = за сутки).',
+    )
+    max_services_per_day = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Лимит записей в день',
+        help_text='Максимум записей в один день по этому календарю. 0 = без лимита.',
+    )
+
     class Meta:
         ordering = ['name']
         unique_together = ['specialist', 'name']
@@ -142,10 +162,19 @@ class Appointment(models.Model):
     client_phone = models.CharField(max_length=20, verbose_name='Телефон клиента', blank=True)
     client_telegram = models.CharField(max_length=100, verbose_name='Telegram клиента', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+    google_event_id = models.CharField(max_length=255, blank=True, verbose_name='ID события в Google Calendar')
+
     class Meta:
         ordering = ['-appointment_date']
     
     def __str__(self):
         return f"{self.client_name} -> {self.service.name} ({self.appointment_date})"
+
+
+class TelegramLinkToken(models.Model):
+    """Одноразовый токен для привязки Telegram к аккаунту специалиста (или клиента)."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='telegram_link_tokens')
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 

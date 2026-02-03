@@ -28,8 +28,40 @@
                 {{ form.is_active.label }}
             </label>
         </div>
+        <hr style="margin: 20px 0; border-color: #e5e7eb;">
+        <h3 style="margin-bottom: 15px; color: #6b21a8;">Настройки на каждый день</h3>
+        <div class="form-group">
+            <label>{{ form.break_between_services_minutes.label }}</label>
+            {{ form.break_between_services_minutes }}
+            {% if form.break_between_services_minutes.help_text %}
+                <small style="color: #6b7280; display: block; margin-top: 4px;">{{ form.break_between_services_minutes.help_text }}</small>
+            {% endif %}
+            {% if form.break_between_services_minutes.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.break_between_services_minutes.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ form.book_ahead_hours.label }}</label>
+            {{ form.book_ahead_hours }}
+            {% if form.book_ahead_hours.help_text %}
+                <small style="color: #6b7280; display: block; margin-top: 4px;">{{ form.book_ahead_hours.help_text }}</small>
+            {% endif %}
+            {% if form.book_ahead_hours.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.book_ahead_hours.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>{{ form.max_services_per_day.label }}</label>
+            {{ form.max_services_per_day }}
+            {% if form.max_services_per_day.help_text %}
+                <small style="color: #6b7280; display: block; margin-top: 4px;">{{ form.max_services_per_day.help_text }}</small>
+            {% endif %}
+            {% if form.max_services_per_day.errors %}
+                <div style="color: #ef4444; font-size: 14px; margin-top: 5px;">{{ form.max_services_per_day.errors }}</div>
+            {% endif %}
+        </div>
         <div style="display: flex; gap: 10px; margin-top: 20px;">
-            <button type="submit" class="btn">Создать</button>
+            <button type="submit" class="btn">{% if calendar %}Сохранить{% else %}Создать{% endif %}</button>
             <a href="{% url 'specialist_calendars' %}" class="btn btn-secondary">Отмена</a>
         </div>
     </form>

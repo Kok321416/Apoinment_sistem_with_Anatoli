@@ -7,11 +7,16 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h1>Мои календари</h1>
         <div style="display: flex; gap: 10px;">
+            {% if specialist.google_refresh_token %}
+                <span style="color: #059669; font-size: 14px;">✓ Google Calendar подключён</span>
+            {% else %}
+                <a href="{% url 'google_calendar_connect' %}" class="btn btn-secondary">Подключить Google Calendar</a>
+            {% endif %}
             <a href="{% url 'specialist_dashboard' %}" class="btn btn-secondary">Назад</a>
             <a href="{% url 'calendar_create' %}" class="btn">+ Создать календарь</a>
         </div>
     </div>
-    
+
     {% if calendars %}
         <div class="grid">
             {% for calendar in calendars %}

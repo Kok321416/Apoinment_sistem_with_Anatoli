@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, Specialist, Calendar, Service, TimeSlot, Appointment
+from .models import UserProfile, Specialist, Calendar, Service, TimeSlot, Appointment, TelegramLinkToken
 
 
 @admin.register(UserProfile)
@@ -35,6 +35,13 @@ class TimeSlotAdmin(admin.ModelAdmin):
     list_display = ['calendar', 'service', 'date', 'start_time', 'end_time', 'is_available', 'is_booked']
     list_filter = ['date', 'is_available', 'is_booked', 'calendar']
     search_fields = ['calendar__name', 'service__name']
+
+
+@admin.register(TelegramLinkToken)
+class TelegramLinkTokenAdmin(admin.ModelAdmin):
+    list_display = ['user', 'token', 'used', 'created_at']
+    list_filter = ['used', 'created_at']
+    search_fields = ['user__username', 'token']
 
 
 @admin.register(Appointment)
