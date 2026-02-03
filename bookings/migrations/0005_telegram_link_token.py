@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("bookings", "0003_google_calendar_fields"),
+        ("bookings", "0004_google_calendar_fields"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
