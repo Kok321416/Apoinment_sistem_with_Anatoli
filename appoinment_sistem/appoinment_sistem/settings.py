@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.telegram",
 ]
 
 SITE_ID = 1
@@ -65,7 +66,7 @@ AUTHENTICATION_BACKENDS = [
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
-# Вход через Google (client_id/secret из .env или из Social Application в админке)
+# Вход через Google и Telegram (client_id/secret из .env или из Social Application в админке)
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "SCOPE": ["profile", "email"],
@@ -74,7 +75,14 @@ SOCIALACCOUNT_PROVIDERS = {
             "client_id": os.getenv("GOOGLE_OAUTH_CLIENT_ID", ""),
             "secret": os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", ""),
         },
-    }
+    },
+    "telegram": {
+        "APP": {
+            "client_id": (os.getenv("TELEGRAM_BOT_USERNAME") or "").lstrip("@"),
+            "secret": os.getenv("TELEGRAM_BOT_TOKEN", ""),
+        },
+        "AUTH_PARAMS": {"auth_date_validity": 30},
+    },
 }
 SOCIALACCOUNT_QUERY_EMAIL = True
 ACCOUNT_EMAIL_REQUIRED = True

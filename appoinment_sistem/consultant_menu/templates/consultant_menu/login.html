@@ -16,7 +16,8 @@
         {% endif %}
         
         {% load socialaccount %}
-        <a href="{% provider_login_url 'google' next=request.GET.next|default:'/' %}" class="btn btn-google" style="display: block; width: 100%; margin-bottom: 1rem; background: #4285f4; color: #fff; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; box-sizing: border-box;">Войти через Google</a>
+        <a href="{% provider_login_url 'google' next=request.GET.next|default:'/' %}" class="btn btn-google" style="display: block; width: 100%; margin-bottom: 0.75rem; background: #4285f4; color: #fff; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; box-sizing: border-box;">Войти через Google</a>
+        <a href="{% provider_login_url 'telegram' next=request.GET.next|default:'/' %}" class="btn btn-telegram" style="display: block; width: 100%; margin-bottom: 1rem; background: #0088cc; color: #fff; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; box-sizing: border-box;">Войти через Telegram</a>
         <p class="form-divider" style="text-align: center; margin: 1rem 0; color: #666;">или</p>
         <form method="POST" action="{% url 'login' %}">
             {% csrf_token %}
