@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Мой профиль - Система записи</title>
     {% load static %}
+    {% load socialaccount %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
     <style>
         .profile-container {
@@ -80,6 +81,19 @@
             height: 20px;
             margin-right: 8px;
         }
+        .auth-methods { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+        .auth-method { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #f8f9fa; border-radius: 10px; min-width: 200px; }
+        .auth-method.connected { background: rgba(118, 75, 162, 0.08); border: 1px solid rgba(118, 75, 162, 0.3); }
+        .auth-method-name { font-weight: 600; color: #333; }
+        .auth-method-detail { font-size: 13px; color: #666; }
+        .auth-method-badge { font-size: 12px; padding: 2px 8px; border-radius: 6px; font-weight: 500; }
+        .auth-method-badge.connected { background: #d4edda; color: #155724; }
+        .auth-method-badge.not-connected { background: #f8d7da; color: #721c24; }
+        .auth-connect-btn { padding: 8px 14px; font-size: 14px; border-radius: 8px; text-decoration: none; font-weight: 500; display: inline-block; margin-top: 8px; transition: opacity 0.2s; }
+        .auth-connect-btn:hover { opacity: 0.9; }
+        .auth-connect-btn.telegram { background: #0088cc; color: #fff; }
+        .auth-connect-btn.google { background: #4285f4; color: #fff; }
+        .auth-connect-btn.email { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
     </style>
 </head>
 <body>
@@ -129,6 +143,48 @@
                         <p><strong>Телефон:</strong> {{ consultant.phone|default:"Не указан" }}</p>
                         <p><strong>Telegram:</strong> {{ consultant.telegram_nickname|default:"Не указан" }}</p>
                     </div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>Способы входа</h3>
+                    <p style="color: #666; margin-bottom: 16px;">Подключите дополнительные способы входа: тогда вы сможете входить через Telegram, Google или почту.</p>
+                    <div class="auth-methods">
+                        <div class="auth-method {% if 'telegram' in connected_providers %}connected{% endif %}">
+                            <div>
+                                <span class="auth-method-name">Telegram</span>
+                                {% if 'telegram' in connected_providers %}
+                                    <span class="auth-method-badge connected">подключено</span>
+                                {% else %}
+                                    <span class="auth-method-badge not-connected">не подключено</span>
+                                    <a href="{% provider_login_url 'telegram' process='connect' next=request.path %}" class="auth-connect-btn telegram">Подключить Telegram</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="auth-method {% if 'google' in connected_providers %}connected{% endif %}">
+                            <div>
+                                <span class="auth-method-name">Google</span>
+                                {% if 'google' in connected_providers %}
+                                    <span class="auth-method-badge connected">подключено</span>
+                                {% else %}
+                                    <span class="auth-method-badge not-connected">не подключено</span>
+                                    <a href="{% provider_login_url 'google' process='connect' next=request.path %}" class="auth-connect-btn google">Подключить Google</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="auth-method {% if primary_email %}connected{% endif %}">
+                            <div>
+                                <span class="auth-method-name">Почта</span>
+                                {% if primary_email %}
+                                    <span class="auth-method-badge connected">подключено</span>
+                                    <div class="auth-method-detail">{{ primary_email }}</div>
+                                {% else %}
+                                    <span class="auth-method-badge not-connected">не добавлена</span>
+                                {% endif %}
+                                <a href="{% url 'account_email' %}" class="auth-connect-btn email">{% if primary_email %}Изменить почту{% else %}Добавить почту{% endif %}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <p style="margin-top: 16px; font-size: 13px;"><a href="{% url 'socialaccount_connections' %}">Управление подключёнными аккаунтами</a> (отключить Telegram/Google)</p>
                 </div>
 
                 {% if consultant.profile_description %}
