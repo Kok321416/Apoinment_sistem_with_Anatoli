@@ -48,6 +48,10 @@ if [ -f "manage.py" ]; then
       echo "⚠️ Conflicting migration names (old 0002/0003/0004 vs new 0003/0004/0005). Fixing: remove old rows, then --fake new."
       python manage.py shell < scripts/fix_bookings_migration_names_inline.py
       python manage.py migrate bookings 0005_telegram_link_token --fake
+    elif echo "$MIGRATE_OUT" | grep -q "Duplicate column\|(1060,"; then
+      echo "⚠️ Schema already applied by old migrations (Duplicate column). Marking bookings up to 0005 as applied (--fake), then re-running migrate."
+      python manage.py migrate bookings 0005_telegram_link_token --fake
+      python manage.py migrate --noinput
     else
       echo "$MIGRATE_OUT"
       exit $MIGRATE_R
