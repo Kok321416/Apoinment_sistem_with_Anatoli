@@ -90,7 +90,7 @@ jobs:
           echo "📁 Using APP_DIR=$APP_DIR"
           cd "$APP_DIR"
 
-          # Создаем .env из Secrets (MySQL reg.ru + опционально бот)
+          # .env создаётся из GitHub Secrets — обновлять на сервере вручную не нужно
           cat > .env << EOF
           DB_NAME=${{ secrets.DB_NAME }}
           DB_USER=${{ secrets.DB_USER }}
@@ -100,8 +100,12 @@ jobs:
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           DEBUG=False
           ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
-          TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
           SITE_URL=${{ secrets.SITE_URL }}
+          GOOGLE_OAUTH_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_BOT_USERNAME=${{ secrets.TELEGRAM_BOT_USERNAME }}
+          ADMIN_TELEGRAM_USERNAME=${{ secrets.ADMIN_TELEGRAM_USERNAME }}
           EOF
 
           # Ensure predictable PATH in non-interactive SSH

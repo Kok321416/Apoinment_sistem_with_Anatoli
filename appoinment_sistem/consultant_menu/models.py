@@ -178,6 +178,7 @@ class Integration(models.Model):
     google_calendar_enabled = models.BooleanField(default=False, verbose_name='Google Calendar включен')
     google_calendar_connected = models.BooleanField(default=False, verbose_name='Google Calendar подключен')
     google_calendar_id = models.CharField(max_length=255, blank=True, null=True, verbose_name='ID календаря Google')
+    google_refresh_token = models.CharField(max_length=500, blank=True, null=True, verbose_name='Google refresh token')
     
     # Telegram
     telegram_enabled = models.BooleanField(default=False, verbose_name='Telegram уведомления включены')

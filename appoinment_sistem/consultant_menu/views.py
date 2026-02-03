@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from consultant_menu.models import Consultant, Clients, Category, Calendar, Service, TimeSlot, Booking, Integration
 from django.http import Http404, JsonResponse
 from datetime import datetime, date, timedelta
@@ -714,6 +715,105 @@ def profile_view(request):
 
 
 # ========== ИНТЕГРАЦИИ ==========
+def google_calendar_connect(request):
+    """Редирект на Google OAuth для доступа к календарю (scope calendar.events)."""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    try:
+        consultant = Consultant.objects.get(user=request.user)
+    except Consultant.DoesNotExist:
+        return redirect('home')
+    client_id = getattr(settings, 'GOOGLE_OAUTH_CLIENT_ID', '') or ''
+    client_secret = getattr(settings, 'GOOGLE_OAUTH_CLIENT_SECRET', '') or ''
+    if not client_id or not client_secret:
+        return redirect('integrations')
+    try:
+        from google_auth_oauthlib.flow import Flow
+        redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback'))
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [redirect_uri],
+                }
+            },
+            scopes=getattr(settings, 'GOOGLE_CALENDAR_SCOPES', ['https://www.googleapis.com/auth/calendar.events']),
+        )
+        flow.redirect_uri = redirect_uri
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            prompt='consent',
+            state=str(consultant.id),
+        )
+        request.session['google_calendar_oauth_state'] = state
+        return redirect(authorization_url)
+    except Exception:
+        request.session['integrations_error'] = 'Ошибка подключения Google Calendar. Проверьте настройки GOOGLE_OAUTH в .env.'
+        return redirect('integrations')
+
+
+def google_calendar_callback(request):
+    """Callback после авторизации Google: сохраняем refresh_token в Integration."""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.GET.get('error'):
+        request.session['integrations_error'] = 'Доступ к Google Calendar не был предоставлен.'
+        return redirect('integrations')
+    state = request.session.get('google_calendar_oauth_state')
+    code = request.GET.get('code')
+    if not code or not state:
+        request.session['integrations_error'] = 'Неверный ответ от Google. Попробуйте снова.'
+        return redirect('integrations')
+    try:
+        consultant_id = int(state)
+        consultant = Consultant.objects.get(id=consultant_id)
+        if consultant.user_id != request.user.id:
+            request.session['integrations_error'] = 'Доступ запрещён.'
+            return redirect('integrations')
+    except (ValueError, Consultant.DoesNotExist):
+        request.session['integrations_error'] = 'Сессия истекла. Попробуйте снова.'
+        return redirect('integrations')
+    client_id = getattr(settings, 'GOOGLE_OAUTH_CLIENT_ID', '') or ''
+    client_secret = getattr(settings, 'GOOGLE_OAUTH_CLIENT_SECRET', '') or ''
+    if not client_id or not client_secret:
+        request.session['integrations_error'] = 'Google Calendar не настроен.'
+        return redirect('integrations')
+    try:
+        from google_auth_oauthlib.flow import Flow
+        redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback'))
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [redirect_uri],
+                }
+            },
+            scopes=getattr(settings, 'GOOGLE_CALENDAR_SCOPES', ['https://www.googleapis.com/auth/calendar.events']),
+        )
+        flow.redirect_uri = redirect_uri
+        flow.fetch_token(code=code)
+        credentials = flow.credentials
+        integration, _ = Integration.objects.get_or_create(consultant=consultant)
+        integration.google_refresh_token = credentials.refresh_token or ''
+        integration.google_calendar_id = integration.google_calendar_id or 'primary'
+        integration.google_calendar_connected = True
+        integration.google_calendar_enabled = True
+        integration.save()
+        if 'google_calendar_oauth_state' in request.session:
+            del request.session['google_calendar_oauth_state']
+        request.session['integrations_success'] = 'Google Calendar успешно подключён. Новые записи будут отображаться в календаре.'
+        return redirect('integrations')
+    except Exception as e:
+        request.session['integrations_error'] = f'Ошибка сохранения доступа: {e}'
+        return redirect('integrations')
+
+
 def integrations_view(request):
     """Страница интеграций с сервисами"""
     if not request.user.is_authenticated:
@@ -727,8 +827,8 @@ def integrations_view(request):
     # Создаем или получаем объект интеграции для консультанта
     integration, created = Integration.objects.get_or_create(consultant=consultant)
     
-    success = None
-    error = None
+    success = request.session.pop('integrations_success', None)
+    error = request.session.pop('integrations_error', None)
     
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -737,19 +837,18 @@ def integrations_view(request):
             integration.google_calendar_enabled = not integration.google_calendar_enabled
             integration.save()
             if integration.google_calendar_enabled:
-                success = 'Google Calendar включен (пока в режиме заглушки)'
+                success = 'Google Calendar включен'
             else:
                 success = 'Google Calendar отключен'
         
         elif action == 'connect_google':
-            integration.google_calendar_connected = True
-            integration.google_calendar_id = request.POST.get('calendar_id', '')
-            integration.save()
-            success = 'Google Calendar подключен (заглушка - реальное подключение будет добавлено позже)'
+            # Редирект на OAuth — обработка в google_calendar_callback
+            return redirect('google_calendar_connect')
         
         elif action == 'disconnect_google':
             integration.google_calendar_connected = False
             integration.google_calendar_id = None
+            integration.google_refresh_token = None
             integration.save()
             success = 'Google Calendar отключен'
         
