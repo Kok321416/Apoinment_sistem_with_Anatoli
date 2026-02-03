@@ -35,6 +35,10 @@ fi
 # 2) Бот и записи — appoiment_system (bookings, telegram_bot), корневой manage.py
 if [ -f "manage.py" ]; then
   echo "🔄 Migrating appoiment_system (bookings, telegram_bot)..."
+  # Удаляем старые файлы миграций от прошлой нумерации (иначе "multiple leaf nodes")
+  rm -f bookings/migrations/0002_calendar_day_settings.py \
+       bookings/migrations/0003_google_calendar_fields.py \
+       bookings/migrations/0004_telegram_link_token.py
   set +e
   MIGRATE_OUT=$(python manage.py migrate --noinput 2>&1)
   MIGRATE_R=$?
