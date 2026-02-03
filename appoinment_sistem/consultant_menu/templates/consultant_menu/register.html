@@ -6,54 +6,143 @@
     <title>Регистрация</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <style>
+        .auth-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 24px; }
+        .auth-method { display: flex; align-items: center; justify-content: center; padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; transition: all 0.2s; background: #fff; }
+        .auth-method:hover { border-color: #764ba2; background: #f9f7ff; }
+        .auth-method.selected { border-color: #764ba2; background: #f0ebff; }
+        .auth-method input { display: none; }
+        .auth-method.google-btn { border-color: #4285f4; }
+        .auth-method.google-btn.selected { background: #e8f0fe; border-color: #4285f4; }
+        .auth-method.telegram-btn { border-color: #0088cc; }
+        .auth-method.telegram-btn.selected { background: #e3f2fd; border-color: #0088cc; }
+        .auth-method.yandex-btn { opacity: 0.7; cursor: not-allowed; }
+        .auth-method.yandex-btn:hover { border-color: #e0e0e0; background: #fff; }
+        .auth-method-label { font-weight: 600; font-size: 15px; }
+        .auth-email-block { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; display: none; }
+        .auth-email-block.show { display: block; }
+        .hint { font-size: 13px; color: #666; margin-top: 8px; }
+    </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" style="max-width: 520px;">
         <h1>Регистрация</h1>
-        
+        <p class="hint">Укажите ФИО и телефон, затем выберите способ входа. Telegram для рассылки можно подключить позже в разделе «Интеграции».</p>
+
         {% if error %}
         <div class="error-message">{{ error }}</div>
         {% endif %}
 
-        {% load socialaccount %}
-        <a href="{% provider_login_url 'google' process='signup' next=request.GET.next|default:'/' %}" class="btn btn-google" style="display: block; width: 100%; margin-bottom: 0.75rem; background: #4285f4; color: #fff; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; box-sizing: border-box;">Зарегистрироваться через Google</a>
-        <a href="{% provider_login_url 'telegram' process='signup' next=request.GET.next|default:'/' %}" class="btn btn-telegram" style="display: block; width: 100%; margin-bottom: 1rem; background: #0088cc; color: #fff; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; box-sizing: border-box;">Зарегистрироваться через Telegram</a>
-        <p class="form-divider" style="text-align: center; margin: 1rem 0; color: #666;">или</p>
-
-        <form method="POST" action="{% url 'register' %}">
+        <form method="POST" action="{% url 'register' %}" id="register-form">
             {% csrf_token %}
+            <input type="hidden" name="auth_method" id="auth_method" value="email">
 
             <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required placeholder="your@email.com">
+                <label for="fio">ФИО:</label>
+                <input type="text" id="fio" name="fio" required placeholder="Иванов Иван Иванович" value="{{ fio|default:'' }}">
             </div>
 
             <div class="form-group">
-                <label for="password">Пароль:</label>
-                <input type="password" id="password" name="password" required placeholder="Введите пароль">
+                <label for="phone">Номер телефона:</label>
+                <input type="tel" id="phone" name="phone" required placeholder="+7 (999) 123-45-67" value="{{ phone|default:'' }}">
             </div>
 
             <div class="form-group">
-                <label for="phone">Телефон:</label>
-                <input type="tel" id="phone" name="phone" placeholder="+7 (999) 123-45-67">
-                <small>Укажите телефон ИЛИ Telegram username</small>
+                <label>Способ входа:</label>
+                <div class="auth-methods">
+                    <label class="auth-method telegram-btn" data-method="telegram">
+                        <input type="radio" name="auth_radio" value="telegram">
+                        <span class="auth-method-label">Telegram</span>
+                    </label>
+                    <label class="auth-method google-btn" data-method="google">
+                        <input type="radio" name="auth_radio" value="google">
+                        <span class="auth-method-label">Google</span>
+                    </label>
+                    <label class="auth-method yandex-btn" data-method="yandex" title="Скоро">
+                        <input type="radio" name="auth_radio" value="yandex" disabled>
+                        <span class="auth-method-label">Яндекс (скоро)</span>
+                    </label>
+                    <label class="auth-method" data-method="email">
+                        <input type="radio" name="auth_radio" value="email" checked>
+                        <span class="auth-method-label">Почта и пароль</span>
+                    </label>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="telegram_nickname">Telegram username:</label>
-                <input type="text" id="telegram_nickname" name="telegram_nickname" placeholder="@username">
-                <small>Без @, например: username</small>
+            <div class="auth-email-block show" id="email-block">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" placeholder="your@email.com" value="{{ email|default:'' }}">
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль:</label>
+                    <input type="password" id="password" name="password" placeholder="Введите пароль">
+                </div>
+                <div class="form-group">
+                    <label for="password_confirm">Подтверждение пароля:</label>
+                    <input type="password" id="password_confirm" name="password_confirm" placeholder="Повторите пароль">
+                </div>
             </div>
 
-            <button type="submit" class="btn">Зарегистрироваться</button>
-            </form>
-        
+            <button type="submit" class="btn" id="submit-btn">Зарегистрироваться</button>
+        </form>
+
         <div class="links">
             <p>Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
             <p><a href="{% url 'home' %}">На главную</a></p>
         </div>
     </div>
+
+    <script>
+        (function() {
+            var form = document.getElementById('register-form');
+            var authMethod = document.getElementById('auth_method');
+            var emailBlock = document.getElementById('email-block');
+            var emailInput = document.getElementById('email');
+            var passwordInput = document.getElementById('password');
+            var passwordConfirm = document.getElementById('password_confirm');
+            var radios = document.querySelectorAll('input[name="auth_radio"]');
+            var labels = document.querySelectorAll('.auth-method');
+
+            function setMethod(method) {
+                authMethod.value = method;
+                labels.forEach(function(l) { l.classList.remove('selected'); });
+                var label = document.querySelector('.auth-method[data-method="' + method + '"]');
+                if (label) label.classList.add('selected');
+                if (method === 'email') {
+                    emailBlock.classList.add('show');
+                    emailInput.required = true;
+                    passwordInput.required = true;
+                    passwordConfirm.required = true;
+                } else {
+                    emailBlock.classList.remove('show');
+                    emailInput.required = false;
+                    passwordInput.required = false;
+                    passwordConfirm.required = false;
+                }
+            }
+
+            labels.forEach(function(label) {
+                if (label.classList.contains('yandex-btn')) return;
+                label.addEventListener('click', function() {
+                    var method = label.getAttribute('data-method');
+                    if (method === 'yandex') return;
+                    var radio = label.querySelector('input[type="radio"]');
+                    if (radio && radio.disabled) return;
+                    setMethod(method);
+                });
+            });
+
+            form.addEventListener('submit', function(e) {
+                if (authMethod.value === 'email') {
+                    if (passwordInput.value !== passwordConfirm.value) {
+                        e.preventDefault();
+                        alert('Пароли не совпадают');
+                        return;
+                    }
+                }
+            });
+        })();
+    </script>
 </body>
 </html>
-
-

@@ -29,50 +29,87 @@ def _normalize_url(value: str | None) -> str | None:
     return f"https://{value.lstrip('/')}"
 
 
+def _parse_fio(fio_str):
+    """Разбивает строку ФИО на фамилию, имя, отчество."""
+    parts = (fio_str or "").strip().split()
+    last_name = parts[0] if parts else ""
+    first_name = parts[1] if len(parts) > 1 else ""
+    middle_name = " ".join(parts[2:]) if len(parts) > 2 else ""
+    return first_name, last_name, middle_name
+
+
 # ========== РЕГИСТРАЦИЯ (HTML) ==========
 def register_view(request):
-    """Регистрация через HTML форму"""
+    """Регистрация: ФИО + телефон, выбор способа входа (Telegram / Google / Яндекс-заглушка / почта+пароль)."""
     if request.user.is_authenticated:
         return redirect('home')
-    
+
     if request.method == 'POST':
-        email = request.POST.get('email')
-        password = request.POST.get('password')
+        fio = request.POST.get('fio', '').strip()
         phone = request.POST.get('phone', '').strip()
-        telegram_nickname = request.POST.get('telegram_nickname', '').strip()
+        auth_method = request.POST.get('auth_method', 'email')
 
-        
-        if not email or not password:
-            return render(request, 'consultant_menu/register.html', {'error': 'Заполните все поля'})
-
-        if not phone and not telegram_nickname:
-            return render (request, 'consultant_menu/register.html', {
-                'error': 'Необходимо указать телефон или Telegram username'
+        if not fio or not phone:
+            return render(request, 'consultant_menu/register.html', {
+                'error': 'Укажите ФИО и номер телефона',
+                'fio': fio, 'phone': phone, 'email': request.POST.get('email', ''),
             })
 
+        if auth_method == 'yandex':
+            return render(request, 'consultant_menu/register.html', {
+                'error': 'Вход через Яндекс будет доступен позже.',
+                'fio': fio, 'phone': phone,
+            })
+
+        if auth_method == 'telegram':
+            request.session['register_fio'] = fio
+            request.session['register_phone'] = phone
+            next_url = request.GET.get('next', '/')
+            return redirect(f'/accounts/telegram/login/?process=signup&next={next_url}')
+
+        if auth_method == 'google':
+            request.session['register_fio'] = fio
+            request.session['register_phone'] = phone
+            next_url = request.GET.get('next', '/')
+            return redirect(f'/accounts/google/login/?process=signup&next={next_url}')
+
+        # auth_method == 'email'
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        password_confirm = request.POST.get('password_confirm', '')
+
+        if not email or not password:
+            return render(request, 'consultant_menu/register.html', {
+                'error': 'Укажите email и пароль',
+                'fio': fio, 'phone': phone, 'email': email,
+            })
+        if password != password_confirm:
+            return render(request, 'consultant_menu/register.html', {
+                'error': 'Пароли не совпадают',
+                'fio': fio, 'phone': phone, 'email': email,
+            })
         if User.objects.filter(username=email).exists():
-            return render(request, 'consultant_menu/register.html', {'error': 'Пользователь с таким email уже зарегистрирован'})
-        
-        # Создаем пользователя
+            return render(request, 'consultant_menu/register.html', {
+                'error': 'Пользователь с таким email уже зарегистрирован',
+                'fio': fio, 'phone': phone, 'email': email,
+            })
+
+        first_name, last_name, middle_name = _parse_fio(fio)
         user = User.objects.create_user(username=email, email=email, password=password)
-        
-        # Создаем консультанта
         category, _ = Category.objects.get_or_create(name_category="Общая")
-        consultant = Consultant.objects.create(
+        Consultant.objects.create(
             user=user,
-            first_name="",
-            last_name="",
-            middle_name="",
+            first_name=first_name,
+            last_name=last_name,
+            middle_name=middle_name,
             email=email,
-            phone=phone or "",
-            telegram_nickname=telegram_nickname or "",
-            category_of_specialist=category
+            phone=phone,
+            telegram_nickname="",
+            category_of_specialist=category,
         )
-        
-        # Автоматически логиним
         login(request, user)
         return redirect('home')
-    
+
     return render(request, 'consultant_menu/register.html')
 
 

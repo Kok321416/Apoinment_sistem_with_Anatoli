@@ -77,8 +77,9 @@ SOCIALACCOUNT_PROVIDERS = {
         },
     },
     "telegram": {
+        # Telegram OAuth требует числовой bot_id (из токена: часть до двоеточия), не username
         "APP": {
-            "client_id": (os.getenv("TELEGRAM_BOT_USERNAME") or "").lstrip("@"),
+            "client_id": (os.getenv("TELEGRAM_BOT_TOKEN") or "").split(":")[0].strip(),
             "secret": os.getenv("TELEGRAM_BOT_TOKEN", ""),
         },
         "AUTH_PARAMS": {"auth_date_validity": 30},
@@ -106,7 +107,7 @@ ROOT_URLCONF = "appoinment_sistem.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
