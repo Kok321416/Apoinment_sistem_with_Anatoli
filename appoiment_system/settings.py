@@ -40,6 +40,24 @@ DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 _allowed = os.environ.get("ALLOWED_HOSTS", "").strip()
 ALLOWED_HOSTS = [h.strip() for h in _allowed.split(",") if h.strip()] if _allowed else []
 
+# Django 4+: без этого POST с вашего домена за прокси даёт 403 CSRF
+_site = os.environ.get("SITE_URL", "").strip().rstrip("/")
+if _site:
+    if not _site.startswith("http"):
+        _site = "https://" + _site
+    CSRF_TRUSTED_ORIGINS = [_site]
+    if "www." not in _site and _site.startswith("https://"):
+        CSRF_TRUSTED_ORIGINS.append(_site.replace("https://", "https://www."))
+elif ALLOWED_HOSTS:
+    CSRF_TRUSTED_ORIGINS = []
+    for h in ALLOWED_HOSTS:
+        if h in ("127.0.0.1", "localhost"):
+            CSRF_TRUSTED_ORIGINS.append("http://" + h)
+        else:
+            CSRF_TRUSTED_ORIGINS.extend(["https://" + h, "http://" + h])
+else:
+    CSRF_TRUSTED_ORIGINS = []
+
 
 # Application definition
 

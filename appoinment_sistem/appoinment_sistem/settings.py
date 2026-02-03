@@ -176,6 +176,12 @@ REST_FRAMEWORK = {
     ],
 }
 
+# Google Calendar OAuth (из .env: GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET)
+# Redirect URI для календаря: https://ваш-домен/integrations/google/callback/
+GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID', '')
+GOOGLE_OAUTH_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET', '')
+GOOGLE_CALENDAR_SCOPES = ['https://www.googleapis.com/auth/calendar.events']
+
 # Безопасность для продакшена
 if not DEBUG:
     # Проверяем, используется ли HTTPS через переменную окружения

@@ -199,14 +199,22 @@ docker-compose up -d --build
 
 При ошибке **"missing server host"** в логе Actions причина — не заданы секреты репозитория. Workflow подставляет их в `appleboy/ssh-action`; если секрет пустой, хост не передаётся.
 
-**Что сделать:** зайти в репозиторий на GitHub → **Settings** → **Secrets and variables** → **Actions** и добавить:
+**Что сделать:** зайти в репозиторий на GitHub → **Settings** → **Secrets and variables** → **Actions** и добавить секреты. При каждом деплое из них автоматически собирается файл `.env` на сервере — вручную его править не нужно.
+
+**Подключение по SSH:**
 
 | Секрет        | Описание |
 |---------------|----------|
-| `VPS_HOST`   | IP или домен сервера (например `123.45.67.89` или `vps.example.com`) |
+| `VPS_HOST`   | IP или домен сервера |
 | `VPS_USER`   | SSH-логин на сервере |
 | `VPS_SSH_KEY`| Приватный SSH-ключ (содержимое файла, без пароля) |
 | `APP_DIR`    | Путь на сервере до приложения (например `/home/user/appointment-system`) |
+| `PYTHON_BIN` | (опционально) Путь к Python на сервере |
+
+**Переменные для .env (подставляются при деплое):**
+
+| Секрет        | Описание |
+|---------------|----------|
 | `DB_NAME`    | Имя БД MySQL |
 | `DB_USER`    | Пользователь MySQL |
 | `DB_PASSWORD`| Пароль MySQL |
@@ -214,6 +222,13 @@ docker-compose up -d --build
 | `DB_PORT`    | Порт БД (обычно `3306`) |
 | `SECRET_KEY` | Django SECRET_KEY |
 | `ALLOWED_HOSTS` | Домен(ы) через запятую |
-| `PYTHON_BIN` | (опционально) Путь к Python на сервере, например `/opt/python/python-3.10.1/bin/python` |
+| `SITE_URL`   | Полный URL сайта (например `https://allyourclients.ru`) |
+| `GOOGLE_OAUTH_CLIENT_ID` | Google OAuth Client ID |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth Client Secret |
+| `TELEGRAM_BOT_TOKEN` | Токен бота от BotFather |
+| `TELEGRAM_BOT_USERNAME` | Логин бота (например `all_your_clients_bot`) |
+| `ADMIN_TELEGRAM_USERNAME` | Логин администрации для кнопки «Связаться» |
+
+Чтобы изменить настройки на сервере — обновите нужный секрет в GitHub, затем заново запустите деплой (Actions → Deploy to VPS → Run workflow).
 
 После добавления секретов перезапустите failed workflow (Re-run jobs).

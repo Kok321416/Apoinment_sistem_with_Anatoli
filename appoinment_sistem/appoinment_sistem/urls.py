@@ -22,7 +22,8 @@ from django.conf.urls.static import static
 from consultant_menu.views import (
     ConsultantAPIView, RegisterView, LoginView, LogoutView,
     home_view, calendars_view, services_view, logout_view,
-    register_view, login_view, calendar_view, public_booking_view, get_available_slots_api, booking_view, profile_view, integrations_view
+    register_view, login_view, calendar_view, public_booking_view, get_available_slots_api, booking_view, profile_view,
+    integrations_view, google_calendar_connect, google_calendar_callback,
 )
 
 urlpatterns = [
@@ -60,6 +61,8 @@ urlpatterns = [
     
     # Интеграции
     path("integrations/", integrations_view, name="integrations"),
+    path("integrations/google/connect/", google_calendar_connect, name="google_calendar_connect"),
+    path("integrations/google/callback/", google_calendar_callback, name="google_calendar_callback"),
 
 ]
 

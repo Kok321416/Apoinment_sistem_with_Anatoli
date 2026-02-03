@@ -89,7 +89,7 @@
         </div>
 
         {% if error %}
-        <div class="error-message">{{ error }}</div>
+        <div class="error-message" style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin: 20px 0;">{{ error }}</div>
         {% endif %}
 
         {% if success %}
@@ -99,11 +99,6 @@
         {% endif %}
 
         <div class="integrations-container">
-            <div class="placeholder-note">
-                <strong>⚠️ Внимание:</strong> Интеграции находятся в режиме разработки. 
-                Сейчас доступны заглушки для подключения. Полная функциональность будет добавлена позже.
-            </div>
-
             <!-- Google Calendar -->
             <div class="integration-card">
                 <div class="integration-header">
@@ -111,7 +106,9 @@
                         <span class="integration-icon">📅</span>
                         Google Calendar
                     </h3>
-                    {% if integration.google_calendar_enabled %}
+                    {% if integration.google_calendar_connected %}
+                    <span class="status-badge status-connected">Подключено</span>
+                    {% elif integration.google_calendar_enabled %}
                     <span class="status-badge status-enabled">Включено</span>
                     {% else %}
                     <span class="status-badge status-disabled">Отключено</span>
@@ -119,8 +116,8 @@
                 </div>
 
                 <div class="integration-description">
-                    <p>Синхронизируйте свои записи с Google Calendar. Новые записи автоматически 
-                    будут добавлены в ваш календарь, а изменения в календаре будут отражены в системе.</p>
+                    <p>Синхронизируйте свои записи с Google Calendar. Подключите аккаунт Google — новые записи 
+                    будут автоматически добавляться в ваш календарь (primary).</p>
                 </div>
 
                 {% if integration.google_calendar_connected %}
@@ -138,16 +135,12 @@
                 {% else %}
                 <div>
                     {% if integration.google_calendar_enabled %}
-                    <form method="POST" class="connect-form">
+                    <form method="POST" style="margin-top: 10px;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="connect_google">
-                        <div class="form-group">
-                            <label>ID календаря (заглушка):</label>
-                            <input type="text" name="calendar_id" placeholder="primary" value="primary">
-                            <small>В будущем здесь будет OAuth авторизация</small>
-                        </div>
-                        <button type="submit" class="btn">🔗 Подключить Google Calendar</button>
+                        <button type="submit" class="btn">🔗 Подключить через Google</button>
                     </form>
+                    <p style="margin-top: 10px; color: #666; font-size: 14px;">Вы будете перенаправлены на страницу входа Google для предоставления доступа к календарю.</p>
                     {% else %}
                     <form method="POST">
                         {% csrf_token %}
