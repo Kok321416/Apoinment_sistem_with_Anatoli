@@ -52,21 +52,23 @@ jobs:
           fi
           cd "$APP_DIR"
 
-          # На reg.ru нет sudo и нет доступа к systemd — не используем sudo
-          # Код на сервер попадает через основной workflow (deploy.yml, SCP), git pull на shared-хостинге часто без учётки
-          git pull origin main || true
+          # Код на сервер попадает через основной workflow (deploy.yml, SCP). git pull не делаем — без учётки даёт "could not read Username".
 
           export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-          [ -d venv ] && . venv/bin/activate || true
+          if [ ! -d venv ]; then
+            echo "::error::venv not found. Run workflow 'Deploy to VPS' first to create venv and upload code."
+            exit 1
+          fi
+          . venv/bin/activate
           pip install -q -r requirements.txt
+          pip install -q --upgrade certifi
 
-          # Не делаем source .env — в нём SECRET_KEY и др. с символами (), $; оболочка падает с syntax error.
           # Django загружает .env сам через load_dotenv() в appoiment_system/settings.py.
-          # TELEGRAM_BOT_TOKEN и SITE_URL уже в окружении (envs в workflow).
           export TELEGRAM_BOT_TOKEN
           export SITE_URL
 
-          python manage.py migrate --noinput 2>/dev/null || true
+          # Миграции для appoiment_system (bookings, telegram_bot) — иначе Table bookings_userprofile doesn't exist
+          python manage.py migrate --noinput
           python manage.py collectstatic --noinput 2>/dev/null || true
 
           BOT_PIDFILE="$APP_DIR/bot.pid"
