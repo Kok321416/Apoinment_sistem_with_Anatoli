@@ -8,6 +8,8 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from consultant_menu.models import Consultant, Clients, Category, Calendar, Service, TimeSlot, Booking, Integration
 from django.http import Http404, JsonResponse
+from allauth.socialaccount.models import SocialAccount
+from allauth.account.models import EmailAddress
 from datetime import datetime, date, timedelta
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -744,10 +746,21 @@ def profile_view(request):
             except Exception as e:
                 error = f'Ошибка при обновлении: {str(e)}'
 
+    # Подключённые способы входа (Telegram, Google, почта) для блока «Способы входа»
+    connected_providers = set(
+        sa.provider for sa in SocialAccount.objects.filter(user=request.user)
+    )
+    primary_email = None
+    primary_obj = EmailAddress.objects.filter(user=request.user, primary=True).first()
+    if primary_obj:
+        primary_email = primary_obj.email
+
     return render(request, 'consultant_menu/profile.html', {
         'consultant': consultant,
         'success': success,
-        'error': error
+        'error': error,
+        'connected_providers': connected_providers,
+        'primary_email': primary_email,
     })
 
 

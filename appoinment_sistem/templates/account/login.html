@@ -1,0 +1,67 @@
+{% load i18n %}
+{% load static %}
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Войти</title>
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <style>
+        .auth-card { max-width: 420px; margin: 60px auto; }
+        .auth-card .container { padding: 40px 36px; }
+        .auth-divider { text-align: center; margin: 24px 0 20px; color: #888; font-size: 14px; }
+        .auth-divider::before, .auth-divider::after { content: ''; display: inline-block; width: 60px; height: 1px; background: #e0e0e0; vertical-align: middle; margin: 0 12px; }
+        .btn-provider { display: block; width: 100%; padding: 14px 20px; margin-bottom: 12px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; box-sizing: border-box; transition: opacity 0.2s, transform 0.2s; }
+        .btn-provider:hover { opacity: 0.92; transform: translateY(-1px); }
+        .btn-google { background: #4285f4; color: #fff; }
+        .btn-telegram { background: #0088cc; color: #fff; }
+        .btn-submit { width: 100%; padding: 14px 20px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; margin-top: 8px; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(118, 75, 162, 0.35); }
+        .auth-links { margin-top: 24px; text-align: center; font-size: 14px; }
+        .auth-links a { color: #764ba2; text-decoration: none; margin: 0 10px; font-weight: 500; }
+        .auth-links a:hover { text-decoration: underline; color: #667eea; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; color: #764ba2; font-weight: 500; margin-bottom: 6px; font-size: 14px; }
+        .form-group input { width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        .form-group input:focus { outline: none; border-color: #764ba2; box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.1); }
+        .errorlist { list-style: none; padding: 0; margin: 8px 0 0; color: #c33; font-size: 13px; }
+        .signup-hint { margin-bottom: 20px; color: #555; font-size: 15px; line-height: 1.5; }
+        .signup-hint a { color: #764ba2; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <div class="container">
+            <h1>Войти</h1>
+            {% if not SOCIALACCOUNT_ONLY %}
+                <p class="signup-hint">Если у вас ещё нет учётной записи, <a href="{{ signup_url }}">зарегистрируйтесь</a>.</p>
+                <form method="post" action="{% url 'account_login' %}">
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="form-group">
+                            {% if field.label %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{% endif %}
+                            {{ field }}
+                            {% if field.errors %}<ul class="errorlist">{{ field.errors }}</ul>{% endif %}
+                        </div>
+                    {% endfor %}
+                    {% if redirect_field_value %}
+                        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+                    {% endif %}
+                    <button type="submit" class="btn-submit">Войти</button>
+                </form>
+            {% endif %}
+            {% if SOCIALACCOUNT_ENABLED %}
+                <p class="auth-divider">Или использовать сторонний аккаунт</p>
+                <a href="{% provider_login_url 'google' next=request.GET.next|default:'/' %}" class="btn-provider btn-google">Google</a>
+                <a href="{% provider_login_url 'telegram' next=request.GET.next|default:'/' %}" class="btn-provider btn-telegram">Telegram</a>
+            {% endif %}
+            <div class="auth-links">
+                <a href="{% url 'home' %}">На главную</a>
+                {% if not SOCIALACCOUNT_ONLY %}<a href="{% url 'account_reset_password' %}">Забыли пароль?</a>{% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
