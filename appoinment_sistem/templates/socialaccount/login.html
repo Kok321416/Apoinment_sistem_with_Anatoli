@@ -1,0 +1,47 @@
+{% load i18n %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if process == "connect" %}Подключить {{ provider.name }}{% else %}Вход через {{ provider.name }}{% endif %}</title>
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <style>
+        .auth-card { max-width: 420px; margin: 60px auto; }
+        .auth-card .container { padding: 36px 32px; }
+        .provider-desc { color: #555; font-size: 16px; line-height: 1.5; margin: 16px 0 24px; }
+        .btn-provider { display: block; width: 100%; padding: 14px 20px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; box-sizing: border-box; transition: opacity 0.2s; }
+        .btn-provider:hover { opacity: 0.92; }
+        .btn-google { background: #4285f4; color: #fff; }
+        .btn-telegram { background: #0088cc; color: #fff; }
+        .btn-neutral { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+        .auth-links { margin-top: 24px; text-align: center; }
+        .auth-links a { color: #764ba2; text-decoration: none; margin: 0 8px; }
+        .auth-links a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <div class="container">
+            {% if process == "connect" %}
+                <h1>Подключить {{ provider.name }}</h1>
+                <p class="provider-desc">Вы собираетесь подключить стороннюю учётную запись {{ provider.name }} к вашему аккаунту.</p>
+            {% else %}
+                <h1>Вход через {{ provider.name }}</h1>
+                <p class="provider-desc">Вы будете перенаправлены на страницу входа {{ provider.name }}. После подтверждения вы вернётесь на сайт.</p>
+            {% endif %}
+            <form method="post" action="">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-provider {% if provider.id == 'google' %}btn-google{% elif provider.id == 'telegram' %}btn-telegram{% else %}btn-neutral{% endif %}">
+                    Продолжить
+                </button>
+            </form>
+            <div class="auth-links">
+                <a href="{% url 'login' %}">← Назад к входу</a>
+                <a href="{% url 'home' %}">На главную</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
