@@ -151,11 +151,17 @@ jobs:
             cp .htaccess.bak .htaccess
           fi
 
-          # Django migrate + collectstatic
+          # Django migrate + collectstatic (основной сайт — appoinment_sistem)
           cd appoinment_sistem
           python manage.py migrate --noinput
           python manage.py collectstatic --noinput
           cd ..
+
+          # Миграции для appoiment_system (bookings, telegram_bot) — один .env, одна БД; иначе бот падает с "Table bookings_userprofile doesn't exist"
+          if [ -f manage.py ]; then
+            python manage.py migrate --noinput
+          fi
+          pip install -q --upgrade certifi
 
           # Passenger restart hook (safe even if Passenger is not used)
           mkdir -p tmp
