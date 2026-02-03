@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("bookings", "0002_calendar_day_settings"),
+        ("bookings", "0003_calendar_day_settings"),
     ]
 
     operations = [
