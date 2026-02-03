@@ -3,9 +3,10 @@ Telegram бот для системы записи на консультации
 """
 import json
 import logging
+import uuid
 from django.conf import settings
 from django.utils import timezone
-from bookings.models import UserProfile, Appointment, Specialist, Service, TimeSlot
+from bookings.models import UserProfile, Appointment, Specialist, Service, TimeSlot, TelegramLinkToken
 from django.contrib.auth.models import User
 import requests
 
@@ -67,6 +68,7 @@ def get_main_reply_keyboard():
     return {
         'keyboard': [
             [{'text': '📱 Записаться'}, {'text': '📋 Мои записи'}],
+            [{'text': '📜 История'}, {'text': '📞 Связаться'}],
             [{'text': '❓ Помощь'}],
         ],
         'resize_keyboard': True,
@@ -154,12 +156,22 @@ def handle_telegram_update(update_data):
             
             if text == '/start':
                 handle_start_command(chat_id, user_id, username, first_name)
+            elif text.startswith('/start link_'):
+                token_str = text.replace('/start link_', '').strip()
+                if token_str and handle_link_token(chat_id, user_id, username, first_name, token_str):
+                    pass
+                else:
+                    handle_start_command(chat_id, user_id, username, first_name)
             elif text == '/register':
                 handle_register_command(chat_id, user_id, username, first_name)
             elif text == '/appointments' or text == '📋 Мои записи':
                 handle_appointments_command(chat_id, user_id)
             elif text == '/help' or text == '❓ Помощь':
                 handle_help_command(chat_id)
+            elif text == '📜 История' or text == '/history':
+                handle_history_command(chat_id, user_id)
+            elif text == '📞 Связаться' or text == '/admin':
+                handle_contact_admin_command(chat_id)
             elif text == '📱 Записаться':
                 _send_webapp_button(chat_id)
             else:
@@ -180,6 +192,9 @@ def handle_telegram_update(update_data):
                 handle_specialist_next_appointments(chat_id, user_id)
             elif data == 'help':
                 handle_help_command(chat_id)
+            elif data == 'history':
+                user_id = callback_query['from']['id']
+                handle_history_command(chat_id, user_id)
             elif data.startswith('cancel_'):
                 appointment_id = int(data.split('_')[1])
                 handle_cancel_appointment(chat_id, appointment_id)
@@ -191,6 +206,32 @@ def handle_telegram_update(update_data):
     
     except Exception as e:
         logger.error(f"Ошибка обработки обновления Telegram: {e}")
+
+
+def handle_link_token(chat_id, user_id, username, first_name, token_str):
+    """
+    Обработка /start link_TOKEN: привязка Telegram к аккаунту специалиста (или клиента).
+    Возвращает True, если токен найден и привязка выполнена.
+    """
+    try:
+        link_token = TelegramLinkToken.objects.filter(token=token_str, used=False).first()
+        if not link_token:
+            return False
+        user = link_token.user
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        profile.telegram_id = user_id
+        profile.telegram_username = username or profile.telegram_username
+        profile.save()
+        link_token.used = True
+        link_token.save()
+        if getattr(profile, 'user_type', None) == 'specialist':
+            send_telegram_message(chat_id, "✅ Telegram привязан. Теперь вы можете пользоваться ботом как специалист.", get_main_reply_keyboard())
+        else:
+            send_telegram_message(chat_id, "✅ Telegram привязан к вашему аккаунту.", get_main_reply_keyboard())
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка привязки по токену: {e}")
+        return False
 
 
 def handle_start_command(chat_id, user_id, username, first_name):
@@ -214,6 +255,51 @@ def handle_start_command(chat_id, user_id, username, first_name):
         tg_client.save()
 
         profile = UserProfile.objects.filter(telegram_id=user_id).first()
+
+        # Авторизация клиента по записям: если записывался по ссылке с @username — создаём User+Profile и привязываем записи
+        if not profile and username:
+            norm = f"@{username}" if not username.startswith('@') else username
+            appointments_by_telegram = Appointment.objects.filter(
+                client_telegram__iexact=norm
+            ).order_by('-appointment_date')
+            if appointments_by_telegram.exists():
+                first_app = appointments_by_telegram.first()
+                uname = f"telegram_{user_id}"
+                if User.objects.filter(username=uname).exists():
+                    user = User.objects.get(username=uname)
+                else:
+                    user = User.objects.create_user(
+                        username=uname,
+                        email=first_app.client_email or f"{uname}@telegram.user",
+                        password=uuid.uuid4().hex,
+                    )
+                    user.set_unusable_password()
+                    user.save()
+                profile, _ = UserProfile.objects.get_or_create(
+                    user=user,
+                    defaults={"user_type": "client", "telegram_username": username or ""},
+                )
+                profile.telegram_id = user_id
+                profile.telegram_username = username or profile.telegram_username
+                profile.save()
+                appointments_by_telegram.update(client=user)
+                send_telegram_message(
+                    chat_id,
+                    "✅ Вы подтвердили Telegram по вашей записи. Теперь здесь видны «Мои записи».",
+                    get_main_reply_keyboard(),
+                )
+                # Показываем кнопки как у зарегистрированного клиента
+                webapp_url = f"{get_site_url()}/telegram/appointment/"
+                keyboard = {
+                    'inline_keyboard': [
+                        [{'text': '📱 Записаться на консультацию', 'web_app': {'url': webapp_url}}],
+                        [{'text': '📋 Мои записи', 'callback_data': 'my_appointments'}, {'text': '❓ Помощь', 'callback_data': 'help'}],
+                    ]
+                }
+                send_telegram_message(chat_id, "Выберите действие:", keyboard)
+                send_telegram_message(chat_id, "Меню:", get_main_reply_keyboard())
+                return
+            profile = UserProfile.objects.filter(telegram_id=user_id).first()
         
         # Если это специалист — показываем меню специалиста
         if profile and profile.user_type == "specialist":
@@ -240,18 +326,20 @@ def handle_start_command(chat_id, user_id, username, first_name):
         if tg_client.last_specialist_id:
             webapp_url = f"{webapp_url}?specialist_id={tg_client.last_specialist_id}"
 
+        admin_username = getattr(settings, 'ADMIN_TELEGRAM_USERNAME', 'andrievskypsy').lstrip('@')
         keyboard = {
             'inline_keyboard': [
                 [
-                    {
-                        'text': '📱 Записаться на консультацию',
-                        'web_app': {'url': webapp_url}
-                    }
+                    {'text': '📱 Записаться на консультацию', 'web_app': {'url': webapp_url}},
                 ],
                 [
                     {'text': '📋 Мои записи', 'callback_data': 'my_appointments'},
-                    {'text': '❓ Помощь', 'callback_data': 'help'}
-                ]
+                    {'text': '📜 История', 'callback_data': 'history'},
+                ],
+                [
+                    {'text': '📞 Связаться с администрацией', 'url': f'https://t.me/{admin_username}'},
+                    {'text': '❓ Помощь', 'callback_data': 'help'},
+                ],
             ]
         }
         
@@ -300,6 +388,57 @@ def handle_register_command(chat_id, user_id, username, first_name):
 • Управлять записями
 """
     send_telegram_message(chat_id, message)
+
+
+def handle_history_command(chat_id, user_id):
+    """Показать историю: к каким специалистам уже записывался пользователь."""
+    try:
+        from django.db.models import Count
+        profile = UserProfile.objects.filter(telegram_id=user_id).select_related('user').first()
+        if not profile or not profile.user:
+            # Пробуем по TelegramClient — записи по client_telegram
+            tg_client = TelegramClient.objects.filter(telegram_id=user_id).first()
+            if not tg_client or not tg_client.telegram_username:
+                send_telegram_message(chat_id, "У вас пока нет записей. Запишитесь через кнопку «Записаться».", get_main_reply_keyboard())
+                return
+            norm = f"@{tg_client.telegram_username}" if not tg_client.telegram_username.startswith('@') else tg_client.telegram_username
+            qs = Appointment.objects.filter(client_telegram__iexact=norm).exclude(status='cancelled')
+        else:
+            qs = Appointment.objects.filter(client=profile.user).exclude(status='cancelled')
+        # Группируем по специалисту: specialist_id -> count
+        by_specialist = qs.values('specialist').annotate(cnt=Count('id')).order_by('-cnt')
+        if not by_specialist:
+            send_telegram_message(chat_id, "У вас пока нет записей к специалистам.", get_main_reply_keyboard())
+            return
+        specialists = Specialist.objects.filter(id__in=[x['specialist'] for x in by_specialist]).select_related('user')
+        spec_map = {s.id: (s.user.get_full_name() or s.user.username) for s in specialists}
+        lines = ["📜 <b>К кому вы уже записывались:</b>\n"]
+        for item in by_specialist:
+            name = spec_map.get(item['specialist'], 'Специалист')
+            cnt = item['cnt']
+            _raz = "раз" if cnt == 1 else ("раза" if 2 <= cnt <= 4 else "раз")
+            lines.append(f"• {name} — {cnt} {_raz}")
+        send_telegram_message(chat_id, "\n".join(lines), get_main_reply_keyboard())
+    except Exception as e:
+        logger.error(f"Ошибка истории записей: {e}")
+        send_telegram_message(chat_id, "Не удалось загрузить историю. Попробуйте позже.", get_main_reply_keyboard())
+
+
+def handle_contact_admin_command(chat_id):
+    """Связь с администрацией: кнопка для перехода в Telegram @andrievskypsy."""
+    admin_username = getattr(settings, 'ADMIN_TELEGRAM_USERNAME', 'andrievskypsy').lstrip('@')
+    url = f"https://t.me/{admin_username}"
+    keyboard = {
+        'inline_keyboard': [
+            [{'text': '📞 Написать администрации', 'url': url}],
+        ]
+    }
+    send_telegram_message(
+        chat_id,
+        "По вопросам записи и консультаций обращайтесь к администрации. Нажмите кнопку ниже, чтобы написать в Telegram:",
+        keyboard,
+    )
+    send_telegram_message(chat_id, "Меню:", get_main_reply_keyboard())
 
 
 def handle_appointments_command(chat_id, user_id):
@@ -449,16 +588,16 @@ def handle_book_appointment(chat_id, service_id):
 
 def handle_help_command(chat_id):
     """Показать справку"""
+    admin_username = getattr(settings, 'ADMIN_TELEGRAM_USERNAME', 'andrievskypsy').lstrip('@')
     keyboard = {
         'inline_keyboard': [
             [
-                {
-                    'text': '📱 Записаться на консультацию',
-                            'web_app': {'url': f'{get_site_url()}/telegram/appointment/'}
-                }
+                {'text': '📱 Записаться', 'web_app': {'url': f'{get_site_url()}/telegram/appointment/'}},
+                {'text': '📋 Мои записи', 'callback_data': 'my_appointments'},
             ],
             [
-                {'text': '📋 Мои записи', 'callback_data': 'my_appointments'}
+                {'text': '📜 История', 'callback_data': 'history'},
+                {'text': '📞 Связаться', 'url': f'https://t.me/{admin_username}'},
             ]
         ]
     }
@@ -469,14 +608,15 @@ def handle_help_command(chat_id):
 /start - Начать работу с ботом
 /register - Регистрация в системе
 /appointments - Мои записи
+/history - К кому уже записывались
+/admin - Связаться с администрацией (@"""+admin_username+""")
 /help - Эта справка
 
 <b>Возможности:</b>
 • Запись на консультацию через мини-приложение
-• Получение уведомлений о записях
-• Просмотр своих записей
-• Управление записями
-• Информационные сообщения от администрации
+• Просмотр своих записей и истории по специалистам
+• Связь с администрацией в Telegram
+• Уведомления о записях
 """
     send_telegram_message(chat_id, message, keyboard)
     send_telegram_message(chat_id, "Меню:", get_main_reply_keyboard())

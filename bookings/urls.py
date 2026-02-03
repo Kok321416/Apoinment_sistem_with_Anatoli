@@ -9,6 +9,7 @@ urlpatterns = [
     
     # Специалист
     path('specialist/dashboard/', views.specialist_dashboard, name='specialist_dashboard'),
+    path('specialist/link-telegram/', views.link_telegram_specialist, name='link_telegram_specialist'),
     path('specialist/calendar/', views.specialist_calendar, name='specialist_calendar'),
     path('specialist/appointments/', views.specialist_appointments, name='specialist_appointments'),
     path('specialist/calendars/', views.specialist_calendars, name='specialist_calendars'),

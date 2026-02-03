@@ -7,7 +7,8 @@ from django.utils import timezone
 from django.conf import settings
 from django.urls import reverse
 from datetime import datetime, date, time, timedelta
-from .models import Specialist, Appointment, UserProfile, TimeSlot, Calendar, Service
+import uuid
+from .models import Specialist, Appointment, UserProfile, TimeSlot, Calendar, Service, TelegramLinkToken
 from telegram_bot.bot import send_appointment_notification
 from .forms import UserRegistrationForm, AppointmentForm, CalendarForm, ServiceForm, TimeSlotForm
 
@@ -211,6 +212,24 @@ def specialist_dashboard(request):
 
 
 @login_required
+def link_telegram_specialist(request):
+    """Страница привязки Telegram для специалиста: генерирует одноразовую ссылку t.me/bot?start=link_TOKEN."""
+    try:
+        request.user.specialist
+    except Specialist.DoesNotExist:
+        messages.error(request, 'Вы не являетесь специалистом')
+        return redirect('home')
+    # Удаляем старые неиспользованные токены этого пользователя
+    TelegramLinkToken.objects.filter(user=request.user, used=False).delete()
+    token_str = uuid.uuid4().hex[:32]
+    TelegramLinkToken.objects.create(user=request.user, token=token_str)
+    bot_username = getattr(settings, 'TELEGRAM_BOT_USERNAME', 'All_Clients_bot').lstrip('@')
+    link = f"https://t.me/{bot_username}?start=link_{token_str}"
+    context = {'link': link, 'bot_username': bot_username}
+    return render(request, 'bookings/specialist/link_telegram.html', context)
+
+
+@login_required
 def specialist_calendar(request):
     """Календарь специалиста"""
     try:
@@ -357,6 +376,12 @@ def book_appointment(request, invite_link):
                 logger.error(f"Ошибка отправки уведомления в Telegram: {e}")
             
             messages.success(request, 'Запись успешно создана!')
+            if appointment.client_telegram:
+                bot_username = getattr(settings, 'TELEGRAM_BOT_USERNAME', 'All_Clients_bot').lstrip('@')
+                messages.info(
+                    request,
+                    f'Чтобы видеть запись в боте и получать уведомления, откройте @{bot_username} и нажмите /start.',
+                )
             return redirect('book_appointment', invite_link=invite_link)
     else:
         form = AppointmentForm(service=service)

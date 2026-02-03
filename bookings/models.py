@@ -170,3 +170,11 @@ class Appointment(models.Model):
     def __str__(self):
         return f"{self.client_name} -> {self.service.name} ({self.appointment_date})"
 
+
+class TelegramLinkToken(models.Model):
+    """Одноразовый токен для привязки Telegram к аккаунту специалиста (или клиента)."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='telegram_link_tokens')
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+

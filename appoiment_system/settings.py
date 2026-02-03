@@ -90,9 +90,11 @@ GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")
 GOOGLE_CALENDAR_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 
 # Telegram Bot Settings
-# Токен читается из переменной окружения TELEGRAM_BOT_TOKEN
-# Для локальной разработки можно указать напрямую, но лучше использовать .env файл
+# Токен и имя бота (для ссылки «Привязать Telegram»)
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '8590756308:AAE6xuAbwAk7delCmWM37hTnr5cQR5ZsDhw')
+TELEGRAM_BOT_USERNAME = os.environ.get('TELEGRAM_BOT_USERNAME', 'All_Clients_bot')
+# Telegram администрации для кнопки «Связаться»
+ADMIN_TELEGRAM_USERNAME = os.environ.get('ADMIN_TELEGRAM_USERNAME', 'andrievskypsy')
 
 # REST Framework settings
 REST_FRAMEWORK = {
