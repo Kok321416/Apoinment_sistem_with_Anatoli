@@ -35,7 +35,26 @@ fi
 # 2) Бот и записи — appoiment_system (bookings, telegram_bot), корневой manage.py
 if [ -f "manage.py" ]; then
   echo "🔄 Migrating appoiment_system (bookings, telegram_bot)..."
-  python manage.py migrate --noinput
+  set +e
+  MIGRATE_OUT=$(python manage.py migrate --noinput 2>&1)
+  MIGRATE_R=$?
+  set -e
+  if [ $MIGRATE_R -ne 0 ]; then
+    if echo "$MIGRATE_OUT" | grep -q "Conflicting migrations\|multiple leaf"; then
+      echo "⚠️ Conflicting migration names (old 0002/0003/0004 vs new 0003/0004/0005). Fixing: remove old rows, then --fake new."
+      python manage.py shell -c "
+from django.db import connection
+with connection.cursor() as c:
+  c.execute(\"DELETE FROM django_migrations WHERE app='bookings' AND name IN ('0002_calendar_day_settings', '0003_google_calendar_fields', '0004_telegram_link_token')\")
+"
+      python manage.py migrate bookings 0005_telegram_link_token --fake
+    else
+      echo "$MIGRATE_OUT"
+      exit $MIGRATE_R
+    fi
+  else
+    echo "$MIGRATE_OUT"
+  fi
   echo "✅ appoiment_system done"
 else
   echo "⚠️ manage.py not found, skip"
