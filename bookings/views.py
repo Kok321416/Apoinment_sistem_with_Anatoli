@@ -223,7 +223,7 @@ def link_telegram_specialist(request):
     TelegramLinkToken.objects.filter(user=request.user, used=False).delete()
     token_str = uuid.uuid4().hex[:32]
     TelegramLinkToken.objects.create(user=request.user, token=token_str)
-    bot_username = getattr(settings, 'TELEGRAM_BOT_USERNAME', 'All_Clients_bot').lstrip('@')
+    bot_username = (getattr(settings, 'TELEGRAM_BOT_USERNAME', '') or '').lstrip('@')
     link = f"https://t.me/{bot_username}?start=link_{token_str}"
     context = {'link': link, 'bot_username': bot_username}
     return render(request, 'bookings/specialist/link_telegram.html', context)
@@ -377,7 +377,7 @@ def book_appointment(request, invite_link):
             
             messages.success(request, 'Запись успешно создана!')
             if appointment.client_telegram:
-                bot_username = getattr(settings, 'TELEGRAM_BOT_USERNAME', 'All_Clients_bot').lstrip('@')
+                bot_username = (getattr(settings, 'TELEGRAM_BOT_USERNAME', '') or '').lstrip('@')
                 messages.info(
                     request,
                     f'Чтобы видеть запись в боте и получать уведомления, откройте @{bot_username} и нажмите /start.',
