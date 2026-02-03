@@ -36,7 +36,7 @@
         <div class="container">
             <h1>Войти</h1>
             {% if not SOCIALACCOUNT_ONLY %}
-                <p class="signup-hint">Если у вас ещё нет учётной записи, <a href="{{ signup_url }}">зарегистрируйтесь</a>.</p>
+                <p class="signup-hint">Если у вас ещё нет учётной записи, <a href="{% url 'register' %}">зарегистрируйтесь</a>.</p>
                 <form method="post" action="{% url 'account_login' %}">
                     {% csrf_token %}
                     {% for field in form %}

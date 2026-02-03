@@ -134,6 +134,10 @@
             });
 
             form.addEventListener('submit', function(e) {
+                var checkedRadio = form.querySelector('input[name="auth_radio"]:checked');
+                if (checkedRadio) {
+                    authMethod.value = checkedRadio.value;
+                }
                 if (authMethod.value === 'email') {
                     if (passwordInput.value !== passwordConfirm.value) {
                         e.preventDefault();
