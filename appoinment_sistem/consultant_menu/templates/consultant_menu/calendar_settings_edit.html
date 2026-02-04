@@ -34,6 +34,14 @@
             <input type="number" name="max_services_per_day" min="0" value="{{ calendar.max_services_per_day|default:0 }}">
             <p class="hint">Максимум записей в один день по этому календарю.</p>
 
+            <label>Первое напоминание в Telegram за (часов)</label>
+            <input type="number" name="reminder_hours_first" min="0" value="{{ calendar.reminder_hours_first|default:24 }}">
+            <p class="hint">За сколько часов до консультации отправлять первое уведомление (например 24 = за сутки).</p>
+
+            <label>Второе напоминание в Telegram за (часов)</label>
+            <input type="number" name="reminder_hours_second" min="0" value="{{ calendar.reminder_hours_second|default:1 }}">
+            <p class="hint">За сколько часов до консультации отправлять второе уведомление (например 1 = за час).</p>
+
             <button type="submit" class="btn-save">Сохранить</button>
         </form>
         <a href="{% url 'calendar_detail' calendar.id %}" class="btn-back">← Назад к календарю</a>

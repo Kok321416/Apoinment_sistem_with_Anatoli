@@ -384,6 +384,8 @@ def calendar_settings_edit(request, calendar_id):
         calendar.break_between_services_minutes = int(request.POST.get('break_between_services_minutes', 0) or 0)
         calendar.book_ahead_hours = int(request.POST.get('book_ahead_hours', 24) or 24)
         calendar.max_services_per_day = int(request.POST.get('max_services_per_day', 0) or 0)
+        calendar.reminder_hours_first = int(request.POST.get('reminder_hours_first', 24) or 24)
+        calendar.reminder_hours_second = int(request.POST.get('reminder_hours_second', 1) or 1)
         calendar.save()
         return redirect('calendar_detail', calendar_id=calendar.id)
 
@@ -592,6 +594,8 @@ def confirm_specialist_telegram_api(request):
     API для бота: привязать telegram_id специалиста к Integration по одноразовому link_token.
     POST JSON: {"link_token": "...", "telegram_id": 123456789}
     """
+    import logging
+    logger = logging.getLogger(__name__)
     try:
         import json
         data = json.loads(request.body) if request.body else {}
@@ -600,23 +604,28 @@ def confirm_specialist_telegram_api(request):
     link_token = (data.get('link_token') or '').strip()
     telegram_id = data.get('telegram_id')
     if not link_token or telegram_id is None:
+        logger.warning("confirm_specialist_telegram_api: missing link_token or telegram_id")
         return JsonResponse({'success': False, 'error': 'link_token and telegram_id required'}, status=400)
     try:
         integration = Integration.objects.get(telegram_link_token=link_token)
     except Integration.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Invalid or expired link'}, status=404)
+        logger.warning("confirm_specialist_telegram_api: Integration not found for token (len=%s)", len(link_token))
+        return JsonResponse({'success': False, 'error': 'Ссылка недействительна или уже использована'}, status=404)
     created_at = integration.telegram_link_token_created_at
-    if created_at and (timezone.now() - created_at).total_seconds() > 900:
+    # Токен действует 30 минут (1800 сек)
+    if created_at and (timezone.now() - created_at).total_seconds() > 1800:
         integration.telegram_link_token = None
         integration.telegram_link_token_created_at = None
         integration.save(update_fields=['telegram_link_token', 'telegram_link_token_created_at'])
-        return JsonResponse({'success': False, 'error': 'Link expired'}, status=400)
+        logger.info("confirm_specialist_telegram_api: token expired for consultant id=%s", integration.consultant_id)
+        return JsonResponse({'success': False, 'error': 'Ссылка истекла. Запросите новую на странице интеграций.'}, status=400)
     integration.telegram_chat_id = str(int(telegram_id))
     integration.telegram_connected = True
     integration.telegram_enabled = True
     integration.telegram_link_token = None
     integration.telegram_link_token_created_at = None
     integration.save(update_fields=['telegram_chat_id', 'telegram_connected', 'telegram_enabled', 'telegram_link_token', 'telegram_link_token_created_at'])
+    logger.info("confirm_specialist_telegram_api: OK consultant_id=%s telegram_id=%s", integration.consultant_id, telegram_id)
     return JsonResponse({'success': True, 'message': 'Telegram подключен'})
 
 

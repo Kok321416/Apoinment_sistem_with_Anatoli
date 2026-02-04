@@ -76,6 +76,17 @@ class Calendar(models.Model):
         default=0,
         verbose_name='Лимит записей в день (0 — без лимита)',
     )
+    # За сколько часов до консультации отправлять уведомления в Telegram (клиенту и специалисту)
+    reminder_hours_first = models.PositiveIntegerField(
+        default=24,
+        verbose_name='Первое напоминание за (часов)',
+        help_text='Напоминание в Telegram за N часов до консультации (например 24 = за сутки)',
+    )
+    reminder_hours_second = models.PositiveIntegerField(
+        default=1,
+        verbose_name='Второе напоминание за (часов)',
+        help_text='Второе напоминание за N часов до консультации (например 1 = за час)',
+    )
 
     class Meta:
         db_table = 'calendars'
