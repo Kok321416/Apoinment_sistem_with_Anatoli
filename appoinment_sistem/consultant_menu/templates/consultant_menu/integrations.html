@@ -99,7 +99,7 @@
         {% endif %}
 
         <div class="integrations-container">
-            <!-- Google Calendar -->
+            <!-- Google Calendar: статус и кнопки по реальному состоянию -->
             <div class="integration-card">
                 <div class="integration-header">
                     <h3>
@@ -109,7 +109,7 @@
                     {% if integration.google_calendar_connected %}
                     <span class="status-badge status-connected">Подключено</span>
                     {% elif integration.google_calendar_enabled %}
-                    <span class="status-badge status-enabled">Включено</span>
+                    <span class="status-badge status-enabled">Включено, аккаунт не подключён</span>
                     {% else %}
                     <span class="status-badge status-disabled">Отключено</span>
                     {% endif %}
@@ -122,25 +122,25 @@
 
                 {% if integration.google_calendar_connected %}
                 <div>
-                    <span class="status-badge status-connected">Подключено</span>
+                    <p style="margin: 0 0 10px 0; color: #0c5460;">Аккаунт Google подключён.</p>
                     {% if integration.google_calendar_id %}
                     <p style="margin-top: 10px; color: #666;">Календарь: {{ integration.google_calendar_id }}</p>
                     {% endif %}
                     <form method="POST" style="margin-top: 15px;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="disconnect_google">
-                        <button type="submit" class="btn btn-secondary">Отключить</button>
+                        <button type="submit" class="btn btn-secondary">Отключить Google Calendar</button>
                     </form>
                 </div>
                 {% else %}
                 <div>
                     {% if integration.google_calendar_enabled %}
+                    <p style="color: #666; font-size: 14px; margin-bottom: 10px;">Нажмите кнопку ниже и войдите в Google, чтобы подключить календарь.</p>
                     <form method="POST" style="margin-top: 10px;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="connect_google">
                         <button type="submit" class="btn">🔗 Подключить через Google</button>
                     </form>
-                    <p style="margin-top: 10px; color: #666; font-size: 14px;">Вы будете перенаправлены на страницу входа Google для предоставления доступа к календарю.</p>
                     {% else %}
                     <form method="POST">
                         {% csrf_token %}
@@ -152,15 +152,17 @@
                 {% endif %}
             </div>
 
-            <!-- Telegram -->
+            <!-- Telegram: статус и кнопки по реальному состоянию -->
             <div class="integration-card">
                 <div class="integration-header">
                     <h3>
                         <span class="integration-icon">✈️</span>
                         Telegram
                     </h3>
-                    {% if integration.telegram_enabled %}
-                    <span class="status-badge status-enabled">Включено</span>
+                    {% if integration.telegram_connected %}
+                    <span class="status-badge status-connected">Подключено</span>
+                    {% elif integration.telegram_enabled %}
+                    <span class="status-badge status-enabled">Включено, бот не подключён</span>
                     {% else %}
                     <span class="status-badge status-disabled">Отключено</span>
                     {% endif %}
@@ -173,14 +175,14 @@
 
                 {% if integration.telegram_connected %}
                 <div>
-                    <span class="status-badge status-connected">Подключено</span>
+                    <p style="margin: 0 0 10px 0; color: #0c5460;">Бот Telegram подключён.</p>
                     {% if integration.telegram_chat_id %}
                     <p style="margin-top: 10px; color: #666;">Chat ID: {{ integration.telegram_chat_id }}</p>
                     {% endif %}
                     <form method="POST" style="margin-top: 15px;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="disconnect_telegram">
-                        <button type="submit" class="btn btn-secondary">Отключить</button>
+                        <button type="submit" class="btn btn-secondary">Отключить Telegram</button>
                     </form>
                 </div>
                 {% else %}
@@ -190,12 +192,12 @@
                         {% csrf_token %}
                         <input type="hidden" name="action" value="connect_telegram">
                         <div class="form-group">
-                            <label>Токен бота (заглушка):</label>
+                            <label>Токен бота:</label>
                             <input type="text" name="bot_token" placeholder="123456:ABC-DEF..." value="">
                             <small>Получите токен у @BotFather в Telegram</small>
                         </div>
                         <div class="form-group">
-                            <label>Chat ID (заглушка):</label>
+                            <label>Chat ID:</label>
                             <input type="text" name="chat_id" placeholder="123456789" value="">
                             <small>ID чата для отправки уведомлений</small>
                         </div>

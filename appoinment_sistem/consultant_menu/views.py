@@ -10,6 +10,7 @@ from consultant_menu.models import Consultant, Clients, Category, Calendar, Serv
 from django.http import Http404, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.db import transaction
 from allauth.socialaccount.models import SocialAccount
 from allauth.account.models import EmailAddress
 from datetime import datetime, date, timedelta
@@ -432,55 +433,76 @@ def public_booking_view(request, calendar_id):
             start_time_obj = datetime.combine(date_obj, datetime.strptime(booking_time, '%H:%M').time())
             end_time_obj = datetime.combine(date_obj, datetime.strptime(booking_end_time, '%H:%M').time())
 
-            # Проверяем пересечения с существующими записями
-            existing_bookings = Booking.objects.filter(
-                calendar=calendar,
-                booking_date=booking_date,
-                status__in=['pending', 'confirmed']
-            )
+            # Длительность должна совпадать с услугой (допуск 1 мин)
+            duration_minutes = (end_time_obj - start_time_obj).total_seconds() / 60
+            if abs(duration_minutes - service.duration_minutes) > 1:
+                return render(request, 'consultant_menu/public_booking.html', {
+                    'calendar': calendar,
+                    'services': services,
+                    'error': 'Неверная длительность. Выберите время из списка доступных слотов.'
+                })
 
-            for booking in existing_bookings:
-                # Пропускаем записи без времени окончания (старые записи)
-                if not booking.booking_end_time:
-                    continue
-                    
-                booking_start = datetime.combine(date_obj, booking.booking_time)
-                booking_end = datetime.combine(date_obj, booking.booking_end_time)
-
-                # Проверка пересечения
-                if not (end_time_obj <= booking_start or start_time_obj >= booking_end):
-                    return render(request, 'consultant_menu/public_booking.html', {
-                        'calendar': calendar,
-                        'services': services,
-                        'error': 'Это время уже занято. Выберите другое.'
-                    })
-
-            # Находим подходящее окно (для информации, необязательно)
             day_of_week = date_obj.weekday()
+
+            # Время записи должно попадать в одно из доступных окон консультанта
+            start_time_val = start_time_obj.time()
+            end_time_val = end_time_obj.time()
             time_slot = TimeSlot.objects.filter(
                 calendar=calendar,
                 day_of_week=day_of_week,
-                start_time__lte=booking_time,
-                end_time__gte=booking_end_time,
+                start_time__lte=start_time_val,
+                end_time__gte=end_time_val,
                 is_available=True
             ).first()
+            if not time_slot:
+                return render(request, 'consultant_menu/public_booking.html', {
+                    'calendar': calendar,
+                    'services': services,
+                    'error': 'Выбранное время не входит в доступные окна приёма. Выберите предложенное время или введите своё в пределах показанных окон.'
+                })
 
-            # Создаем запись (link_token для подтверждения в Telegram — необязательно)
-            link_token = uuid.uuid4().hex[:24]
-            booking = Booking.objects.create(
-                service=service,
-                time_slot=time_slot,
-                calendar=calendar,
-                booking_date=booking_date,
-                booking_time=booking_time,
-                booking_end_time=booking_end_time,
-                client_name=client_name,
-                client_phone=client_phone or "",
-                client_telegram=client_telegram or "",
-                client_email=client_email,
-                status='pending',
-                link_token=link_token,
-            )
+            break_minutes = getattr(calendar, 'break_between_services_minutes', 0) or 0
+            break_delta = timedelta(minutes=break_minutes)
+
+            with transaction.atomic():
+                # Блокируем записи на эту дату, чтобы не допустить двойную запись при одновременной отправке
+                existing_bookings = list(
+                    Booking.objects.select_for_update().filter(
+                        calendar=calendar,
+                        booking_date=booking_date,
+                        status__in=['pending', 'confirmed']
+                    )
+                )
+
+                for booking in existing_bookings:
+                    if not booking.booking_end_time:
+                        continue
+                    booking_start = datetime.combine(date_obj, booking.booking_time)
+                    booking_end = datetime.combine(date_obj, booking.booking_end_time)
+                    # Учитываем перерыв между консультациями: между концом одной и началом другой должно быть >= break_minutes
+                    if not (end_time_obj + break_delta <= booking_start or start_time_obj >= booking_end + break_delta):
+                        return render(request, 'consultant_menu/public_booking.html', {
+                            'calendar': calendar,
+                            'services': services,
+                            'error': 'Это время уже занято или слишком близко к другой записи. Выберите другое.'
+                        })
+
+                # Создаем запись (link_token для подтверждения в Telegram — необязательно)
+                link_token = uuid.uuid4().hex[:24]
+                booking = Booking.objects.create(
+                    service=service,
+                    time_slot=time_slot,
+                    calendar=calendar,
+                    booking_date=booking_date,
+                    booking_time=booking_time,
+                    booking_end_time=booking_end_time,
+                    client_name=client_name,
+                    client_phone=client_phone or "",
+                    client_telegram=client_telegram or "",
+                    client_email=client_email,
+                    status='pending',
+                    link_token=link_token,
+                )
 
             return render(request, 'consultant_menu/booking_success.html', {
                 'booking': booking,
@@ -526,6 +548,13 @@ def confirm_booking_telegram_api(request):
     booking.telegram_id = int(telegram_id)
     booking.link_token = None
     booking.save(update_fields=['telegram_id', 'link_token'])
+    # Сразу отправить клиенту сообщение «Вы записаны» с деталями консультации
+    try:
+        from consultant_menu.telegram_reminders import send_telegram_to_client, format_client_booked_message
+        text = format_client_booked_message(booking)
+        send_telegram_to_client(booking.telegram_id, text)
+    except Exception:
+        pass
     return JsonResponse({'success': True, 'message': 'Telegram привязан к записи'})
 
 
@@ -562,16 +591,28 @@ def get_available_slots_api(request, calendar_id):
     ).order_by('start_time')
 
     # Получаем существующие записи на эту дату
-    existing_bookings = Booking.objects.filter(
+    existing_bookings = list(Booking.objects.filter(
         calendar=calendar,
         booking_date=booking_date,
         status__in=['pending', 'confirmed']
-    )
+    ))
+
+    # Лимит записей в день: если уже достигнут — не показываем слоты
+    max_per_day = getattr(calendar, 'max_services_per_day', 0) or 0
+    if max_per_day > 0 and len(existing_bookings) >= max_per_day:
+        return JsonResponse({'available_slots': [], 'available_windows': []})
+
+    break_minutes = getattr(calendar, 'break_between_services_minutes', 0) or 0
+    break_delta = timedelta(minutes=break_minutes)
+    now = datetime.now()
+    book_ahead_hours = getattr(calendar, 'book_ahead_hours', 24) or 24
+    min_start = now + timedelta(hours=book_ahead_hours)
 
     # Шаг для генерации слотов (15 минут)
     step_minutes = 15
 
-    # Генерируем возможные временные слоты
+    # Доступные окна (диапазоны) на этот день — чтобы клиент видел, какие окна остались, и мог ввести своё время
+    available_windows = []
     available_times = []
 
     for time_slot in time_slots:
@@ -583,26 +624,32 @@ def get_available_slots_api(request, calendar_id):
         if service.duration_minutes > slot_duration:
             continue  # Услуга не помещается в это окно
 
+        available_windows.append({
+            'start_time': time_slot.start_time.strftime('%H:%M'),
+            'end_time': time_slot.end_time.strftime('%H:%M'),
+        })
+
         # Генерируем возможные времена начала (каждые 15 минут)
         current_time = slot_start
         service_duration = timedelta(minutes=service.duration_minutes)
 
         while current_time + service_duration <= slot_end:
+            # Не показывать слоты раньше чем за book_ahead_hours от текущего момента
+            if current_time < min_start:
+                current_time += timedelta(minutes=step_minutes)
+                continue
+
             start_time = current_time.time()
             end_time = (current_time + service_duration).time()
 
-            # Проверяем, не пересекается ли с существующими записями
+            # Проверяем пересечение с существующими записями с учётом перерыва между консультациями
             overlaps = False
             for booking in existing_bookings:
-                # Пропускаем записи без времени окончания (старые записи)
                 if not booking.booking_end_time:
                     continue
-                    
                 booking_start = datetime.combine(date_obj, booking.booking_time)
                 booking_end = datetime.combine(date_obj, booking.booking_end_time)
-
-                # Проверка пересечения: новое время не должно пересекаться с существующим
-                if not (current_time + service_duration <= booking_start or current_time >= booking_end):
+                if not (current_time + service_duration + break_delta <= booking_start or current_time >= booking_end + break_delta):
                     overlaps = True
                     break
 
@@ -615,7 +662,10 @@ def get_available_slots_api(request, calendar_id):
             # Переходим к следующему слоту (шаг 15 минут)
             current_time += timedelta(minutes=step_minutes)
 
-    return JsonResponse({'available_slots': available_times})
+    return JsonResponse({
+        'available_slots': available_times,
+        'available_windows': available_windows,
+    })
 
 # ========== УСЛУГИ ==========
 def services_view(request):
@@ -835,7 +885,8 @@ def google_calendar_connect(request):
         return redirect('integrations')
     try:
         from google_auth_oauthlib.flow import Flow
-        redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback'))
+        # Без завершающего слэша — в Google Console добавьте тот же URL: https://allyourclients.ru/integrations/google/callback
+        redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback')).rstrip('/')
         flow = Flow.from_client_config(
             {
                 "web": {
@@ -889,7 +940,7 @@ def google_calendar_callback(request):
         return redirect('integrations')
     try:
         from google_auth_oauthlib.flow import Flow
-        redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback'))
+        redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback')).rstrip('/')
         flow = Flow.from_client_config(
             {
                 "web": {
@@ -953,6 +1004,7 @@ def integrations_view(request):
         
         elif action == 'disconnect_google':
             integration.google_calendar_connected = False
+            integration.google_calendar_enabled = False
             integration.google_calendar_id = None
             integration.google_refresh_token = None
             integration.save()
@@ -975,6 +1027,7 @@ def integrations_view(request):
         
         elif action == 'disconnect_telegram':
             integration.telegram_connected = False
+            integration.telegram_enabled = False
             integration.telegram_bot_token = None
             integration.telegram_chat_id = None
             integration.save()

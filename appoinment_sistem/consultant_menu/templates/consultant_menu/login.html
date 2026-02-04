@@ -17,7 +17,20 @@
         
         {% load socialaccount %}
         <a href="{% provider_login_url 'google' next=request.GET.next|default:'/' %}" class="btn btn-google" style="display: block; width: 100%; margin-bottom: 0.75rem; background: #4285f4; color: #fff; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; box-sizing: border-box;">Войти через Google</a>
+        {% if telegram_bot_username %}
+        <a id="btnTelegramApp" href="https://t.me/{{ telegram_bot_username }}?start=login" class="btn btn-telegram" style="display: block; width: 100%; margin-bottom: 0.5rem; background: #0088cc; color: #fff; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; box-sizing: border-box;" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=login">Войти через Telegram (открыть в приложении)</a>
+        <script>
+        (function() {
+            var btn = document.getElementById('btnTelegramApp');
+            if (btn && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                btn.addEventListener('click', function(e) { e.preventDefault(); window.location.href = btn.getAttribute('data-tg'); });
+            }
+        })();
+        </script>
+        <a href="{% provider_login_url 'telegram' next=request.GET.next|default:'/' %}" style="display: block; width: 100%; margin-bottom: 1rem; font-size: 0.9rem; text-align: center; color: #666;">или войти через Telegram в браузере</a>
+        {% else %}
         <a href="{% provider_login_url 'telegram' next=request.GET.next|default:'/' %}" class="btn btn-telegram" style="display: block; width: 100%; margin-bottom: 1rem; background: #0088cc; color: #fff; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; box-sizing: border-box;">Войти через Telegram</a>
+        {% endif %}
         <p class="form-divider" style="text-align: center; margin: 1rem 0; color: #666;">или</p>
         <form method="POST" action="{% url 'login' %}">
             {% csrf_token %}

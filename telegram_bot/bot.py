@@ -164,6 +164,10 @@ def handle_telegram_update(update_data):
                     pass
                 else:
                     handle_start_command(chat_id, user_id, username, first_name)
+            elif text.startswith('/start login') or text == '/start login':
+                handle_login_via_bot(chat_id)
+            elif text.startswith('/start connect') or text == '/start connect':
+                handle_connect_via_bot(chat_id)
             elif text == '/register':
                 handle_register_command(chat_id, user_id, username, first_name)
             elif text == '/appointments' or text == '📋 Мои записи':
@@ -212,6 +216,46 @@ def handle_telegram_update(update_data):
     
     except Exception as e:
         logger.error(f"Ошибка обработки обновления Telegram: {e}")
+
+
+def handle_login_via_bot(chat_id):
+    """
+    Пользователь нажал «Войти через Telegram (открыть в приложении)» на сайте и попал в бота (start=login).
+    Показываем кнопку для перехода на сайт и завершения входа через Telegram OAuth.
+    """
+    site_url = get_site_url().rstrip('/')
+    login_url = f"{site_url}/accounts/telegram/login/"
+    keyboard = {
+        'inline_keyboard': [[
+            {'text': '🔐 Войти на сайт', 'url': login_url}
+        ]]
+    }
+    send_telegram_message(
+        chat_id,
+        "👋 <b>Вход на сайт через Telegram</b>\n\n"
+        "Нажмите кнопку ниже — откроется страница входа на сайте. Подтвердите вход там, и вы будете авторизованы.",
+        keyboard
+    )
+
+
+def handle_connect_via_bot(chat_id):
+    """
+    Пользователь нажал «Открыть в приложении Telegram» в профиле (подключить Telegram) и попал в бота (start=connect).
+    Показываем кнопку для перехода на сайт и привязки аккаунта Telegram.
+    """
+    site_url = get_site_url().rstrip('/')
+    connect_url = f"{site_url}/accounts/telegram/login/?process=connect&next=/profile/"
+    keyboard = {
+        'inline_keyboard': [[
+            {'text': '🔗 Подключить аккаунт на сайте', 'url': connect_url}
+        ]]
+    }
+    send_telegram_message(
+        chat_id,
+        "👋 <b>Подключение Telegram к аккаунту на сайте</b>\n\n"
+        "Нажмите кнопку ниже — откроется страница сайта. Подтвердите подключение там.",
+        keyboard
+    )
 
 
 def handle_booking_link_confirm(chat_id, user_id, token_str):

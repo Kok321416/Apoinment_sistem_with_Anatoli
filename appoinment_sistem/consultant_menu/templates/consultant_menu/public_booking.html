@@ -111,6 +111,16 @@
 
         /* Таймлайн выбора времени */
         .time-section { margin-top: 8px; }
+        .time-windows {
+            padding: 12px 16px;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: var(--book-radius-sm);
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #166534;
+        }
+        .time-windows strong { display: block; margin-bottom: 4px; }
         .time-timeline {
             display: flex;
             flex-wrap: wrap;
@@ -133,13 +143,10 @@
         .time-chip.selected { border-color: var(--book-primary); background: var(--book-primary); color: white; }
         .time-chip.disabled { opacity: 0.4; cursor: not-allowed; }
         .time-custom-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
             margin-top: 16px;
             flex-wrap: wrap;
         }
-        .time-custom-row label { font-size: 13px; color: var(--book-muted); }
+        .time-custom-row label { display: block; font-size: 13px; color: var(--book-muted); margin-bottom: 6px; }
         .time-custom-row input[type="time"] {
             padding: 10px 14px;
             border: 2px solid var(--book-border);
@@ -237,12 +244,14 @@
 
             <div class="book-card time-section">
                 <h2>Время</h2>
-                <p class="time-hint" id="timeHint">Выберите услугу и дату</p>
+                <p class="time-hint" id="timeHint">После выбора услуги и даты здесь появятся доступные окна и слоты</p>
+                <div id="timeWindows" class="time-windows" style="display: none;"></div>
                 <div class="time-timeline" id="timeSlots"></div>
+                <p class="time-subtitle" id="timeSubtitle" style="display: none; font-size: 13px; color: var(--book-muted); margin: 8px 0 4px 0;">Предложенное время (можно выбрать или ввести своё):</p>
                 <div class="time-custom-row" id="timeCustomRow" style="display: none;">
-                    <label>Или укажите время начала:</label>
-                    <input type="time" id="customTimeStart" step="900">
-                    <small style="margin: 0;">Конец записи — автоматически по длительности услуги</small>
+                    <label>Или введите своё время начала (например, 10:12):</label>
+                    <input type="time" id="customTimeStart" step="60" min="00:00" max="23:59">
+                    <small style="margin: 4px 0 0 0; display: block;">Время должно быть в пределах показанных окон. Конец записи посчитается автоматически по длительности услуги.</small>
                 </div>
             </div>
 
@@ -341,7 +350,10 @@
 
             if (!date || !selectedServiceId) {
                 container.innerHTML = '';
-                hint.textContent = 'Выберите услугу и дату';
+                hint.textContent = 'После выбора услуги и даты здесь появятся доступные окна и слоты';
+                document.getElementById('timeWindows').style.display = 'none';
+                document.getElementById('timeWindows').innerHTML = '';
+                document.getElementById('timeSubtitle').style.display = 'none';
                 customRow.style.display = 'none';
                 return;
             }
@@ -353,17 +365,36 @@
                 .then(data => {
                     if (data.error) {
                         hint.textContent = data.error;
+                        document.getElementById('timeWindows').style.display = 'none';
+                        document.getElementById('timeSubtitle').style.display = 'none';
                         customRow.style.display = 'none';
                         return;
                     }
                     const slots = data.available_slots || [];
+                    const windows = data.available_windows || [];
+                    const windowsEl = document.getElementById('timeWindows');
+                    const subtitleEl = document.getElementById('timeSubtitle');
+
+                    if (windows.length > 0) {
+                        windowsEl.style.display = 'block';
+                        windowsEl.innerHTML = '<strong>Доступные окна на эту дату:</strong> ' +
+                            windows.map(function(w) { return w.start_time + ' – ' + w.end_time; }).join(', ');
+                    } else {
+                        windowsEl.style.display = 'none';
+                    }
+
                     if (slots.length === 0) {
-                        hint.textContent = 'На эту дату нет свободного времени';
-                        customRow.style.display = 'block';
+                        hint.textContent = windows.length > 0
+                            ? 'В этих окнах нет свободных слотов по 15 мин — введите своё время начала ниже (в пределах окон).'
+                            : 'На эту дату нет доступных окон для записи.';
+                        subtitleEl.style.display = 'none';
+                        customRow.style.display = windows.length > 0 ? 'block' : 'none';
                         return;
                     }
-                    hint.textContent = 'Выберите время начала (длительность ' + selectedDuration + ' мин)';
+                    hint.textContent = 'Длительность услуги: ' + selectedDuration + ' мин. Выберите предложенное время или введите своё в пределах окон.';
+                    subtitleEl.style.display = 'block';
                     customRow.style.display = 'block';
+                    container.innerHTML = '';
                     slots.forEach(slot => {
                         const chip = document.createElement('button');
                         chip.type = 'button';
