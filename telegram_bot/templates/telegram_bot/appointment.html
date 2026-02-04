@@ -47,21 +47,26 @@
         
         .slots-container {
             margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
         .slot-item {
-            padding: 12px;
-            margin-bottom: 10px;
+            padding: 12px 18px;
             border: 2px solid var(--tg-theme-button-color, #3390ec);
-            border-radius: 8px;
+            border-radius: 20px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.25s ease;
             background: var(--tg-theme-bg-color, #ffffff);
+            min-width: 100px;
+            text-align: center;
         }
         
         .slot-item:hover {
             background: var(--tg-theme-button-color, #3390ec);
             color: var(--tg-theme-button-text-color, #ffffff);
+            transform: scale(1.02);
         }
         
         .slot-item.selected {
@@ -70,13 +75,16 @@
         }
         
         .slot-date {
-            font-weight: bold;
-            font-size: 16px;
+            font-size: 11px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
         }
         
         .slot-time {
-            font-size: 14px;
-            margin-top: 4px;
+            font-size: 15px;
+            font-weight: 600;
+            margin-top: 2px;
         }
         
         .form-group {
@@ -370,7 +378,7 @@
                                 slotDiv.onclick = () => selectSlot(slot.id);
                                 slotDiv.innerHTML = `
                                     <div class="slot-date">${slot.date_display}</div>
-                                    <div class="slot-time">${slot.start_time} - ${slot.end_time}</div>
+                                    <div class="slot-time">${slot.start_time}</div>
                                 `;
                                 container.appendChild(slotDiv);
                             });

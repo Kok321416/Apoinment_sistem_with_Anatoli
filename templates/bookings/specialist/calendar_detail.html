@@ -15,6 +15,13 @@
     {% if calendar.description %}
         <p style="color: #6b21a8; margin-bottom: 20px;">{{ calendar.description }}</p>
     {% endif %}
+
+    <div class="calendar-settings-bar">
+        <span class="setting-pill"><strong>Перерыв:</strong> {{ calendar.break_between_services_minutes|default:0 }} мин</span>
+        <span class="setting-pill"><strong>Лимит в день:</strong> {% if calendar.max_services_per_day %}{{ calendar.max_services_per_day }}{% else %}—{% endif %}</span>
+        <span class="setting-pill"><strong>Запись за:</strong> {{ calendar.book_ahead_hours|default:24 }} ч</span>
+        <a href="{% url 'calendar_edit' calendar_id=calendar.id %}" class="setting-edit">Изменить</a>
+    </div>
     
     <div style="margin-bottom: 30px;">
         <button type="button" class="btn" onclick="addNewDay()" style="margin-bottom: 20px;">+ Добавить день</button>
@@ -30,13 +37,9 @@
                         <div class="existing-slots" style="margin-bottom: 15px;">
                             {% for slot in slots %}
                                 <div class="existing-slot">
-                                    <span><strong>{{ slot.start_time|time:"H:i" }} - {{ slot.end_time|time:"H:i" }}</strong></span>
-                                    {% if slot.service %}
-                                        <span style="color: #6b7280; margin-left: 10px;">({{ slot.service.name }})</span>
-                                    {% endif %}
-                                    <span class="badge {% if slot.is_booked %}danger{% else %}success{% endif %}" style="margin-left: 10px;">
-                                        {% if slot.is_booked %}Занят{% else %}Свободен{% endif %}
-                                    </span>
+                                    <span class="slot-time-range">{{ slot.start_time|time:"H:i" }} – {{ slot.end_time|time:"H:i" }}</span>
+                                    {% if slot.service %}<span class="slot-service-name">{{ slot.service.name }}</span>{% endif %}
+                                    <span class="badge {% if slot.is_booked %}danger{% else %}success{% endif %}">{% if slot.is_booked %}Занят{% else %}Свободен{% endif %}</span>
                                 </div>
                             {% endfor %}
                         </div>
@@ -68,18 +71,19 @@ function addNewDay() {
     dayCard.className = 'day-card';
     dayCard.style.marginBottom = '20px';
     dayCard.style.padding = '20px';
-    dayCard.style.border = '2px solid #8b5cf6';
-    dayCard.style.borderRadius = '8px';
+    dayCard.style.border = '1px solid #e9e5ff';
+    dayCard.style.borderRadius = '16px';
     dayCard.style.background = '#faf5ff';
+    dayCard.style.boxShadow = '0 2px 8px rgba(139, 92, 246, 0.06)';
     
     const dateInput = document.createElement('input');
     dateInput.type = 'date';
     dateInput.required = true;
     dateInput.style.marginBottom = '15px';
-    dateInput.style.padding = '8px';
+    dateInput.style.padding = '10px';
     dateInput.style.width = '100%';
-    dateInput.style.border = '1px solid #d1d5db';
-    dateInput.style.borderRadius = '5px';
+    dateInput.style.border = '1px solid #e5e7eb';
+    dateInput.style.borderRadius = '12px';
     
     const slotsContainer = document.createElement('div');
     slotsContainer.className = 'slots-container';
@@ -312,25 +316,25 @@ function addSlotForm(container, dateInput) {
     const dateValue = dateInput ? (dateInput.value || dateInput.getAttribute('value')) : '';
     
     slotForm.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
-            <div class="form-group">
-                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Время начала:</label>
-                <input type="time" name="start_time" required class="slot-start-time" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 5px;">
+        <div class="slot-form-grid">
+            <div class="slot-field">
+                <label>Начало</label>
+                <input type="time" name="start_time" required class="slot-start-time">
             </div>
-            <div class="form-group">
-                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Время окончания:</label>
-                <input type="time" name="end_time" required class="slot-end-time" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 5px;">
+            <div class="slot-field">
+                <label>Конец</label>
+                <input type="time" name="end_time" required class="slot-end-time">
             </div>
-            <div class="form-group">
-                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Услуга (необязательно):</label>
-                <select name="service" class="slot-service" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 5px;">
-                    <option value="">Без привязки к услуге</option>
+            <div class="slot-field">
+                <label>Услуга</label>
+                <select name="service" class="slot-service">
+                    <option value="">—</option>
                     {% for service in services %}
                     <option value="{{ service.id }}">{{ service.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="button" class="btn btn-secondary" onclick="this.closest('.slot-form').remove()" style="height: fit-content; padding: 8px 15px;">Удалить</button>
+            <button type="button" class="btn-slot-remove" onclick="this.closest('.slot-form').remove()" title="Удалить">×</button>
         </div>
     `;
     
@@ -339,40 +343,105 @@ function addSlotForm(container, dateInput) {
 </script>
 
 <style>
+.calendar-settings-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+    border-radius: 16px;
+    border: 1px solid #e9e5ff;
+}
+.setting-pill {
+    padding: 6px 12px;
+    background: white;
+    border-radius: 999px;
+    font-size: 13px;
+    color: #5b21b6;
+    box-shadow: 0 1px 3px rgba(139, 92, 246, 0.1);
+}
+.setting-edit {
+    margin-left: auto;
+    font-size: 13px;
+    color: #8b5cf6;
+    text-decoration: none;
+}
+.setting-edit:hover { text-decoration: underline; }
+
 .day-card {
     margin-bottom: 20px;
     padding: 20px;
-    border: 2px solid #8b5cf6;
-    border-radius: 8px;
+    border: 1px solid #e9e5ff;
+    border-radius: 16px;
     background: #faf5ff;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.06);
 }
 
 .slot-form {
-    margin-top: 15px;
-    padding: 15px;
+    margin-top: 12px;
+    padding: 14px;
     background: white;
-    border-radius: 5px;
+    border-radius: 14px;
     border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
-.slots-container {
-    margin-top: 15px;
+.slot-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr auto;
+    gap: 12px;
+    align-items: end;
 }
-
-.existing-slot {
-    display: inline-block;
-    padding: 10px 15px;
-    margin: 5px;
-    background: white;
-    border-radius: 5px;
-    border: 1px solid #d1d5db;
+.slot-field { display: flex; flex-direction: column; gap: 4px; }
+.slot-field label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+}
+.slot-field input,
+.slot-field select {
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
     font-size: 14px;
 }
+.btn-slot-remove {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    color: #6b7280;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.btn-slot-remove:hover { background: #fee2e2; color: #dc2626; }
+
+.slots-container { margin-top: 12px; }
+
+.existing-slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    margin: 4px;
+    background: white;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    font-size: 13px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.slot-time-range { font-weight: 600; color: #374151; }
+.slot-service-name { color: #6b7280; font-size: 12px; }
 
 .existing-slots {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
 }
 </style>
 {% endblock %}
