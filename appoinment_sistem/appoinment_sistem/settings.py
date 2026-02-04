@@ -225,8 +225,8 @@ REST_FRAMEWORK = {
 }
 
 # Google Calendar OAuth (из .env: GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET)
-# В Google Cloud Console → Credentials → OAuth 2.0 Client → Authorized redirect URIs
-# добавьте ТОЧНО (без слэша в конце): https://allyourclients.ru/integrations/google/callback
+# redirect_uri берётся из SITE_URL: {SITE_URL}/integrations/google/callback
+# В Google Cloud Console → Credentials → Authorized redirect URIs добавьте тот же URL (без слэша в конце)
 GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID', '')
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET', '')
 GOOGLE_CALENDAR_SCOPES = ['https://www.googleapis.com/auth/calendar.events']
