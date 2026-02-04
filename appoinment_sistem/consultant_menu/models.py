@@ -177,6 +177,9 @@ class Booking(models.Model):
     # Подтверждение в Telegram: одноразовый токен и привязанный telegram_id для уведомлений
     link_token = models.CharField(max_length=64, unique=True, blank=True, null=True, verbose_name='Токен для привязки Telegram')
     telegram_id = models.BigIntegerField(blank=True, null=True, verbose_name='Telegram ID (после подтверждения в боте)')
+    # Напоминания клиенту в Telegram (чтобы не слать дважды)
+    reminder_24h_sent = models.BooleanField(default=False, verbose_name='Напоминание за 24ч отправлено')
+    reminder_1h_sent = models.BooleanField(default=False, verbose_name='Напоминание за 1ч отправлено')
 
     class Meta:
         db_table = 'bookings'

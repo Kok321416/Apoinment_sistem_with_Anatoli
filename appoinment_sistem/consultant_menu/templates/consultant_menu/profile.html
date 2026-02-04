@@ -154,9 +154,15 @@
                                 <span class="auth-method-name">Telegram</span>
                                 {% if 'telegram' in connected_providers %}
                                     <span class="auth-method-badge connected">подключено</span>
+                                    <div class="auth-method-detail">Можно входить через Telegram</div>
                                 {% else %}
                                     <span class="auth-method-badge not-connected">не подключено</span>
+                                    {% if telegram_bot_username %}
+                                    <a id="profileBtnTelegramApp" href="https://t.me/{{ telegram_bot_username }}?start=connect" class="auth-connect-btn telegram" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=connect">Открыть в приложении Telegram</a>
+                                    <a href="{% provider_login_url 'telegram' process='connect' next=request.path %}" style="font-size: 0.9rem; margin-top: 6px; display: inline-block;">или подключить в браузере</a>
+                                    {% else %}
                                     <a href="{% provider_login_url 'telegram' process='connect' next=request.path %}" class="auth-connect-btn telegram">Подключить Telegram</a>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                         </div>
@@ -165,6 +171,7 @@
                                 <span class="auth-method-name">Google</span>
                                 {% if 'google' in connected_providers %}
                                     <span class="auth-method-badge connected">подключено</span>
+                                    <div class="auth-method-detail">Можно входить через Google</div>
                                 {% else %}
                                     <span class="auth-method-badge not-connected">не подключено</span>
                                     <a href="{% provider_login_url 'google' process='connect' next=request.path %}" class="auth-connect-btn google">Подключить Google</a>
@@ -176,7 +183,7 @@
                                 <span class="auth-method-name">Почта</span>
                                 {% if primary_email %}
                                     <span class="auth-method-badge connected">подключено</span>
-                                    <div class="auth-method-detail">{{ primary_email }}</div>
+                                    <div class="auth-method-detail">{{ primary_email }} — можно входить по почте</div>
                                 {% else %}
                                     <span class="auth-method-badge not-connected">не добавлена</span>
                                 {% endif %}
@@ -351,6 +358,12 @@
                 edit.style.display = 'block';
             }
         }
+        (function() {
+            var btn = document.getElementById('profileBtnTelegramApp');
+            if (btn && btn.getAttribute('data-tg') && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                btn.addEventListener('click', function(e) { e.preventDefault(); window.location.href = btn.getAttribute('data-tg'); });
+            }
+        })();
     </script>
 </body>
 </html>

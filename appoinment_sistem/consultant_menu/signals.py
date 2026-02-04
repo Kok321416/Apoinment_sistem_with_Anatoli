@@ -1,10 +1,11 @@
 """
 Сигналы для consultant_menu: создание Consultant при регистрации через соцсеть (Google/Telegram),
-если в сессии сохранены ФИО и телефон со страницы регистрации.
+уведомление специалисту в Telegram о новой записи.
 """
 from django.dispatch import receiver
+from django.db.models.signals import post_save
 from allauth.account.signals import user_signed_up
-from consultant_menu.models import Consultant, Category
+from consultant_menu.models import Consultant, Category, Booking
 
 
 def _parse_fio(fio_str):
@@ -40,3 +41,19 @@ def create_consultant_on_social_signup(request, user, **kwargs):
         telegram_nickname="",
         category_of_specialist=category,
     )
+
+
+@receiver(post_save, sender=Booking)
+def notify_on_new_booking(sender, instance, created, **kwargs):
+    """При создании записи: уведомление специалисту в Telegram; клиенту — если telegram уже привязан."""
+    if not created:
+        return
+    from consultant_menu.telegram_reminders import (
+        notify_specialist_new_booking,
+        send_telegram_to_client,
+        format_client_booked_message,
+    )
+    notify_specialist_new_booking(instance)
+    if getattr(instance, 'telegram_id', None):
+        text = format_client_booked_message(instance)
+        send_telegram_to_client(instance.telegram_id, text)

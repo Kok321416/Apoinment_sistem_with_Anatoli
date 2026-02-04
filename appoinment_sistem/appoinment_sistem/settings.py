@@ -92,6 +92,8 @@ ACCOUNT_LOGOUT_REDIRECT_URL = "/"
 
 # Имя бота для ссылки «Подтвердить в Telegram» (без @)
 TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
+# Токен бота для отправки напоминаний клиентам (тот же, что для allauth)
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -117,6 +119,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "consultant_menu.context_processors.telegram_bot_username",
             ],
         },
     },
@@ -219,7 +222,8 @@ REST_FRAMEWORK = {
 }
 
 # Google Calendar OAuth (из .env: GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET)
-# Redirect URI для календаря: https://ваш-домен/integrations/google/callback/
+# В Google Cloud Console → Credentials → OAuth 2.0 Client → Authorized redirect URIs
+# добавьте ТОЧНО (без слэша в конце): https://allyourclients.ru/integrations/google/callback
 GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID', '')
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET', '')
 GOOGLE_CALENDAR_SCOPES = ['https://www.googleapis.com/auth/calendar.events']
