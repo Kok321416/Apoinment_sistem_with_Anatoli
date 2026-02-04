@@ -67,6 +67,9 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Вход через Google и Telegram (client_id/secret из .env или из Social Application в админке)
+# Google: в Cloud Console добавьте Authorized redirect URI https://ВАШ_ДОМЕН/accounts/google/login/callback/
+# Если приложение в режиме «Testing», добавьте тестовых пользователей в OAuth consent screen.
+# Название приложения в ошибке («allcliets_auth») задаётся в Google Cloud → OAuth consent screen.
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "SCOPE": ["profile", "email"],
@@ -96,6 +99,10 @@ TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 # URL сайта: нужен боту для вызова API (подключение специалиста, подтверждение записи). Пример: https://allyourclients.ru
 SITE_URL = (os.getenv("SITE_URL", "") or "").strip().rstrip("/") or "http://127.0.0.1:8000"
+
+# OAuth (Google, Telegram): чтобы callback URL строился с HTTPS, а не HTTP (иначе Google/Telegram вернут ошибку)
+if SITE_URL.startswith("https://"):
+    ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

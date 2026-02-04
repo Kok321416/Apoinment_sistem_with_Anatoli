@@ -38,9 +38,15 @@
                 </button>
             </form>
             <div class="auth-links">
+                {% if process == "connect" %}
+                <a href="{% url 'integrations' %}">← Вернуться в интеграции</a>
+                {% endif %}
                 <a href="{% url 'login' %}">← Назад к входу</a>
                 <a href="{% url 'home' %}">На главную</a>
             </div>
+            {% if process == "connect" and provider.id == "telegram" %}
+            <p style="margin-top: 16px; font-size: 13px; color: #666;">После нажатия «Продолжить» откроется страница Telegram. Если ничего не происходит: в BotFather у бота должен быть указан домен этого сайта (например allyourclients.ru) для «Telegram Login Widget».</p>
+            {% endif %}
         </div>
     </div>
 </body>
