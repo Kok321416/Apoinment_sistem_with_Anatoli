@@ -90,6 +90,9 @@ ACCOUNT_EMAIL_REQUIRED = True
 LOGIN_REDIRECT_URL = "/"
 ACCOUNT_LOGOUT_REDIRECT_URL = "/"
 
+# Имя бота для ссылки «Подтвердить в Telegram» (без @)
+TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # Для статических файлов в продакшене

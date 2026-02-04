@@ -154,7 +154,7 @@ class Booking(models.Model):
     ]
 
     service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='bookings')
-    time_slot = models.ForeignKey(TimeSlot, on_delete=models.CASCADE, related_name='bookings')
+    time_slot = models.ForeignKey(TimeSlot, on_delete=models.CASCADE, related_name='bookings', null=True, blank=True)
     calendar = models.ForeignKey(Calendar, on_delete=models.CASCADE, related_name='bookings')
 
     # Информация о клиенте
@@ -173,6 +173,10 @@ class Booking(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Подтверждение в Telegram: одноразовый токен и привязанный telegram_id для уведомлений
+    link_token = models.CharField(max_length=64, unique=True, blank=True, null=True, verbose_name='Токен для привязки Telegram')
+    telegram_id = models.BigIntegerField(blank=True, null=True, verbose_name='Telegram ID (после подтверждения в боте)')
 
     class Meta:
         db_table = 'bookings'

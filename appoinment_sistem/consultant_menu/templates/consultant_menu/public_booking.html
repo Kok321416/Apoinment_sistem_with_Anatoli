@@ -3,80 +3,192 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Запись - {{ calendar.name }}</title>
+    <title>Запись — {{ calendar.name }}</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
     <style>
-        .calendar-info {
-            background: #f8f9fa;
-            padding: 30px;
-            border-radius: 10px;
-            margin-bottom: 30px;
+        :root {
+            --book-primary: #6366f1;
+            --book-primary-light: #818cf8;
+            --book-bg: #f8fafc;
+            --book-card: #ffffff;
+            --book-border: #e2e8f0;
+            --book-text: #1e293b;
+            --book-muted: #64748b;
+            --book-radius: 16px;
+            --book-radius-sm: 12px;
+            --book-shadow: 0 4px 20px rgba(99, 102, 241, 0.08);
         }
-        .calendar-info h1 {
-            color: #764ba2;
-            margin-bottom: 15px;
+        body { background: var(--book-bg); color: var(--book-text); }
+        .book-container { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+        .book-hero {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            padding: 28px 24px;
+            border-radius: var(--book-radius);
+            margin-bottom: 24px;
+            box-shadow: var(--book-shadow);
         }
-        .booking-form {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        .book-hero h1 { margin: 0; font-size: 1.5rem; font-weight: 700; }
+        .book-card {
+            background: var(--book-card);
+            border-radius: var(--book-radius);
+            box-shadow: var(--book-shadow);
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid var(--book-border);
         }
-        .service-select {
-            margin-bottom: 25px;
+        .book-card h2 {
+            margin: 0 0 20px 0;
+            font-size: 1.1rem;
+            color: var(--book-muted);
+            font-weight: 600;
         }
-        .service-option {
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
+        .service-tile {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 18px;
+            border: 2px solid var(--book-border);
+            border-radius: var(--book-radius-sm);
             margin-bottom: 10px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s ease;
         }
-        .service-option:hover {
-            border-color: #764ba2;
-            background: #f0f0ff;
+        .service-tile:hover { border-color: var(--book-primary-light); background: #f5f3ff; }
+        .service-tile.selected { border-color: var(--book-primary); background: #eef2ff; }
+        .service-tile strong { display: block; margin-bottom: 4px; }
+        .service-tile .meta { font-size: 13px; color: var(--book-muted); }
+        .service-tile input { display: none; }
+
+        /* Календарь-сетка */
+        .cal-wrap {
+            background: #fafafa;
+            border-radius: var(--book-radius-sm);
+            padding: 16px;
+            margin-bottom: 20px;
         }
-        .service-option.selected {
-            border-color: #764ba2;
-            background: #764ba2;
-            color: white;
+        .cal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
         }
-        .time-slots {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .slot-btn {
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            background: white;
-            border-radius: 8px;
+        .cal-header button {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: var(--book-border);
+            border-radius: 50%;
             cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            color: var(--book-text);
+        }
+        .cal-header button:hover { background: var(--book-primary-light); color: white; }
+        .cal-month { font-weight: 600; color: var(--book-text); }
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
             text-align: center;
-            transition: all 0.3s;
         }
-        .slot-btn:hover {
-            border-color: #764ba2;
-            background: #f0f0ff;
+        .cal-weekday { font-size: 11px; color: var(--book-muted); padding: 6px 0; }
+        .cal-day {
+            padding: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
         }
-        .slot-btn.selected {
-            border-color: #764ba2;
-            background: #764ba2;
+        .cal-day:hover:not(.other):not(.past) { background: #e0e7ff; }
+        .cal-day.other { color: #cbd5e1; cursor: default; }
+        .cal-day.past { color: #cbd5e1; cursor: not-allowed; }
+        .cal-day.today { background: #eef2ff; font-weight: 700; color: var(--book-primary); }
+        .cal-day.selected { background: var(--book-primary); color: white; }
+        .cal-day.selected:hover { background: var(--book-primary-light); }
+        input#booking_date { display: none; }
+
+        /* Таймлайн выбора времени */
+        .time-section { margin-top: 8px; }
+        .time-timeline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .time-chip {
+            padding: 10px 16px;
+            border-radius: 999px;
+            border: 2px solid var(--book-border);
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            min-width: 72px;
+            text-align: center;
+        }
+        .time-chip:hover:not(.disabled) { border-color: var(--book-primary); background: #eef2ff; }
+        .time-chip.selected { border-color: var(--book-primary); background: var(--book-primary); color: white; }
+        .time-chip.disabled { opacity: 0.4; cursor: not-allowed; }
+        .time-custom-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .time-custom-row label { font-size: 13px; color: var(--book-muted); }
+        .time-custom-row input[type="time"] {
+            padding: 10px 14px;
+            border: 2px solid var(--book-border);
+            border-radius: var(--book-radius-sm);
+            font-size: 16px;
+        }
+        .time-custom-row input[type="time"]:focus {
+            outline: none;
+            border-color: var(--book-primary);
+        }
+        .time-hint { font-size: 12px; color: var(--book-muted); margin-top: 8px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: var(--book-text); }
+        .form-group input[type="text"],
+        .form-group input[type="tel"],
+        .form-group input[type="email"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--book-border);
+            border-radius: var(--book-radius-sm);
+            font-size: 16px;
+        }
+        .form-group input:focus { outline: none; border-color: var(--book-primary); }
+        .form-group { margin-bottom: 18px; }
+        .form-group small { display: block; margin-top: 4px; font-size: 12px; color: var(--book-muted); }
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
             color: white;
+            border: none;
+            border-radius: var(--book-radius-sm);
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 24px;
         }
-        .slot-btn.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .btn-submit:hover { opacity: 0.95; transform: translateY(-1px); }
+        .error-message {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 14px;
+            border-radius: var(--book-radius-sm);
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="container" style="max-width: 800px;">
-        <!-- Информация о календаре -->
-        <div class="calendar-info">
+    <div class="book-container">
+        <div class="book-hero">
             <h1>{{ calendar.name }}</h1>
         </div>
 
@@ -84,165 +196,208 @@
         <div class="error-message">{{ error }}</div>
         {% endif %}
 
-        <!-- Форма записи -->
-        <div class="booking-form">
-            <form method="POST" id="bookingForm">
-                {% csrf_token %}
-                
-                <!-- Выбор услуги -->
-                <div class="service-select">
-                    <h2 style="margin-bottom: 20px;">Выберите услугу</h2>
-                    {% for service in services %}
-                    <div class="service-option" onclick="selectService({{ service.id }})">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>{{ service.name }}</strong>
-                                {% if service.description %}
-                                <p style="margin: 5px 0; font-size: 14px; opacity: 0.8;">{{ service.description }}</p>
-                                {% endif %}
-                                <div style="display: flex; gap: 20px; margin-top: 10px; font-size: 14px;">
-                                    <span>Длительность: {{ service.duration_minutes }} мин.</span>
-                                    {% if service.price %}
-                                    <span>Цена: {{ service.price }} ₽</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
+        <form method="POST" id="bookingForm">
+            {% csrf_token %}
+            <input type="hidden" id="service_id" name="service_id" required>
+            <input type="hidden" id="booking_date" name="booking_date" required>
+            <input type="hidden" id="booking_time" name="booking_time" required>
+            <input type="hidden" id="booking_end_time" name="booking_end_time" required>
+
+            <div class="book-card">
+                <h2>Услуга</h2>
+                {% for service in services %}
+                <label class="service-tile" data-service-id="{{ service.id }}" data-duration="{{ service.duration_minutes }}">
+                    <div>
+                        <strong>{{ service.name }}</strong>
+                        {% if service.description %}<p class="meta">{{ service.description|truncatewords:12 }}</p>{% endif %}
+                        <span class="meta">{{ service.duration_minutes }} мин. {% if service.price %} · {{ service.price }} ₽{% endif %}</span>
                     </div>
-                    {% endfor %}
-                    {% if not services %}
-                    <p style="color: #999;">Нет доступных услуг</p>
-                    {% endif %}
-                    <input type="hidden" id="service_id" name="service_id" required>
-                </div>
+                </label>
+                {% endfor %}
+                {% if not services %}
+                <p style="color: var(--book-muted);">Нет доступных услуг</p>
+                {% endif %}
+            </div>
 
-                <!-- Выбор даты -->
-                <div class="form-group" style="margin-bottom: 25px;">
-                    <label for="booking_date">Дата записи:</label>
-                    <input type="date" id="booking_date" name="booking_date" required 
-                           min="{% now 'Y-m-d' %}" 
-                           onchange="loadTimeSlots()">
-                </div>
-
-                <!-- Доступные временные слоты -->
-                <div class="form-group" style="margin-bottom: 25px;">
-                    <label>Выберите время:</label>
-                    <div id="timeSlots" class="time-slots">
-                        <p style="color: #999;">Сначала выберите услугу и дату</p>
+            <div class="book-card">
+                <h2>Дата</h2>
+                <div class="cal-wrap">
+                    <div class="cal-header">
+                        <button type="button" id="calPrev" aria-label="Назад">‹</button>
+                        <span class="cal-month" id="calMonthYear"></span>
+                        <button type="button" id="calNext" aria-label="Вперёд">›</button>
                     </div>
-                    <input type="hidden" id="booking_time" name="booking_time" required>
-                    <input type="hidden" id="booking_end_time" name="booking_end_time" required>
+                    <div class="cal-grid" id="calWeekdays">
+                        <span class="cal-weekday">Пн</span><span class="cal-weekday">Вт</span><span class="cal-weekday">Ср</span>
+                        <span class="cal-weekday">Чт</span><span class="cal-weekday">Пт</span><span class="cal-weekday">Сб</span><span class="cal-weekday">Вс</span>
+                    </div>
+                    <div class="cal-grid" id="calDays"></div>
                 </div>
+            </div>
 
-                <!-- Данные клиента -->
-                <h3 style="margin-top: 30px; margin-bottom: 20px;">Ваши данные</h3>
-                
+            <div class="book-card time-section">
+                <h2>Время</h2>
+                <p class="time-hint" id="timeHint">Выберите услугу и дату</p>
+                <div class="time-timeline" id="timeSlots"></div>
+                <div class="time-custom-row" id="timeCustomRow" style="display: none;">
+                    <label>Или укажите время начала:</label>
+                    <input type="time" id="customTimeStart" step="900">
+                    <small style="margin: 0;">Конец записи — автоматически по длительности услуги</small>
+                </div>
+            </div>
+
+            <div class="book-card">
+                <h2>Контактные данные</h2>
                 <div class="form-group">
                     <label for="client_name">Имя *</label>
-                    <input type="text" id="client_name" name="client_name" required>
+                    <input type="text" id="client_name" name="client_name" required placeholder="Как к вам обращаться">
                 </div>
-
                 <div class="form-group">
                     <label for="client_phone">Телефон</label>
-                    <input type="tel" id="client_phone" name="client_phone" 
-                           placeholder="+7 (999) 123-45-67">
-                    <small>Укажите телефон ИЛИ Telegram</small>
+                    <input type="tel" id="client_phone" name="client_phone" placeholder="+7 (999) 123-45-67">
+                    <small>Укажите телефон или Telegram</small>
                 </div>
-
                 <div class="form-group">
-                    <label for="client_telegram">Telegram username</label>
-                    <input type="text" id="client_telegram" name="client_telegram" 
-                           placeholder="@username или username">
-                    <small>Без @</small>
+                    <label for="client_telegram">Telegram</label>
+                    <input type="text" id="client_telegram" name="client_telegram" placeholder="@username">
                 </div>
-
                 <div class="form-group">
-                    <label for="client_email">Email (необязательно)</label>
-                    <input type="email" id="client_email" name="client_email">
+                    <label for="client_email">Email</label>
+                    <input type="email" id="client_email" name="client_email" placeholder="email@example.com">
                 </div>
-
-                <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">
-                    Записаться
-                </button>
-            </form>
-        </div>
+                <button type="submit" class="btn-submit">Записаться</button>
+            </div>
+        </form>
     </div>
 
     <script>
+        const calendarId = {{ calendar.id }};
         let selectedServiceId = null;
+        let selectedDuration = 60;
+        let currentCalDate = new Date();
+        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
-        function selectService(serviceId) {
-            selectedServiceId = serviceId;
-            
-            // Убираем выделение с других услуг
-            document.querySelectorAll('.service-option').forEach(option => {
-                option.classList.remove('selected');
+        document.querySelectorAll('.service-tile').forEach(el => {
+            el.addEventListener('click', function() {
+                document.querySelectorAll('.service-tile').forEach(t => t.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedServiceId = this.dataset.serviceId;
+                selectedDuration = parseInt(this.dataset.duration, 10) || 60;
+                document.getElementById('service_id').value = selectedServiceId;
+                const d = document.getElementById('booking_date').value;
+                if (d) loadTimeSlots();
             });
-            
-            // Выделяем выбранную услугу
-            event.currentTarget.classList.add('selected');
-            document.getElementById('service_id').value = serviceId;
-            
-            // Перезагружаем слоты, если дата уже выбрана
-            const date = document.getElementById('booking_date').value;
-            if (date) {
-                loadTimeSlots();
+        });
+
+        function renderCalendar() {
+            const y = currentCalDate.getFullYear();
+            const m = currentCalDate.getMonth();
+            document.getElementById('calMonthYear').textContent = monthNames[m] + ' ' + y;
+            const first = new Date(y, m, 1);
+            const last = new Date(y, m + 1, 0);
+            let start = first.getDay() - 1;
+            if (start < 0) start += 7;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            let html = '';
+            for (let i = 0; i < start; i++) html += '<span class="cal-day other"></span>';
+            for (let d = 1; d <= last.getDate(); d++) {
+                const date = new Date(y, m, d);
+                let cls = 'cal-day';
+                if (date < today) cls += ' past';
+                else if (date.getTime() === today.getTime()) cls += ' today';
+                const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                html += '<span class="' + cls + '" data-date="' + dateStr + '">' + d + '</span>';
             }
+            document.getElementById('calDays').innerHTML = html;
+            document.querySelectorAll('#calDays .cal-day:not(.other):not(.past)').forEach(cell => {
+                cell.addEventListener('click', function() {
+                    document.querySelectorAll('#calDays .cal-day').forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                    const dateStr = this.dataset.date;
+                    document.getElementById('booking_date').value = dateStr;
+                    if (selectedServiceId) loadTimeSlots();
+                });
+            });
         }
-        
+        document.getElementById('calPrev').addEventListener('click', function() {
+            currentCalDate.setMonth(currentCalDate.getMonth() - 1);
+            renderCalendar();
+        });
+        document.getElementById('calNext').addEventListener('click', function() {
+            currentCalDate.setMonth(currentCalDate.getMonth() + 1);
+            renderCalendar();
+        });
+        renderCalendar();
+
         function loadTimeSlots() {
-            const dateInput = document.getElementById('booking_date');
-            const date = dateInput.value;
-            const calendarId = {{ calendar.id }};
-            
+            const date = document.getElementById('booking_date').value;
+            const container = document.getElementById('timeSlots');
+            const hint = document.getElementById('timeHint');
+            const customRow = document.getElementById('timeCustomRow');
+            document.getElementById('booking_time').value = '';
+            document.getElementById('booking_end_time').value = '';
+            document.getElementById('customTimeStart').value = '';
+
             if (!date || !selectedServiceId) {
-                const slotsContainer = document.getElementById('timeSlots');
-                slotsContainer.innerHTML = '<p style="color: #999;">Сначала выберите услугу и дату</p>';
+                container.innerHTML = '';
+                hint.textContent = 'Выберите услугу и дату';
+                customRow.style.display = 'none';
                 return;
             }
-            
-            const slotsContainer = document.getElementById('timeSlots');
-            slotsContainer.innerHTML = '<p style="color: #999;">Загрузка...</p>';
-            
-            fetch(`/book/${calendarId}/slots/?date=${date}&service_id=${selectedServiceId}`)
-                .then(response => response.json())
+            hint.textContent = 'Загрузка...';
+            container.innerHTML = '';
+
+            fetch('/book/' + calendarId + '/slots/?date=' + date + '&service_id=' + selectedServiceId)
+                .then(r => r.json())
                 .then(data => {
                     if (data.error) {
-                        slotsContainer.innerHTML = `<p style="color: #dc3545;">${data.error}</p>`;
+                        hint.textContent = data.error;
+                        customRow.style.display = 'none';
                         return;
                     }
-                    
-                    if (data.available_slots.length === 0) {
-                        slotsContainer.innerHTML = '<p style="color: #999;">Нет доступного времени на эту дату</p>';
+                    const slots = data.available_slots || [];
+                    if (slots.length === 0) {
+                        hint.textContent = 'На эту дату нет свободного времени';
+                        customRow.style.display = 'block';
                         return;
                     }
-                    
-                    let html = '';
-                    data.available_slots.forEach(slot => {
-                        html += `<div class="slot-btn" onclick="selectSlot('${slot.start_time}', '${slot.end_time}')">
-                            ${slot.start_time} - ${slot.end_time}
-                        </div>`;
+                    hint.textContent = 'Выберите время начала (длительность ' + selectedDuration + ' мин)';
+                    customRow.style.display = 'block';
+                    slots.forEach(slot => {
+                        const chip = document.createElement('button');
+                        chip.type = 'button';
+                        chip.className = 'time-chip';
+                        chip.textContent = slot.start_time;
+                        chip.dataset.start = slot.start_time;
+                        chip.dataset.end = slot.end_time;
+                        chip.addEventListener('click', function() {
+                            document.querySelectorAll('.time-chip').forEach(c => c.classList.remove('selected'));
+                            this.classList.add('selected');
+                            document.getElementById('booking_time').value = this.dataset.start;
+                            document.getElementById('booking_end_time').value = this.dataset.end;
+                            document.getElementById('customTimeStart').value = this.dataset.start;
+                        });
+                        container.appendChild(chip);
                     });
-                    slotsContainer.innerHTML = html;
                 })
-                .catch(error => {
-                    slotsContainer.innerHTML = '<p style="color: #dc3545;">Ошибка загрузки</p>';
+                .catch(() => {
+                    hint.textContent = 'Ошибка загрузки';
+                    customRow.style.display = 'none';
                 });
         }
-        
-        function selectSlot(startTime, endTime) {
-            // Убираем выделение с других кнопок
-            document.querySelectorAll('.slot-btn').forEach(btn => {
-                btn.classList.remove('selected');
-            });
-            
-            // Выделяем выбранную
-            event.target.classList.add('selected');
-            
-            // Сохраняем в скрытые поля
-            document.getElementById('booking_time').value = startTime;
-            document.getElementById('booking_end_time').value = endTime;
-        }
+
+        document.getElementById('customTimeStart').addEventListener('change', function() {
+            const v = this.value;
+            if (!v) return;
+            const [h, m] = v.split(':').map(Number);
+            const start = new Date(2000, 0, 1, h, m);
+            const end = new Date(start.getTime() + selectedDuration * 60000);
+            const endStr = String(end.getHours()).padStart(2, '0') + ':' + String(end.getMinutes()).padStart(2, '0');
+            document.getElementById('booking_time').value = v;
+            document.getElementById('booking_end_time').value = endStr;
+            document.querySelectorAll('.time-chip').forEach(c => c.classList.remove('selected'));
+        });
     </script>
 </body>
 </html>

@@ -8,10 +8,13 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from consultant_menu.models import Consultant, Clients, Category, Calendar, Service, TimeSlot, Booking, Integration
 from django.http import Http404, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from allauth.socialaccount.models import SocialAccount
 from allauth.account.models import EmailAddress
 from datetime import datetime, date, timedelta
 from django.conf import settings
+import uuid
 from django.core.files.storage import default_storage
 import os
 
@@ -462,24 +465,27 @@ def public_booking_view(request, calendar_id):
                 is_available=True
             ).first()
 
-            # Создаем запись
+            # Создаем запись (link_token для подтверждения в Telegram — необязательно)
+            link_token = uuid.uuid4().hex[:24]
             booking = Booking.objects.create(
                 service=service,
-                time_slot=time_slot,  # Может быть None
+                time_slot=time_slot,
                 calendar=calendar,
                 booking_date=booking_date,
                 booking_time=booking_time,
-                booking_end_time=booking_end_time,  # НОВОЕ ПОЛЕ
+                booking_end_time=booking_end_time,
                 client_name=client_name,
                 client_phone=client_phone or "",
                 client_telegram=client_telegram or "",
                 client_email=client_email,
-                status='pending'
+                status='pending',
+                link_token=link_token,
             )
 
             return render(request, 'consultant_menu/booking_success.html', {
                 'booking': booking,
-                'service': service
+                'service': service,
+                'telegram_bot_username': getattr(settings, 'TELEGRAM_BOT_USERNAME', ''),
             })
 
         except (Service.DoesNotExist, ValueError) as e:
@@ -493,6 +499,34 @@ def public_booking_view(request, calendar_id):
         'calendar': calendar,
         'services': services
     })
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def confirm_booking_telegram_api(request):
+    """
+    API для бота: привязать telegram_id к записи по одноразовому link_token.
+    POST JSON: {"link_token": "...", "telegram_id": 123456789}
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    try:
+        import json
+        data = json.loads(request.body) if request.body else {}
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    link_token = (data.get('link_token') or '').strip()
+    telegram_id = data.get('telegram_id')
+    if not link_token or telegram_id is None:
+        return JsonResponse({'success': False, 'error': 'link_token and telegram_id required'}, status=400)
+    try:
+        booking = Booking.objects.get(link_token=link_token)
+    except Booking.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Invalid or expired link'}, status=404)
+    booking.telegram_id = int(telegram_id)
+    booking.link_token = None
+    booking.save(update_fields=['telegram_id', 'link_token'])
+    return JsonResponse({'success': True, 'message': 'Telegram привязан к записи'})
 
 
 def get_available_slots_api(request, calendar_id):
