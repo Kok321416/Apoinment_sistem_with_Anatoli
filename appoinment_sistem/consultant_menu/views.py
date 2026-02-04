@@ -363,6 +363,28 @@ def calendar_view(request, calendar_id):
     })
 
 
+def calendar_settings_edit(request, calendar_id):
+    """Редактирование настроек календаря (перерыв, лимит в день, запись за N часов)."""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    try:
+        consultant = Consultant.objects.get(user=request.user)
+        calendar = Calendar.objects.get(id=calendar_id, consultant=consultant)
+    except (Consultant.DoesNotExist, Calendar.DoesNotExist):
+        return redirect('calendars')
+
+    if request.method == 'POST':
+        calendar.break_between_services_minutes = int(request.POST.get('break_between_services_minutes', 0) or 0)
+        calendar.book_ahead_hours = int(request.POST.get('book_ahead_hours', 24) or 24)
+        calendar.max_services_per_day = int(request.POST.get('max_services_per_day', 0) or 0)
+        calendar.save()
+        return redirect('calendar_detail', calendar_id=calendar.id)
+
+    return render(request, 'consultant_menu/calendar_settings_edit.html', {
+        'calendar': calendar,
+    })
+
+
 def public_booking_view(request, calendar_id):
     """Публичная страница записи через календарь (без авторизации)"""
     try:

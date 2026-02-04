@@ -63,6 +63,20 @@ class Calendar(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Настройки на каждый день (перерыв, лимит записей, за сколько часов можно записаться)
+    break_between_services_minutes = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Перерыв между услугами (минуты)',
+    )
+    book_ahead_hours = models.PositiveIntegerField(
+        default=24,
+        verbose_name='Запись не позднее чем за (часов)',
+    )
+    max_services_per_day = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Лимит записей в день (0 — без лимита)',
+    )
+
     class Meta:
         db_table = 'calendars'
         verbose_name = 'Календарь'
