@@ -120,6 +120,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "consultant_menu.context_processors.telegram_bot_username",
+                "consultant_menu.context_processors.telegram_welcome",
             ],
         },
     },

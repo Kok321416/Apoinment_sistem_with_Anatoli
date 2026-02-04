@@ -121,6 +121,13 @@
         </div>
         {% endif %}
 
+        {% if show_telegram_welcome %}
+        <div class="telegram-welcome" role="alert" style="max-width: 800px; margin: 0 auto 24px; padding: 16px 20px; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border: 1px solid #81c784; border-radius: 10px; color: #2e7d32;">
+            <strong>✅ Вы успешно подключились через Telegram.</strong><br>
+            Добро пожаловать! Теперь вы можете пользоваться всеми возможностями системы записи.
+        </div>
+        {% endif %}
+
         <div class="profile-container">
             <!-- Режим просмотра -->
             <div id="profileView">

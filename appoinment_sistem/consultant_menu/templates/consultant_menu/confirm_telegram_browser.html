@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подтверждение Telegram</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <style>
+        .confirm-page { max-width: 420px; margin: 0 auto; padding: 32px 16px; text-align: center; }
+        .confirm-card { background: #fff; border-radius: 16px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
+        .confirm-card h2 { margin: 0 0 12px 0; color: #374151; font-size: 1.25rem; }
+        .confirm-card p { margin: 0 0 20px 0; color: #6b7280; font-size: 14px; }
+        .confirm-card .error { background: #fef2f2; color: #dc2626; padding: 12px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; }
+        .confirm-card .success { background: #f0fdf4; color: #059669; padding: 16px; border-radius: 10px; margin-top: 16px; font-weight: 500; }
+        .confirm-card a.back { display: inline-block; margin-top: 16px; color: #6366f1; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="confirm-page">
+        <div class="confirm-card">
+            {% if error %}
+                <h2>Ошибка</h2>
+                <p class="error">{{ error }}</p>
+                <a href="javascript:history.back()" class="back">← Вернуться назад</a>
+            {% elif success %}
+                <h2>✓ Готово</h2>
+                <p class="success">Telegram привязан к записи. Сообщение о записи отправлено вам в бота.</p>
+                <a href="javascript:history.back()" class="back">← Вернуться к записи</a>
+            {% else %}
+                <h2>Подтвердить в Telegram</h2>
+                <p>Нажмите кнопку ниже и войдите в свой аккаунт Telegram. После этого вам придёт сообщение о записи в бота.</p>
+                <div id="widget-wrap"></div>
+                <p style="margin-top: 16px; font-size: 13px; color: #9ca3af;">После авторизации вы вернётесь на эту страницу — подождите.</p>
+                <a href="javascript:history.back()" class="back">← Отмена</a>
+            {% endif %}
+        </div>
+    </div>
+    {% if not error and not success and link_token and telegram_bot_username and auth_url %}
+    <script async src="https://telegram.org/js/telegram-widget.js?22" data-telegram-login="{{ telegram_bot_username }}" data-size="large" data-auth-url="{{ auth_url }}" data-request-access="write"></script>
+    <script>
+    (function() {
+        var linkToken = '{{ link_token|escapejs }}';
+        if (!linkToken) return;
+        var hash = window.location.hash ? window.location.hash.substring(1) : '';
+        if (!hash) return;
+        var wrap = document.getElementById('widget-wrap');
+        if (wrap) wrap.innerHTML = '<p style="color:#059669;">Подождите, идёт подтверждение…</p>';
+        var params = {};
+        hash.split('&').forEach(function(pair) {
+            var i = pair.indexOf('=');
+            if (i !== -1) params[decodeURIComponent(pair.slice(0, i))] = decodeURIComponent(pair.slice(i + 1));
+        });
+        var id = params.id, auth_date = params.auth_date, hashVal = params.hash, first_name = params.first_name || '', username = params.username || '';
+        if (!id || !hashVal) return;
+        var payload = {
+            link_token: linkToken,
+            id: id,
+            first_name: first_name,
+            username: username,
+            auth_date: auth_date,
+            hash: hashVal
+        };
+        fetch('/api/booking/confirm-telegram-browser/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]') && document.querySelector('[name=csrfmiddlewaretoken]').value },
+            body: JSON.stringify(payload)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                window.location.href = '?telegram=confirmed';
+            } else {
+                document.getElementById('widget-wrap').innerHTML = '<p class="error">' + (data.error || 'Ошибка подтверждения') + '</p>';
+            }
+        })
+        .catch(function() {
+            document.getElementById('widget-wrap').innerHTML = '<p class="error">Ошибка связи с сервером.</p>';
+        });
+    })();
+    </script>
+    {% endif %}
+</body>
+</html>
