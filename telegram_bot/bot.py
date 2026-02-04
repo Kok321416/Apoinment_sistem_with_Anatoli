@@ -166,6 +166,12 @@ def handle_telegram_update(update_data):
                     handle_start_command(chat_id, user_id, username, first_name)
             elif text.startswith('/start login') or text == '/start login':
                 handle_login_via_bot(chat_id)
+            elif text.startswith('/start connect_spec_'):
+                token_str = text.replace('/start connect_spec_', '').strip()
+                if token_str:
+                    handle_specialist_connect_telegram(chat_id, user_id, token_str)
+                else:
+                    handle_connect_via_bot(chat_id)
             elif text.startswith('/start connect') or text == '/start connect':
                 handle_connect_via_bot(chat_id)
             elif text == '/register':
@@ -211,6 +217,10 @@ def handle_telegram_update(update_data):
                 token_str = data.replace('booklink_', '', 1)
                 user_id = callback_query['from']['id']
                 handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
+            elif data.startswith('spec_confirm_'):
+                token_str = data.replace('spec_confirm_', '', 1)
+                user_id = callback_query['from']['id']
+                handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query_id, token_str)
             else:
                 send_telegram_message(chat_id, "Выберите действие в меню.", get_main_reply_keyboard())
     
@@ -256,6 +266,50 @@ def handle_connect_via_bot(chat_id):
         "Нажмите кнопку ниже — откроется страница сайта. Подтвердите подключение там.",
         keyboard
     )
+
+
+def handle_specialist_connect_telegram(chat_id, user_id, token_str):
+    """
+    Специалист перешёл по ссылке «Подключить через приложение» со страницы интеграций (start=connect_spec_TOKEN).
+    Показываем кнопку «Подтвердить»; по нажатию вызываем API appoinment_sistem для привязки chat_id к Integration.
+    """
+    keyboard = {
+        'inline_keyboard': [[
+            {'text': '✅ Подтвердить подключение', 'callback_data': f'spec_confirm_{token_str}'}
+        ]]
+    }
+    send_telegram_message(
+        chat_id,
+        "👋 <b>Подключение Telegram для уведомлений специалиста</b>\n\n"
+        "Нажмите кнопку ниже — после этого вы будете получать уведомления о новых записях и напоминания о консультациях.",
+        keyboard
+    )
+
+
+def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query_id, token_str):
+    """Обработка нажатия «Подтвердить» при подключении Telegram специалиста."""
+    site_url = get_site_url().rstrip('/')
+    api_url = f"{site_url}/api/specialist/connect-telegram/"
+    try:
+        r = requests.post(api_url, json={'link_token': token_str, 'telegram_id': user_id}, timeout=10)
+        data = r.json() if r.text else {}
+        if r.status_code == 200 and data.get('success'):
+            answer_callback_query(callback_query_id, 'Готово! Уведомления будут приходить сюда.')
+            send_telegram_message(
+                chat_id,
+                "✅ <b>Telegram успешно подключён.</b>\n\n"
+                "Вы будете получать:\n"
+                "• уведомления о новых записях;\n"
+                "• напоминания о консультациях за 24 часа и за 1 час."
+            )
+        else:
+            msg = data.get('error', 'Ссылка недействительна или истекла.')
+            answer_callback_query(callback_query_id, msg[:200])
+            send_telegram_message(chat_id, f"❌ Не удалось подключить: {msg}")
+    except Exception as e:
+        logger.warning(f"Ошибка вызова API подключения специалиста: {e}")
+        answer_callback_query(callback_query_id, 'Ошибка. Попробуйте позже.')
+        send_telegram_message(chat_id, "❌ Ошибка связи с сервером. Попробуйте позже или подключите Telegram на странице интеграций на сайте.")
 
 
 def handle_booking_link_confirm(chat_id, user_id, token_str):

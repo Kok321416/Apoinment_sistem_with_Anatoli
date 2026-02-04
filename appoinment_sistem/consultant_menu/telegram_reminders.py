@@ -122,6 +122,37 @@ def format_client_booked_message(booking) -> str:
     )
 
 
+def format_specialist_reminder_message(booking, hours_ahead: int) -> str:
+    """Текст напоминания специалисту о предстоящей консультации."""
+    info = _booking_base_info(booking)
+    client_contact = []
+    if getattr(booking, 'client_phone', None) and booking.client_phone:
+        client_contact.append(booking.client_phone)
+    if getattr(booking, 'client_telegram', None) and booking.client_telegram:
+        client_contact.append(booking.client_telegram)
+    contact_str = ", ".join(client_contact) if client_contact else "—"
+    if hours_ahead >= 24:
+        return (
+            f"📅 <b>Напоминание: консультация через 24 часа</b>\n\n"
+            f"👤 Клиент: {getattr(booking, 'client_name', '') or '—'}\n"
+            f"📌 Услуга: {info['service_name']}{info['duration']}\n"
+            f"📅 Дата: {info['date_str']}\n"
+            f"🕐 Время: {info['slot']}\n"
+            f"📍 Календарь: {info['calendar_name']}\n"
+            f"📞 Контакт: {contact_str}"
+        )
+    else:
+        return (
+            f"⏰ <b>Через 1 час — консультация</b>\n\n"
+            f"👤 Клиент: {getattr(booking, 'client_name', '') or '—'}\n"
+            f"📌 Услуга: {info['service_name']}{info['duration']}\n"
+            f"📅 Дата: {info['date_str']}\n"
+            f"🕐 Время: {info['slot']}\n"
+            f"📍 Календарь: {info['calendar_name']}\n"
+            f"📞 Контакт: {contact_str}"
+        )
+
+
 def notify_specialist_new_booking(booking) -> bool:
     """Отправить специалисту уведомление о новой записи в Telegram. Возвращает True при успехе."""
     try:

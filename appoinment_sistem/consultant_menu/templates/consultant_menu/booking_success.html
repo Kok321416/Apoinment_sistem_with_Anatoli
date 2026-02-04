@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Запись успешно создана</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
@@ -51,6 +51,31 @@
         }
         .btn-telegram:hover { background: #4f46e5; }
         .btn-telegram::before { content: "✈"; font-size: 18px; }
+        /* Мобильная версия */
+        @media (max-width: 768px) {
+            .success-page {
+                padding: 16px 12px 24px;
+                padding-left: max(12px, env(safe-area-inset-left));
+                padding-right: max(12px, env(safe-area-inset-right));
+            }
+            .success-hero { padding: 20px 16px; margin-bottom: 16px; }
+            .success-hero h1 { font-size: 1.25rem; }
+            .success-card { padding: 16px; }
+            .telegram-block {
+                padding: 16px;
+                margin-top: 16px;
+            }
+            .btn-telegram {
+                display: flex;
+                width: 100%;
+                justify-content: center;
+                min-height: 48px;
+                padding: 14px 16px;
+                font-size: 15px;
+                box-sizing: border-box;
+            }
+            .telegram-block p { margin-bottom: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -77,13 +102,23 @@
 
             {% if booking.link_token and telegram_bot_username %}
             <div class="telegram-block">
-                <h3>Получать напоминания в Telegram</h3>
-                <p>Нажмите кнопку — откроется приложение Telegram и наш бот. Подтвердите запись одним нажатием, и уведомления будут приходить вам в Telegram.</p>
-                <a id="btnOpenTelegram" href="https://t.me/{{ telegram_bot_username }}?start=link_{{ booking.link_token }}" class="btn-telegram" target="_blank" rel="noopener" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=link_{{ booking.link_token }}">
-                    Открыть в приложении Telegram и подтвердить
-                </a>
+                <h3>Получать уведомления в Telegram?</h3>
+                <p>Подтвердите Telegram — и вам сразу придёт сообщение о записи в бота, а перед консультацией — напоминания за 24 часа и за 1 час.</p>
+                <p style="margin-bottom: 16px;"><strong>Выберите способ:</strong></p>
+                <p style="margin-bottom: 10px;">
+                    <a id="btnOpenTelegram" href="https://t.me/{{ telegram_bot_username }}?start=link_{{ booking.link_token }}" class="btn-telegram" target="_blank" rel="noopener" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=link_{{ booking.link_token }}">
+                        Подтвердить в приложении Telegram
+                    </a>
+                </p>
+                <p style="margin: 8px 0 0 0;">
+                    <a href="{% url 'confirm_booking_telegram_browser' booking.link_token %}" class="btn-telegram btn-telegram-secondary">Подтвердить в браузере</a>
+                </p>
+                <p class="telegram-success-note" style="margin: 16px 0 0 0; font-size: 13px; color: #059669; display: none;">
+                    ✓ Готово! Проверьте Telegram — сообщение о записи уже должно прийти.
+                </p>
                 <p style="margin: 12px 0 0 0; font-size: 13px; color: #6366f1;">Необязательно — запись уже сохранена.</p>
             </div>
+            <style>.btn-telegram-secondary { background: #e0e7ff; color: #4338ca; } .btn-telegram-secondary:hover { background: #c7d2fe; } .btn-telegram-secondary::before { content: "🌐 "; }</style>
             <script>
             (function() {
                 var btn = document.getElementById('btnOpenTelegram');
@@ -98,6 +133,10 @@
                     });
                 }
             })();
+            if (window.location.search.indexOf('telegram=confirmed') !== -1) {
+                var note = document.querySelector('.telegram-success-note');
+                if (note) note.style.display = 'block';
+            }
             </script>
             {% endif %}
         </div>

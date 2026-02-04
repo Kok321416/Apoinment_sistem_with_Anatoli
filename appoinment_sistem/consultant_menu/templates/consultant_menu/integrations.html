@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Интеграции - Система записи</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
@@ -71,6 +71,19 @@
             margin: 20px 0;
             border-radius: 4px;
         }
+        @media (max-width: 768px) {
+            .integrations-container { padding: 12px 0; }
+            .integration-card { padding: 16px; margin-bottom: 16px; }
+            .integration-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                margin-bottom: 14px;
+            }
+            .integration-header h3 { font-size: 1.1rem; }
+            .connect-form { padding: 14px; }
+            .connect-form .btn { min-height: 44px; }
+        }
     </style>
 </head>
 <body>
@@ -99,6 +112,7 @@
         {% endif %}
 
         <div class="integrations-container">
+            {% load socialaccount %}
             <!-- Google Calendar: статус и кнопки по реальному состоянию -->
             <div class="integration-card">
                 <div class="integration-header">
@@ -188,6 +202,16 @@
                 {% else %}
                 <div>
                     {% if integration.telegram_enabled %}
+                    <p style="margin-bottom: 16px;">Подключите Telegram — уведомления о новых записях и напоминания о консультациях будут приходить в приложение.</p>
+                    <p style="margin-bottom: 8px;">
+                        <a href="{% url 'connect_telegram_app' %}" class="btn" style="display: inline-block;">📱 Подключить через приложение Telegram</a>
+                    </p>
+                    <p style="margin-bottom: 12px;">
+                        <a href="{% provider_login_url 'telegram' process='connect' next='/integrations/' %}" class="btn btn-secondary" style="display: inline-block;">🌐 Подключить через браузер (OAuth)</a>
+                    </p>
+                    <p style="font-size: 14px; color: #666;">Приложение: откроется Telegram, нажмите «Подтвердить подключение» в боте. Браузер: откроется окно входа Telegram.</p>
+                    <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
+                    <p style="font-size: 14px; color: #666; margin-bottom: 12px;">Или вручную (токен и Chat ID):</p>
                     <form method="POST" class="connect-form">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="connect_telegram">
@@ -201,7 +225,7 @@
                             <input type="text" name="chat_id" placeholder="123456789" value="">
                             <small>ID чата для отправки уведомлений</small>
                         </div>
-                        <button type="submit" class="btn">🔗 Подключить Telegram</button>
+                        <button type="submit" class="btn btn-secondary">Подключить вручную</button>
                     </form>
                     {% else %}
                     <form method="POST">

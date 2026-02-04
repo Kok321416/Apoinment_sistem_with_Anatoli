@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Главная страница - Система записи</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
@@ -31,6 +31,13 @@
                 {% endif %}
             </div>
         </div>
+
+        {% if show_telegram_welcome %}
+        <div class="telegram-welcome" role="alert" style="max-width: 800px; margin: 0 auto 24px; padding: 16px 20px; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border: 1px solid #81c784; border-radius: 10px; color: #2e7d32;">
+            <strong>✅ Вы успешно подключились через Telegram.</strong><br>
+            Добро пожаловать! Теперь вы можете пользоваться всеми возможностями системы записи.
+        </div>
+        {% endif %}
 
         {% if user.is_authenticated %}
         <h2 style="text-align: center; margin-bottom: 40px;">Доступные инструменты</h2>
@@ -61,15 +68,15 @@
 
         </div>
         {% else %}
-        <div style="text-align: center; padding: 60px 20px;">
+        <div class="welcome-block" style="text-align: center; padding: 40px 16px 60px;">
             <h2>Добро пожаловать!</h2>
-            <p style="color: #666; font-size: 18px; margin: 30px 0;">
+            <p style="color: #666; font-size: 16px; margin: 24px 0;">
                 Система онлайн записи для консультантов.<br>
                 Войдите или зарегистрируйтесь, чтобы начать работу.
             </p>
-            <div style="margin-top: 40px;">
-                <a href="{% url 'login' %}" class="btn" style="margin-right: 15px;">Войти</a>
-                <a href="{% url 'register' %}" class="btn btn-secondary">Зарегистрироваться</a>
+            <div class="welcome-buttons" style="margin-top: 28px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
+                <a href="{% url 'login' %}" class="btn">Войти</a>
+                <a href="{% url 'register' %}" class="btn btn-secondary">Регистрация</a>
             </div>
         </div>
         {% endif %}

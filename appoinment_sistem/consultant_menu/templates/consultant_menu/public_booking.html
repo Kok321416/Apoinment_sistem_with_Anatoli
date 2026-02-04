@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Запись — {{ calendar.name }}</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
@@ -191,6 +191,61 @@
             border-radius: var(--book-radius-sm);
             margin-bottom: 20px;
         }
+        /* Мобильная версия страницы записи */
+        @media (max-width: 768px) {
+            .book-container {
+                padding: 12px 10px 20px;
+                padding-left: max(10px, env(safe-area-inset-left));
+                padding-right: max(10px, env(safe-area-inset-right));
+            }
+            .book-hero {
+                padding: 20px 16px;
+                margin-bottom: 16px;
+            }
+            .book-hero h1 { font-size: 1.25rem; }
+            .book-card {
+                padding: 16px;
+                margin-bottom: 16px;
+            }
+            .book-card h2 { font-size: 1rem; margin-bottom: 12px; }
+            .service-tile {
+                padding: 14px 12px;
+                min-height: 48px;
+            }
+            .service-tile strong { font-size: 15px; }
+            .cal-day {
+                padding: 8px 4px;
+                font-size: 13px;
+                min-height: 40px;
+            }
+            .cal-header button {
+                width: 44px;
+                height: 44px;
+                font-size: 20px;
+            }
+            .cal-month { font-size: 14px; }
+            .time-chip {
+                min-height: 44px;
+                min-width: 64px;
+                padding: 12px 14px;
+            }
+            .form-group input[type="text"],
+            .form-group input[type="tel"],
+            .form-group input[type="email"],
+            .time-custom-row input[type="time"] {
+                min-height: 48px;
+                font-size: 16px;
+            }
+            .btn-submit {
+                min-height: 52px;
+                font-size: 17px;
+                margin-top: 20px;
+            }
+        }
+        @media (max-width: 480px) {
+            .cal-day { padding: 6px 2px; font-size: 12px; }
+            .time-timeline { gap: 6px; }
+        }
     </style>
 </head>
 <body>
@@ -262,13 +317,14 @@
                     <input type="text" id="client_name" name="client_name" required placeholder="Как к вам обращаться">
                 </div>
                 <div class="form-group">
-                    <label for="client_phone">Телефон</label>
-                    <input type="tel" id="client_phone" name="client_phone" placeholder="+7 (999) 123-45-67">
-                    <small>Укажите телефон или Telegram</small>
+                    <label for="client_phone">Телефон *</label>
+                    <input type="tel" id="client_phone" name="client_phone" required placeholder="+7 (999) 123-45-67">
+                    <small>Для связи и напоминаний</small>
                 </div>
-                <div class="form-group">
-                    <label for="client_telegram">Telegram</label>
-                    <input type="text" id="client_telegram" name="client_telegram" placeholder="@username">
+                <div class="form-group" style="padding: 12px; background: #f0fdf4; border-radius: 12px; border: 1px solid #86efac;">
+                    <p style="margin: 0; font-size: 14px; color: #166534;">
+                        <strong>Уведомления в Telegram:</strong> после записи на следующей странице можно нажать кнопку и подтвердить Telegram — тогда напоминания и сообщение о записи будут приходить вам в бота.
+                    </p>
                 </div>
                 <div class="form-group">
                     <label for="client_email">Email</label>

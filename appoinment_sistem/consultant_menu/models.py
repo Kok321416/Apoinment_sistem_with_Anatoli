@@ -180,6 +180,9 @@ class Booking(models.Model):
     # Напоминания клиенту в Telegram (чтобы не слать дважды)
     reminder_24h_sent = models.BooleanField(default=False, verbose_name='Напоминание за 24ч отправлено')
     reminder_1h_sent = models.BooleanField(default=False, verbose_name='Напоминание за 1ч отправлено')
+    # Напоминания специалисту в Telegram
+    specialist_reminder_24h_sent = models.BooleanField(default=False, verbose_name='Напоминание специалисту за 24ч отправлено')
+    specialist_reminder_1h_sent = models.BooleanField(default=False, verbose_name='Напоминание специалисту за 1ч отправлено')
 
     class Meta:
         db_table = 'bookings'
@@ -206,7 +209,10 @@ class Integration(models.Model):
     telegram_connected = models.BooleanField(default=False, verbose_name='Telegram подключен')
     telegram_bot_token = models.CharField(max_length=255, blank=True, null=True, verbose_name='Токен бота Telegram')
     telegram_chat_id = models.CharField(max_length=255, blank=True, null=True, verbose_name='Chat ID Telegram')
-    
+    # Одноразовый токен для подключения через приложение (t.me/Bot?start=connect_spec_XXX)
+    telegram_link_token = models.CharField(max_length=64, unique=True, blank=True, null=True)
+    telegram_link_token_created_at = models.DateTimeField(blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -1,11 +1,21 @@
 """
 Сигналы для consultant_menu: создание Consultant при регистрации через соцсеть (Google/Telegram),
-уведомление специалисту в Telegram о новой записи.
+уведомление специалисту в Telegram о новой записи, приветствие при входе через Telegram,
+синхронизация Integration.telegram_chat_id при подключении/входе через Telegram OAuth (браузер).
 """
 from django.dispatch import receiver
 from django.db.models.signals import post_save
+from django.contrib.auth.signals import user_logged_in
 from allauth.account.signals import user_signed_up
-from consultant_menu.models import Consultant, Category, Booking
+from allauth.socialaccount.signals import social_account_added, social_account_updated
+from consultant_menu.models import Consultant, Category, Booking, Integration
+
+
+@receiver(user_logged_in)
+def set_telegram_welcome_flag(request, user, **kwargs):
+    """При входе через Telegram ставим флаг для показа приветственного сообщения."""
+    if getattr(request, "session", None) and "telegram" in (request.path or ""):
+        request.session["show_telegram_welcome"] = True
 
 
 def _parse_fio(fio_str):
@@ -14,6 +24,52 @@ def _parse_fio(fio_str):
     first_name = parts[1] if len(parts) > 1 else ""
     middle_name = " ".join(parts[2:]) if len(parts) > 2 else ""
     return first_name, last_name, middle_name
+
+
+def _sync_telegram_to_integration(user):
+    """Если у пользователя есть Consultant и SocialAccount (Telegram) — записать uid в Integration для уведомлений."""
+    if not user or not user.socialaccount_set.filter(provider="telegram").exists():
+        return
+    try:
+        consultant = Consultant.objects.get(user=user)
+    except Consultant.DoesNotExist:
+        return
+    sa = user.socialaccount_set.filter(provider="telegram").first()
+    uid = getattr(sa, "uid", None)
+    if uid is None:
+        return
+    integration, _ = Integration.objects.get_or_create(consultant=consultant)
+    integration.telegram_chat_id = str(uid).strip()
+    integration.telegram_connected = True
+    integration.telegram_enabled = True
+    integration.save(update_fields=["telegram_chat_id", "telegram_connected", "telegram_enabled"])
+
+
+@receiver(social_account_added)
+def sync_telegram_integration_on_connect(request, sociallogin, **kwargs):
+    """После подключения соц. аккаунта (в т.ч. Telegram) в браузере — записать telegram uid в Integration."""
+    if getattr(sociallogin.account, "provider", None) != "telegram":
+        return
+    user = getattr(sociallogin, "user", None)
+    if user:
+        _sync_telegram_to_integration(user)
+
+
+@receiver(social_account_updated)
+def sync_telegram_integration_on_update(request, sociallogin, **kwargs):
+    """После обновления соц. аккаунта (повторный вход через Telegram) — обновить Integration."""
+    if getattr(sociallogin.account, "provider", None) != "telegram":
+        return
+    user = getattr(sociallogin, "user", None)
+    if user:
+        _sync_telegram_to_integration(user)
+
+
+@receiver(user_logged_in)
+def sync_telegram_integration_on_login(request, user, **kwargs):
+    """При входе через Telegram (path содержит telegram) — подтянуть chat_id из SocialAccount в Integration."""
+    if getattr(request, "session", None) and "telegram" in (request.path or ""):
+        _sync_telegram_to_integration(user)
 
 
 @receiver(user_signed_up)
@@ -41,6 +97,8 @@ def create_consultant_on_social_signup(request, user, **kwargs):
         telegram_nickname="",
         category_of_specialist=category,
     )
+    # Сразу привязать Telegram к Integration, если регистрация была через Telegram
+    _sync_telegram_to_integration(user)
 
 
 @receiver(post_save, sender=Booking)

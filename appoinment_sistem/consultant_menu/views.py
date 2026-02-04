@@ -14,8 +14,11 @@ from django.db import transaction
 from allauth.socialaccount.models import SocialAccount
 from allauth.account.models import EmailAddress
 from datetime import datetime, date, timedelta
+from django.utils import timezone
 from django.conf import settings
 import uuid
+import hashlib
+import hmac
 from django.core.files.storage import default_storage
 import os
 
@@ -407,15 +410,14 @@ def public_booking_view(request, calendar_id):
 
         client_name = request.POST.get('client_name')
         client_phone = request.POST.get('client_phone', '').strip()
-        client_telegram = request.POST.get('client_telegram', '').strip()
-        client_email = request.POST.get('client_email', '')
+        client_email = request.POST.get('client_email', '').strip()
 
-        # Проверка: телефон ИЛИ telegram обязательны
-        if not client_phone and not client_telegram:
+        # Контакт: телефон обязателен для связи. Telegram подтверждается на странице успеха (приложение или браузер).
+        if not client_phone:
             return render(request, 'consultant_menu/public_booking.html', {
                 'calendar': calendar,
                 'services': services,
-                'error': 'Необходимо указать телефон или Telegram для связи'
+                'error': 'Укажите телефон для связи'
             })
 
         if not all([service_id, booking_date, booking_time, booking_end_time, client_name]):
@@ -498,8 +500,8 @@ def public_booking_view(request, calendar_id):
                     booking_end_time=booking_end_time,
                     client_name=client_name,
                     client_phone=client_phone or "",
-                    client_telegram=client_telegram or "",
-                    client_email=client_email,
+                    client_telegram="",  # заполняется при подтверждении в Telegram (приложение или браузер)
+                    client_email=client_email or "",
                     status='pending',
                     link_token=link_token,
                 )
@@ -556,6 +558,157 @@ def confirm_booking_telegram_api(request):
     except Exception:
         pass
     return JsonResponse({'success': True, 'message': 'Telegram привязан к записи'})
+
+
+def connect_telegram_app(request):
+    """
+    Подключение Telegram специалиста через приложение.
+    Генерирует одноразовый токен и перенаправляет в бота (t.me/Bot?start=connect_spec_TOKEN).
+    """
+    if not request.user.is_authenticated:
+        return redirect('login')
+    try:
+        consultant = Consultant.objects.get(user=request.user)
+    except Consultant.DoesNotExist:
+        return redirect('home')
+    integration, _ = Integration.objects.get_or_create(consultant=consultant)
+    # Включаем уведомления и создаём токен
+    integration.telegram_enabled = True
+    integration.telegram_link_token = uuid.uuid4().hex
+    integration.telegram_link_token_created_at = timezone.now()
+    integration.save(update_fields=['telegram_enabled', 'telegram_link_token', 'telegram_link_token_created_at'])
+    bot_username = (getattr(settings, 'TELEGRAM_BOT_USERNAME', '') or '').strip().lstrip('@')
+    if not bot_username:
+        request.session['integrations_error'] = 'TELEGRAM_BOT_USERNAME не настроен.'
+        return redirect('integrations')
+    url = f"https://t.me/{bot_username}?start=connect_spec_{integration.telegram_link_token}"
+    return redirect(url)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def confirm_specialist_telegram_api(request):
+    """
+    API для бота: привязать telegram_id специалиста к Integration по одноразовому link_token.
+    POST JSON: {"link_token": "...", "telegram_id": 123456789}
+    """
+    try:
+        import json
+        data = json.loads(request.body) if request.body else {}
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    link_token = (data.get('link_token') or '').strip()
+    telegram_id = data.get('telegram_id')
+    if not link_token or telegram_id is None:
+        return JsonResponse({'success': False, 'error': 'link_token and telegram_id required'}, status=400)
+    try:
+        integration = Integration.objects.get(telegram_link_token=link_token)
+    except Integration.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Invalid or expired link'}, status=404)
+    created_at = integration.telegram_link_token_created_at
+    if created_at and (timezone.now() - created_at).total_seconds() > 900:
+        integration.telegram_link_token = None
+        integration.telegram_link_token_created_at = None
+        integration.save(update_fields=['telegram_link_token', 'telegram_link_token_created_at'])
+        return JsonResponse({'success': False, 'error': 'Link expired'}, status=400)
+    integration.telegram_chat_id = str(int(telegram_id))
+    integration.telegram_connected = True
+    integration.telegram_enabled = True
+    integration.telegram_link_token = None
+    integration.telegram_link_token_created_at = None
+    integration.save(update_fields=['telegram_chat_id', 'telegram_connected', 'telegram_enabled', 'telegram_link_token', 'telegram_link_token_created_at'])
+    return JsonResponse({'success': True, 'message': 'Telegram подключен'})
+
+
+def _verify_telegram_widget_hash(payload: dict, received_hash: str) -> bool:
+    """Проверка подписи данных от Telegram Login Widget. payload — все поля кроме hash."""
+    bot_token = (getattr(settings, 'TELEGRAM_BOT_TOKEN', None) or '').strip()
+    if not bot_token or not received_hash:
+        return False
+    data_check_string = '\n'.join(f'{k}={payload[k]}' for k in sorted(payload.keys()))
+    secret_key = hashlib.sha256(bot_token.encode()).digest()
+    expected = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, received_hash)
+
+
+def confirm_booking_telegram_browser(request, link_token):
+    """
+    Страница подтверждения записи через Telegram в браузере (Login Widget).
+    Показывает виджет; при возврате с hash JS отправляет данные в API.
+    При ?telegram=confirmed — показываем сообщение об успехе.
+    """
+    if request.GET.get('telegram') == 'confirmed':
+        return render(request, 'consultant_menu/confirm_telegram_browser.html', {
+            'error': None,
+            'success': True,
+            'link_token': None,
+        })
+    try:
+        booking = Booking.objects.get(link_token=link_token)
+    except Booking.DoesNotExist:
+        return render(request, 'consultant_menu/confirm_telegram_browser.html', {
+            'error': 'Ссылка недействительна или уже использована',
+            'link_token': None,
+            'success': False,
+        })
+    bot_username = (getattr(settings, 'TELEGRAM_BOT_USERNAME', '') or '').strip().lstrip('@')
+    auth_url = request.build_absolute_uri(request.path)
+    return render(request, 'consultant_menu/confirm_telegram_browser.html', {
+        'link_token': link_token,
+        'auth_url': auth_url,
+        'telegram_bot_username': bot_username,
+        'error': None,
+        'success': False,
+    })
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def confirm_booking_telegram_browser_api(request):
+    """
+    API для подтверждения записи через Telegram Login Widget (браузер).
+    POST JSON: { "link_token": "...", "id": 123, "first_name": "...", "username": "...", "auth_date": 123, "hash": "..." }
+    Проверяем подпись, привязываем telegram_id к записи, отправляем сообщение в бота.
+    """
+    try:
+        import json
+        data = json.loads(request.body) if request.body else {}
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    link_token = (data.get('link_token') or '').strip()
+    telegram_id = data.get('id')
+    auth_date = data.get('auth_date')
+    received_hash = (data.get('hash') or '').strip()
+    if not link_token or telegram_id is None or not received_hash:
+        return JsonResponse({'success': False, 'error': 'link_token, id and hash required'}, status=400)
+    payload = {k: str(data[k]) for k in ['id', 'first_name', 'username', 'auth_date'] if k in data and data[k] is not None}
+    if 'id' not in payload:
+        payload['id'] = str(telegram_id)
+    if 'auth_date' not in payload:
+        payload['auth_date'] = str(auth_date or '')
+    if not _verify_telegram_widget_hash(payload, received_hash):
+        return JsonResponse({'success': False, 'error': 'Invalid signature'}, status=400)
+    auth_ts = int(payload.get('auth_date', 0) or 0)
+    if auth_ts and (timezone.now().timestamp() - auth_ts) > 86400:
+        return JsonResponse({'success': False, 'error': 'Data expired'}, status=400)
+    try:
+        booking = Booking.objects.get(link_token=link_token)
+    except Booking.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Invalid or expired link'}, status=404)
+    booking.telegram_id = int(telegram_id)
+    booking.link_token = None
+    username = data.get('username') or ''
+    if username and not username.startswith('@'):
+        username = '@' + username
+    booking.client_telegram = username
+    booking.save(update_fields=['telegram_id', 'link_token', 'client_telegram'])
+    try:
+        from consultant_menu.telegram_reminders import send_telegram_to_client, format_client_booked_message
+        text = format_client_booked_message(booking)
+        send_telegram_to_client(booking.telegram_id, text)
+    except Exception:
+        pass
+    return JsonResponse({'success': True, 'message': 'Telegram привязан, сообщение отправлено'})
 
 
 def get_available_slots_api(request, calendar_id):
@@ -1030,6 +1183,8 @@ def integrations_view(request):
             integration.telegram_enabled = False
             integration.telegram_bot_token = None
             integration.telegram_chat_id = None
+            integration.telegram_link_token = None
+            integration.telegram_link_token_created_at = None
             integration.save()
             success = 'Telegram отключен'
     

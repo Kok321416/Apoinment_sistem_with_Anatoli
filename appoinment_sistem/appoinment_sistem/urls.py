@@ -24,7 +24,8 @@ from consultant_menu.views import (
     home_view, calendars_view, services_view, logout_view,
     register_view, login_view, calendar_view, calendar_settings_edit, public_booking_view, get_available_slots_api, booking_view, profile_view,
     integrations_view, google_calendar_connect, google_calendar_callback,
-    confirm_booking_telegram_api,
+    confirm_booking_telegram_api, connect_telegram_app, confirm_specialist_telegram_api,
+    confirm_booking_telegram_browser, confirm_booking_telegram_browser_api,
 )
 
 urlpatterns = [
@@ -57,6 +58,10 @@ urlpatterns = [
     path("book/<int:calendar_id>/", public_booking_view, name="public_booking"),
     path("book/<int:calendar_id>/slots/", get_available_slots_api, name="get_available_slots"),
     path("api/booking/confirm-telegram/", confirm_booking_telegram_api, name="confirm_booking_telegram"),
+    path("api/booking/confirm-telegram-browser/", confirm_booking_telegram_browser_api, name="confirm_booking_telegram_browser_api"),
+    path("book/confirm-telegram/<str:link_token>/", confirm_booking_telegram_browser, name="confirm_booking_telegram_browser"),
+    path("integrations/telegram/connect-app/", connect_telegram_app, name="connect_telegram_app"),
+    path("api/specialist/connect-telegram/", confirm_specialist_telegram_api, name="confirm_specialist_telegram"),
 
     # Записи, клиенты
     path("booking/", booking_view, name="booking"),
