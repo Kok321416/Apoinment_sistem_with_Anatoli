@@ -155,6 +155,7 @@
             <span class="setting-pill"><strong>Перерыв:</strong> {{ calendar.break_between_services_minutes|default:0 }} мин</span>
             <span class="setting-pill"><strong>Лимит в день:</strong> {% if calendar.max_services_per_day %}{{ calendar.max_services_per_day }}{% else %}—{% endif %}</span>
             <span class="setting-pill"><strong>Запись за:</strong> {{ calendar.book_ahead_hours|default:24 }} ч</span>
+            <span class="setting-pill"><strong>Напоминания:</strong> за {{ calendar.reminder_hours_first|default:24 }} ч и за {{ calendar.reminder_hours_second|default:1 }} ч</span>
             <a href="{% url 'calendar_settings_edit' calendar.id %}" class="setting-edit">Изменить</a>
         </div>
 

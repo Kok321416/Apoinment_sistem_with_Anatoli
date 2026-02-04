@@ -58,40 +58,46 @@ class Command(BaseCommand):
             except Exception:
                 pass
 
-            # Напоминание клиенту за 24 часа (окно 23–25 ч)
-            if booking.telegram_id and not booking.reminder_24h_sent and 23 * 60 <= delta_minutes <= 25 * 60:
-                text = format_reminder_message(booking, 24)
-                if send_telegram_to_client(booking.telegram_id, text):
-                    booking.reminder_24h_sent = True
-                    booking.save(update_fields=['reminder_24h_sent'])
-                    sent_24 += 1
-                    self.stdout.write(f"  [24h] client {booking.client_name} ({booking.booking_date} {booking.booking_time})")
+            # Часы из настроек календаря (по умолчанию 24 и 1)
+            h1 = getattr(booking.calendar, 'reminder_hours_first', 24) or 24
+            h2 = getattr(booking.calendar, 'reminder_hours_second', 1) or 1
+            # Окно ±30 мин вокруг целевого времени
+            win = 30
+            in_first = (h1 * 60 - win) <= delta_minutes <= (h1 * 60 + win)
+            in_second = (h2 * 60 - win) <= delta_minutes <= (h2 * 60 + win)
 
-            # Напоминание специалисту за 24 часа (то же окно)
-            if specialist_chat_id and not booking.specialist_reminder_24h_sent and 23 * 60 <= delta_minutes <= 25 * 60:
-                text = format_specialist_reminder_message(booking, 24)
-                if _send_telegram(specialist_chat_id, text):
-                    booking.specialist_reminder_24h_sent = True
-                    booking.save(update_fields=['specialist_reminder_24h_sent'])
-                    sent_spec_24 += 1
-                    self.stdout.write(f"  [24h] specialist {booking.client_name} ({booking.booking_date} {booking.booking_time})")
+            # Первое напоминание (клиенту и специалисту)
+            if in_first:
+                if booking.telegram_id and not booking.reminder_24h_sent:
+                    text = format_reminder_message(booking, h1)
+                    if send_telegram_to_client(booking.telegram_id, text):
+                        booking.reminder_24h_sent = True
+                        booking.save(update_fields=['reminder_24h_sent'])
+                        sent_24 += 1
+                        self.stdout.write(f"  [{h1}h] client {booking.client_name} ({booking.booking_date} {booking.booking_time})")
+                if specialist_chat_id and not booking.specialist_reminder_24h_sent:
+                    text = format_specialist_reminder_message(booking, h1)
+                    if _send_telegram(specialist_chat_id, text):
+                        booking.specialist_reminder_24h_sent = True
+                        booking.save(update_fields=['specialist_reminder_24h_sent'])
+                        sent_spec_24 += 1
+                        self.stdout.write(f"  [{h1}h] specialist {booking.client_name} ({booking.booking_date} {booking.booking_time})")
 
-            # Напоминание клиенту за 1 час (окно 50–70 мин)
-            if booking.telegram_id and not booking.reminder_1h_sent and 50 <= delta_minutes <= 70:
-                text = format_reminder_message(booking, 1)
-                if send_telegram_to_client(booking.telegram_id, text):
-                    booking.reminder_1h_sent = True
-                    booking.save(update_fields=['reminder_1h_sent'])
-                    sent_1h += 1
-                    self.stdout.write(f"  [1h]  client {booking.client_name} ({booking.booking_date} {booking.booking_time})")
-
-            # Напоминание специалисту за 1 час
-            if specialist_chat_id and not booking.specialist_reminder_1h_sent and 50 <= delta_minutes <= 70:
-                text = format_specialist_reminder_message(booking, 1)
-                if _send_telegram(specialist_chat_id, text):
-                    booking.specialist_reminder_1h_sent = True
-                    booking.save(update_fields=['specialist_reminder_1h_sent'])
-                    sent_spec_1h += 1
-                    self.stdout.write(f"  [1h]  specialist {booking.client_name} ({booking.booking_date} {booking.booking_time})")
+            # Второе напоминание (клиенту и специалисту)
+            if in_second:
+                if booking.telegram_id and not booking.reminder_1h_sent:
+                    text = format_reminder_message(booking, h2)
+                    if send_telegram_to_client(booking.telegram_id, text):
+                        booking.reminder_1h_sent = True
+                        booking.save(update_fields=['reminder_1h_sent'])
+                        sent_1h += 1
+                        self.stdout.write(f"  [{h2}h] client {booking.client_name} ({booking.booking_date} {booking.booking_time})")
+                if specialist_chat_id and not booking.specialist_reminder_1h_sent:
+                    text = format_specialist_reminder_message(booking, h2)
+                    if _send_telegram(specialist_chat_id, text):
+                        booking.specialist_reminder_1h_sent = True
+                        booking.save(update_fields=['specialist_reminder_1h_sent'])
+                        sent_spec_1h += 1
+                        self.stdout.write(f"  [{h2}h] specialist {booking.client_name} ({booking.booking_date} {booking.booking_time})")
 
         self.stdout.write(self.style.SUCCESS(f"Готово: клиентам 24h={sent_24}, 1h={sent_1h}; специалистам 24h={sent_spec_24}, 1h={sent_spec_1h}"))

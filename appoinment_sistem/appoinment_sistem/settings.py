@@ -94,6 +94,8 @@ ACCOUNT_LOGOUT_REDIRECT_URL = "/"
 TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
 # Токен бота для отправки напоминаний клиентам (тот же, что для allauth)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+# URL сайта: нужен боту для вызова API (подключение специалиста, подтверждение записи). Пример: https://allyourclients.ru
+SITE_URL = (os.getenv("SITE_URL", "") or "").strip().rstrip("/") or "http://127.0.0.1:8000"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

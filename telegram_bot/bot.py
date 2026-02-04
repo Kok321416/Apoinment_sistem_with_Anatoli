@@ -194,7 +194,9 @@ def handle_telegram_update(update_data):
             callback_query_id = callback_query['id']
             chat_id = callback_query['message']['chat']['id']
             data = callback_query.get('data', '')
-            answer_callback_query(callback_query_id)
+            # Не отвечаем сразу для кнопок, которые показывают свой текст (иначе второй answer не сработает)
+            if not data.startswith('booklink_') and not data.startswith('spec_confirm_'):
+                answer_callback_query(callback_query_id)
 
             if data == 'my_appointments':
                 user_id = callback_query['from']['id']
@@ -290,8 +292,9 @@ def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query
     """Обработка нажатия «Подтвердить» при подключении Telegram специалиста."""
     site_url = get_site_url().rstrip('/')
     api_url = f"{site_url}/api/specialist/connect-telegram/"
+    logger.info("Specialist connect: calling %s (token len=%s)", api_url, len(token_str or ""))
     try:
-        r = requests.post(api_url, json={'link_token': token_str, 'telegram_id': user_id}, timeout=10)
+        r = requests.post(api_url, json={'link_token': token_str, 'telegram_id': user_id}, timeout=15)
         data = r.json() if r.text else {}
         if r.status_code == 200 and data.get('success'):
             answer_callback_query(callback_query_id, 'Готово! Уведомления будут приходить сюда.')
@@ -304,12 +307,24 @@ def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query
             )
         else:
             msg = data.get('error', 'Ссылка недействительна или истекла.')
+            logger.warning("Specialist connect API failed: status=%s body=%s", r.status_code, data)
             answer_callback_query(callback_query_id, msg[:200])
-            send_telegram_message(chat_id, f"❌ Не удалось подключить: {msg}")
+            send_telegram_message(
+                chat_id,
+                f"❌ Не удалось подключить: {msg}\n\n"
+                "Попробуйте «Подключить через браузер» на странице интеграций на сайте — откройте сайт и нажмите эту кнопку там."
+            )
+    except requests.exceptions.ConnectionError as e:
+        logger.warning("Specialist connect connection error: %s (SITE_URL=%s)", e, site_url)
+        answer_callback_query(callback_query_id, 'Сервер недоступен.')
+        send_telegram_message(
+            chat_id,
+            "❌ Не удалось связаться с сервером. Проверьте, что на сервере в переменной SITE_URL указан адрес вашего сайта (например https://allyourclients.ru), и что бот запущен с правильными настройками."
+        )
     except Exception as e:
-        logger.warning(f"Ошибка вызова API подключения специалиста: {e}")
+        logger.warning("Ошибка вызова API подключения специалиста: %s", e)
         answer_callback_query(callback_query_id, 'Ошибка. Попробуйте позже.')
-        send_telegram_message(chat_id, "❌ Ошибка связи с сервером. Попробуйте позже или подключите Telegram на странице интеграций на сайте.")
+        send_telegram_message(chat_id, "❌ Ошибка связи с сервером. Попробуйте «Подключить через браузер» на странице интеграций на сайте.")
 
 
 def handle_booking_link_confirm(chat_id, user_id, token_str):
