@@ -1047,8 +1047,12 @@ def google_calendar_connect(request):
         return redirect('integrations')
     try:
         from google_auth_oauthlib.flow import Flow
-        # Без завершающего слэша — в Google Console добавьте тот же URL: https://allyourclients.ru/integrations/google/callback
-        redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback')).rstrip('/')
+        # redirect_uri должен ТОЧНО совпадать с одним из Authorized redirect URIs в Google Cloud Console
+        site_url = (getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
+        if site_url:
+            redirect_uri = f"{site_url}/integrations/google/callback"
+        else:
+            redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback')).rstrip('/')
         flow = Flow.from_client_config(
             {
                 "web": {
@@ -1102,7 +1106,11 @@ def google_calendar_callback(request):
         return redirect('integrations')
     try:
         from google_auth_oauthlib.flow import Flow
-        redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback')).rstrip('/')
+        site_url = (getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
+        if site_url:
+            redirect_uri = f"{site_url}/integrations/google/callback"
+        else:
+            redirect_uri = request.build_absolute_uri(reverse('google_calendar_callback')).rstrip('/')
         flow = Flow.from_client_config(
             {
                 "web": {
