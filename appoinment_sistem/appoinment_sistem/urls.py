@@ -24,6 +24,7 @@ from consultant_menu.views import (
     home_view, calendars_view, services_view, logout_view,
     register_view, login_view, calendar_view, calendar_settings_edit, public_booking_view, get_available_slots_api, booking_view, profile_view,
     integrations_view, google_calendar_connect, google_calendar_callback,
+    confirm_booking_telegram_api,
 )
 
 urlpatterns = [
