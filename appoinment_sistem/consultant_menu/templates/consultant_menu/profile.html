@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Мой профиль - Система записи</title>
     {% load static %}
     {% load socialaccount %}
@@ -94,6 +94,24 @@
         .auth-connect-btn.telegram { background: #0088cc; color: #fff; }
         .auth-connect-btn.google { background: #4285f4; color: #fff; }
         .auth-connect-btn.email { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+        @media (max-width: 768px) {
+            .profile-container { padding: 12px 0; }
+            .profile-header {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                gap: 16px;
+                padding: 20px 16px;
+                margin-bottom: 24px;
+            }
+            .profile-photo { width: 120px; height: 120px; }
+            .profile-section { padding: 16px; margin-bottom: 16px; }
+            .form-row { grid-template-columns: 1fr; gap: 0; }
+            .social-links { grid-template-columns: 1fr; }
+            .auth-methods { flex-direction: column; align-items: stretch; }
+            .auth-method { min-width: 0; }
+            .auth-connect-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+        }
     </style>
 </head>
 <body>

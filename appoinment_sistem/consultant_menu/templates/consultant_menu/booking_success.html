@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Запись успешно создана</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
@@ -51,6 +51,31 @@
         }
         .btn-telegram:hover { background: #4f46e5; }
         .btn-telegram::before { content: "✈"; font-size: 18px; }
+        /* Мобильная версия */
+        @media (max-width: 768px) {
+            .success-page {
+                padding: 16px 12px 24px;
+                padding-left: max(12px, env(safe-area-inset-left));
+                padding-right: max(12px, env(safe-area-inset-right));
+            }
+            .success-hero { padding: 20px 16px; margin-bottom: 16px; }
+            .success-hero h1 { font-size: 1.25rem; }
+            .success-card { padding: 16px; }
+            .telegram-block {
+                padding: 16px;
+                margin-top: 16px;
+            }
+            .btn-telegram {
+                display: flex;
+                width: 100%;
+                justify-content: center;
+                min-height: 48px;
+                padding: 14px 16px;
+                font-size: 15px;
+                box-sizing: border-box;
+            }
+            .telegram-block p { margin-bottom: 12px; }
+        }
     </style>
 </head>
 <body>

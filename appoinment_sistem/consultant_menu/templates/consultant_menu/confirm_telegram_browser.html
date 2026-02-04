@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Подтверждение Telegram</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
@@ -14,6 +14,16 @@
         .confirm-card .error { background: #fef2f2; color: #dc2626; padding: 12px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; }
         .confirm-card .success { background: #f0fdf4; color: #059669; padding: 16px; border-radius: 10px; margin-top: 16px; font-weight: 500; }
         .confirm-card a.back { display: inline-block; margin-top: 16px; color: #6366f1; font-size: 14px; }
+        @media (max-width: 768px) {
+            .confirm-page {
+                padding: 20px 12px;
+                padding-left: max(12px, env(safe-area-inset-left));
+                padding-right: max(12px, env(safe-area-inset-right));
+            }
+            .confirm-card { padding: 20px 16px; }
+            .confirm-card h2 { font-size: 1.15rem; }
+            #widget-wrap { min-height: 52px; }
+        }
     </style>
 </head>
 <body>

@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Интеграции - Система записи</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
@@ -70,6 +70,19 @@
             padding: 15px;
             margin: 20px 0;
             border-radius: 4px;
+        }
+        @media (max-width: 768px) {
+            .integrations-container { padding: 12px 0; }
+            .integration-card { padding: 16px; margin-bottom: 16px; }
+            .integration-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                margin-bottom: 14px;
+            }
+            .integration-header h3 { font-size: 1.1rem; }
+            .connect-form { padding: 14px; }
+            .connect-form .btn { min-height: 44px; }
         }
     </style>
 </head>
