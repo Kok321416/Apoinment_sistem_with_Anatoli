@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Настройки календаря — {{ calendar.name }}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <style>
+        .settings-form { max-width: 480px; margin: 0 auto; }
+        .settings-form label { display: block; margin-bottom: 6px; font-weight: 600; color: #555; }
+        .settings-form input { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 12px; font-size: 16px; margin-bottom: 18px; }
+        .settings-form .hint { font-size: 13px; color: #777; margin-top: -12px; margin-bottom: 18px; }
+        .btn-save { padding: 12px 24px; background: #764ba2; color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; }
+        .btn-save:hover { background: #667eea; }
+        .btn-back { display: inline-block; margin-top: 16px; color: #764ba2; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width: 600px;">
+        <h1>Настройки календаря</h1>
+        <p style="color: #666; margin-bottom: 24px;">{{ calendar.name }}</p>
+        <form method="post" class="settings-form">
+            {% csrf_token %}
+            <label>Перерыв между услугами (минуты)</label>
+            <input type="number" name="break_between_services_minutes" min="0" value="{{ calendar.break_between_services_minutes|default:0 }}">
+            <p class="hint">Минут между окончанием одной записи и началом следующей.</p>
+
+            <label>Запись не позднее чем за (часов)</label>
+            <input type="number" name="book_ahead_hours" min="0" value="{{ calendar.book_ahead_hours|default:24 }}">
+            <p class="hint">Клиент может записаться только на слоты не раньше чем через N часов (24 = за сутки).</p>
+
+            <label>Лимит записей в день (0 — без лимита)</label>
+            <input type="number" name="max_services_per_day" min="0" value="{{ calendar.max_services_per_day|default:0 }}">
+            <p class="hint">Максимум записей в один день по этому календарю.</p>
+
+            <button type="submit" class="btn-save">Сохранить</button>
+        </form>
+        <a href="{% url 'calendar_detail' calendar.id %}" class="btn-back">← Назад к календарю</a>
+    </div>
+</body>
+</html>

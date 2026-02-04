@@ -7,27 +7,56 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
     <style>
+        .calendar-settings-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding: 14px 18px;
+            background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+            border-radius: 16px;
+            border: 1px solid #e9e5ff;
+        }
+        .setting-pill {
+            padding: 6px 12px;
+            background: white;
+            border-radius: 999px;
+            font-size: 13px;
+            color: #5b21b6;
+            box-shadow: 0 1px 3px rgba(118, 75, 162, 0.1);
+        }
+        .setting-edit {
+            margin-left: auto;
+            font-size: 13px;
+            color: #764ba2;
+            text-decoration: none;
+        }
+        .setting-edit:hover { text-decoration: underline; }
+
         .day-schedule {
             background: #f8f9fa;
             padding: 20px;
             margin-bottom: 15px;
-            border-radius: 10px;
+            border-radius: 16px;
+            border: 1px solid #e9e5ff;
+            box-shadow: 0 2px 8px rgba(118, 75, 162, 0.06);
         }
         .time-slot-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 15px;
+            padding: 10px 14px;
             background: white;
-            border-radius: 8px;
+            border-radius: 14px;
             margin: 8px 0;
-            border: 1px solid #e0e0e0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
         }
         .time-slot-time {
             font-weight: 600;
             color: #333;
-            font-size: 16px;
+            font-size: 15px;
             font-family: 'Courier New', monospace;
         }
         .add-slot-form {
@@ -55,8 +84,8 @@
         }
         .time-select-group select {
             padding: 10px 15px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
             font-size: 15px;
             min-width: 120px;
             background: white;
@@ -73,7 +102,7 @@
             background: #dc3545;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 13px;
             font-weight: 500;
@@ -88,7 +117,7 @@
             background: #764ba2;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 15px;
             font-weight: 600;
@@ -120,6 +149,13 @@
         <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
             <h1>{{ calendar.name }}</h1>
             <a href="{% url 'calendars' %}" class="btn btn-secondary">← Назад к календарям</a>
+        </div>
+
+        <div class="calendar-settings-bar">
+            <span class="setting-pill"><strong>Перерыв:</strong> {{ calendar.break_between_services_minutes|default:0 }} мин</span>
+            <span class="setting-pill"><strong>Лимит в день:</strong> {% if calendar.max_services_per_day %}{{ calendar.max_services_per_day }}{% else %}—{% endif %}</span>
+            <span class="setting-pill"><strong>Запись за:</strong> {{ calendar.book_ahead_hours|default:24 }} ч</span>
+            <a href="{% url 'calendar_settings_edit' calendar.id %}" class="setting-edit">Изменить</a>
         </div>
 
         {% if success %}
