@@ -55,6 +55,7 @@ urlpatterns = [
     # Публичная страница записи
     path("book/<int:calendar_id>/", public_booking_view, name="public_booking"),
     path("book/<int:calendar_id>/slots/", get_available_slots_api, name="get_available_slots"),
+    path("api/booking/confirm-telegram/", confirm_booking_telegram_api, name="confirm_booking_telegram"),
 
     # Записи, клиенты
     path("booking/", booking_view, name="booking"),

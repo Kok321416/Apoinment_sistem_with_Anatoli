@@ -160,6 +160,8 @@ def handle_telegram_update(update_data):
                 token_str = text.replace('/start link_', '').strip()
                 if token_str and handle_link_token(chat_id, user_id, username, first_name, token_str):
                     pass
+                elif token_str and handle_booking_link_confirm(chat_id, user_id, token_str):
+                    pass
                 else:
                     handle_start_command(chat_id, user_id, username, first_name)
             elif text == '/register':
@@ -201,11 +203,53 @@ def handle_telegram_update(update_data):
             elif data.startswith('book_'):
                 service_id = int(data.split('_')[1])
                 handle_book_appointment(chat_id, service_id)
+            elif data.startswith('booklink_'):
+                token_str = data.replace('booklink_', '', 1)
+                user_id = callback_query['from']['id']
+                handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
             else:
                 send_telegram_message(chat_id, "Выберите действие в меню.", get_main_reply_keyboard())
     
     except Exception as e:
         logger.error(f"Ошибка обработки обновления Telegram: {e}")
+
+
+def handle_booking_link_confirm(chat_id, user_id, token_str):
+    """
+    Пользователь перешёл по ссылке с страницы «Запись создана» (start=link_TOKEN).
+    Показываем кнопку «Подтвердить»; по нажатию вызываем API сайта (consultant_menu) для привязки telegram_id к записи.
+    """
+    site_url = get_site_url().rstrip('/')
+    api_url = f"{site_url}/api/booking/confirm-telegram/"
+    keyboard = {
+        'inline_keyboard': [[
+            {'text': '✅ Подтвердить и получать уведомления', 'callback_data': f'booklink_{token_str}'}
+        ]]
+    }
+    send_telegram_message(
+        chat_id,
+        "📌 <b>Подтвердите привязку Telegram к вашей записи</b>\n\n"
+        "Нажмите кнопку ниже — после этого напоминания о записи будут приходить сюда. Это необязательно.",
+        keyboard
+    )
+    return True  # мы показали сообщение, не вызываем обычный /start
+
+
+def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str):
+    """Обработка нажатия кнопки «Подтвердить» после перехода по ссылке записи."""
+    site_url = get_site_url().rstrip('/')
+    api_url = f"{site_url}/api/booking/confirm-telegram/"
+    try:
+        r = requests.post(api_url, json={'link_token': token_str, 'telegram_id': user_id}, timeout=10)
+        data = r.json() if r.text else {}
+        if r.status_code == 200 and data.get('success'):
+            answer_callback_query(callback_query_id, 'Готово! Уведомления будут приходить сюда.')
+            send_telegram_message(chat_id, "✅ Ваш Telegram привязан к записи. Напоминания будут приходить сюда.")
+        else:
+            answer_callback_query(callback_query_id, 'Ссылка недействительна или уже использована.')
+    except Exception as e:
+        logger.warning(f"Ошибка вызова API подтверждения записи: {e}")
+        answer_callback_query(callback_query_id, 'Ошибка. Попробуйте позже.')
 
 
 def handle_link_token(chat_id, user_id, username, first_name, token_str):
