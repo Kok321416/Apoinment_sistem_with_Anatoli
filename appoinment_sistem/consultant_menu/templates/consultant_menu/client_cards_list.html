@@ -84,9 +84,9 @@
                     <a href="{% url 'client_card_detail' card.id %}" class="card-tile">
                         <h3>{{ card.name|default:"Без имени" }}</h3>
                         <div class="meta">
+                            {% if card.phone %}<span>📞 Телефон: {{ card.phone }}</span>{% endif %}
                             {% if card.email %}<span>📧 {{ card.email }}</span>{% endif %}
                             {% if card.telegram %}<span>✈️ {{ card.telegram }}</span>{% endif %}
-                            {% if card.phone %}<span>📞 {{ card.phone }}</span>{% endif %}
                             {% if not card.email and not card.telegram and not card.phone %}<span>Карточка #{{ card.id }}</span>{% endif %}
                         </div>
                         {% if card.notes %}<p style="margin-top:10px; font-size:13px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ card.notes }}</p>{% endif %}
@@ -96,6 +96,8 @@
         {% else %}
             <div class="empty-cards">Пока нет карточек. Создайте первую выше или примените миграции — появится пробный клиент.</div>
         {% endif %}
+
+        {% include 'consultant_menu/footer.html' %}
     </div>
 </body>
 </html>

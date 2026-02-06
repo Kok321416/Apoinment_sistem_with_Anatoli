@@ -86,8 +86,11 @@
                 </div>
                 <button type="submit" class="btn">Сохранить</button>
             </form>
-            {% if card.email or card.telegram %}
+            {% if card.email or card.telegram or card.phone %}
             <div class="contact-links" style="margin-top:20px;">
+                {% if card.phone %}
+                    <a href="tel:{{ card.phone }}">📞 Позвонить</a>
+                {% endif %}
                 {% if card.email %}
                     <a href="mailto:{{ card.email }}">📧 Написать на почту</a>
                 {% endif %}
@@ -122,6 +125,8 @@
             <input type="hidden" name="action" value="delete">
             <button type="submit" class="btn btn-secondary" style="background: #dc3545; border-color: #dc3545; color: #fff;">Удалить карточку</button>
         </form>
+
+        {% include 'consultant_menu/footer.html' %}
     </div>
 </body>
 </html>

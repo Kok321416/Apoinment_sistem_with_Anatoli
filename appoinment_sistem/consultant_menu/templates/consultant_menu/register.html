@@ -9,8 +9,8 @@
     <style>
         .auth-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 24px; }
         .auth-method { display: flex; align-items: center; justify-content: center; padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; transition: all 0.2s; background: #fff; }
-        .auth-method:hover { border-color: #764ba2; background: #f9f7ff; }
-        .auth-method.selected { border-color: #764ba2; background: #f0ebff; }
+        .auth-method:hover { border-color: var(--card-border); background: var(--bg-subtle); }
+        .auth-method.selected { border-color: var(--accent); background: var(--hover-bg); }
         .auth-method input { display: none; }
         .auth-method.google-btn { border-color: #4285f4; }
         .auth-method.google-btn.selected { background: #e8f0fe; border-color: #4285f4; }
@@ -91,6 +91,8 @@
             <p>Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
             <p><a href="{% url 'home' %}">На главную</a></p>
         </div>
+
+        {% include 'consultant_menu/footer.html' %}
     </div>
 
     <script>

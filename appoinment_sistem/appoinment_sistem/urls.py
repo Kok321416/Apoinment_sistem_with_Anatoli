@@ -21,7 +21,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from consultant_menu.views import (
     ConsultantAPIView, RegisterView, LoginView, LogoutView,
-    home_view, calendars_view, services_view, logout_view,
+    home_view, privacy_page_view, terms_page_view,
+    calendars_view, services_view, logout_view,
     register_view, login_view, calendar_view, calendar_settings_edit, public_booking_view, get_available_slots_api, booking_view, profile_view,
     client_cards_list_view, client_card_detail_view,
     integrations_view, google_calendar_connect, google_calendar_callback,
@@ -34,6 +35,8 @@ from consultant_menu.views import (
 urlpatterns = [
     # HTML страницы
     path("", home_view, name="home"),
+    path("privacy/", privacy_page_view, name="privacy"),
+    path("terms/", terms_page_view, name="terms"),
     path("register/", register_view, name="register"),
     path("login/", login_view, name="login"),
     path("logout/", logout_view, name="logout"),
