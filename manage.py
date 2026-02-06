@@ -3,12 +3,14 @@
 import os
 import sys
 
-# До загрузки Django: подменяем MySQLdb на PyMySQL (иначе ImproperlyConfigured на сервере)
+# До загрузки Django: подменяем MySQLdb на PyMySQL (иначе MySQLdb.constants на сервере)
 try:
     import pymysql
     pymysql.install_as_MySQLdb()
 except ImportError:
-    pass
+    import sys
+    print("PyMySQL is required for the bot (pip install PyMySQL). Check venv and requirements.txt.", file=sys.stderr)
+    sys.exit(1)
 
 
 def main():
