@@ -140,7 +140,7 @@
                     {% if integration.google_calendar_id %}
                     <p style="margin-top: 10px; color: #666;">Календарь: {{ integration.google_calendar_id }}</p>
                     {% endif %}
-                    <form method="POST" style="margin-top: 15px;">
+                    <form method="POST" action="{% url 'integrations' %}" style="margin-top: 15px;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="disconnect_google">
                         <button type="submit" class="btn btn-secondary">Отключить Google Calendar</button>
