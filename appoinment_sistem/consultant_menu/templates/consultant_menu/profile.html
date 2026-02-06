@@ -81,19 +81,28 @@
             height: 20px;
             margin-right: 8px;
         }
-        .auth-methods { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
-        .auth-method { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #f8f9fa; border-radius: 10px; min-width: 200px; }
-        .auth-method.connected { background: var(--bg-subtle); border: 1px solid var(--card-border); }
-        .auth-method-name { font-weight: 600; color: #333; }
-        .auth-method-detail { font-size: 13px; color: #666; }
-        .auth-method-badge { font-size: 12px; padding: 2px 8px; border-radius: 6px; font-weight: 500; }
-        .auth-method-badge.connected { background: #d4edda; color: #155724; }
-        .auth-method-badge.not-connected { background: #f8d7da; color: #721c24; }
-        .auth-connect-btn { padding: 8px 14px; font-size: 14px; border-radius: 8px; text-decoration: none; font-weight: 500; display: inline-block; margin-top: 8px; transition: opacity 0.2s; }
-        .auth-connect-btn:hover { opacity: 0.9; }
+        .auth-success-block { display: flex; align-items: flex-start; gap: 14px; max-width: 800px; margin: 0 auto 24px; padding: 18px 22px; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border: 1px solid #81c784; border-radius: var(--radius); color: #1b5e20; }
+        .auth-success-block .auth-success-icon { font-size: 28px; flex-shrink: 0; }
+        .auth-success-block strong { display: block; margin-bottom: 4px; font-size: 16px; }
+        .auth-success-block p { margin: 0; font-size: 14px; line-height: 1.5; opacity: 0.95; }
+        .auth-methods { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .auth-method { padding: 20px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); box-shadow: var(--shadow-sm); transition: box-shadow 0.2s ease; display: flex; flex-direction: column; gap: 10px; }
+        .auth-method.connected { border-color: #81c784; background: #f1f8e9; }
+        .auth-method-name { font-weight: 600; color: var(--text-primary); font-size: 15px; }
+        .auth-method-detail { font-size: 13px; color: var(--text-muted); }
+        .auth-method-badge { font-size: 12px; padding: 4px 10px; border-radius: 8px; font-weight: 500; display: inline-block; }
+        .auth-method-badge.connected { background: #c8e6c9; color: #2e7d32; }
+        .auth-method-badge.not-connected { background: #ffcdd2; color: #c62828; }
+        .auth-method-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+        .auth-connect-btn { padding: 10px 18px; font-size: 14px; border-radius: 10px; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.2s ease, box-shadow 0.2s ease; border: none; cursor: pointer; min-height: 44px; box-sizing: border-box; }
+        .auth-connect-btn:hover { transform: translateY(-1px); opacity: 0.95; }
         .auth-connect-btn.telegram { background: #0088cc; color: #fff; }
         .auth-connect-btn.google { background: #4285f4; color: #fff; }
         .auth-connect-btn.email { background: var(--accent); color: #fff; }
+        .auth-connect-btn.browser-link { font-size: 13px; padding: 8px 14px; min-height: 36px; background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--card-border); }
+        .auth-manage-link { margin-top: 20px; }
+        .auth-manage-link .btn { min-height: 44px; }
+        .auth-section-desc { color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
         @media (max-width: 768px) {
             .profile-container { padding: 12px 0; }
             .profile-header {
@@ -139,10 +148,13 @@
         </div>
         {% endif %}
 
-        {% if show_telegram_welcome %}
-        <div class="telegram-welcome" role="alert" style="max-width: 800px; margin: 0 auto 24px; padding: 16px 20px; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border: 1px solid #81c784; border-radius: 10px; color: #2e7d32;">
-            <strong>✅ Вы успешно подключились через Telegram.</strong><br>
-            Добро пожаловать! Теперь вы можете пользоваться всеми возможностями системы записи.
+        {% if show_telegram_welcome or request.GET.telegram_connected %}
+        <div class="auth-success-block" role="alert">
+            <span class="auth-success-icon">✅</span>
+            <div>
+                <strong>Telegram успешно подключён</strong>
+                <p>Теперь вы можете входить через Telegram и получать уведомления. Ниже в блоке «Способы входа» статус обновлён.</p>
+            </div>
         </div>
         {% endif %}
 
@@ -172,51 +184,53 @@
 
                 <div class="profile-section">
                     <h3>Способы входа</h3>
-                    <p style="color: #666; margin-bottom: 16px;">Подключите дополнительные способы входа: тогда вы сможете входить через Telegram, Google или почту.</p>
+                    <p class="auth-section-desc">Подключите дополнительные способы входа: тогда вы сможете входить через Telegram, Google или почту.</p>
                     <div class="auth-methods">
                         <div class="auth-method {% if 'telegram' in connected_providers %}connected{% endif %}">
-                            <div>
-                                <span class="auth-method-name">Telegram</span>
-                                {% if 'telegram' in connected_providers %}
-                                    <span class="auth-method-badge connected">подключено</span>
-                                    <div class="auth-method-detail">Можно входить через Telegram</div>
-                                {% else %}
-                                    <span class="auth-method-badge not-connected">не подключено</span>
+                            <span class="auth-method-name">Telegram</span>
+                            {% if 'telegram' in connected_providers %}
+                                <span class="auth-method-badge connected">Подключено</span>
+                                <div class="auth-method-detail">Вход через Telegram доступен</div>
+                            {% else %}
+                                <span class="auth-method-badge not-connected">Не подключено</span>
+                                <div class="auth-method-actions">
                                     {% if telegram_bot_username %}
-                                    <a id="profileBtnTelegramApp" href="https://t.me/{{ telegram_bot_username }}?start=connect" class="auth-connect-btn telegram" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=connect">Открыть в приложении Telegram</a>
-                                    <a href="{% provider_login_url 'telegram' process='connect' next=request.path %}" style="font-size: 0.9rem; margin-top: 6px; display: inline-block;">или подключить в браузере</a>
+                                    <a id="profileBtnTelegramApp" href="https://t.me/{{ telegram_bot_username }}?start=connect" class="auth-connect-btn telegram" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=connect">В приложении Telegram</a>
+                                    <a href="{% provider_login_url 'telegram' process='connect' next=request.path %}" class="auth-connect-btn browser-link">В браузере</a>
                                     {% else %}
                                     <a href="{% provider_login_url 'telegram' process='connect' next=request.path %}" class="auth-connect-btn telegram">Подключить Telegram</a>
                                     {% endif %}
-                                {% endif %}
-                            </div>
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="auth-method {% if 'google' in connected_providers %}connected{% endif %}">
-                            <div>
-                                <span class="auth-method-name">Google</span>
-                                {% if 'google' in connected_providers %}
-                                    <span class="auth-method-badge connected">подключено</span>
-                                    <div class="auth-method-detail">Можно входить через Google</div>
-                                {% else %}
-                                    <span class="auth-method-badge not-connected">не подключено</span>
+                            <span class="auth-method-name">Google</span>
+                            {% if 'google' in connected_providers %}
+                                <span class="auth-method-badge connected">Подключено</span>
+                                <div class="auth-method-detail">Вход через Google доступен</div>
+                            {% else %}
+                                <span class="auth-method-badge not-connected">Не подключено</span>
+                                <div class="auth-method-actions">
                                     <a href="{% provider_login_url 'google' process='connect' next=request.path %}" class="auth-connect-btn google">Подключить Google</a>
-                                {% endif %}
-                            </div>
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="auth-method {% if primary_email %}connected{% endif %}">
-                            <div>
-                                <span class="auth-method-name">Почта</span>
-                                {% if primary_email %}
-                                    <span class="auth-method-badge connected">подключено</span>
-                                    <div class="auth-method-detail">{{ primary_email }} — можно входить по почте</div>
-                                {% else %}
-                                    <span class="auth-method-badge not-connected">не добавлена</span>
-                                {% endif %}
+                            <span class="auth-method-name">Почта</span>
+                            {% if primary_email %}
+                                <span class="auth-method-badge connected">Добавлена</span>
+                                <div class="auth-method-detail">{{ primary_email }}</div>
+                            {% else %}
+                                <span class="auth-method-badge not-connected">Не добавлена</span>
+                            {% endif %}
+                            <div class="auth-method-actions">
                                 <a href="{% url 'account_email' %}" class="auth-connect-btn email">{% if primary_email %}Изменить почту{% else %}Добавить почту{% endif %}</a>
                             </div>
                         </div>
                     </div>
-                    <p style="margin-top: 16px; font-size: 13px;"><a href="{% url 'socialaccount_connections' %}">Управление подключёнными аккаунтами</a> (отключить Telegram/Google)</p>
+                    <div class="auth-manage-link">
+                        <a href="{% url 'socialaccount_connections' %}" class="btn btn-secondary">Отключить Telegram или Google — управление аккаунтами</a>
+                    </div>
                 </div>
 
                 {% if consultant.profile_description %}
