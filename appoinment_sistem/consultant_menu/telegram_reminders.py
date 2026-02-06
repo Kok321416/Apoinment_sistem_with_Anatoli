@@ -153,6 +153,91 @@ def format_specialist_reminder_message(booking, hours_ahead: int) -> str:
         )
 
 
+STATUS_LABELS = {
+    'pending': 'Ожидает',
+    'confirmed': 'Подтверждена',
+    'cancelled': 'Отменена',
+    'completed': 'Завершена',
+}
+
+
+def format_booking_status_changed_client(booking, new_status: str, old_status: str = None) -> str:
+    """Текст клиенту об изменении статуса/записи."""
+    info = _booking_base_info(booking)
+    new_label = STATUS_LABELS.get(new_status, new_status)
+    if old_status:
+        old_label = STATUS_LABELS.get(old_status, old_status)
+        status_line = f"Статус изменён: <b>{old_label}</b> → <b>{new_label}</b>"
+    else:
+        status_line = f"Статус: <b>{new_label}</b>"
+    return (
+        f"📋 <b>Изменение записи</b>\n\n"
+        f"{status_line}\n\n"
+        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
+        f"📅 Дата: {info['date_str']}\n"
+        f"🕐 Время: {info['slot']}\n"
+        f"👤 Специалист: {info['consultant_name']}\n"
+        f"📍 Место: {info['calendar_name']}"
+    )
+
+
+def format_booking_status_changed_specialist(booking, new_status: str, old_status: str = None) -> str:
+    """Текст специалисту об изменении статуса записи (подтверждение/отмена/завершение)."""
+    info = _booking_base_info(booking)
+    new_label = STATUS_LABELS.get(new_status, new_status)
+    if old_status:
+        old_label = STATUS_LABELS.get(old_status, old_status)
+        status_line = f"Статус: <b>{old_label}</b> → <b>{new_label}</b>"
+    else:
+        status_line = f"Статус: <b>{new_label}</b>"
+    contact = []
+    if getattr(booking, 'client_phone', None) and booking.client_phone:
+        contact.append(booking.client_phone)
+    if getattr(booking, 'client_telegram', None) and booking.client_telegram:
+        contact.append(booking.client_telegram)
+    contact_str = ", ".join(contact) if contact else "—"
+    return (
+        f"📋 <b>Запись обновлена</b>\n\n"
+        f"👤 Клиент: {getattr(booking, 'client_name', '') or '—'}\n"
+        f"{status_line}\n\n"
+        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
+        f"📅 Дата: {info['date_str']}\n"
+        f"🕐 Время: {info['slot']}\n"
+        f"📞 Контакт: {contact_str}"
+    )
+
+
+def notify_booking_status_changed(booking, old_status: str = None) -> None:
+    """
+    Отправить клиенту и специалисту уведомления об изменении записи (статус и т.д.).
+    Вызывать после сохранения записи (например при смене статуса на сайте).
+    """
+    new_status = getattr(booking, 'status', None) or ''
+    if not new_status:
+        return
+    try:
+        # Клиенту — если привязан Telegram
+        telegram_id = getattr(booking, 'telegram_id', None)
+        if telegram_id:
+            text_client = format_booking_status_changed_client(booking, new_status, old_status)
+            _send_telegram(telegram_id, text_client)
+        # Специалисту
+        consultant = getattr(booking.calendar, 'consultant', None)
+        if consultant:
+            from consultant_menu.models import Integration
+            try:
+                integration = consultant.integration
+            except Exception:
+                integration = None
+            if integration and getattr(integration, 'telegram_chat_id', None):
+                chat_id = (integration.telegram_chat_id or '').strip()
+                if chat_id:
+                    text_spec = format_booking_status_changed_specialist(booking, new_status, old_status)
+                    _send_telegram(chat_id, text_spec)
+    except Exception as e:
+        logger.exception("Ошибка уведомления об изменении записи: %s", e)
+
+
 def notify_specialist_new_booking(booking) -> bool:
     """Отправить специалисту уведомление о новой записи в Telegram. Возвращает True при успехе."""
     try:

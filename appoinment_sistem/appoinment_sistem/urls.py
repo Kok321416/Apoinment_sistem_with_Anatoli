@@ -26,6 +26,8 @@ from consultant_menu.views import (
     integrations_view, google_calendar_connect, google_calendar_callback,
     confirm_booking_telegram_api, connect_telegram_app, confirm_specialist_telegram_api,
     confirm_booking_telegram_browser, confirm_booking_telegram_browser_api,
+    api_telegram_client_bookings,
+    api_telegram_specialist_bookings,
 )
 
 urlpatterns = [
@@ -62,6 +64,8 @@ urlpatterns = [
     path("book/confirm-telegram/<str:link_token>/", confirm_booking_telegram_browser, name="confirm_booking_telegram_browser"),
     path("integrations/telegram/connect-app/", connect_telegram_app, name="connect_telegram_app"),
     path("api/specialist/connect-telegram/", confirm_specialist_telegram_api, name="confirm_specialist_telegram"),
+    path("api/telegram/client-bookings/", api_telegram_client_bookings, name="api_telegram_client_bookings"),
+    path("api/telegram/specialist-bookings/", api_telegram_specialist_bookings, name="api_telegram_specialist_bookings"),
 
     # Записи, клиенты
     path("booking/", booking_view, name="booking"),

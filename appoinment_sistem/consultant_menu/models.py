@@ -194,6 +194,8 @@ class Booking(models.Model):
     # Напоминания специалисту в Telegram
     specialist_reminder_24h_sent = models.BooleanField(default=False, verbose_name='Напоминание специалисту за 24ч отправлено')
     specialist_reminder_1h_sent = models.BooleanField(default=False, verbose_name='Напоминание специалисту за 1ч отправлено')
+    # Google Calendar: ID события в календаре специалиста (синхронизация при создании/изменении записи)
+    google_event_id = models.CharField(max_length=255, blank=True, null=True, verbose_name='ID события в Google Calendar')
 
     class Meta:
         db_table = 'bookings'

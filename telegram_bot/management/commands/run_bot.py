@@ -1,6 +1,7 @@
 """
 Management команда для запуска Telegram бота
 Использование: python manage.py run_bot
+Логи пишутся в файл (TELEGRAM_BOT_LOG_FILE) и в stdout/journal при systemd.
 """
 from django.core.management.base import BaseCommand
 from django.conf import settings
@@ -8,24 +9,51 @@ import logging
 import requests
 import time
 import threading
+import os
 
 logger = logging.getLogger(__name__)
+
+
+def _setup_bot_file_logging():
+    """Добавить вывод логов бота в файл (корень репозитория/logs/telegram_bot.log)."""
+    log_path = getattr(settings, 'TELEGRAM_BOT_LOG_FILE', None)
+    if not log_path:
+        return
+    try:
+        log_dir = os.path.dirname(log_path)
+        if log_dir and not os.path.isdir(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+        handler = logging.FileHandler(log_path, encoding='utf-8')
+        handler.setFormatter(logging.Formatter(
+            '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        ))
+        for name in ('telegram_bot', 'telegram_bot.bot'):
+            log = logging.getLogger(name)
+            log.addHandler(handler)
+            log.setLevel(logging.DEBUG)
+        logger.info("Логирование бота в файл: %s", log_path)
+    except Exception as e:
+        logger.warning("Не удалось настроить лог-файл бота: %s", e)
 
 
 class Command(BaseCommand):
     help = 'Запускает Telegram бота для обработки обновлений'
 
     def handle(self, *args, **options):
+        _setup_bot_file_logging()
         self.stdout.write(self.style.SUCCESS('Запуск Telegram бота...'))
-        
+        site_url = getattr(settings, 'SITE_URL', '') or 'не задан'
+        logger.info("TG bot: запуск. SITE_URL=%s", site_url)
+
         TELEGRAM_BOT_TOKEN = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
         if not TELEGRAM_BOT_TOKEN:
+            logger.error("TG bot: TELEGRAM_BOT_TOKEN не установлен")
             self.stdout.write(self.style.ERROR('TELEGRAM_BOT_TOKEN не установлен в settings.py'))
             return
-        
-        # Устанавливаем webhook или используем long polling
+        logger.info("TG bot: токен задан (первые 10 символов: %s...)", (TELEGRAM_BOT_TOKEN or '')[:10])
+
         use_webhook = getattr(settings, 'TELEGRAM_USE_WEBHOOK', False)
-        
         if use_webhook:
             self.setup_webhook(TELEGRAM_BOT_TOKEN)
         else:
@@ -78,24 +106,21 @@ class Command(BaseCommand):
                 
                 if not data.get('ok'):
                     error_msg = data.get('description', 'Unknown error')
+                    logger.error("TG bot: getUpdates API ошибка: %s", error_msg)
                     self.stdout.write(self.style.ERROR(f'Ошибка API: {error_msg}'))
                     error_count += 1
                     if error_count >= max_errors:
+                        logger.error("TG bot: превышено макс. число ошибок, остановка")
                         self.stdout.write(self.style.ERROR('Превышено максимальное количество ошибок. Остановка.'))
                         break
                     time.sleep(10)
                     continue
-                
-                error_count = 0  # Сбрасываем счетчик при успехе
-                
+                error_count = 0
                 if data.get('result'):
                     updates = data['result']
-                    
                     for update in updates:
                         update_id = update.get('update_id')
                         offset = update_id + 1
-                        
-                        # Обрабатываем обновление в отдельном потоке
                         try:
                             thread = threading.Thread(
                                 target=handle_telegram_update,
@@ -104,7 +129,7 @@ class Command(BaseCommand):
                             )
                             thread.start()
                         except Exception as e:
-                            logger.error(f"Ошибка при обработке обновления: {e}")
+                            logger.error("TG bot: ошибка при обработке обновления: %s", e)
                 
                 time.sleep(1)
             
@@ -113,7 +138,7 @@ class Command(BaseCommand):
                 break
             except requests.exceptions.RequestException as e:
                 error_count += 1
-                logger.error(f"Ошибка сети при получении обновлений: {e}")
+                logger.error("TG bot: ошибка сети getUpdates: %s", e)
                 if error_count >= max_errors:
                     self.stdout.write(self.style.ERROR('Превышено максимальное количество ошибок сети. Остановка.'))
                     break

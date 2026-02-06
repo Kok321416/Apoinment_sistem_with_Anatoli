@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from consultant_menu.models import Consultant, Clients, Category, Calendar, Service, TimeSlot, Booking, Integration
+from consultant_menu.telegram_reminders import notify_booking_status_changed
 from django.http import Http404, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -629,6 +630,110 @@ def confirm_specialist_telegram_api(request):
     return JsonResponse({'success': True, 'message': 'Telegram подключен'})
 
 
+def _check_bot_token(request):
+    """Проверка заголовка X-Bot-Token для API, вызываемых ботом."""
+    token = (getattr(settings, 'TELEGRAM_BOT_TOKEN', None) or '').strip()
+    if not token:
+        return False
+    return request.headers.get('X-Bot-Token', '').strip() == token
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_telegram_client_bookings(request):
+    """
+    API для бота: список записей клиента (consultant_menu.Booking) по telegram_id.
+    POST JSON: {"telegram_id": 123456789}. Заголовок X-Bot-Token: TELEGRAM_BOT_TOKEN.
+    """
+    if not _check_bot_token(request):
+        return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
+    try:
+        data = __import__('json').loads(request.body) if request.body else {}
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    telegram_id = data.get('telegram_id')
+    if telegram_id is None:
+        return JsonResponse({'success': False, 'error': 'telegram_id required'}, status=400)
+    telegram_id = int(telegram_id)
+    qs = (
+        Booking.objects.filter(telegram_id=telegram_id)
+        .exclude(status='cancelled')
+        .select_related('service', 'calendar', 'calendar__consultant')
+        .order_by('-booking_date', '-booking_time')[:20]
+    )
+    now = timezone.now().date()
+    items = []
+    for b in qs:
+        consultant_name = '—'
+        if getattr(b.calendar, 'consultant', None):
+            c = b.calendar.consultant
+            consultant_name = f"{getattr(c, 'first_name', '')} {getattr(c, 'last_name', '')}".strip() or c.email or consultant_name
+        time_str = b.booking_time.strftime('%H:%M') if b.booking_time else '—'
+        items.append({
+            'id': b.id,
+            'date': b.booking_date.isoformat(),
+            'time': time_str,
+            'service_name': b.service.name if b.service_id else 'Консультация',
+            'consultant_name': consultant_name,
+            'status': b.status,
+            'is_upcoming': b.booking_date >= now,
+        })
+    return JsonResponse({'success': True, 'bookings': items})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_telegram_specialist_bookings(request):
+    """
+    API для бота: список записей специалиста (consultant_menu.Booking) по telegram_chat_id (chat_id в боте).
+    POST JSON: {"telegram_chat_id": "123456789"}. Заголовок X-Bot-Token: TELEGRAM_BOT_TOKEN.
+    """
+    if not _check_bot_token(request):
+        return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
+    try:
+        data = __import__('json').loads(request.body) if request.body else {}
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    raw = data.get('telegram_chat_id')
+    if raw is None:
+        return JsonResponse({'success': False, 'error': 'telegram_chat_id required'}, status=400)
+    telegram_chat_id = str(raw).strip()
+    try:
+        integration = Integration.objects.get(telegram_chat_id=telegram_chat_id)
+    except Integration.DoesNotExist:
+        return JsonResponse({'success': True, 'bookings': [], 'is_specialist': False})
+    consultant = integration.consultant
+    qs = (
+        Booking.objects.filter(calendar__consultant=consultant)
+        .exclude(status='cancelled')
+        .select_related('service', 'calendar')
+        .order_by('booking_date', 'booking_time')
+    )
+    now_dt = timezone.now()
+    items = []
+    for b in qs:
+        dt = datetime.combine(b.booking_date, b.booking_time)
+        if timezone.is_naive(dt):
+            from django.utils import timezone as tz
+            tz_obj = tz.get_current_timezone()
+            if tz_obj:
+                dt = tz.make_aware(dt, tz_obj)
+        is_upcoming = dt >= now_dt
+        time_str = b.booking_time.strftime('%H:%M') if b.booking_time else '—'
+        items.append({
+            'id': b.id,
+            'date': b.booking_date.isoformat(),
+            'time': time_str,
+            'client_name': b.client_name,
+            'service_name': b.service.name if b.service_id else 'Консультация',
+            'status': b.status,
+            'is_upcoming': is_upcoming,
+        })
+    # Сначала предстоящие, потом прошедшие
+    items.sort(key=lambda x: (not x['is_upcoming'], x['date'], x['time']))
+    return JsonResponse({'success': True, 'bookings': items[:30], 'is_specialist': True})
+
+
 def _verify_telegram_widget_hash(payload: dict, received_hash: str) -> bool:
     """Проверка подписи данных от Telegram Login Widget. payload — все поля кроме hash."""
     bot_token = (getattr(settings, 'TELEGRAM_BOT_TOKEN', None) or '').strip()
@@ -936,16 +1041,20 @@ def  booking_view(request):
 
         try:
             booking = Booking.objects.get(id=booking_id, calendar__in=calendars)
+            old_status = booking.status
 
             if action == 'confirm':
                 booking.status = 'confirmed'
                 booking.save()
+                notify_booking_status_changed(booking, old_status=old_status)
             elif action == 'cancel':
                 booking.status = 'cancelled'
                 booking.save()
+                notify_booking_status_changed(booking, old_status=old_status)
             elif action == 'complete':
                 booking.status = 'completed'
                 booking.save()
+                notify_booking_status_changed(booking, old_status=old_status)
 
         except Booking.DoesNotExist:
             pass
