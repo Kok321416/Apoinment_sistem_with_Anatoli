@@ -1,0 +1,85 @@
+{% load i18n %}
+{% load static %}
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Подключённые аккаунты — allyourclients</title>
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <style>
+        .connections-page { max-width: 640px; margin: 0 auto; }
+        .connections-intro { color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; }
+        .connection-list { display: flex; flex-direction: column; gap: 16px; }
+        .connection-item { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 18px 20px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+        .connection-item .connection-name { font-weight: 600; color: var(--text-primary); }
+        .connection-item .connection-provider { font-size: 13px; color: var(--text-muted); }
+        .connection-item .btn-disconnect { padding: 8px 16px; font-size: 14px; border-radius: 10px; background: #fff; color: #c62828; border: 1px solid #ef9a9a; cursor: pointer; transition: background 0.2s, color 0.2s; }
+        .connection-item .btn-disconnect:hover { background: #ffebee; }
+        .connections-empty { padding: 24px; text-align: center; color: var(--text-muted); background: var(--bg-subtle); border-radius: var(--radius); }
+        .connections-add { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--card-border); }
+        .connections-add h2 { font-size: 18px; margin-bottom: 16px; }
+        .connections-add-btns { display: flex; flex-wrap: wrap; gap: 12px; }
+        .connections-add-btns a { min-height: 44px; }
+        .btn-telegram { background: #0088cc !important; color: #fff !important; border: none !important; }
+        .btn-google { background: #4285f4 !important; color: #fff !important; border: none !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            <h1 class="brand-title">
+                <a href="{% url 'home' %}" class="brand-link" aria-label="allyourclients — на главную">
+                    <span class="brand-badge" aria-hidden="true">a</span>
+                    <span class="brand-name">allyourclients</span>
+                </a>
+                <span class="brand-page">/ Подключённые аккаунты</span>
+            </h1>
+            <div class="user-info">
+                <a href="{% url 'profile' %}" class="btn btn-secondary">← В профиль</a>
+                <a href="{% url 'home' %}" class="btn btn-secondary">На главную</a>
+            </div>
+        </div>
+
+        <div class="connections-page">
+            <h2>Управление способами входа</h2>
+            <p class="connections-intro">Здесь можно отключить вход через Telegram или Google. После отключения вы не сможете входить этим способом, пока не подключите его снова в профиле.</p>
+
+            {% if form.accounts %}
+                <div class="connection-list">
+                    {% for base in form.accounts %}
+                        {% with account=base.get_provider_account %}
+                        <div class="connection-item">
+                            <div>
+                                <span class="connection-name">{{ account.get_brand.name }}</span>
+                                <div class="connection-provider">{{ account.account.extra_data.username|default:account.account.uid|default:"" }}</div>
+                            </div>
+                            <form method="post" action="{% url 'socialaccount_connections' %}" style="margin: 0;">
+                                {% csrf_token %}
+                                <input type="hidden" name="account" value="{{ base.pk }}">
+                                <button type="submit" class="btn-disconnect">Отключить</button>
+                            </form>
+                        </div>
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="connections-empty">
+                    У вас пока нет подключённых сторонних аккаунтов (Telegram, Google). Подключить их можно в разделе «Способы входа» в профиле.
+                </div>
+            {% endif %}
+
+            <div class="connections-add">
+                <h2>Подключить другой способ входа</h2>
+                <p class="connections-intro">Перейдите в профиль и в блоке «Способы входа» нажмите «Подключить» для Telegram или Google.</p>
+                <div class="connections-add-btns">
+                    <a href="{% url 'profile' %}" class="btn">Перейти в профиль</a>
+                </div>
+            </div>
+        </div>
+
+        {% include 'consultant_menu/footer.html' %}
+    </div>
+</body>
+</html>

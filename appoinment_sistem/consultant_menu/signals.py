@@ -48,9 +48,11 @@ def _sync_telegram_to_integration(user):
 
 @receiver(social_account_added)
 def sync_telegram_integration_on_connect(request, sociallogin, **kwargs):
-    """После подключения соц. аккаунта (в т.ч. Telegram) в браузере — записать telegram uid в Integration."""
+    """После подключения соц. аккаунта (в т.ч. Telegram) в браузере — записать telegram uid в Integration и показать успех."""
     if getattr(sociallogin.account, "provider", None) != "telegram":
         return
+    if getattr(request, "session", None):
+        request.session["show_telegram_welcome"] = True
     user = getattr(sociallogin, "user", None)
     if user:
         _sync_telegram_to_integration(user)

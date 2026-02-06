@@ -85,11 +85,29 @@ def answer_callback_query(callback_query_id, text=None):
 
 
 def get_main_reply_keyboard():
-    """Постоянное меню внизу экрана (кнопки всегда видны)."""
+    """Постоянное меню внизу экрана для клиентов (кнопки всегда видны)."""
+    return get_client_reply_keyboard()
+
+
+def get_client_reply_keyboard():
+    """Меню клиента: запись, мои записи, история, связь, помощь."""
     return {
         'keyboard': [
             [{'text': '📱 Записаться'}, {'text': '📋 Мои записи'}],
             [{'text': '📜 История'}, {'text': '📞 Связаться'}],
+            [{'text': '❓ Помощь'}],
+        ],
+        'resize_keyboard': True,
+        'persistent': True,
+    }
+
+
+def get_specialist_reply_keyboard():
+    """Меню специалиста: ближайшие записи, статистика, управление аккаунтами, помощь."""
+    return {
+        'keyboard': [
+            [{'text': '📅 Ближайшие записи'}, {'text': '📊 Статистика'}],
+            [{'text': '🔗 Управление аккаунтами'}],
             [{'text': '❓ Помощь'}],
         ],
         'resize_keyboard': True,
@@ -207,6 +225,12 @@ def handle_telegram_update(update_data):
                 handle_contact_admin_command(chat_id)
             elif text == '📱 Записаться':
                 _send_webapp_button(chat_id)
+            elif text == '📅 Ближайшие записи':
+                handle_specialist_next_appointments(chat_id, user_id)
+            elif text == '📊 Статистика':
+                _send_specialist_webapp(chat_id, 'stats')
+            elif text == '🔗 Управление аккаунтами':
+                handle_manage_accounts_command(chat_id)
             else:
                 send_telegram_message(chat_id, "Неизвестная команда. Нажмите кнопку внизу или /help.", get_main_reply_keyboard())
         
@@ -507,7 +531,7 @@ def handle_start_command(chat_id, user_id, username, first_name):
             }
             msg = f"👋 Добро пожаловать, {first_name}!\n\nВы вошли как <b>специалист</b>.\nВыберите действие:"
             send_telegram_message(chat_id, msg, keyboard)
-            send_telegram_message(chat_id, "Или используйте меню внизу:", get_main_reply_keyboard())
+            send_telegram_message(chat_id, "Или используйте меню внизу:", get_specialist_reply_keyboard())
             return
 
         # Кнопки: inline под сообщением + постоянное меню внизу
@@ -639,7 +663,40 @@ def handle_contact_admin_command(chat_id):
         "По вопросам записи и консультаций обращайтесь к администрации. Нажмите кнопку ниже, чтобы написать в Telegram:",
         keyboard,
     )
-    send_telegram_message(chat_id, "Меню:", get_main_reply_keyboard())
+    send_telegram_message(chat_id, "Меню:", get_client_reply_keyboard())
+
+
+def _send_specialist_webapp(chat_id, app_type):
+    """Отправить сообщение с кнопкой открытия веб-приложения специалиста (статистика или ближайшие)."""
+    site = get_site_url().rstrip('/')
+    if app_type == 'stats':
+        url = f"{site}/telegram/specialist/stats/"
+        text = "📊 Откройте статистику записей в браузере или в окне Telegram:"
+    else:
+        url = f"{site}/telegram/specialist/upcoming/"
+        text = "📅 Откройте список ближайших записей:"
+    keyboard = {
+        'inline_keyboard': [[{'text': 'Открыть' if app_type == 'stats' else 'Открыть', 'web_app': {'url': url}}]]
+    }
+    send_telegram_message(chat_id, text, keyboard)
+    send_telegram_message(chat_id, "Меню:", get_specialist_reply_keyboard())
+
+
+def handle_manage_accounts_command(chat_id):
+    """Отправить ссылку на страницу управления аккаунтами (отключить Telegram/Google)."""
+    site = get_site_url().rstrip('/')
+    connections_url = f"{site}/accounts/social/connections/"
+    keyboard = {
+        'inline_keyboard': [
+            [{'text': '🔗 Открыть управление аккаунтами', 'url': connections_url}],
+        ]
+    }
+    send_telegram_message(
+        chat_id,
+        "Чтобы отключить вход через Telegram или Google, откройте страницу управления на сайте и нажмите «Отключить» у нужного способа входа.",
+        keyboard,
+    )
+    send_telegram_message(chat_id, "Меню:", get_specialist_reply_keyboard())
 
 
 def handle_appointments_command(chat_id, user_id):
@@ -799,7 +856,6 @@ def handle_help_command(chat_id):
 • Уведомления о записях
 """
     send_telegram_message(chat_id, message, keyboard)
-    send_telegram_message(chat_id, "Меню:", get_main_reply_keyboard())
 
 
 def handle_specialist_next_appointments(chat_id, user_id):
