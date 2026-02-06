@@ -193,7 +193,7 @@
                     {% if integration.telegram_chat_id %}
                     <p style="margin-top: 10px; color: #666;">Chat ID: {{ integration.telegram_chat_id }}</p>
                     {% endif %}
-                    <form method="POST" style="margin-top: 15px;">
+                    <form method="POST" action="{% url 'integrations' %}" style="margin-top: 15px;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="disconnect_telegram">
                         <button type="submit" class="btn btn-secondary">Отключить Telegram</button>
