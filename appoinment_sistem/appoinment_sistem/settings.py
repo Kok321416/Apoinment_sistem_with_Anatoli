@@ -208,9 +208,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [
-    BASE_DIR / "consultant_menu" / "static",
-]
+# Не добавляем consultant_menu/static в DIRS — приложение consultant_menu уже отдаёт свои static (иначе дубликат consultant_menu/css/style.css)
+STATICFILES_DIRS = []
 
 # WhiteNoise для статических файлов в продакшене
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
