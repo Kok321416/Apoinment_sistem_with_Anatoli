@@ -189,8 +189,9 @@ jobs:
             --pid "$PIDFILE" \
             > "$LOGFILE" 2>&1 &
 
-          # Перезапуск Telegram-бота: venv уже есть; ставим PyMySQL явно в этот venv (бот использует appoiment_system + MySQL)
-          ./venv/bin/pip install -q PyMySQL sqlparse
+          # Перезапуск Telegram-бота: ставим PyMySQL тем же интерпретатором, которым запускаем бота
+          ./venv/bin/python -m pip install -q PyMySQL sqlparse
+          ./venv/bin/python -c "import pymysql; pymysql.install_as_MySQLdb(); import MySQLdb; print('MySQLdb OK')" || true
           BOT_PIDFILE="bot.pid"
           BOT_LOG="bot.log"
           if [ -f "$BOT_PIDFILE" ]; then
@@ -199,7 +200,7 @@ jobs:
             rm -f "$BOT_PIDFILE"
             sleep 2
           fi
-          nohup ./venv/bin/python manage.py run_bot >> "$BOT_LOG" 2>&1 &
+          cd "$APP_DIR" && nohup ./venv/bin/python manage.py run_bot >> "$BOT_LOG" 2>&1 &
           BOT_PID=$!
           echo $BOT_PID > "$BOT_PIDFILE"
           sleep 2
