@@ -65,8 +65,8 @@ if [ -f "manage.py" ]; then
       python manage.py shell < scripts/fix_bookings_migration_names_inline.py
       python manage.py migrate bookings 0005_telegram_link_token --fake
     elif echo "$MIGRATE_OUT" | grep -q "Duplicate column\|(1060,"; then
-      echo "⚠️ Schema already applied by old migrations (Duplicate column). Marking bookings up to 0005 as applied (--fake), then re-running migrate."
-      python manage.py migrate bookings 0005_telegram_link_token --fake
+      echo "⚠️ Schema already applied by old migrations (Duplicate column). Marking bookings up to 0006 as applied (--fake), then re-running migrate."
+      python manage.py migrate bookings 0006_sync_model_state --fake 2>/dev/null || python manage.py migrate bookings 0005_telegram_link_token --fake
       python manage.py migrate --noinput
     else
       echo "$MIGRATE_OUT"
@@ -74,6 +74,12 @@ if [ -f "manage.py" ]; then
     fi
   else
     echo "$MIGRATE_OUT"
+    # Если Django сообщает о неотражённых изменениях в моделях — создаём миграции и применяем снова
+    if echo "$MIGRATE_OUT" | grep -q "have changes that are not yet reflected"; then
+      echo "⚠️ Bookings: создаём миграции для неотражённых изменений..."
+      python manage.py makemigrations bookings --noinput 2>/dev/null || true
+      python manage.py migrate --noinput
+    fi
   fi
   echo "✅ appoiment_system done"
 else

@@ -190,6 +190,7 @@ jobs:
             > "$LOGFILE" 2>&1 &
 
           # Перезапуск Telegram-бота (тот же venv, корневой manage.py → appoiment_system)
+          pip install -q sqlparse PyMySQL
           BOT_PIDFILE="$APP_DIR/bot.pid"
           BOT_LOG="$APP_DIR/bot.log"
           if [ -f "$BOT_PIDFILE" ]; then

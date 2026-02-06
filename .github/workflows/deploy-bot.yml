@@ -87,6 +87,7 @@ jobs:
             fi
           else
             # Fallback: nohup (настройте systemd один раз: ./deploy_bot.sh)
+            pip install -q sqlparse PyMySQL
             BOT_PIDFILE="$APP_DIR/bot.pid"
             BOT_LOG="$APP_DIR/bot.log"
             if [ -f "$BOT_PIDFILE" ]; then
