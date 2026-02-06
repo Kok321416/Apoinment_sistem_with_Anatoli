@@ -46,6 +46,17 @@
             <h2>Управление способами входа</h2>
             <p class="connections-intro">Здесь можно отключить вход через Telegram или Google. После отключения вы не сможете входить этим способом, пока не подключите его снова в профиле.</p>
 
+            {% if form.non_field_errors %}
+            <div class="error-message" style="margin-bottom: 20px;">
+                {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+            </div>
+            {% endif %}
+            {% if form.errors.account %}
+            <div class="error-message" style="margin-bottom: 20px;">
+                {% for err in form.errors.account %}{{ err }}{% endfor %}
+            </div>
+            {% endif %}
+
             {% if form.accounts %}
                 <div class="connection-list">
                     {% for base in form.accounts %}
@@ -55,10 +66,10 @@
                                 <span class="connection-name">{{ account.get_brand.name }}</span>
                                 <div class="connection-provider">{{ account.account.extra_data.username|default:account.account.uid|default:"" }}</div>
                             </div>
-                            <form method="post" action="{% url 'socialaccount_connections' %}" style="margin: 0;">
+                            <form method="post" action="" style="margin: 0;">
                                 {% csrf_token %}
                                 <input type="hidden" name="account" value="{{ base.pk }}">
-                                <button type="submit" class="btn-disconnect">Отключить</button>
+                                <button type="submit" name="disconnect" value="{{ base.pk }}" class="btn-disconnect">Отключить</button>
                             </form>
                         </div>
                         {% endwith %}
