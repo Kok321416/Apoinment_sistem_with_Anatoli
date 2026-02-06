@@ -33,7 +33,7 @@
         </div>
 
         {% if show_telegram_welcome %}
-        <div class="telegram-welcome" role="alert" style="max-width: 800px; margin: 0 auto 24px; padding: 16px 20px; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border: 1px solid #81c784; border-radius: 10px; color: #2e7d32;">
+        <div class="telegram-welcome" role="alert">
             <strong>✅ Вы успешно подключились через Telegram.</strong><br>
             Добро пожаловать! Теперь вы можете пользоваться всеми возможностями системы записи.
         </div>
@@ -74,13 +74,10 @@
 
         </div>
         {% else %}
-        <div class="welcome-block" style="text-align: center; padding: 40px 16px 60px;">
+        <div class="welcome-block">
             <h2>Добро пожаловать!</h2>
-            <p style="color: #666; font-size: 16px; margin: 24px 0;">
-                Система онлайн записи для консультантов.<br>
-                Войдите или зарегистрируйтесь, чтобы начать работу.
-            </p>
-            <div class="welcome-buttons" style="margin-top: 28px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
+            <p>Система онлайн записи для консультантов.<br>Войдите или зарегистрируйтесь, чтобы начать работу.</p>
+            <div class="welcome-buttons">
                 <a href="{% url 'login' %}" class="btn">Войти</a>
                 <a href="{% url 'register' %}" class="btn btn-secondary">Регистрация</a>
             </div>
