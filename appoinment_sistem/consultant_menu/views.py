@@ -1401,11 +1401,11 @@ def integrations_view(request):
         
         elif action == 'disconnect_google':
             integration.google_calendar_connected = False
-            integration.google_calendar_enabled = False
             integration.google_calendar_id = None
             integration.google_refresh_token = None
-            integration.save()
-            success = 'Google Calendar отключен'
+            integration.save(update_fields=['google_calendar_connected', 'google_calendar_id', 'google_refresh_token'])
+            # google_calendar_enabled не сбрасываем — чтобы сразу была кнопка «Подключить снова»
+            success = 'Google Calendar отключён. Можно снова подключить кнопкой ниже.'
         
         elif action == 'toggle_telegram':
             integration.telegram_enabled = not integration.telegram_enabled
@@ -1424,13 +1424,13 @@ def integrations_view(request):
         
         elif action == 'disconnect_telegram':
             integration.telegram_connected = False
-            integration.telegram_enabled = False
             integration.telegram_bot_token = None
             integration.telegram_chat_id = None
             integration.telegram_link_token = None
             integration.telegram_link_token_created_at = None
-            integration.save()
-            success = 'Telegram отключен'
+            integration.save(update_fields=['telegram_connected', 'telegram_bot_token', 'telegram_chat_id', 'telegram_link_token', 'telegram_link_token_created_at'])
+            # telegram_enabled не сбрасываем — чтобы сразу были кнопки «Подключить снова»
+            success = 'Telegram отключён. Можно снова подключить кнопками ниже.'
     
     return render(request, 'consultant_menu/integrations.html', {
         'integration': integration,
