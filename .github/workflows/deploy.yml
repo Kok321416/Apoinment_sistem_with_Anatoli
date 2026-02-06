@@ -189,8 +189,8 @@ jobs:
             --pid "$PIDFILE" \
             > "$LOGFILE" 2>&1 &
 
-          # Перезапуск Telegram-бота: явно используем venv (nohup может не наследовать activate)
-          pip install -q sqlparse PyMySQL
+          # Перезапуск Telegram-бота: venv уже есть; ставим PyMySQL явно в этот venv (бот использует appoiment_system + MySQL)
+          ./venv/bin/pip install -q PyMySQL sqlparse
           BOT_PIDFILE="bot.pid"
           BOT_LOG="bot.log"
           if [ -f "$BOT_PIDFILE" ]; then
