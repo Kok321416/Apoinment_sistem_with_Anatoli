@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
 from django.urls import reverse
-from consultant_menu.models import Consultant, Clients, Category, Calendar, Service, TimeSlot, Booking, Integration
+from consultant_menu.models import Consultant, Clients, Category, Calendar, Service, TimeSlot, Booking, Integration, ClientCard
 from consultant_menu.telegram_reminders import notify_booking_status_changed
 from django.http import Http404, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -1141,6 +1141,106 @@ def profile_view(request):
     })
 
 
+# ========== КАРТОЧКИ КЛИЕНТОВ ==========
+def client_cards_list_view(request):
+    """Список карточек клиентов специалиста."""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    try:
+        consultant = Consultant.objects.get(user=request.user)
+    except Consultant.DoesNotExist:
+        return redirect('home')
+
+    cards = ClientCard.objects.filter(consultant=consultant).order_by('-updated_at')
+    success = error = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'create':
+            name = (request.POST.get('name') or '').strip() or None
+            email = (request.POST.get('email') or '').strip() or None
+            phone = (request.POST.get('phone') or '').strip() or None
+            telegram = (request.POST.get('telegram') or '').strip() or None
+            notes = (request.POST.get('notes') or '').strip() or None
+            ClientCard.objects.create(
+                consultant=consultant,
+                name=name,
+                email=email,
+                phone=phone,
+                telegram=telegram,
+                notes=notes,
+            )
+            success = 'Карточка клиента создана.'
+            cards = ClientCard.objects.filter(consultant=consultant).order_by('-updated_at')
+        elif action == 'delete':
+            try:
+                card = ClientCard.objects.get(id=request.POST.get('card_id'), consultant=consultant)
+                card.delete()
+                success = 'Карточка удалена.'
+                cards = ClientCard.objects.filter(consultant=consultant).order_by('-updated_at')
+            except ClientCard.DoesNotExist:
+                error = 'Карточка не найдена.'
+
+    return render(request, 'consultant_menu/client_cards_list.html', {
+        'consultant': consultant,
+        'cards': cards,
+        'success': success,
+        'error': error,
+    })
+
+
+def client_card_detail_view(request, card_id):
+    """Карточка клиента: данные, примечания, история консультаций."""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    try:
+        consultant = Consultant.objects.get(user=request.user)
+    except Consultant.DoesNotExist:
+        return redirect('home')
+
+    try:
+        card = ClientCard.objects.get(id=card_id, consultant=consultant)
+    except ClientCard.DoesNotExist:
+        return redirect('client_cards_list')
+
+    calendars = Calendar.objects.filter(consultant=consultant)
+    from django.db.models import Q
+    history_q = Q(calendar__in=calendars) & Q(client_card=card)
+    if card.email:
+        history_q |= Q(calendar__in=calendars, client_email=card.email)
+    if card.telegram:
+        t = (card.telegram or '').replace('@', '').strip()
+        if t:
+            history_q |= Q(calendar__in=calendars, client_telegram__icontains=t)
+    history = Booking.objects.filter(history_q).distinct().order_by('-booking_date', '-booking_time')[:50]
+
+    success = error = None
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'update':
+            card.name = (request.POST.get('name') or '').strip() or None
+            card.email = (request.POST.get('email') or '').strip() or None
+            card.phone = (request.POST.get('phone') or '').strip() or None
+            card.telegram = (request.POST.get('telegram') or '').strip() or None
+            card.notes = (request.POST.get('notes') or '').strip() or None
+            try:
+                card.save()
+                success = 'Изменения сохранены.'
+            except Exception as e:
+                error = str(e)
+        elif action == 'delete':
+            card.delete()
+            return redirect('client_cards_list')
+
+    return render(request, 'consultant_menu/client_card_detail.html', {
+        'consultant': consultant,
+        'card': card,
+        'history': history,
+        'success': success,
+        'error': error,
+    })
+
+
 # ========== ИНТЕГРАЦИИ ==========
 def google_calendar_connect(request):
     """Редирект на Google OAuth для доступа к календарю (scope calendar.events)."""
@@ -1188,17 +1288,25 @@ def google_calendar_connect(request):
 
 
 def google_calendar_callback(request):
-    """Callback после авторизации Google: сохраняем refresh_token в Integration."""
+    """Callback после авторизации Google: сохраняем refresh_token в Integration.
+    Соответствие OAuth 2.0: проверка state (CSRF), обмен code на токены, access_type='offline'.
+    """
     if not request.user.is_authenticated:
         return redirect('login')
     if request.GET.get('error'):
         request.session['integrations_error'] = 'Доступ к Google Calendar не был предоставлен.'
         return redirect('integrations')
-    state = request.session.get('google_calendar_oauth_state')
     code = request.GET.get('code')
-    if not code or not state:
+    state_from_google = request.GET.get('state')
+    state_stored = request.session.get('google_calendar_oauth_state')
+    if not code or not state_stored:
         request.session['integrations_error'] = 'Неверный ответ от Google. Попробуйте снова.'
         return redirect('integrations')
+    # Проверка state (требование OAuth 2.0: защита от CSRF)
+    if state_from_google != state_stored:
+        request.session['integrations_error'] = 'Ошибка проверки state. Повторите подключение.'
+        return redirect('integrations')
+    state = state_stored
     try:
         consultant_id = int(state)
         consultant = Consultant.objects.get(id=consultant_id)

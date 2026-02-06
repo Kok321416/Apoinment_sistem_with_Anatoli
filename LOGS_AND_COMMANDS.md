@@ -100,12 +100,22 @@ grep "TG bot: сообщение\|TG bot: callback" logs/telegram_bot.log
 ## 5. Перезапуск бота
 
 ```bash
-# Если настроен systemd
+# Если настроен systemd (VPS с правами sudo)
 sudo systemctl restart telegram-bot
 sudo systemctl status telegram-bot
 
 # Проверить логи после перезапуска
 sudo journalctl -u telegram-bot -n 30 -f
+```
+
+**На виртуальном хостинге (reg.ru и др.) нет sudo** — перезапуск бота делайте вручную (nohup):
+
+```bash
+cd /путь/к/проекту
+. venv/bin/activate
+[ -f bot.pid ] && kill -TERM $(cat bot.pid) 2>/dev/null; rm -f bot.pid; sleep 2
+nohup python manage.py run_bot >> bot.log 2>&1 &
+echo $! > bot.pid
 ```
 
 Если сервис не настроен — один раз выполните из корня репозитория: `./deploy_bot.sh` (см. TELEGRAM_ЧТО_СДЕЛАТЬ.md).
@@ -132,7 +142,7 @@ sudo journalctl -u telegram-bot -n 30 -f
 
 - **Токен:** в `.env` в корне репозитория указан правильный `TELEGRAM_BOT_TOKEN` (как у @BotFather). После смены токена перезапустите бота.
 - **Домен для «Подключить через браузер» (OAuth):** в BotFather у бота в настройках **Telegram Login Widget** должен быть указан домен вашего сайта (например `allyourclients.ru`), без `https://`.
-- **Сайт и бот:** на сервере в `.env` задан `SITE_URL=https://ваш-домен.ru`, чтобы бот мог вызывать API сайта (`/api/specialist/connect-telegram/`, `/api/booking/confirm-telegram/`).
+- **Сайт и бот:** в `.env` задайте `SITE_URL=https://ваш-домен.ru` (обязательно со схемой `https://`). Если указать без схемы (например `allyourclients.ru`), в коде автоматически подставится `https://`, но надёжнее сразу указывать полный URL.
 
 ---
 

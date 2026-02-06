@@ -23,6 +23,7 @@ from consultant_menu.views import (
     ConsultantAPIView, RegisterView, LoginView, LogoutView,
     home_view, calendars_view, services_view, logout_view,
     register_view, login_view, calendar_view, calendar_settings_edit, public_booking_view, get_available_slots_api, booking_view, profile_view,
+    client_cards_list_view, client_card_detail_view,
     integrations_view, google_calendar_connect, google_calendar_callback,
     confirm_booking_telegram_api, connect_telegram_app, confirm_specialist_telegram_api,
     confirm_booking_telegram_browser, confirm_booking_telegram_browser_api,
@@ -67,9 +68,11 @@ urlpatterns = [
     path("api/telegram/client-bookings/", api_telegram_client_bookings, name="api_telegram_client_bookings"),
     path("api/telegram/specialist-bookings/", api_telegram_specialist_bookings, name="api_telegram_specialist_bookings"),
 
-    # Записи, клиенты
+    # Записи, карточки клиентов
     path("booking/", booking_view, name="booking"),
-    
+    path("clients/", client_cards_list_view, name="client_cards_list"),
+    path("clients/<int:card_id>/", client_card_detail_view, name="client_card_detail"),
+
     # Профиль специалиста
     path("profile/", profile_view, name="profile"),
     

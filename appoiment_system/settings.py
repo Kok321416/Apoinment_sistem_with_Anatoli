@@ -97,7 +97,7 @@ SOCIALACCOUNT_PROVIDERS = {
         },
     }
 }
-ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 SOCIALACCOUNT_QUERY_EMAIL = True
 LOGIN_REDIRECT_URL = "/"
 ACCOUNT_LOGOUT_REDIRECT_URL = "/"
@@ -228,8 +228,11 @@ STATICFILES_DIRS = [_static_dir] if _static_dir.exists() else []
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Site URL for Telegram Web App (опционально)
-# В production должно быть https://allyourclients.ru (или ваш домен).
-SITE_URL = os.environ.get('SITE_URL', 'https://allyourclients.ru')
+# В production должно быть https://allyourclients.ru (или ваш домен). Без схемы автоматически добавится https://
+_site_url = (os.environ.get('SITE_URL', '') or 'https://allyourclients.ru').strip().rstrip('/')
+if _site_url and not _site_url.startswith('http'):
+    _site_url = 'https://' + _site_url
+SITE_URL = _site_url
 
 # Telegram Webhook settings (опционально)
 TELEGRAM_USE_WEBHOOK = os.environ.get('TELEGRAM_USE_WEBHOOK', 'False').lower() == 'true'

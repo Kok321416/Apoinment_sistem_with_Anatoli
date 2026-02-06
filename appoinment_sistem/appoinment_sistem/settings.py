@@ -89,7 +89,7 @@ SOCIALACCOUNT_PROVIDERS = {
     },
 }
 SOCIALACCOUNT_QUERY_EMAIL = True
-ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 LOGIN_REDIRECT_URL = "/"
 ACCOUNT_LOGOUT_REDIRECT_URL = "/"
 
@@ -97,8 +97,11 @@ ACCOUNT_LOGOUT_REDIRECT_URL = "/"
 TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
 # Токен бота для отправки напоминаний клиентам (тот же, что для allauth)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-# URL сайта: нужен боту для вызова API (подключение специалиста, подтверждение записи). Пример: https://allyourclients.ru
-SITE_URL = (os.getenv("SITE_URL", "") or "").strip().rstrip("/") or "http://127.0.0.1:8000"
+# URL сайта: нужен боту для вызова API. Без схемы автоматически добавится https://
+_site = (os.getenv("SITE_URL", "") or "").strip().rstrip("/") or "http://127.0.0.1:8000"
+if _site and not _site.startswith("http"):
+    _site = "https://" + _site
+SITE_URL = _site
 
 # OAuth (Google, Telegram): чтобы callback URL строился с HTTPS, а не HTTP (иначе Google/Telegram вернут ошибку)
 if SITE_URL.startswith("https://"):
