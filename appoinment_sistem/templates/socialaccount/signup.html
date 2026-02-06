@@ -10,20 +10,20 @@
     <style>
         .auth-card { max-width: 440px; margin: 60px auto; }
         .auth-card .container { padding: 40px 36px; }
-        .provider-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: linear-gradient(135deg, rgba(118, 75, 162, 0.12) 0%, rgba(102, 126, 234, 0.12) 100%); border-radius: 12px; color: #764ba2; font-weight: 600; margin-bottom: 20px; }
+        .provider-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--bg-subtle); border: 1px solid var(--card-border); border-radius: 12px; color: var(--text-primary); font-weight: 600; margin-bottom: 20px; }
         .signup-desc { color: #555; font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
-        .btn-submit { width: 100%; padding: 14px 20px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; transition: transform 0.2s, box-shadow 0.2s; }
-        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(118, 75, 162, 0.35); }
+        .btn-submit { width: 100%; padding: 14px 20px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15); }
         .auth-links { margin-top: 24px; text-align: center; }
-        .auth-links a { color: #764ba2; text-decoration: none; margin: 0 10px; font-weight: 500; }
-        .auth-links a:hover { text-decoration: underline; color: #667eea; }
+        .auth-links a { color: var(--accent); text-decoration: none; margin: 0 10px; font-weight: 500; }
+        .auth-links a:hover { text-decoration: underline; color: var(--accent-hover); }
         .form-group { margin-bottom: 18px; }
-        .form-group label { display: block; color: #764ba2; font-weight: 500; margin-bottom: 6px; font-size: 14px; }
+        .form-group label { display: block; color: var(--accent); font-weight: 500; margin-bottom: 6px; font-size: 14px; }
         .form-group input { width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
-        .form-group input:focus { outline: none; border-color: #764ba2; box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.1); }
+        .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08); }
         .errorlist { list-style: none; padding: 0; margin: 8px 0 0; color: #c33; font-size: 13px; }
         .fallback-msg { text-align: center; padding: 24px; color: #666; }
-        .fallback-msg a { color: #764ba2; font-weight: 600; }
+        .fallback-msg a { color: var(--accent); font-weight: 600; }
     </style>
 </head>
 <body>

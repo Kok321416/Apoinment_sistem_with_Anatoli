@@ -38,7 +38,7 @@
                 
                 <div class="form-group">
                     <label for="calendar_color">Цвет:</label>
-                    <input type="color" id="calendar_color" name="color" value="#667eea">
+                    <input type="color" id="calendar_color" name="color" value="#2d2d2d">
                 </div>
                 
                 <button type="submit" class="btn">Создать календарь</button>
@@ -120,6 +120,8 @@
             <p style="text-align: center; color: #666; padding: 40px;">Календарей пока нет. Создайте первый календарь!</p>
             {% endif %}
         </div>
+
+        {% include 'consultant_menu/footer.html' %}
     </div>
 
     <script>

@@ -258,14 +258,14 @@ input[type="tel"]:focus {
 }
 
 a {
-    color: #764ba2;
+    color: var(--accent);
     text-decoration: none;
     font-weight: 500;
-    transition: all 0.3s;
+    transition: color 0.2s ease;
 }
 
 a:hover {
-    color: #667eea;
+    color: var(--accent-hover);
     text-decoration: underline;
 }
 
@@ -554,4 +554,34 @@ body {
         margin-top: 4px;
     }
 }
+
+/* ========== ФУТЕР (МЕЛКИЕ ССЫЛКИ) ========== */
+.site-footer {
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--card-border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.site-footer a {
+    color: var(--text-muted);
+    text-decoration: none;
+}
+.site-footer a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+}
+.site-footer-sep {
+    margin: 0 8px;
+    color: var(--card-border);
+}
+
+.legal-page {
+    max-width: 720px;
+    margin: 0 auto;
+}
+.legal-page h2 { margin-bottom: 16px; }
+.legal-page h3 { font-size: 16px; margin-top: 20px; margin-bottom: 8px; }
+.legal-page p { color: var(--text-primary); line-height: 1.5; margin-bottom: 12px; }
 

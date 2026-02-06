@@ -11,9 +11,9 @@
         .settings-form label { display: block; margin-bottom: 6px; font-weight: 600; color: #555; }
         .settings-form input { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 12px; font-size: 16px; margin-bottom: 18px; }
         .settings-form .hint { font-size: 13px; color: #777; margin-top: -12px; margin-bottom: 18px; }
-        .btn-save { padding: 12px 24px; background: #764ba2; color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; }
-        .btn-save:hover { background: #667eea; }
-        .btn-back { display: inline-block; margin-top: 16px; color: #764ba2; text-decoration: none; }
+        .btn-save { padding: 12px 24px; background: var(--accent); color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; }
+        .btn-save:hover { background: var(--accent-hover); }
+        .btn-back { display: inline-block; margin-top: 16px; color: var(--accent); text-decoration: none; }
     </style>
 </head>
 <body>
@@ -45,6 +45,8 @@
             <button type="submit" class="btn-save">Сохранить</button>
         </form>
         <a href="{% url 'calendar_detail' calendar.id %}" class="btn-back">← Назад к календарю</a>
+
+        {% include 'consultant_menu/footer.html' %}
     </div>
 </body>
 </html>

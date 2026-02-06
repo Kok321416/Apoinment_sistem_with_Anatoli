@@ -241,6 +241,16 @@ def home_view(request):
     return render(request, 'consultant_menu/home.html')
 
 
+def privacy_page_view(request):
+    """Страница политики конфиденциальности (для OAuth и футера)."""
+    return render(request, 'consultant_menu/privacy.html')
+
+
+def terms_page_view(request):
+    """Страница условий использования (для OAuth и футера)."""
+    return render(request, 'consultant_menu/terms.html')
+
+
 # ========== КАЛЕНДАРИ ==========
 def calendars_view(request):
     """Страница календарей"""

@@ -30,9 +30,9 @@
             background: #e0e0e0;
         }
         .filter-tab.active {
-            background: #764ba2;
+            background: var(--accent);
             color: white;
-            border-color: #764ba2;
+            border-color: var(--accent);
         }
         .booking-card {
             background: white;
@@ -127,7 +127,7 @@
             margin-top: 40px;
             margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 2px solid #764ba2;
+            border-bottom: 2px solid var(--card-border);
         }
         .empty-message {
             text-align: center;
@@ -262,6 +262,8 @@
                 <div class="empty-message">Нет прошедших консультаций</div>
             {% endif %}
         </div>
+
+        {% include 'consultant_menu/footer.html' %}
     </div>
 </body>
 </html>
