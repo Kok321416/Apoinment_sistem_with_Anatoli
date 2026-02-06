@@ -41,7 +41,8 @@ if [ -d "appoinment_sistem" ] && [ -f "appoinment_sistem/manage.py" ]; then
   else
     echo "$MIGRATE_SYS_OUT"
   fi
-  python manage.py collectstatic --noinput
+  # --clear удаляет старые файлы в staticfiles, чтобы после правок CSS стили точно обновились на сервере
+  python manage.py collectstatic --noinput --clear
   cd "$ROOT_DIR"
   echo "✅ appoinment_sistem done"
 else
