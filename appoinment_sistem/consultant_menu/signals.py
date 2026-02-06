@@ -1,10 +1,11 @@
 """
 Сигналы для consultant_menu: создание Consultant при регистрации через соцсеть (Google/Telegram),
 уведомление специалисту в Telegram о новой записи, приветствие при входе через Telegram,
-синхронизация Integration.telegram_chat_id при подключении/входе через Telegram OAuth (браузер).
+синхронизация Integration.telegram_chat_id при подключении/входе через Telegram OAuth (браузер),
+синхронизация записей (Booking) с Google Calendar специалиста при создании/изменении/отмене.
 """
 from django.dispatch import receiver
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.contrib.auth.signals import user_logged_in
 from allauth.account.signals import user_signed_up
 from allauth.socialaccount.signals import social_account_added, social_account_updated
@@ -101,6 +102,21 @@ def create_consultant_on_social_signup(request, user, **kwargs):
     _sync_telegram_to_integration(user)
 
 
+def _get_integration_for_booking(booking):
+    """Возвращает Integration специалиста для записи или None."""
+    consultant = None
+    if getattr(booking, "calendar", None) and getattr(booking.calendar, "consultant", None):
+        consultant = booking.calendar.consultant
+    elif getattr(booking, "service", None) and getattr(booking.service, "consultant", None):
+        consultant = booking.service.consultant
+    if not consultant:
+        return None
+    try:
+        return consultant.integration
+    except Integration.DoesNotExist:
+        return None
+
+
 @receiver(post_save, sender=Booking)
 def notify_on_new_booking(sender, instance, created, **kwargs):
     """При создании записи: уведомление специалисту в Telegram; клиенту — если telegram уже привязан."""
@@ -115,3 +131,41 @@ def notify_on_new_booking(sender, instance, created, **kwargs):
     if getattr(instance, 'telegram_id', None):
         text = format_client_booked_message(instance)
         send_telegram_to_client(instance.telegram_id, text)
+
+
+@receiver(post_save, sender=Booking)
+def sync_booking_to_google_calendar(sender, instance, created, **kwargs):
+    """
+    При создании/обновлении/отмене записи — создать, обновить или удалить событие
+    в Google Calendar специалиста (если он подключил календарь в интеграциях).
+    """
+    integration = _get_integration_for_booking(instance)
+    if not integration or not getattr(integration, "google_calendar_connected", False):
+        return
+    if not (getattr(integration, "google_refresh_token", None) or "").strip():
+        return
+    from consultant_menu.google_calendar_sync import (
+        create_booking_google_event,
+        update_booking_google_event,
+        delete_booking_google_event,
+    )
+    if instance.status == "cancelled":
+        if getattr(instance, "google_event_id", None):
+            delete_booking_google_event(integration, instance)
+        return
+    if created:
+        create_booking_google_event(integration, instance)
+    else:
+        update_booking_google_event(integration, instance)
+
+
+@receiver(post_delete, sender=Booking)
+def delete_booking_from_google_calendar(sender, instance, **kwargs):
+    """При удалении записи — удалить событие из Google Calendar специалиста (запись уже удалена из БД — не сохраняем)."""
+    if not getattr(instance, "google_event_id", None):
+        return
+    integration = _get_integration_for_booking(instance)
+    if not integration or not (getattr(integration, "google_refresh_token", None) or "").strip():
+        return
+    from consultant_menu.google_calendar_sync import delete_booking_google_event
+    delete_booking_google_event(integration, instance, clear_event_id=False)

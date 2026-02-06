@@ -1,0 +1,35 @@
+# Пример unit-файла для systemd: автозапуск Telegram-бота из КОРНЯ репозитория.
+# Бот должен запускаться с настройками appoiment_system (корневой manage.py), а не appoinment_sistem.
+#
+# Установка:
+# 1. Скопируйте в /etc/systemd/system/:
+#    sudo cp deploy/telegram-bot.service.example /etc/systemd/system/telegram-bot.service
+# 2. Отредактируйте пути и пользователя:
+#    sudo nano /etc/systemd/system/telegram-bot.service
+# 3. В корне проекта создайте .env с TELEGRAM_BOT_TOKEN и SITE_URL (см. env.example).
+# 4. sudo systemctl daemon-reload && sudo systemctl enable telegram-bot && sudo systemctl start telegram-bot
+#
+# Или используйте скрипт из корня: ./deploy_bot.sh
+
+[Unit]
+Description=Telegram Bot (Appointment System) — запуск из корня репозитория, appoiment_system.settings
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ВАШ_ПОЛЬЗОВАТЕЛЬ
+Group=ВАШ_ПОЛЬЗОВАТЕЛЬ
+WorkingDirectory=/путь/к/корню/репозитория
+Environment=DJANGO_SETTINGS_MODULE=appoiment_system.settings
+EnvironmentFile=/путь/к/корню/репозитория/.env
+ExecStart=/путь/к/корню/репозитория/venv/bin/python /путь/к/корню/репозитория/manage.py run_bot
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=telegram-bot
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

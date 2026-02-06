@@ -45,23 +45,37 @@ python manage.py migrate
 
 ## 4. Запуск бота
 
+Бот **обязательно** запускается из **корня репозитория** (где лежат `manage.py`, `appoiment_system`, `telegram_bot`), с настройками **appoiment_system.settings**. Не запускайте из папки `appoinment_sistem` — там нет команды `run_bot`.
+
 Бот получает обновления по **long polling** (по умолчанию), вебхук настраивать не обязательно.
 
-**Локально** (из корня проекта, где лежит `manage.py`):
+**Локально** (из корня репозитория):
 
 ```bash
+cd /путь/к/корню/репозитория
 python manage.py run_bot
 ```
 
 Оставьте процесс запущенным в отдельном терминале или в фоне.
 
-**На сервере** при деплое бот перезапускается автоматически (в `deploy.yml` и `deploy-bot.yml`). Вручную:
+**На сервере (рекомендуется): systemd — автозапуск при загрузке и перезапуск при сбоях**
+
+Один раз выполните из корня репозитория на сервере:
 
 ```bash
-cd /путь/к/проекту
-source venv/bin/activate
-nohup python manage.py run_bot >> bot.log 2>&1 &
+cd /путь/к/корню/репозитория
+chmod +x deploy_bot.sh
+./deploy_bot.sh
 ```
+
+Скрипт создаст unit `telegram-bot.service`, подхватит `TELEGRAM_BOT_TOKEN` и `SITE_URL` из `.env` и включит автозапуск. Дальше при деплое через GitHub Actions бот будет перезапускаться через `systemctl restart telegram-bot`.
+
+Полезные команды:
+- `sudo systemctl status telegram-bot` — статус
+- `sudo journalctl -u telegram-bot -f` — логи в реальном времени
+- `sudo systemctl restart telegram-bot` — перезапуск
+
+**Без systemd (временный вариант):** при деплое в `deploy-bot.yml` используется nohup. Для надёжности лучше настроить systemd (см. выше).
 
 Проверка: в Telegram откройте бота и отправьте `/start` — должен прийти ответ.
 

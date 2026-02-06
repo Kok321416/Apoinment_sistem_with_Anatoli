@@ -234,3 +234,6 @@ SITE_URL = os.environ.get('SITE_URL', 'https://allyourclients.ru')
 # Telegram Webhook settings (опционально)
 TELEGRAM_USE_WEBHOOK = os.environ.get('TELEGRAM_USE_WEBHOOK', 'False').lower() == 'true'
 TELEGRAM_WEBHOOK_URL = os.environ.get('TELEGRAM_WEBHOOK_URL', '')
+
+# Лог-файл бота (при запуске run_bot пишет сюда + в journal при systemd)
+TELEGRAM_BOT_LOG_FILE = os.environ.get('TELEGRAM_BOT_LOG_FILE', str(BASE_DIR / 'logs' / 'telegram_bot.log'))

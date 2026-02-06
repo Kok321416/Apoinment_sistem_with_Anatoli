@@ -24,7 +24,23 @@ fi
 if [ -d "appoinment_sistem" ] && [ -f "appoinment_sistem/manage.py" ]; then
   echo "🔄 Migrating appoinment_sistem..."
   cd appoinment_sistem
-  python manage.py migrate --noinput
+  set +e
+  MIGRATE_SYS_OUT=$(python manage.py migrate --noinput 2>&1)
+  MIGRATE_SYS_R=$?
+  set -e
+  if [ $MIGRATE_SYS_R -ne 0 ]; then
+    if echo "$MIGRATE_SYS_OUT" | grep -q "Duplicate column\|(1060,\|already exists"; then
+      echo "⚠️ consultant_menu: колонки уже есть в БД. Помечаем миграции 0016/0017 как применённые (--fake), затем migrate."
+      python manage.py migrate consultant_menu 0016_calendar_reminder_hours --fake
+      python manage.py migrate consultant_menu 0017_booking_google_event_id --fake
+      python manage.py migrate --noinput
+    else
+      echo "$MIGRATE_SYS_OUT"
+      exit $MIGRATE_SYS_R
+    fi
+  else
+    echo "$MIGRATE_SYS_OUT"
+  fi
   python manage.py collectstatic --noinput
   cd "$ROOT_DIR"
   echo "✅ appoinment_sistem done"

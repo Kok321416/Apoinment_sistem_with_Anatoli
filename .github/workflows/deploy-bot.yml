@@ -67,27 +67,44 @@ jobs:
           export TELEGRAM_BOT_TOKEN
           export SITE_URL
 
-          # Миграции для appoiment_system (bookings, telegram_bot) — иначе Table bookings_userprofile doesn't exist
-          python manage.py migrate --noinput
+          # Миграции для обоих проектов (appoinment_sistem + appoiment_system), как при полном деплое
+          if [ -x scripts/migrate.sh ]; then
+            ./scripts/migrate.sh
+          else
+            chmod +x scripts/migrate.sh && ./scripts/migrate.sh
+          fi
           python manage.py collectstatic --noinput 2>/dev/null || true
 
-          BOT_PIDFILE="$APP_DIR/bot.pid"
-          BOT_LOG="$APP_DIR/bot.log"
-          if [ -f "$BOT_PIDFILE" ]; then
-            OLD_PID=$(cat "$BOT_PIDFILE")
-            kill -TERM "$OLD_PID" 2>/dev/null || true
-            rm -f "$BOT_PIDFILE"
+          # Предпочтительно: перезапуск systemd-сервиса (если настроен через deploy_bot.sh)
+          if sudo systemctl restart telegram-bot.service 2>/dev/null; then
             sleep 2
-          fi
-          nohup python manage.py run_bot >> "$BOT_LOG" 2>&1 &
-          BOT_PID=$!
-          echo $BOT_PID > "$BOT_PIDFILE"
-          sleep 3
-          if kill -0 $BOT_PID 2>/dev/null; then
-            echo "Bot started, PID $BOT_PID"
+            if systemctl is-active --quiet telegram-bot.service; then
+              echo "Bot restarted via systemd (telegram-bot.service)"
+            else
+              echo "::error::telegram-bot.service failed. Logs:"
+              sudo journalctl -u telegram-bot -n 30 --no-pager
+              exit 1
+            fi
           else
-            echo "::error::Bot process exited. Last 30 lines of bot.log:"
-            tail -30 "$BOT_LOG" 2>/dev/null || true
-            exit 1
+            # Fallback: nohup (настройте systemd один раз: ./deploy_bot.sh)
+            BOT_PIDFILE="$APP_DIR/bot.pid"
+            BOT_LOG="$APP_DIR/bot.log"
+            if [ -f "$BOT_PIDFILE" ]; then
+              OLD_PID=$(cat "$BOT_PIDFILE")
+              kill -TERM "$OLD_PID" 2>/dev/null || true
+              rm -f "$BOT_PIDFILE"
+              sleep 2
+            fi
+            nohup python manage.py run_bot >> "$BOT_LOG" 2>&1 &
+            BOT_PID=$!
+            echo $BOT_PID > "$BOT_PIDFILE"
+            sleep 3
+            if kill -0 $BOT_PID 2>/dev/null; then
+              echo "Bot started via nohup, PID $BOT_PID (recommend: run ./deploy_bot.sh on server for systemd)"
+            else
+              echo "::error::Bot process exited. Last 30 lines of bot.log:"
+              tail -30 "$BOT_LOG" 2>/dev/null || true
+              exit 1
+            fi
           fi
 

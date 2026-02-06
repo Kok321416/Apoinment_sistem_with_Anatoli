@@ -22,6 +22,27 @@ def get_site_url():
     return getattr(settings, 'SITE_URL', 'http://127.0.0.1:8000')
 
 
+def _fetch_site_api(path, json_data):
+    """
+    Вызов API основного сайта (consultant_menu). Заголовок X-Bot-Token для доступа.
+    Возвращает (success: bool, data: dict или None).
+    """
+    site_url = get_site_url().rstrip('/')
+    token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None) or ''
+    if not token or not site_url.startswith('http'):
+        return False, None
+    url = f"{site_url}{path}"
+    try:
+        r = requests.post(url, json=json_data, timeout=10, headers={'X-Bot-Token': token})
+        if r.status_code != 200:
+            return False, None
+        data = r.json()
+        return data.get('success') is True, data
+    except Exception as e:
+        logger.debug("Site API %s: %s", path, e)
+        return False, None
+
+
 def send_telegram_message(chat_id, text, reply_markup=None):
     """Отправить сообщение в Telegram. reply_markup — dict (inline_keyboard или keyboard)."""
     if not TELEGRAM_BOT_TOKEN:
@@ -153,7 +174,7 @@ def handle_telegram_update(update_data):
             username = message.get('from', {}).get('username', '')
             user_id = message.get('from', {}).get('id')
             first_name = message.get('from', {}).get('first_name', '')
-            
+            logger.info("TG bot: сообщение chat_id=%s user_id=%s text=%r", chat_id, user_id, (text or '')[:80])
             if text == '/start':
                 handle_start_command(chat_id, user_id, username, first_name)
             elif text.startswith('/start link_'):
@@ -194,6 +215,8 @@ def handle_telegram_update(update_data):
             callback_query_id = callback_query['id']
             chat_id = callback_query['message']['chat']['id']
             data = callback_query.get('data', '')
+            user_id = callback_query.get('from', {}).get('id')
+            logger.info("TG bot: callback chat_id=%s user_id=%s data=%r", chat_id, user_id, (data or '')[:60])
             # Не отвечаем сразу для кнопок, которые показывают свой текст (иначе второй answer не сработает)
             if not data.startswith('booklink_') and not data.startswith('spec_confirm_'):
                 answer_callback_query(callback_query_id)
@@ -227,7 +250,7 @@ def handle_telegram_update(update_data):
                 send_telegram_message(chat_id, "Выберите действие в меню.", get_main_reply_keyboard())
     
     except Exception as e:
-        logger.error(f"Ошибка обработки обновления Telegram: {e}")
+        logger.exception("TG bot: ошибка обработки обновления: %s", e)
 
 
 def handle_login_via_bot(chat_id):
@@ -292,11 +315,12 @@ def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query
     """Обработка нажатия «Подтвердить» при подключении Telegram специалиста."""
     site_url = get_site_url().rstrip('/')
     api_url = f"{site_url}/api/specialist/connect-telegram/"
-    logger.info("Specialist connect: calling %s (token len=%s)", api_url, len(token_str or ""))
+    logger.info("TG bot: API specialist/connect-telegram chat_id=%s user_id=%s token_len=%s", chat_id, user_id, len(token_str or ""))
     try:
         r = requests.post(api_url, json={'link_token': token_str, 'telegram_id': user_id}, timeout=15)
         data = r.json() if r.text else {}
         if r.status_code == 200 and data.get('success'):
+            logger.info("TG bot: specialist connect OK chat_id=%s", chat_id)
             answer_callback_query(callback_query_id, 'Готово! Уведомления будут приходить сюда.')
             send_telegram_message(
                 chat_id,
@@ -307,7 +331,7 @@ def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query
             )
         else:
             msg = data.get('error', 'Ссылка недействительна или истекла.')
-            logger.warning("Specialist connect API failed: status=%s body=%s", r.status_code, data)
+            logger.warning("TG bot: specialist connect FAIL chat_id=%s status=%s body=%s", chat_id, r.status_code, data)
             answer_callback_query(callback_query_id, msg[:200])
             send_telegram_message(
                 chat_id,
@@ -315,7 +339,7 @@ def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query
                 "Попробуйте «Подключить через браузер» на странице интеграций на сайте — откройте сайт и нажмите эту кнопку там."
             )
     except requests.exceptions.ConnectionError as e:
-        logger.warning("Specialist connect connection error: %s (SITE_URL=%s)", e, site_url)
+        logger.warning("TG bot: specialist connect ConnectionError: %s SITE_URL=%s", e, site_url)
         answer_callback_query(callback_query_id, 'Сервер недоступен.')
         send_telegram_message(
             chat_id,
@@ -352,16 +376,19 @@ def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
     """Обработка нажатия кнопки «Подтвердить» после перехода по ссылке записи."""
     site_url = get_site_url().rstrip('/')
     api_url = f"{site_url}/api/booking/confirm-telegram/"
+    logger.info("TG bot: API booking/confirm-telegram chat_id=%s user_id=%s token_len=%s", chat_id, user_id, len(token_str or ""))
     try:
         r = requests.post(api_url, json={'link_token': token_str, 'telegram_id': user_id}, timeout=10)
         data = r.json() if r.text else {}
         if r.status_code == 200 and data.get('success'):
+            logger.info("TG bot: booking confirm OK chat_id=%s", chat_id)
             answer_callback_query(callback_query_id, 'Готово! Уведомления будут приходить сюда.')
             send_telegram_message(chat_id, "✅ Ваш Telegram привязан к записи. Напоминания будут приходить сюда.")
         else:
+            logger.warning("TG bot: booking confirm FAIL chat_id=%s status=%s body=%s", chat_id, r.status_code, data)
             answer_callback_query(callback_query_id, 'Ссылка недействительна или уже использована.')
     except Exception as e:
-        logger.warning(f"Ошибка вызова API подтверждения записи: {e}")
+        logger.warning("TG bot: booking confirm error: %s", e)
         answer_callback_query(callback_query_id, 'Ошибка. Попробуйте позже.')
 
 
@@ -458,8 +485,13 @@ def handle_start_command(chat_id, user_id, username, first_name):
                 return
             profile = UserProfile.objects.filter(telegram_id=user_id).first()
         
-        # Если это специалист — показываем меню специалиста
-        if profile and profile.user_type == "specialist":
+        # Специалист: по профилю (bookings) или по подключению на сайте (Integration.telegram_chat_id)
+        is_specialist = profile and profile.user_type == "specialist"
+        if not is_specialist:
+            ok, data = _fetch_site_api('/api/telegram/specialist-bookings/', {'telegram_chat_id': str(chat_id)})
+            if ok and data.get('is_specialist'):
+                is_specialist = True
+        if is_specialist:
             web_stats = f"{get_site_url()}/telegram/specialist/stats/"
             web_upcoming = f"{get_site_url()}/telegram/specialist/upcoming/"
             keyboard = {
@@ -550,10 +582,23 @@ def handle_register_command(chat_id, user_id, username, first_name):
 def handle_history_command(chat_id, user_id):
     """Показать историю: к каким специалистам уже записывался пользователь."""
     try:
+        # Сначала записи с основного сайта (consultant_menu)
+        ok, data = _fetch_site_api('/api/telegram/client-bookings/', {'telegram_id': user_id})
+        if ok and data and data.get('bookings'):
+            from collections import Counter
+            names = [b.get('consultant_name') or 'Специалист' for b in data['bookings']]
+            by_name = Counter(names)
+            if by_name:
+                lines = ["📜 <b>К кому вы уже записывались:</b>\n"]
+                for name, cnt in by_name.most_common():
+                    _raz = "раз" if cnt == 1 else ("раза" if 2 <= cnt <= 4 else "раз")
+                    lines.append(f"• {name} — {cnt} {_raz}")
+                send_telegram_message(chat_id, "\n".join(lines), get_main_reply_keyboard())
+                return
+        # Иначе — из приложения bookings
         from django.db.models import Count
         profile = UserProfile.objects.filter(telegram_id=user_id).select_related('user').first()
         if not profile or not profile.user:
-            # Пробуем по TelegramClient — записи по client_telegram
             tg_client = TelegramClient.objects.filter(telegram_id=user_id).first()
             if not tg_client or not tg_client.telegram_username:
                 send_telegram_message(chat_id, "У вас пока нет записей. Запишитесь через кнопку «Записаться».", get_main_reply_keyboard())
@@ -562,7 +607,6 @@ def handle_history_command(chat_id, user_id):
             qs = Appointment.objects.filter(client_telegram__iexact=norm).exclude(status='cancelled')
         else:
             qs = Appointment.objects.filter(client=profile.user).exclude(status='cancelled')
-        # Группируем по специалисту: specialist_id -> count
         by_specialist = qs.values('specialist').annotate(cnt=Count('id')).order_by('-cnt')
         if not by_specialist:
             send_telegram_message(chat_id, "У вас пока нет записей к специалистам.", get_main_reply_keyboard())
@@ -577,7 +621,7 @@ def handle_history_command(chat_id, user_id):
             lines.append(f"• {name} — {cnt} {_raz}")
         send_telegram_message(chat_id, "\n".join(lines), get_main_reply_keyboard())
     except Exception as e:
-        logger.error(f"Ошибка истории записей: {e}")
+        logger.error("Ошибка истории записей: %s", e)
         send_telegram_message(chat_id, "Не удалось загрузить историю. Попробуйте позже.", get_main_reply_keyboard())
 
 
@@ -599,77 +643,56 @@ def handle_contact_admin_command(chat_id):
 
 
 def handle_appointments_command(chat_id, user_id):
-    """Показать записи пользователя"""
+    """Показать записи пользователя: сначала с основного сайта (consultant_menu), иначе из bookings."""
+    keyboard = {
+        'inline_keyboard': [[
+            {'text': '📱 Записаться на консультацию', 'web_app': {'url': f'{get_site_url()}/telegram/appointment/'}}
+        ]]
+    }
     try:
+        # Записи с основного сайта (consultant_menu.Booking по telegram_id)
+        ok, data = _fetch_site_api('/api/telegram/client-bookings/', {'telegram_id': user_id})
+        if ok and data and data.get('bookings'):
+            items = data['bookings']
+            status_emoji = {'pending': '⏳', 'confirmed': '✅', 'completed': '✔️'}
+            message = "📋 <b>Ваши записи:</b>\n\n"
+            for b in items[:15]:
+                em = status_emoji.get(b.get('status'), '📅')
+                message += f"{em} <b>{b.get('date', '')} {b.get('time', '')}</b>\n"
+                message += f"👤 {b.get('consultant_name', '—')}\n"
+                message += f"💼 {b.get('service_name', 'Консультация')}\n\n"
+            send_telegram_message(chat_id, message, keyboard)
+            return
+
+        # Иначе — записи из приложения bookings (Appointment)
         profile = UserProfile.objects.filter(telegram_id=user_id).first()
-        
         if not profile or not profile.user:
-            keyboard = {
-                'inline_keyboard': [
-                    [
-                        {
-                            'text': '📱 Записаться на консультацию',
-                            'web_app': {'url': f'{get_site_url()}/telegram/appointment/'}
-                        }
-                    ]
-                ]
-            }
             send_telegram_message(
                 chat_id,
                 "❌ Вы не зарегистрированы в системе.\nИспользуйте кнопку ниже для записи или /register для регистрации.",
                 keyboard
             )
             return
-        
         user = profile.user
         appointments = Appointment.objects.filter(client=user).order_by('-appointment_date')[:10]
-        
         if not appointments:
-            keyboard = {
-                'inline_keyboard': [
-                    [
-                        {
-                            'text': '📱 Записаться на консультацию',
-                            'web_app': {'url': f'{get_site_url()}/telegram/appointment/'}
-                        }
-                    ]
-                ]
-            }
             send_telegram_message(chat_id, "📋 У вас пока нет записей.", keyboard)
             return
-        
         message = "📋 <b>Ваши записи:</b>\n\n"
         for appointment in appointments:
             specialist_name = appointment.specialist.user.get_full_name() or appointment.specialist.user.username
             service_name = appointment.service.name if appointment.service else "Консультация"
             date_str = appointment.appointment_date.strftime("%d.%m.%Y %H:%M")
             status_emoji = {
-                'pending': '⏳',
-                'confirmed': '✅',
-                'cancelled': '❌',
-                'completed': '✔️'
+                'pending': '⏳', 'confirmed': '✅', 'cancelled': '❌', 'completed': '✔️'
             }.get(appointment.status, '📅')
-            
             message += f"{status_emoji} <b>{date_str}</b>\n"
             message += f"👤 {specialist_name}\n"
             message += f"💼 {service_name}\n"
             message += f"Статус: {appointment.get_status_display()}\n\n"
-        
-        keyboard = {
-            'inline_keyboard': [
-                [
-                    {
-                        'text': '📱 Записаться еще',
-                            'web_app': {'url': f'{get_site_url()}/telegram/appointment/'}
-                    }
-                ]
-            ]
-        }
-        
         send_telegram_message(chat_id, message, keyboard)
-    
     except Exception as e:
-        logger.error(f"Ошибка получения записей: {e}")
+        logger.error("Ошибка получения записей: %s", e)
         send_telegram_message(chat_id, "Произошла ошибка при получении записей.")
 
 
@@ -781,9 +804,25 @@ def handle_help_command(chat_id):
 
 def handle_specialist_next_appointments(chat_id, user_id):
     """
-    Быстрый вывод ближайших записей специалиста прямо в чат.
+    Ближайшие записи специалиста: сначала с основного сайта (consultant_menu по chat_id),
+    иначе из приложения bookings (Appointment).
     """
     try:
+        # Специалист с основного сайта (Integration.telegram_chat_id == chat_id)
+        ok, data = _fetch_site_api('/api/telegram/specialist-bookings/', {'telegram_chat_id': str(chat_id)})
+        if ok and data and data.get('bookings'):
+            upcoming = [b for b in data['bookings'] if b.get('is_upcoming')][:5]
+            if upcoming:
+                text = "📅 <b>5 ближайших записей:</b>\n\n"
+                for b in upcoming:
+                    text += f"• <b>{b.get('date', '')} {b.get('time', '')}</b> — {b.get('client_name', '—')}\n"
+                    text += f"  Услуга: {b.get('service_name', 'Консультация')}\n\n"
+                send_telegram_message(chat_id, text)
+                return
+            send_telegram_message(chat_id, "📭 Ближайших записей нет.")
+            return
+
+        # Иначе — специалист из приложения bookings
         profile = UserProfile.objects.filter(telegram_id=user_id, user_type="specialist").select_related("user").first()
         if not profile:
             send_telegram_message(chat_id, "❌ Вы не являетесь специалистом.")
@@ -792,7 +831,6 @@ def handle_specialist_next_appointments(chat_id, user_id):
         if not specialist:
             send_telegram_message(chat_id, "❌ Профиль специалиста не найден.")
             return
-
         items = (
             Appointment.objects.filter(
                 specialist=specialist,
@@ -804,7 +842,6 @@ def handle_specialist_next_appointments(chat_id, user_id):
         if not items:
             send_telegram_message(chat_id, "📭 Ближайших записей нет.")
             return
-
         text = "📅 <b>5 ближайших записей:</b>\n\n"
         for a in items:
             text += f"• <b>{a.appointment_date.strftime('%d.%m.%Y %H:%M')}</b> — {a.client_name}"
@@ -813,7 +850,6 @@ def handle_specialist_next_appointments(chat_id, user_id):
             if a.service:
                 text += f"\n  Услуга: {a.service.name}"
             text += "\n\n"
-
         send_telegram_message(chat_id, text)
     except Exception as e:
         send_telegram_message(chat_id, f"Ошибка: {e}")
