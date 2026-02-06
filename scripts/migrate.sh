@@ -30,7 +30,7 @@ if [ -d "appoinment_sistem" ] && [ -f "appoinment_sistem/manage.py" ]; then
   set -e
   if [ $MIGRATE_SYS_R -ne 0 ]; then
     if echo "$MIGRATE_SYS_OUT" | grep -q "Duplicate column\|(1060,\|already exists"; then
-      echo "⚠️ consultant_menu: колонки уже есть в БД. Помечаем миграции 0016/0017 как применённые (--fake), затем migrate."
+      echo "⚠️ consultant_menu: колонки уже есть в БД. Помечаем миграции 0016–0017 как применённые (--fake), затем migrate."
       python manage.py migrate consultant_menu 0016_calendar_reminder_hours --fake
       python manage.py migrate consultant_menu 0017_booking_google_event_id --fake
       python manage.py migrate --noinput

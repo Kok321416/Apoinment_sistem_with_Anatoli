@@ -153,6 +153,30 @@ class Service(models.Model):
         return f"{self.name} ({self.consultant})"
 
 
+class ClientCard(models.Model):
+    """
+    Карточка клиента у специалиста: основные данные, примечания, ссылки на Telegram/почту.
+    История консультаций строится по совпадению email/telegram или по связи через booking.client_card.
+    """
+    consultant = models.ForeignKey(Consultant, on_delete=models.CASCADE, related_name='client_cards')
+    name = models.CharField(max_length=255, blank=True, null=True, verbose_name='Имя')
+    email = models.EmailField(blank=True, null=True, verbose_name='Email')
+    phone = models.CharField(max_length=30, blank=True, null=True, verbose_name='Телефон')
+    telegram = models.CharField(max_length=255, blank=True, null=True, verbose_name='Telegram (ник или ссылка)')
+    notes = models.TextField(blank=True, null=True, verbose_name='Примечания')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'consultant_client_cards'
+        verbose_name = 'Карточка клиента'
+        verbose_name_plural = 'Карточки клиентов'
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return self.name or self.email or self.telegram or f'Клиент #{self.pk}'
+
+
 class Booking(models.Model):
     """
     Запись - когда клиент выбирает услугу и время из доступных временных окон.
@@ -167,6 +191,10 @@ class Booking(models.Model):
     service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='bookings')
     time_slot = models.ForeignKey(TimeSlot, on_delete=models.CASCADE, related_name='bookings', null=True, blank=True)
     calendar = models.ForeignKey(Calendar, on_delete=models.CASCADE, related_name='bookings')
+    client_card = models.ForeignKey(
+        ClientCard, on_delete=models.SET_NULL, related_name='bookings', null=True, blank=True,
+        verbose_name='Карточка клиента'
+    )
 
     # Информация о клиенте
     client_name = models.CharField(max_length=255, verbose_name='Имя клиента')

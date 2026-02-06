@@ -1,3 +1,17 @@
+/* ========== ТЕМА: СЕРЫЙ, БЕЛЫЙ, ЧЁРНЫЙ, ОЧЕРТАНИЯ ========== */
+:root {
+    --bg-page: #e8e9eb;
+    --bg-page-edge: #c8cad0;
+    --card-bg: #ffffff;
+    --card-border: #2d2d2d;
+    --text-primary: #1a1a1a;
+    --text-muted: #555;
+    --accent: #2d2d2d;
+    --accent-hover: #1a1a1a;
+    --hover-bg: #f0f0f0;
+    --bg-subtle: #f5f5f5;
+}
+
 /* ========== ОСНОВНЫЕ СТИЛИ ========== */
 * {
     margin: 0;
@@ -7,25 +21,32 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: radial-gradient(ellipse at center, var(--bg-page) 0%, var(--bg-page-edge) 100%);
     min-height: 100vh;
     padding: 20px;
+    color: var(--text-primary);
 }
 
-/* ========== КОНТЕЙНЕР ========== */
+/* ========== КОНТЕЙНЕР (ОКНО) ========== */
 .container {
-    background: white;
-    border-radius: 20px;
+    background: var(--card-bg);
+    border: 2px solid var(--card-border);
+    border-radius: 16px;
     padding: 40px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
+    transition: box-shadow 0.25s ease;
 }
 
-/* ========== ЗАГОЛОВОК ========== */
+.container:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* ========== ЗАГОЛОВКИ ========== */
 h1 {
-    color: #764ba2;
+    color: var(--text-primary);
     text-align: center;
     margin-bottom: 10px;
     font-size: 32px;
@@ -33,10 +54,17 @@ h1 {
 }
 
 h2 {
-    color: #764ba2;
+    color: var(--text-primary);
     margin-bottom: 25px;
     font-size: 24px;
     font-weight: 500;
+}
+
+.section-title {
+    margin-top: 32px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--card-border);
 }
 
 /* ========== НАВИГАЦИОННАЯ ПАНЕЛЬ ========== */
@@ -46,7 +74,7 @@ h2 {
     align-items: center;
     margin-bottom: 40px;
     padding-bottom: 20px;
-    border-bottom: 2px solid #e0e0e0;
+    border-bottom: 2px solid var(--card-border);
 }
 
 .brand-title {
@@ -56,7 +84,7 @@ h2 {
     gap: 10px;
     font-size: 22px;
     font-weight: 700;
-    color: #764ba2;
+    color: var(--text-primary);
 }
 
 .brand-link {
@@ -65,18 +93,21 @@ h2 {
     gap: 10px;
     color: inherit;
     text-decoration: none;
+    transition: color 0.2s ease, opacity 0.2s ease;
 }
 
 .brand-link:hover {
-    color: #667eea;
+    color: var(--accent-hover);
     text-decoration: none;
+    opacity: 0.9;
 }
 
 .brand-badge {
     width: 28px;
     height: 28px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--accent);
+    border: 2px solid var(--card-border);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -84,7 +115,12 @@ h2 {
     font-weight: 800;
     font-size: 16px;
     line-height: 1;
-    box-shadow: 0 6px 18px rgba(118, 75, 162, 0.25);
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.brand-badge:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
 }
 
 .brand-name {
@@ -95,15 +131,15 @@ h2 {
 .brand-page {
     font-size: 16px;
     font-weight: 600;
-    color: #666;
+    color: var(--text-muted);
 }
 
 .user-info {
-    color: #764ba2;
+    color: var(--text-primary);
     font-weight: 500;
 }
 
-/* ========== КНОПКИ НАВИГАЦИИ ========== */
+/* ========== КНОПКИ НАВИГАЦИИ (ИНТЕРАКТИВНЫЕ) ========== */
 .nav-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -112,31 +148,31 @@ h2 {
 }
 
 .nav-card {
-    background: linear-gradient(135deg, rgba(118, 75, 162, 0.1) 0%, rgba(102, 126, 234, 0.1) 100%);
-    border: 2px solid #e0e0e0;
-    border-radius: 15px;
+    background: var(--card-bg);
+    border: 2px solid var(--card-border);
+    border-radius: 12px;
     padding: 30px;
     text-align: center;
-    transition: all 0.3s;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     text-decoration: none;
     color: inherit;
     display: block;
 }
 
 .nav-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(118, 75, 162, 0.3);
-    border-color: #764ba2;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    border-color: var(--accent-hover);
 }
 
 .nav-card h3 {
-    color: #764ba2;
+    color: var(--text-primary);
     margin-bottom: 15px;
     font-size: 22px;
 }
 
 .nav-card p {
-    color: #666;
+    color: var(--text-muted);
     font-size: 14px;
     line-height: 1.6;
 }
@@ -146,35 +182,36 @@ h2 {
     margin-bottom: 15px;
 }
 
-/* ========== КНОПКИ ========== */
+/* ========== КНОПКИ (ИНТЕРАКТИВНЫЕ) ========== */
 .btn {
     padding: 12px 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
+    background: var(--accent);
+    color: #fff;
+    border: 2px solid var(--card-border);
     border-radius: 10px;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     text-decoration: none;
     display: inline-block;
 }
 
 .btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(118, 75, 162, 0.3);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    background: var(--accent-hover);
 }
 
 .btn-secondary {
-    background: white;
-    color: #764ba2;
-    border: 2px solid #764ba2;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border: 2px solid var(--card-border);
 }
 
 .btn-secondary:hover {
-    background: #764ba2;
-    color: white;
+    background: var(--hover-bg);
+    color: var(--accent-hover);
 }
 
 /* ========== ФОРМЫ ========== */
@@ -184,7 +221,7 @@ h2 {
 
 label {
     display: block;
-    color: #764ba2;
+    color: var(--text-primary);
     margin-bottom: 8px;
     font-weight: 500;
     font-size: 14px;
@@ -193,23 +230,25 @@ label {
 input[type="email"],
 input[type="password"],
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+input[type="tel"] {
     width: 100%;
     padding: 12px 16px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--card-border);
     border-radius: 10px;
     font-size: 16px;
-    transition: all 0.3s;
-    background: white;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background: var(--card-bg);
 }
 
 input[type="email"]:focus,
 input[type="password"]:focus,
 input[type="text"]:focus,
-input[type="number"]:focus {
+input[type="number"]:focus,
+input[type="tel"]:focus {
     outline: none;
-    border-color: #764ba2;
-    box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.1);
+    border-color: var(--accent-hover);
+    box-shadow: 0 0 0 3px rgba(45, 45, 45, 0.12);
 }
 
 /* ========== ССЫЛКИ ========== */
@@ -251,13 +290,18 @@ a:hover {
     font-size: 14px;
 }
 
-/* ========== ФОРМЫ И СЕКЦИИ ========== */
+/* ========== ФОРМЫ И СЕКЦИИ (ОКНА С ОЧЕРТАНИЕМ) ========== */
 .form-section {
-    background: #f8f9fa;
+    background: var(--card-bg);
     padding: 25px;
-    border-radius: 15px;
+    border-radius: 12px;
     margin-bottom: 30px;
-    border-left: 5px solid #764ba2;
+    border: 2px solid var(--card-border);
+    transition: box-shadow 0.2s ease;
+}
+
+.form-section:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 
 .list-section {
@@ -272,15 +316,15 @@ a:hover {
 }
 
 .item-card {
-    background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 15px;
+    background: var(--card-bg);
+    border: 2px solid var(--card-border);
+    border-radius: 12px;
     padding: 20px;
-    transition: all 0.3s;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .item-card:hover {
-    box-shadow: 0 5px 20px rgba(118, 75, 162, 0.2);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     transform: translateY(-2px);
 }
 
@@ -292,18 +336,19 @@ a:hover {
 }
 
 .item-header h3 {
-    color: #764ba2;
+    color: var(--text-primary);
     margin: 0;
     font-size: 20px;
 }
 
 .status-badge {
-    background: #764ba2;
-    color: white;
+    background: var(--accent);
+    color: #fff;
     padding: 4px 12px;
     border-radius: 12px;
     font-size: 12px;
     font-weight: 500;
+    border: 1px solid var(--card-border);
 }
 
 .status-badge.active {
@@ -319,7 +364,7 @@ a:hover {
 }
 
 .item-info p {
-    color: #666;
+    color: var(--text-muted);
     margin: 8px 0;
     font-size: 14px;
 }
@@ -336,7 +381,7 @@ a:hover {
     align-items: center;
     margin-bottom: 30px;
     padding-bottom: 20px;
-    border-bottom: 2px solid #e0e0e0;
+    border-bottom: 2px solid var(--card-border);
 }
 
 /* ========== МОБИЛЬНАЯ АДАПТИВНОСТЬ ========== */

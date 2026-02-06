@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карточки клиентов</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <style>
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 24px; }
+        .card-tile {
+            background: var(--card-bg, #fff);
+            border: 1px solid var(--card-border, #ddd);
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .card-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        }
+        .card-tile h3 { margin: 0 0 8px 0; font-size: 18px; color: var(--text-primary, #1a1a1a); }
+        .card-tile .meta { font-size: 13px; color: var(--text-muted, #666); }
+        .card-tile .meta span { display: block; margin-top: 4px; }
+        .add-form { margin-bottom: 24px; padding: 20px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; }
+        .add-form h3 { margin-top: 0; }
+        .form-row-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 600px) { .form-row-cards { grid-template-columns: 1fr; } }
+        .empty-cards { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width: 1000px;">
+        <div class="page-header">
+            <h1>Карточки клиентов</h1>
+            <div>
+                <a href="{% url 'home' %}" class="btn btn-secondary" style="padding: 8px 16px;">На главную</a>
+            </div>
+        </div>
+
+        {% if success %}<div class="success-message">{{ success }}</div>{% endif %}
+        {% if error %}<div class="error-message">{{ error }}</div>{% endif %}
+
+        <div class="add-form">
+            <h3>➕ Добавить карточку</h3>
+            <form method="POST" action="{% url 'client_cards_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+                <div class="form-row-cards">
+                    <div class="form-group">
+                        <label for="name">Имя</label>
+                        <input type="text" id="name" name="name" placeholder="Необязательно">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" placeholder="Необязательно">
+                    </div>
+                </div>
+                <div class="form-row-cards">
+                    <div class="form-group">
+                        <label for="phone">Телефон</label>
+                        <input type="text" id="phone" name="phone" placeholder="Необязательно">
+                    </div>
+                    <div class="form-group">
+                        <label for="telegram">Telegram</label>
+                        <input type="text" id="telegram" name="telegram" placeholder="@ник или ссылка">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="notes">Примечания</label>
+                    <textarea name="notes" id="notes" rows="2" placeholder="Необязательно" style="width:100%; padding:12px; border:1px solid var(--card-border,#ddd); border-radius:8px;"></textarea>
+                </div>
+                <button type="submit" class="btn">Создать карточку</button>
+            </form>
+        </div>
+
+        <h2 class="section-title">Мои карточки</h2>
+        {% if cards %}
+            <div class="cards-grid">
+                {% for card in cards %}
+                    <a href="{% url 'client_card_detail' card.id %}" class="card-tile">
+                        <h3>{{ card.name|default:"Без имени" }}</h3>
+                        <div class="meta">
+                            {% if card.email %}<span>📧 {{ card.email }}</span>{% endif %}
+                            {% if card.telegram %}<span>✈️ {{ card.telegram }}</span>{% endif %}
+                            {% if card.phone %}<span>📞 {{ card.phone }}</span>{% endif %}
+                            {% if not card.email and not card.telegram and not card.phone %}<span>Карточка #{{ card.id }}</span>{% endif %}
+                        </div>
+                        {% if card.notes %}<p style="margin-top:10px; font-size:13px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ card.notes }}</p>{% endif %}
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-cards">Пока нет карточек. Создайте первую выше или примените миграции — появится пробный клиент.</div>
+        {% endif %}
+    </div>
+</body>
+</html>
