@@ -406,7 +406,9 @@ def calendar_settings_edit(request, calendar_id):
 
 
 def public_booking_view(request, calendar_id):
-    """Публичная страница записи через календарь (без авторизации)"""
+    """Публичная страница записи через календарь (без авторизации).
+    Два шага: 1) предварительно ввод контактных данных (имя, телефон, Telegram, email);
+    2) выбор услуги, даты и времени. Контакты хранятся в сессии."""
     try:
         calendar = Calendar.objects.get(id=calendar_id, is_active=True)
     except Calendar.DoesNotExist:
@@ -415,30 +417,74 @@ def public_booking_view(request, calendar_id):
     consultant = calendar.consultant
     services = Service.objects.filter(consultant=consultant, is_active=True)
 
+    # Сброс контактов по запросу (кнопка «Изменить»)
+    if request.method == 'GET' and request.GET.get('change_contact'):
+        for key in ('booking_contact_done', 'booking_client_name', 'booking_client_phone',
+                    'booking_client_telegram', 'booking_client_email'):
+            request.session.pop(key, None)
+        return redirect('consultant_menu:public_booking', calendar_id=calendar_id)
+
     if request.method == 'POST':
+        # Шаг 1: сохранение контактов в сессию
+        if request.POST.get('action') == 'set_contact':
+            client_name = request.POST.get('client_name', '').strip()
+            client_phone = request.POST.get('client_phone', '').strip()
+            client_email = request.POST.get('client_email', '').strip()
+            client_telegram = (request.POST.get('client_telegram', '') or '').strip().replace(' ', '')
+            if not client_phone:
+                return render(request, 'consultant_menu/public_booking.html', {
+                    'calendar': calendar,
+                    'services': services,
+                    'show_booking_form': False,
+                    'error': 'Укажите телефон для связи',
+                    'contact_name': client_name,
+                    'contact_phone': client_phone,
+                    'contact_telegram': client_telegram,
+                    'contact_email': client_email,
+                })
+            request.session['booking_contact_done'] = True
+            request.session['booking_client_name'] = client_name
+            request.session['booking_client_phone'] = client_phone
+            request.session['booking_client_telegram'] = client_telegram
+            request.session['booking_client_email'] = client_email
+            return redirect('consultant_menu:public_booking', calendar_id=calendar_id)
+
+        # Шаг 2: создание записи (контакты из сессии)
         service_id = request.POST.get('service_id')
         booking_date = request.POST.get('booking_date')
         booking_time = request.POST.get('booking_time')
         booking_end_time = request.POST.get('booking_end_time')
 
-        client_name = request.POST.get('client_name', '').strip()
-        client_phone = request.POST.get('client_phone', '').strip()
-        client_email = request.POST.get('client_email', '').strip()
-        client_telegram = (request.POST.get('client_telegram', '') or '').strip().replace(' ', '')
+        client_name = request.session.get('booking_client_name', '').strip()
+        client_phone = request.session.get('booking_client_phone', '').strip()
+        client_email = request.session.get('booking_client_email', '').strip()
+        client_telegram = (request.session.get('booking_client_telegram', '') or '').strip().replace(' ', '')
 
-        # Контакт: телефон обязателен для связи.
         if not client_phone:
+            for key in ('booking_contact_done', 'booking_client_name', 'booking_client_phone',
+                        'booking_client_telegram', 'booking_client_email'):
+                request.session.pop(key, None)
             return render(request, 'consultant_menu/public_booking.html', {
                 'calendar': calendar,
                 'services': services,
-                'error': 'Укажите телефон для связи'
+                'show_booking_form': False,
+                'error': 'Сессия истекла. Укажите контактные данные снова.',
             })
+
+        booking_ctx = {
+            'calendar': calendar,
+            'services': services,
+            'show_booking_form': True,
+            'booking_client_name': client_name,
+            'booking_client_phone': client_phone,
+            'booking_client_telegram': client_telegram,
+            'booking_client_email': client_email,
+        }
 
         if not all([service_id, booking_date, booking_time, booking_end_time, client_name]):
             return render(request, 'consultant_menu/public_booking.html', {
-                'calendar': calendar,
-                'services': services,
-                'error': 'Заполните все обязательные поля'
+                **booking_ctx,
+                'error': 'Заполните все обязательные поля (услуга, дата, время)',
             })
 
         try:
@@ -453,9 +499,8 @@ def public_booking_view(request, calendar_id):
             duration_minutes = (end_time_obj - start_time_obj).total_seconds() / 60
             if abs(duration_minutes - service.duration_minutes) > 1:
                 return render(request, 'consultant_menu/public_booking.html', {
-                    'calendar': calendar,
-                    'services': services,
-                    'error': 'Неверная длительность. Выберите время из списка доступных слотов.'
+                    **booking_ctx,
+                    'error': 'Неверная длительность. Выберите время из списка доступных слотов.',
                 })
 
             day_of_week = date_obj.weekday()
@@ -472,9 +517,8 @@ def public_booking_view(request, calendar_id):
             ).first()
             if not time_slot:
                 return render(request, 'consultant_menu/public_booking.html', {
-                    'calendar': calendar,
-                    'services': services,
-                    'error': 'Выбранное время не входит в доступные окна приёма. Выберите предложенное время или введите своё в пределах показанных окон.'
+                    **booking_ctx,
+                    'error': 'Выбранное время не входит в доступные окна приёма. Выберите предложенное время или введите своё в пределах показанных окон.',
                 })
 
             break_minutes = getattr(calendar, 'break_between_services_minutes', 0) or 0
@@ -498,9 +542,8 @@ def public_booking_view(request, calendar_id):
                     # Учитываем перерыв между консультациями: между концом одной и началом другой должно быть >= break_minutes
                     if not (end_time_obj + break_delta <= booking_start or start_time_obj >= booking_end + break_delta):
                         return render(request, 'consultant_menu/public_booking.html', {
-                            'calendar': calendar,
-                            'services': services,
-                            'error': 'Это время уже занято или слишком близко к другой записи. Выберите другое.'
+                            **booking_ctx,
+                            'error': 'Это время уже занято или слишком близко к другой записи. Выберите другое.',
                         })
 
                 # Найти или создать карточку клиента у этого специалиста (по телефону, email или Telegram)
@@ -562,23 +605,33 @@ def public_booking_view(request, calendar_id):
                     link_token=link_token,
                 )
 
+            for key in ('booking_contact_done', 'booking_client_name', 'booking_client_phone',
+                        'booking_client_telegram', 'booking_client_email'):
+                request.session.pop(key, None)
             return render(request, 'consultant_menu/booking_success.html', {
                 'booking': booking,
                 'service': service,
                 'telegram_bot_username': getattr(settings, 'TELEGRAM_BOT_USERNAME', ''),
             })
 
-        except (Service.DoesNotExist, ValueError) as e:
+        except (Service.DoesNotExist, ValueError):
             return render(request, 'consultant_menu/public_booking.html', {
-                'calendar': calendar,
-                'services': services,
-                'error': 'Ошибка при создании записи'
+                **booking_ctx,
+                'error': 'Ошибка при создании записи',
             })
 
-    return render(request, 'consultant_menu/public_booking.html', {
+    show_booking_form = request.session.get('booking_contact_done') and request.session.get('booking_client_phone')
+    ctx = {
         'calendar': calendar,
-        'services': services
-    })
+        'services': services,
+        'show_booking_form': show_booking_form,
+    }
+    if show_booking_form:
+        ctx['booking_client_name'] = request.session.get('booking_client_name', '')
+        ctx['booking_client_phone'] = request.session.get('booking_client_phone', '')
+        ctx['booking_client_telegram'] = request.session.get('booking_client_telegram', '')
+        ctx['booking_client_email'] = request.session.get('booking_client_email', '')
+    return render(request, 'consultant_menu/public_booking.html', ctx)
 
 
 @csrf_exempt

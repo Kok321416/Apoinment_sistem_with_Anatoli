@@ -94,6 +94,27 @@
             50%  { transform: scale(1.05); }
         }
 
+        .contact-intro {
+            margin: 0 0 16px 0;
+            font-size: 14px;
+            color: var(--book-muted);
+        }
+        .client-summary {
+            margin-bottom: 16px;
+        }
+        .client-summary-text {
+            margin: 0 0 8px 0;
+            font-size: 15px;
+        }
+        .link-change-contact {
+            font-size: 14px;
+            color: var(--book-primary);
+            text-decoration: none;
+        }
+        .link-change-contact:hover {
+            text-decoration: underline;
+        }
+
         /* Календарь-сетка */
         .cal-wrap {
             background: #fafafa;
@@ -145,15 +166,34 @@
         /* Таймлайн выбора времени */
         .time-section { margin-top: 8px; }
         .time-windows {
-            padding: 12px 16px;
+            padding: 14px 18px;
             background: #f0fdf4;
             border: 1px solid #86efac;
             border-radius: var(--book-radius-sm);
-            margin-bottom: 12px;
-            font-size: 14px;
+            margin-bottom: 14px;
+            font-size: 15px;
             color: #166534;
         }
-        .time-windows strong { display: block; margin-bottom: 4px; }
+        .time-windows strong { display: block; margin-bottom: 6px; font-size: 14px; color: var(--book-text); }
+        .time-no-windows {
+            padding: 14px 18px;
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: var(--book-radius-sm);
+            margin-bottom: 12px;
+            font-size: 15px;
+            color: #92400e;
+        }
+        .time-enter-manual {
+            padding: 14px 18px;
+            background: #eef2ff;
+            border: 1px solid var(--book-primary-light);
+            border-radius: var(--book-radius-sm);
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: var(--book-text);
+        }
+        .time-enter-manual strong { display: block; margin-bottom: 8px; }
         .time-timeline {
             display: flex;
             flex-wrap: wrap;
@@ -291,6 +331,43 @@
         <div class="error-message">{{ error }}</div>
         {% endif %}
 
+        {% if not show_booking_form %}
+        <div class="book-card">
+            <h2>Ваши контактные данные</h2>
+            <p class="contact-intro">Укажите данные для записи. Они понадобятся для связи и напоминаний. Telegram можно подтвердить после записи в боте.</p>
+            <form method="POST" id="contactForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="set_contact">
+                <div class="form-group">
+                    <label for="client_name">Имя *</label>
+                    <input type="text" id="client_name" name="client_name" required placeholder="Как к вам обращаться" value="{{ contact_name|default:'' }}">
+                </div>
+                <div class="form-group">
+                    <label for="client_phone">Телефон *</label>
+                    <input type="tel" id="client_phone" name="client_phone" required placeholder="+7 (999) 123-45-67" value="{{ contact_phone|default:'' }}">
+                    <small>Для связи и напоминаний</small>
+                </div>
+                <div class="form-group">
+                    <label for="client_telegram">Telegram (ник)</label>
+                    <input type="text" id="client_telegram" name="client_telegram" placeholder="@username или t.me/username (необязательно)" value="{{ contact_telegram|default:'' }}">
+                    <small>Можно указать сейчас или подтвердить в боте после записи — тогда будут приходить напоминания.</small>
+                </div>
+                <div class="form-group">
+                    <label for="client_email">Email</label>
+                    <input type="email" id="client_email" name="client_email" placeholder="email@example.com" value="{{ contact_email|default:'' }}">
+                </div>
+                <button type="submit" class="btn-submit">Продолжить к записи</button>
+            </form>
+        </div>
+        {% else %}
+        <div class="book-card client-summary">
+            <p class="client-summary-text">
+                <strong>Записывается:</strong> {{ booking_client_name|default:"—" }}, {{ booking_client_phone }}
+                {% if booking_client_telegram %} · {{ booking_client_telegram }}{% endif %}
+            </p>
+            <a href="{% url 'consultant_menu:public_booking' calendar.id %}?change_contact=1" class="link-change-contact">Изменить контактные данные</a>
+        </div>
+
         <form method="POST" id="bookingForm">
             {% csrf_token %}
             <input type="hidden" id="service_id" name="service_id" required>
@@ -332,47 +409,25 @@
 
             <div class="book-card time-section">
                 <h2>Время</h2>
-                <p class="time-hint" id="timeHint">После выбора услуги и даты здесь появятся доступные окна и слоты</p>
+                <p class="time-hint" id="timeHint">Сначала выберите услугу и дату — ниже появятся доступные часы</p>
+                <div id="timeNoWindows" class="time-no-windows" style="display: none;"></div>
                 <div id="timeWindows" class="time-windows" style="display: none;"></div>
+                <div id="timeEnterManual" class="time-enter-manual" style="display: none;"></div>
                 <div class="time-timeline" id="timeSlots"></div>
-                <p class="time-subtitle" id="timeSubtitle" style="display: none; font-size: 13px; color: var(--book-muted); margin: 8px 0 4px 0;">Предложенное время (можно выбрать или ввести своё):</p>
+                <p class="time-subtitle" id="timeSubtitle" style="display: none; font-size: 13px; color: var(--book-muted); margin: 8px 0 4px 0;">Выберите время или укажите своё в пределах окна:</p>
                 <div class="time-custom-row" id="timeCustomRow" style="display: none;">
-                    <label>Или введите своё время начала (например, 10:12):</label>
-                    <input type="time" id="customTimeStart" step="60" min="00:00" max="23:59">
-                    <small style="margin: 4px 0 0 0; display: block;">Время должно быть в пределах показанных окон. Конец записи посчитается автоматически по длительности услуги.</small>
+                    <label id="timeCustomLabel">Укажите время начала записи:</label>
+                    <input type="time" id="customTimeStart" step="60" min="00:00" max="23:59" aria-describedby="timeCustomHelp">
+                    <small id="timeCustomHelp" style="margin: 6px 0 0 0; display: block; color: var(--book-muted);">Конец приёма посчитается по длительности услуги.</small>
                 </div>
             </div>
 
-            <div class="book-card">
-                <h2>Контактные данные</h2>
-                <div class="form-group">
-                    <label for="client_name">Имя *</label>
-                    <input type="text" id="client_name" name="client_name" required placeholder="Как к вам обращаться">
-                </div>
-                <div class="form-group">
-                    <label for="client_phone">Телефон *</label>
-                    <input type="tel" id="client_phone" name="client_phone" required placeholder="+7 (999) 123-45-67">
-                    <small>Для связи и напоминаний</small>
-                </div>
-                <div class="form-group">
-                    <label for="client_telegram">Telegram (ник)</label>
-                    <input type="text" id="client_telegram" name="client_telegram" placeholder="@username или t.me/username">
-                    <small>Необязательно. Для напоминаний в боте — можно указать сейчас или подтвердить на следующей странице.</small>
-                </div>
-                <div class="form-group" style="padding: 12px; background: #f0fdf4; border-radius: 12px; border: 1px solid #86efac;">
-                    <p style="margin: 0; font-size: 14px; color: #166534;">
-                        <strong>Уведомления в Telegram:</strong> после записи на следующей странице можно нажать кнопку и подтвердить Telegram — тогда напоминания и сообщение о записи будут приходить вам в бота.
-                    </p>
-                </div>
-                <div class="form-group">
-                    <label for="client_email">Email</label>
-                    <input type="email" id="client_email" name="client_email" placeholder="email@example.com">
-                </div>
-                <button type="submit" class="btn-submit">Записаться</button>
-            </div>
+            <button type="submit" class="btn-submit">Записаться</button>
         </form>
+        {% endif %}
     </div>
 
+    {% if show_booking_form %}
     <script>
         const calendarId = {{ calendar.id }};
         let selectedServiceId = null;
@@ -444,15 +499,19 @@
 
             if (!date || !selectedServiceId) {
                 container.innerHTML = '';
-                hint.textContent = 'После выбора услуги и даты здесь появятся доступные окна и слоты';
+                hint.textContent = 'Сначала выберите услугу и дату — ниже появятся доступные часы';
                 document.getElementById('timeWindows').style.display = 'none';
                 document.getElementById('timeWindows').innerHTML = '';
+                document.getElementById('timeNoWindows').style.display = 'none';
+                document.getElementById('timeEnterManual').style.display = 'none';
                 document.getElementById('timeSubtitle').style.display = 'none';
                 customRow.style.display = 'none';
                 return;
             }
             hint.textContent = 'Загрузка...';
             container.innerHTML = '';
+            document.getElementById('timeNoWindows').style.display = 'none';
+            document.getElementById('timeEnterManual').style.display = 'none';
 
             fetch('/book/' + calendarId + '/slots/?date=' + date + '&service_id=' + selectedServiceId)
                 .then(r => r.json())
@@ -460,6 +519,8 @@
                     if (data.error) {
                         hint.textContent = data.error;
                         document.getElementById('timeWindows').style.display = 'none';
+                        document.getElementById('timeNoWindows').style.display = 'none';
+                        document.getElementById('timeEnterManual').style.display = 'none';
                         document.getElementById('timeSubtitle').style.display = 'none';
                         customRow.style.display = 'none';
                         return;
@@ -469,25 +530,48 @@
                     const windowsEl = document.getElementById('timeWindows');
                     const subtitleEl = document.getElementById('timeSubtitle');
 
-                    if (windows.length > 0) {
-                        windowsEl.style.display = 'block';
-                        windowsEl.innerHTML = '<strong>Доступные окна на эту дату:</strong> ' +
-                            windows.map(function(w) { return w.start_time + ' – ' + w.end_time; }).join(', ');
-                    } else {
-                        windowsEl.style.display = 'none';
-                    }
+                    const noWindowsEl = document.getElementById('timeNoWindows');
+                    const enterManualEl = document.getElementById('timeEnterManual');
+                    const customLabel = document.getElementById('timeCustomLabel');
+                    const customInput = document.getElementById('customTimeStart');
 
-                    if (slots.length === 0) {
-                        hint.textContent = windows.length > 0
-                            ? 'В этих окнах нет свободных слотов по 15 мин — введите своё время начала ниже (в пределах окон).'
-                            : 'На эту дату нет доступных окон для записи.';
+                    noWindowsEl.style.display = 'none';
+                    enterManualEl.style.display = 'none';
+
+                    if (windows.length === 0) {
+                        hint.textContent = '';
+                        windowsEl.style.display = 'none';
+                        noWindowsEl.style.display = 'block';
+                        noWindowsEl.innerHTML = '<strong>На эту дату приём не ведётся.</strong><br>Выберите другую дату в календаре выше.';
                         subtitleEl.style.display = 'none';
-                        customRow.style.display = windows.length > 0 ? 'block' : 'none';
+                        customRow.style.display = 'none';
+                        container.innerHTML = '';
                         return;
                     }
-                    hint.textContent = 'Длительность услуги: ' + selectedDuration + ' мин. Выберите предложенное время или введите своё в пределах окон.';
+
+                    windowsEl.style.display = 'block';
+                    windowsEl.innerHTML = '<strong>Приём в этот день:</strong> ' +
+                        windows.map(function(w) { return w.start_time + ' – ' + w.end_time; }).join('; ');
+
+                    if (slots.length === 0) {
+                        hint.textContent = '';
+                        subtitleEl.style.display = 'none';
+                        enterManualEl.style.display = 'block';
+                        enterManualEl.innerHTML = '<strong>Укажите время начала записи</strong> (например, 10:00 или 10:30). Время должно попасть в один из интервалов выше.';
+                        customRow.style.display = 'block';
+                        customLabel.textContent = 'Время начала:';
+                        customInput.removeAttribute('min');
+                        customInput.removeAttribute('max');
+                        container.innerHTML = '';
+                        return;
+                    }
+
+                    hint.textContent = 'Услуга: ' + selectedDuration + ' мин. Выберите время кнопкой или укажите своё.';
                     subtitleEl.style.display = 'block';
                     customRow.style.display = 'block';
+                    customLabel.textContent = 'Или укажите своё время начала:';
+                    customInput.min = '00:00';
+                    customInput.max = '23:59';
                     container.innerHTML = '';
                     slots.forEach(slot => {
                         const chip = document.createElement('button');
@@ -524,5 +608,6 @@
             document.querySelectorAll('.time-chip').forEach(c => c.classList.remove('selected'));
         });
     </script>
+    {% endif %}
 </body>
 </html>
