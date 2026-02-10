@@ -21,6 +21,10 @@
 3. Перед запуском бота выполняется проверка подключения к MySQL (Django + PyMySQL). Если она не проходит, деплой падает с сообщением «MySQL/PyMySQL check failed».
 4. Лог бота перед запуском очищается (`: > bot.log`), чтобы в отчёте деплоя были только сообщения текущего запуска.
 
+**Ошибка `cannot import name 'LANG_INFO' from 'django.conf.locale'`:** обычно значит повреждённую или неполную установку Django в venv. В деплое после установки зависимостей добавлена переустановка Django (`pip install --force-reinstall --no-cache-dir Django==...`) и проверка импорта. Если ошибка сохраняется на сервере — выполните вручную: `./venv/bin/pip install --force-reinstall --no-cache-dir Django==5.2.7`.
+
+**Ошибка `No module named 'pip'` / `pip._vendor.packaging.markers`:** см. выше про ensurepip и отсутствие повторного вызова pip после миграций.
+
 Если ошибка сохраняется: на сервере вручную выполните из корня репозитория:
 `./venv/bin/python -c "import pymysql; pymysql.install_as_MySQLdb(); import django; import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'appoiment_system.settings'); django.setup(); from django.db import connection; connection.ensure_connection(); print('OK')"`  
 Если команда падает — проверьте, что в venv установлен PyMySQL (`./venv/bin/pip show PyMySQL`) и что в `.env` заданы корректные `DB_*` переменные.
