@@ -190,8 +190,7 @@ jobs:
             --pid "$PIDFILE" \
             > "$LOGFILE" 2>&1 &
 
-          # Telegram-бот: проверка PyMySQL и подключения к MySQL перед запуском
-          ./venv/bin/python -m pip install -q PyMySQL sqlparse
+          # Telegram-бот: проверка PyMySQL (уже из requirements.txt) и подключения к MySQL перед запуском
           ./venv/bin/python -c "
           import pymysql
           pymysql.install_as_MySQLdb()
