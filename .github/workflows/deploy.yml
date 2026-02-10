@@ -157,7 +157,7 @@ jobs:
           fi
 
           # Миграции для обоих проектов (скрипт можно запускать и вручную на сервере: ./scripts/migrate.sh)
-          chmod +x scripts/migrate.sh
+          chmod +x scripts/migrate.sh scripts/run_bot.sh
           ./scripts/migrate.sh
 
           # Passenger restart hook (safe even if Passenger is not used)
@@ -216,7 +216,7 @@ jobs:
             sleep 2
           fi
           : > "$BOT_LOG"
-          cd "$APP_DIR" && nohup "$APP_DIR/venv/bin/python" "$APP_DIR/manage.py" run_bot >> "$BOT_LOG" 2>&1 &
+          cd "$APP_DIR" && nohup "$APP_DIR/scripts/run_bot.sh" >> "$BOT_LOG" 2>&1 &
           BOT_PID=$!
           echo $BOT_PID > "$BOT_PIDFILE"
           sleep 2
