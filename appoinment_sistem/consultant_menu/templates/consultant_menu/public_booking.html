@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Запись — {{ calendar.name }}</title>
     {% load static %}
-    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}?v=2">
     <style>
         :root {
             --book-primary: #6366f1;
@@ -60,6 +60,39 @@
         .service-tile strong { display: block; margin-bottom: 4px; }
         .service-tile .meta { font-size: 13px; color: var(--book-muted); }
         .service-tile input { display: none; }
+
+        /* Шаг «Выберите услугу» — выделение и призыв к действию */
+        .book-card.step-service {
+            position: relative;
+            border: 2px solid var(--book-primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+            animation: step-pulse 2s ease-in-out infinite;
+        }
+        .book-card.step-service h2 {
+            color: var(--book-primary);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .book-card.step-service h2 .step-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            animation: step-badge 1.5s ease-in-out infinite;
+        }
+        @keyframes step-pulse {
+            0%, 100% { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); }
+            50%  { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0.08); }
+        }
+        @keyframes step-badge {
+            0%, 100% { transform: scale(1); }
+            50%  { transform: scale(1.05); }
+        }
 
         /* Календарь-сетка */
         .cal-wrap {
@@ -265,8 +298,8 @@
             <input type="hidden" id="booking_time" name="booking_time" required>
             <input type="hidden" id="booking_end_time" name="booking_end_time" required>
 
-            <div class="book-card">
-                <h2>Услуга</h2>
+            <div class="book-card step-service">
+                <h2><span class="step-badge">Шаг 1</span> Выберите услугу</h2>
                 {% for service in services %}
                 <label class="service-tile" data-service-id="{{ service.id }}" data-duration="{{ service.duration_minutes }}">
                     <div>
@@ -320,6 +353,11 @@
                     <label for="client_phone">Телефон *</label>
                     <input type="tel" id="client_phone" name="client_phone" required placeholder="+7 (999) 123-45-67">
                     <small>Для связи и напоминаний</small>
+                </div>
+                <div class="form-group">
+                    <label for="client_telegram">Telegram (ник)</label>
+                    <input type="text" id="client_telegram" name="client_telegram" placeholder="@username или t.me/username">
+                    <small>Необязательно. Для напоминаний в боте — можно указать сейчас или подтвердить на следующей странице.</small>
                 </div>
                 <div class="form-group" style="padding: 12px; background: #f0fdf4; border-radius: 12px; border: 1px solid #86efac;">
                     <p style="margin: 0; font-size: 14px; color: #166534;">

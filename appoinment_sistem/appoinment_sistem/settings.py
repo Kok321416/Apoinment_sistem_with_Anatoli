@@ -199,6 +199,7 @@ TIME_ZONE = "Europe/Moscow"
 USE_I18N = True
 
 USE_TZ = True
+TIMEZONE = os.getenv('TIMEZONE', 'Europe/Moscow')
 
 # Django 3.2+ default primary key type (avoid warnings)
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
