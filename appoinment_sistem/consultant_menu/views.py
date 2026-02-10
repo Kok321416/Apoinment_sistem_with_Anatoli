@@ -421,11 +421,12 @@ def public_booking_view(request, calendar_id):
         booking_time = request.POST.get('booking_time')
         booking_end_time = request.POST.get('booking_end_time')
 
-        client_name = request.POST.get('client_name')
+        client_name = request.POST.get('client_name', '').strip()
         client_phone = request.POST.get('client_phone', '').strip()
         client_email = request.POST.get('client_email', '').strip()
+        client_telegram = (request.POST.get('client_telegram', '') or '').strip().replace(' ', '')
 
-        # Контакт: телефон обязателен для связи. Telegram подтверждается на странице успеха (приложение или браузер).
+        # Контакт: телефон обязателен для связи.
         if not client_phone:
             return render(request, 'consultant_menu/public_booking.html', {
                 'calendar': calendar,
@@ -502,18 +503,60 @@ def public_booking_view(request, calendar_id):
                             'error': 'Это время уже занято или слишком близко к другой записи. Выберите другое.'
                         })
 
-                # Создаем запись (link_token для подтверждения в Telegram — необязательно)
+                # Найти или создать карточку клиента у этого специалиста (по телефону, email или Telegram)
+                from django.db.models import Q
+                card = None
+                if client_phone or client_email or client_telegram:
+                    q = Q(consultant=consultant)
+                    cond = Q()
+                    if client_phone:
+                        cond |= Q(phone=client_phone)
+                    if client_email:
+                        cond |= Q(email=client_email)
+                    if client_telegram:
+                        tg_norm = client_telegram.lstrip('@').split('/')[-1].split('?')[0]
+                        if tg_norm:
+                            cond |= Q(telegram__icontains=tg_norm)
+                    if cond:
+                        card = ClientCard.objects.filter(q & cond).first()
+                if not card:
+                    card = ClientCard.objects.create(
+                        consultant=consultant,
+                        name=client_name or None,
+                        phone=client_phone or None,
+                        email=client_email or None,
+                        telegram=client_telegram or None,
+                    )
+                else:
+                    # Обновить данные карточки, если пришли новые
+                    updated = False
+                    if client_name and not card.name:
+                        card.name = client_name
+                        updated = True
+                    if client_phone and card.phone != client_phone:
+                        card.phone = client_phone
+                        updated = True
+                    if client_email and card.email != client_email:
+                        card.email = client_email
+                        updated = True
+                    if client_telegram and (not card.telegram or client_telegram not in (card.telegram or '')):
+                        card.telegram = client_telegram
+                        updated = True
+                    if updated:
+                        card.save(update_fields=['name', 'phone', 'email', 'telegram', 'updated_at'])
+
                 link_token = uuid.uuid4().hex[:24]
                 booking = Booking.objects.create(
                     service=service,
                     time_slot=time_slot,
                     calendar=calendar,
+                    client_card=card,
                     booking_date=booking_date,
                     booking_time=booking_time,
                     booking_end_time=booking_end_time,
                     client_name=client_name,
                     client_phone=client_phone or "",
-                    client_telegram="",  # заполняется при подтверждении в Telegram (приложение или браузер)
+                    client_telegram=client_telegram or "",
                     client_email=client_email or "",
                     status='pending',
                     link_token=link_token,
@@ -1218,8 +1261,10 @@ def client_card_detail_view(request, card_id):
     history_q = Q(calendar__in=calendars) & Q(client_card=card)
     if card.email:
         history_q |= Q(calendar__in=calendars, client_email=card.email)
+    if card.phone:
+        history_q |= Q(calendar__in=calendars, client_phone=card.phone)
     if card.telegram:
-        t = (card.telegram or '').replace('@', '').strip()
+        t = (card.telegram or '').replace('@', '').strip().split('/')[-1].split('?')[0]
         if t:
             history_q |= Q(calendar__in=calendars, client_telegram__icontains=t)
     history = Booking.objects.filter(history_q).distinct().order_by('-booking_date', '-booking_time')[:50]
@@ -1242,10 +1287,17 @@ def client_card_detail_view(request, card_id):
             card.delete()
             return redirect('client_cards_list')
 
+    # Подсчёт записей и посещений по той же выборке (без [:50])
+    history_full_qs = Booking.objects.filter(history_q).distinct()
+    total_bookings = history_full_qs.count()
+    completed_count = history_full_qs.filter(status='completed').count()
+
     return render(request, 'consultant_menu/client_card_detail.html', {
         'consultant': consultant,
         'card': card,
         'history': history,
+        'total_bookings': total_bookings,
+        'completed_count': completed_count,
         'success': success,
         'error': error,
     })

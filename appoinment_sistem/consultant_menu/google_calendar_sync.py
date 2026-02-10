@@ -42,7 +42,7 @@ def _get_calendar_service(integration):
 
 
 def _booking_start_end(booking):
-    """Возвращает (start_dt, end_dt) для записи (aware datetime при наличии timezone в settings)."""
+    """Возвращает (start_dt, end_dt) для записи (всегда timezone-aware для Google API)."""
     from django.utils import timezone as tz
     start_dt = datetime.combine(booking.booking_date, booking.booking_time)
     if booking.booking_end_time:
@@ -50,8 +50,15 @@ def _booking_start_end(booking):
     else:
         duration = getattr(booking.service, "duration_minutes", None) or 60
         end_dt = start_dt + timedelta(minutes=duration)
-    if tz.is_naive(start_dt) and getattr(tz, "get_current_timezone", None):
-        current_tz = tz.get_current_timezone()
+    if tz.is_naive(start_dt):
+        current_tz = getattr(tz, "get_current_timezone", None) and tz.get_current_timezone()
+        if not current_tz:
+            try:
+                from zoneinfo import ZoneInfo
+                tz_name = getattr(settings, "TIMEZONE", None) or getattr(settings, "TIME_ZONE", TIMEZONE_STR)
+                current_tz = ZoneInfo(str(tz_name))
+            except Exception:
+                current_tz = None
         if current_tz:
             start_dt = tz.make_aware(start_dt, current_tz)
             end_dt = tz.make_aware(end_dt, current_tz)
