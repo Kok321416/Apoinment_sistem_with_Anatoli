@@ -138,6 +138,8 @@ jobs:
           rm -rf venv
           "$PYTHON_BIN" -m venv venv
           . venv/bin/activate
+          # На некоторых хостингах venv создаётся с неполным pip (No module named 'pip._vendor.packaging.markers') — переустанавливаем
+          python -m ensurepip --upgrade 2>/dev/null || true
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -c "import pymysql; print('PyMySQL', pymysql.__version__, 'OK')" || { echo "❌ PyMySQL not in venv. Check requirements.txt"; exit 1; }
