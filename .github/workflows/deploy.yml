@@ -140,6 +140,7 @@ jobs:
           . venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+          python -c "import pymysql; print('PyMySQL', pymysql.__version__, 'OK')" || { echo "❌ PyMySQL not in venv. Check requirements.txt"; exit 1; }
 
           # Do NOT overwrite hosting .htaccess.
           # On reg.ru nginx-fronted hosting, an invalid .htaccess often causes 500.
@@ -189,18 +190,30 @@ jobs:
             --pid "$PIDFILE" \
             > "$LOGFILE" 2>&1 &
 
-          # Перезапуск Telegram-бота: ставим PyMySQL тем же интерпретатором, которым запускаем бота
+          # Telegram-бот: проверка PyMySQL и подключения к MySQL перед запуском
           ./venv/bin/python -m pip install -q PyMySQL sqlparse
-          ./venv/bin/python -c "import pymysql; pymysql.install_as_MySQLdb(); import MySQLdb; print('MySQLdb OK')" || true
-          BOT_PIDFILE="bot.pid"
-          BOT_LOG="bot.log"
+          ./venv/bin/python -c "
+          import pymysql
+          pymysql.install_as_MySQLdb()
+          import os
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'appoiment_system.settings')
+          import django
+          django.setup()
+          from django.db import connection
+          connection.ensure_connection()
+          print('MySQL connection OK')
+          " || { echo "❌ MySQL/PyMySQL check failed. Bot will not start."; exit 1; }
+
+          BOT_PIDFILE="$APP_DIR/bot.pid"
+          BOT_LOG="$APP_DIR/bot.log"
           if [ -f "$BOT_PIDFILE" ]; then
             OLD_PID=$(cat "$BOT_PIDFILE")
             kill -TERM "$OLD_PID" 2>/dev/null || true
             rm -f "$BOT_PIDFILE"
             sleep 2
           fi
-          cd "$APP_DIR" && nohup ./venv/bin/python manage.py run_bot >> "$BOT_LOG" 2>&1 &
+          : > "$BOT_LOG"
+          cd "$APP_DIR" && nohup "$APP_DIR/venv/bin/python" "$APP_DIR/manage.py" run_bot >> "$BOT_LOG" 2>&1 &
           BOT_PID=$!
           echo $BOT_PID > "$BOT_PIDFILE"
           sleep 2
