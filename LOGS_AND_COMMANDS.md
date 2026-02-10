@@ -12,6 +12,21 @@
 
 ---
 
+## 1.1. Ошибка деплоя: `ModuleNotFoundError: No module named 'MySQLdb.constants'`
+
+На сервере используется MySQL, а драйвер для Python — **PyMySQL**. Если при деплое бот падает с этой ошибкой:
+
+1. В **requirements.txt** в корне репозитория должна быть строка `PyMySQL==1.1.1` (или совместимая версия).
+2. В workflow деплоя после `pip install -r requirements.txt` добавлена проверка: если `import pymysql` не удаётся, деплой завершается с ошибкой.
+3. Перед запуском бота выполняется проверка подключения к MySQL (Django + PyMySQL). Если она не проходит, деплой падает с сообщением «MySQL/PyMySQL check failed».
+4. Лог бота перед запуском очищается (`: > bot.log`), чтобы в отчёте деплоя были только сообщения текущего запуска.
+
+Если ошибка сохраняется: на сервере вручную выполните из корня репозитория:
+`./venv/bin/python -c "import pymysql; pymysql.install_as_MySQLdb(); import django; import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'appoiment_system.settings'); django.setup(); from django.db import connection; connection.ensure_connection(); print('OK')"`  
+Если команда падает — проверьте, что в venv установлен PyMySQL (`./venv/bin/pip show PyMySQL`) и что в `.env` заданы корректные `DB_*` переменные.
+
+---
+
 ## 2. Проверить, работает ли бот
 
 ```bash
@@ -152,6 +167,48 @@ echo $! > bot.pid
 2. **Кэш браузера:** сделайте принудительное обновление страницы: **Ctrl+F5** (Windows/Linux) или **Cmd+Shift+R** (Mac). Либо откройте сайт в режиме инкогнито.
 
 3. **В коде** к ссылке на CSS добавлен параметр `?v=2` — при следующем изменении темы можно увеличить версию (например `?v=3`), чтобы браузеры заново загрузили файл стилей.
+
+---
+
+## 5.3. Конфликт при слиянии develop и main (home.html)
+
+**Автоматически оставить вариант develop при слиянии:**  
+Находясь в ветке **develop**, выполните слияние с **main** с опцией «в конфликтах брать нашу версию»:
+
+```bash
+git checkout develop
+git pull origin develop
+git merge main -X ours -m "Merge main into develop (keep develop version on conflicts)"
+```
+
+Опция **`-X ours`** означает: при любом конфликте оставлять версию из текущей ветки (develop). Конфликты не появятся, правки из main подтянутся там, где нет конфликта. Если нужно наоборот (при слиянии develop в main оставлять main) — делайте merge на main и используйте `-X ours` там (тогда «ours» = main).
+
+---
+
+При слиянии **без** `-X ours` Git может показать конфликт в `consultant_menu/templates/consultant_menu/home.html`:
+
+- **develop:** полная HTML-страница (`<!DOCTYPE>`, `<head>`, `<link ... style.css ?v=2>`, `<body>`, контент, футер).
+- **main:** одна строка `{% extends 'header.html' %}` (шаблон-наследник).
+
+**Как разрешить:** оставьте вариант **develop** (полную страницу). Файл `header.html` в проекте не содержит `<body>` и блоков для `{% block content %}`, поэтому вариант с `extends` приведёт к пустой или сломанной странице.
+
+1. Откройте `appoinment_sistem/consultant_menu/templates/consultant_menu/home.html`.
+2. Удалите маркеры конфликта (`<<<<<<< develop`, `=======`, `>>>>>>> main`) и весь фрагмент со стороны **main** (строку `{% extends 'header.html' %}`).
+3. Оставьте весь код со стороны **develop** (от `<!DOCTYPE html>` до `</html>` включительно).
+4. Сохраните файл, выполните `git add appoinment_sistem/consultant_menu/templates/consultant_menu/home.html` и завершите слияние (`git commit`).
+
+Итоговое начало файла должно быть таким:
+
+```html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    ...
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}?v=2">
+</head>
+<body>
+```
 
 ---
 
