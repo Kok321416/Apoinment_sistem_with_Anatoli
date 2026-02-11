@@ -157,7 +157,7 @@ jobs:
           fi
 
           # Миграции для обоих проектов (скрипт можно запускать и вручную на сервере: ./scripts/migrate.sh)
-          chmod +x scripts/migrate.sh scripts/run_bot.sh
+          chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh
           ./scripts/migrate.sh
 
           # Passenger restart hook (safe even if Passenger is not used)

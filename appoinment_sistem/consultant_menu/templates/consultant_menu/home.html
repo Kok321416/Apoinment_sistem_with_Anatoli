@@ -30,7 +30,7 @@
                 {% else %}
                     <a href="{% url 'integrations' %}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 14px; margin-right: 5px;">🔗 Интеграции</a>
                     <a href="{% url 'login' %}" class="btn btn-secondary" style="padding: 8px 16px;">Войти</a>
-                    <a href="{% url 'register' %}" class="btn" style="padding: 8px 16px; margin-left: 10px;">Регистрация</a>
+                    <a href="{% url 'register' %}" class="btn btn-register" style="padding: 8px 16px; margin-left: 10px;" id="header-register-link">Регистрация</a>
                 {% endif %}
             </div>
         </div>
@@ -82,13 +82,24 @@
             <p>Система онлайн записи для консультантов.<br>Войдите или зарегистрируйтесь, чтобы начать работу.</p>
             <div class="welcome-buttons">
                 <a href="{% url 'login' %}" class="btn">Войти</a>
-                <a href="{% url 'register' %}" class="btn btn-secondary">Регистрация</a>
+                <a href="{% url 'register' %}" class="btn btn-secondary btn-register" id="welcome-register-link">Регистрация</a>
             </div>
         </div>
         {% endif %}
     </div>
 
     {% include 'consultant_menu/footer.html' %}
+    <script>
+    (function() {
+        var registerUrl = "{% url 'register' %}";
+        document.querySelectorAll('.btn-register').forEach(function(a) {
+            if (!a.href || a.href === '' || a.href === window.location.href) a.href = registerUrl;
+            a.addEventListener('click', function(e) {
+                if (!this.href || this.getAttribute('href') === '#') { e.preventDefault(); window.location.href = registerUrl || '/register/'; }
+            });
+        });
+    })();
+    </script>
 </body>
 </html>
 

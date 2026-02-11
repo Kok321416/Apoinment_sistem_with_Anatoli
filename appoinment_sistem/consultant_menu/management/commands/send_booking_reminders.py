@@ -1,7 +1,17 @@
 """
 Отправка напоминаний клиентам и специалистам в Telegram о предстоящих консультациях.
-Запуск: python manage.py send_booking_reminders (из appoinment_sistem).
-Рекомендуется запускать по cron каждые 15–30 минут.
+
+Механизм:
+- Для каждой записи (Booking) берутся настройки из календаря специалиста:
+  reminder_hours_first и reminder_hours_second (задаются в «Настройках календаря» на сайте).
+- Когда до времени консультации остаётся примерно N часов (с окном ±30 мин), отправляется
+  напоминание клиенту (если у записи есть telegram_id) и специалисту (если в интеграциях
+  подключён Telegram). Каждый тип напоминания отправляется один раз (флаги reminder_*_sent).
+
+Запуск:
+- Вручную: из каталога appoinment_sistem: python manage.py send_booking_reminders
+- Или из корня репозитория: ./scripts/run_reminders.sh
+- Автоматизация: добавить в cron вызов run_reminders.sh каждые 15–30 минут.
 """
 from datetime import datetime, timedelta
 from django.core.management.base import BaseCommand
@@ -17,7 +27,11 @@ from consultant_menu.telegram_reminders import (
 
 
 class Command(BaseCommand):
-    help = 'Отправляет напоминания о консультациях клиентам в Telegram (за 24ч и за 1ч).'
+    help = (
+        'Отправляет напоминания о консультациях в Telegram. '
+        'Часы до консультации берутся из настроек календаря (первое и второе напоминание). '
+        'Запускать по cron каждые 15–30 мин (см. scripts/run_reminders.sh).'
+    )
 
     def handle(self, *args, **options):
         now = timezone.now()
