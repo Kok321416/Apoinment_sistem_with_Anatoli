@@ -86,7 +86,7 @@ jobs:
             echo "❌ Secret APP_DIR is required (example: /home/<user>/appointment-system)"
             exit 1
           fi
-
+          export APP_DIR
           echo "📁 Using APP_DIR=$APP_DIR"
           cd "$APP_DIR"
 

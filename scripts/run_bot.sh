@@ -2,9 +2,14 @@
 # Запуск Telegram-бота всегда через venv проекта (чтобы был доступен PyMySQL и остальные зависимости).
 # Использование: из корня репозитория ./scripts/run_bot.sh
 # Или: APP_DIR=/path/to/app ./scripts/run_bot.sh
+# При деплое APP_DIR должен быть экспортирован (export APP_DIR), иначе nohup может запустить бота без venv.
 
 set -e
-ROOT="${APP_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$SCRIPT_ABS/.." && pwd)"
+if [ -n "${APP_DIR:-}" ]; then
+  ROOT="$APP_DIR"
+fi
 cd "$ROOT"
 
 if [ ! -f "$ROOT/manage.py" ]; then
