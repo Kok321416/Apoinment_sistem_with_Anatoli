@@ -407,8 +407,9 @@ def calendar_settings_edit(request, calendar_id):
 
 def public_booking_view(request, calendar_id):
     """Публичная страница записи через календарь (без авторизации).
-    Два шага: 1) предварительно ввод контактных данных (имя, телефон, Telegram, email);
-    2) выбор услуги, даты и времени. Контакты хранятся в сессии."""
+    Шаги: 0) Вход (по телефону) или Регистрация (указать данные);
+    1) при регистрации — ввод контактных данных (имя, телефон, Telegram, email);
+    2) выбор услуги, даты и времени. Данные используются в карточках клиентов и для уведомлений в Telegram."""
     try:
         calendar = Calendar.objects.get(id=calendar_id, is_active=True)
     except Calendar.DoesNotExist:
@@ -422,10 +423,47 @@ def public_booking_view(request, calendar_id):
         for key in ('booking_contact_done', 'booking_client_name', 'booking_client_phone',
                     'booking_client_telegram', 'booking_client_email'):
             request.session.pop(key, None)
-        return redirect('consultant_menu:public_booking', calendar_id=calendar_id)
+        return redirect('public_booking', calendar_id=calendar_id)
 
     if request.method == 'POST':
-        # Шаг 1: сохранение контактов в сессию
+        # Вход клиента по телефону (поиск карточки у этого специалиста)
+        if request.POST.get('action') == 'client_login':
+            from django.db.models import Q
+            login_phone = (request.POST.get('client_phone', '') or '').strip()
+            login_email = (request.POST.get('client_email', '') or '').strip()
+            if not login_phone:
+                return render(request, 'consultant_menu/public_booking.html', {
+                    'calendar': calendar,
+                    'services': services,
+                    'show_client_choice': True,
+                    'show_contact_form': False,
+                    'show_booking_form': False,
+                    'error': 'Введите номер телефона для входа',
+                })
+            q = Q(consultant=consultant)
+            cond = Q(phone=login_phone)
+            if login_email:
+                cond |= Q(email=login_email)
+            card = ClientCard.objects.filter(q & cond).first()
+            if card:
+                request.session['booking_contact_done'] = True
+                request.session['booking_client_name'] = (card.name or '').strip()
+                request.session['booking_client_phone'] = (card.phone or login_phone).strip()
+                request.session['booking_client_telegram'] = (card.telegram or '').strip()
+                request.session['booking_client_email'] = (card.email or login_email).strip()
+                return redirect('public_booking', calendar_id=calendar_id)
+            return render(request, 'consultant_menu/public_booking.html', {
+                'calendar': calendar,
+                'services': services,
+                'show_client_choice': False,
+                'show_contact_form': True,
+                'show_booking_form': False,
+                'error': 'Клиент с таким телефоном не найден. Укажите данные для записи (регистрация).',
+                'contact_phone': login_phone,
+                'contact_email': login_email,
+            })
+
+        # Регистрация / сохранение контактов в сессию
         if request.POST.get('action') == 'set_contact':
             client_name = request.POST.get('client_name', '').strip()
             client_phone = request.POST.get('client_phone', '').strip()
@@ -436,6 +474,8 @@ def public_booking_view(request, calendar_id):
                     'calendar': calendar,
                     'services': services,
                     'show_booking_form': False,
+                    'show_client_choice': False,
+                    'show_contact_form': True,
                     'error': 'Укажите телефон для связи',
                     'contact_name': client_name,
                     'contact_phone': client_phone,
@@ -447,7 +487,7 @@ def public_booking_view(request, calendar_id):
             request.session['booking_client_phone'] = client_phone
             request.session['booking_client_telegram'] = client_telegram
             request.session['booking_client_email'] = client_email
-            return redirect('consultant_menu:public_booking', calendar_id=calendar_id)
+            return redirect('public_booking', calendar_id=calendar_id)
 
         # Шаг 2: создание записи (контакты из сессии)
         service_id = request.POST.get('service_id')
@@ -468,6 +508,8 @@ def public_booking_view(request, calendar_id):
                 'calendar': calendar,
                 'services': services,
                 'show_booking_form': False,
+                'show_client_choice': False,
+                'show_contact_form': True,
                 'error': 'Сессия истекла. Укажите контактные данные снова.',
             })
 
@@ -621,10 +663,15 @@ def public_booking_view(request, calendar_id):
             })
 
     show_booking_form = request.session.get('booking_contact_done') and request.session.get('booking_client_phone')
+    step_register = request.GET.get('step') == 'register'
+    show_client_choice = not show_booking_form and not step_register
+    show_contact_form = not show_booking_form and step_register
     ctx = {
         'calendar': calendar,
         'services': services,
         'show_booking_form': show_booking_form,
+        'show_client_choice': show_client_choice,
+        'show_contact_form': show_contact_form,
     }
     if show_booking_form:
         ctx['booking_client_name'] = request.session.get('booking_client_name', '')
