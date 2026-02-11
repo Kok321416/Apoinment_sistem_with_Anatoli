@@ -87,11 +87,12 @@ class Command(BaseCommand):
         url = f"https://api.telegram.org/bot{token}/getUpdates"
         offset = 0
         error_count = 0
-        max_errors = 10
-        
+        max_errors = 50  # больше попыток при нестабильной сети (раньше 10)
+        sleep_after_error = 30  # секунд перед повтором после сетевой ошибки
+
         self.stdout.write(self.style.SUCCESS('Бот запущен. Ожидание обновлений...'))
         self.stdout.write(self.style.SUCCESS(f'Токен: {token[:10]}...'))
-        
+
         while True:
             try:
                 params = {
@@ -99,8 +100,8 @@ class Command(BaseCommand):
                     'timeout': 30,
                     'allowed_updates': ['message', 'callback_query']
                 }
-                
-                response = requests.get(url, params=params, timeout=35)
+
+                response = requests.get(url, params=params, timeout=60)
                 response.raise_for_status()
                 data = response.json()
                 
@@ -113,7 +114,7 @@ class Command(BaseCommand):
                         logger.error("TG bot: превышено макс. число ошибок, остановка")
                         self.stdout.write(self.style.ERROR('Превышено максимальное количество ошибок. Остановка.'))
                         break
-                    time.sleep(10)
+                    time.sleep(sleep_after_error)
                     continue
                 error_count = 0
                 if data.get('result'):
@@ -142,12 +143,14 @@ class Command(BaseCommand):
                 if error_count >= max_errors:
                     self.stdout.write(self.style.ERROR('Превышено максимальное количество ошибок сети. Остановка.'))
                     break
-                time.sleep(10)
+                wait = min(sleep_after_error * (1 + (error_count // 5)), 300)  # до 5 мин при частых ошибках
+                logger.info("TG bot: повтор через %s сек (ошибка %s/%s)", wait, error_count, max_errors)
+                time.sleep(wait)
             except Exception as e:
                 error_count += 1
-                logger.error(f"Неожиданная ошибка: {e}")
+                logger.error("TG bot: неожиданная ошибка: %s", e)
                 if error_count >= max_errors:
                     self.stdout.write(self.style.ERROR('Превышено максимальное количество ошибок. Остановка.'))
                     break
-                time.sleep(5)
+                time.sleep(sleep_after_error)
 
