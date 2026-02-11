@@ -224,9 +224,10 @@ def notify_booking_status_changed(booking, old_status: str = None) -> None:
     """
     Отправить клиенту и специалисту уведомления об изменении записи (статус и т.д.).
     Вызывать после сохранения записи (например при смене статуса на сайте).
+    При смене на «завершена» уведомления не отправляются (завершение по истечении времени).
     """
     new_status = getattr(booking, 'status', None) or ''
-    if not new_status:
+    if not new_status or new_status == 'completed':
         return
     try:
         # Клиенту — если привязан Telegram
