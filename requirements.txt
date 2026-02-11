@@ -5,6 +5,7 @@ tzdata==2025.2
 djangorestframework==3.14.0
 python-telegram-bot==20.7
 requests==2.31.0
+urllib3>=1.26.0,<3
 PyMySQL==1.1.1
 cryptography==46.0.3
 gunicorn==21.2.0
