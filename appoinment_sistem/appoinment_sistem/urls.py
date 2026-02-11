@@ -23,7 +23,7 @@ from consultant_menu.views import (
     ConsultantAPIView, RegisterView, LoginView, LogoutView,
     home_view, privacy_page_view, terms_page_view,
     calendars_view, services_view, logout_view,
-    register_view, login_view, calendar_view, calendar_settings_edit, public_booking_view, get_available_slots_api, booking_view, profile_view,
+    register_view, login_view, calendar_view, calendar_settings_edit, booking_redirect_view, public_booking_view, get_available_slots_api, booking_view, profile_view,
     client_cards_list_view, client_card_detail_view,
     integrations_view, google_calendar_connect, google_calendar_callback,
     confirm_booking_telegram_api, connect_telegram_app, confirm_specialist_telegram_api,
@@ -60,7 +60,8 @@ urlpatterns = [
     path("calendars/<int:calendar_id>/", calendar_view, name="calendar_detail"),
     path("calendars/<int:calendar_id>/settings/", calendar_settings_edit, name="calendar_settings_edit"),
     
-    # Публичная страница записи
+    # Публичная страница записи (/book/ — редирект на первый календарь, для бота)
+    path("book/", booking_redirect_view, name="booking_redirect"),
     path("book/<int:calendar_id>/", public_booking_view, name="public_booking"),
     path("book/<int:calendar_id>/slots/", get_available_slots_api, name="get_available_slots"),
     path("api/booking/confirm-telegram/", confirm_booking_telegram_api, name="confirm_booking_telegram"),

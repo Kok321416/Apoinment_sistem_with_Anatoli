@@ -156,7 +156,7 @@ def send_appointment_notification(appointment):
         'inline_keyboard': [
             [
                 {'text': '📋 Мои записи', 'callback_data': 'my_appointments'},
-                {'text': '📱 Записаться', 'web_app': {'url': f'{get_site_url()}/telegram/appointment/'}}
+                {'text': '📱 Записаться', 'url': _get_booking_url()}
             ],
             [
                 {'text': '❌ Отменить', 'callback_data': f'cancel_{appointment.id}'}
@@ -172,14 +172,18 @@ def send_admin_message(telegram_id, message):
     return send_telegram_message(telegram_id, f"📢 <b>Сообщение от администрации:</b>\n\n{message}")
 
 
+def _get_booking_url():
+    """Ссылка на страницу записи (сайт appoinment_sistem: /book/ → редирект на первый календарь)."""
+    return f"{get_site_url().rstrip('/')}/book/"
+
+
 def _send_webapp_button(chat_id):
-    """Отправить сообщение с кнопкой открытия мини-приложения записи."""
-    webapp_url = f"{get_site_url()}/telegram/appointment/"
+    """Отправить сообщение с кнопкой перехода на страницу записи (открывается в браузере)."""
+    booking_url = _get_booking_url()
     keyboard = {
-        'inline_keyboard': [[{'text': '📱 Открыть запись на консультацию', 'web_app': {'url': webapp_url}}]]
+        'inline_keyboard': [[{'text': '📱 Открыть запись на консультацию', 'url': booking_url}]]
     }
-    send_telegram_message(chat_id, "Нажмите кнопку ниже, чтобы записаться:", keyboard)
-    send_telegram_message(chat_id, "Меню:", get_main_reply_keyboard())
+    send_telegram_message(chat_id, "Нажмите кнопку ниже, чтобы перейти на страницу записи:", keyboard)
 
 
 def handle_telegram_update(update_data):
@@ -497,15 +501,13 @@ def handle_start_command(chat_id, user_id, username, first_name):
                     get_main_reply_keyboard(),
                 )
                 # Показываем кнопки как у зарегистрированного клиента
-                webapp_url = f"{get_site_url()}/telegram/appointment/"
                 keyboard = {
                     'inline_keyboard': [
-                        [{'text': '📱 Записаться на консультацию', 'web_app': {'url': webapp_url}}],
+                        [{'text': '📱 Записаться на консультацию', 'url': _get_booking_url()}],
                         [{'text': '📋 Мои записи', 'callback_data': 'my_appointments'}, {'text': '❓ Помощь', 'callback_data': 'help'}],
                     ]
                 }
                 send_telegram_message(chat_id, "Выберите действие:", keyboard)
-                send_telegram_message(chat_id, "Меню:", get_main_reply_keyboard())
                 return
             profile = UserProfile.objects.filter(telegram_id=user_id).first()
         
@@ -535,15 +537,13 @@ def handle_start_command(chat_id, user_id, username, first_name):
             return
 
         # Кнопки: inline под сообщением + постоянное меню внизу
-        webapp_url = f"{get_site_url()}/telegram/appointment/"
-        if tg_client.last_specialist_id:
-            webapp_url = f"{webapp_url}?specialist_id={tg_client.last_specialist_id}"
+        booking_url = _get_booking_url()
 
         admin_username = getattr(settings, 'ADMIN_TELEGRAM_USERNAME', 'andrievskypsy').lstrip('@')
         keyboard = {
             'inline_keyboard': [
                 [
-                    {'text': '📱 Записаться на консультацию', 'web_app': {'url': webapp_url}},
+                    {'text': '📱 Записаться на консультацию', 'url': booking_url},
                 ],
                 [
                     {'text': '📋 Мои записи', 'callback_data': 'my_appointments'},
@@ -578,7 +578,6 @@ def handle_start_command(chat_id, user_id, username, first_name):
 """
         
         send_telegram_message(chat_id, message, keyboard)
-        send_telegram_message(chat_id, "Или выберите действие в меню внизу:", get_main_reply_keyboard())
     
     except Exception as e:
         logger.error(f"Ошибка обработки /start: {e}", exc_info=True)
@@ -663,7 +662,6 @@ def handle_contact_admin_command(chat_id):
         "По вопросам записи и консультаций обращайтесь к администрации. Нажмите кнопку ниже, чтобы написать в Telegram:",
         keyboard,
     )
-    send_telegram_message(chat_id, "Меню:", get_client_reply_keyboard())
 
 
 def _send_specialist_webapp(chat_id, app_type):
@@ -679,7 +677,6 @@ def _send_specialist_webapp(chat_id, app_type):
         'inline_keyboard': [[{'text': 'Открыть' if app_type == 'stats' else 'Открыть', 'web_app': {'url': url}}]]
     }
     send_telegram_message(chat_id, text, keyboard)
-    send_telegram_message(chat_id, "Меню:", get_specialist_reply_keyboard())
 
 
 def handle_manage_accounts_command(chat_id):
@@ -696,14 +693,13 @@ def handle_manage_accounts_command(chat_id):
         "Чтобы отключить вход через Telegram или Google, откройте страницу управления на сайте и нажмите «Отключить» у нужного способа входа.",
         keyboard,
     )
-    send_telegram_message(chat_id, "Меню:", get_specialist_reply_keyboard())
 
 
 def handle_appointments_command(chat_id, user_id):
     """Показать записи пользователя: сначала с основного сайта (consultant_menu), иначе из bookings."""
     keyboard = {
         'inline_keyboard': [[
-            {'text': '📱 Записаться на консультацию', 'web_app': {'url': f'{get_site_url()}/telegram/appointment/'}}
+            {'text': '📱 Записаться на консультацию', 'url': _get_booking_url()}
         ]]
     }
     try:
@@ -786,7 +782,7 @@ def handle_book_appointment(chat_id, service_id):
                     [
                         {
                             'text': '📱 Записаться на консультацию',
-                            'web_app': {'url': f'{get_site_url()}/telegram/appointment/'}
+                            'url': _get_booking_url()
                         }
                     ]
                 ]
@@ -803,15 +799,10 @@ def handle_book_appointment(chat_id, service_id):
             send_telegram_message(chat_id, "❌ Услуга не найдена.")
             return
         
-        # Перенаправляем в мини-приложение
+        # Ссылка на страницу записи (календарь выберется на сайте)
         keyboard = {
             'inline_keyboard': [
-                [
-                    {
-                        'text': '📱 Записаться',
-                            'web_app': {'url': f'{get_site_url()}/telegram/appointment/?service_id={service_id}'}
-                    }
-                ]
+                [{'text': '📱 Записаться', 'url': _get_booking_url()}]
             ]
         }
         
@@ -829,7 +820,7 @@ def handle_help_command(chat_id):
     keyboard = {
         'inline_keyboard': [
             [
-                {'text': '📱 Записаться', 'web_app': {'url': f'{get_site_url()}/telegram/appointment/'}},
+                {'text': '📱 Записаться', 'url': _get_booking_url()},
                 {'text': '📋 Мои записи', 'callback_data': 'my_appointments'},
             ],
             [
