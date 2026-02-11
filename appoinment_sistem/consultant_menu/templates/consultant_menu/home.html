@@ -18,7 +18,10 @@
             </h1>
             <div class="user-info">
                 {% if user.is_authenticated %}
-                    <span>{{ user.email }}</span> | 
+                    <div class="header-user-block">
+                        <div class="header-user-name">{{ header_consultant_name }}</div>
+                        <div class="header-user-account">{{ header_account_display }}</div>
+                    </div>
                     <a href="{% url 'integrations' %}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 14px; margin-right: 5px;">🔗 Интеграции</a>
                     <form method="POST" action="{% url 'logout' %}" style="display: inline;">
                         {% csrf_token %}

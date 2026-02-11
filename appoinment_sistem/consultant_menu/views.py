@@ -405,6 +405,14 @@ def calendar_settings_edit(request, calendar_id):
     })
 
 
+def booking_redirect_view(request):
+    """Редирект /book/ на первый активный календарь (для ссылки из Telegram-бота и др.)."""
+    calendar = Calendar.objects.filter(is_active=True).order_by('id').first()
+    if not calendar:
+        raise Http404("Нет доступных календарей для записи")
+    return redirect('public_booking', calendar_id=calendar.id)
+
+
 def public_booking_view(request, calendar_id):
     """Публичная страница записи через календарь (без авторизации).
     Шаги: 0) Вход (по телефону) или Регистрация (указать данные);

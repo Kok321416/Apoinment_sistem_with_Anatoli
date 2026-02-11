@@ -134,6 +134,12 @@
                 <span class="brand-page">/ Мой профиль</span>
             </h1>
             <div class="user-info">
+                {% if user.is_authenticated %}
+                    <div class="header-user-block">
+                        <div class="header-user-name">{{ header_consultant_name }}</div>
+                        <div class="header-user-account">{{ header_account_display }}</div>
+                    </div>
+                {% endif %}
                 <a href="{% url 'home' %}" class="btn btn-secondary">← На главную</a>
             </div>
         </div>
