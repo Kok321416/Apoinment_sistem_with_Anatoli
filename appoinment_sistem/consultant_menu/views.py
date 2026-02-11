@@ -17,6 +17,7 @@ from allauth.account.models import EmailAddress
 from datetime import datetime, date, timedelta
 from django.utils import timezone
 from django.conf import settings
+from urllib.parse import urlencode
 import uuid
 import hashlib
 import hmac
@@ -74,14 +75,24 @@ def register_view(request):
         if auth_method == 'telegram':
             request.session['register_fio'] = fio
             request.session['register_phone'] = phone
-            next_url = request.GET.get('next', '/')
-            return redirect(f'/accounts/telegram/login/?process=signup&next={next_url}')
+            next_url = (request.GET.get('next') or '/').strip()
+            try:
+                provider_url = reverse('provider_login', kwargs={'provider_id': 'telegram'})
+            except Exception:
+                provider_url = '/accounts/telegram/login/'
+            params = urlencode({'process': 'signup', 'next': next_url})
+            return redirect(f'{provider_url}?{params}')
 
         if auth_method == 'google':
             request.session['register_fio'] = fio
             request.session['register_phone'] = phone
-            next_url = request.GET.get('next', '/')
-            return redirect(f'/accounts/google/login/?process=signup&next={next_url}')
+            next_url = (request.GET.get('next') or '/').strip()
+            try:
+                provider_url = reverse('provider_login', kwargs={'provider_id': 'google'})
+            except Exception:
+                provider_url = '/accounts/google/login/'
+            params = urlencode({'process': 'signup', 'next': next_url})
+            return redirect(f'{provider_url}?{params}')
 
         # auth_method == 'email'
         email = request.POST.get('email', '').strip()
