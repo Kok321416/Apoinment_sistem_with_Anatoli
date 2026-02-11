@@ -847,6 +847,7 @@ def api_telegram_client_bookings(request):
             'time': time_str,
             'service_name': b.service.name if b.service_id else 'Консультация',
             'consultant_name': consultant_name,
+            'calendar_id': b.calendar_id,
             'status': b.status,
             'is_upcoming': b.booking_date >= now,
         })

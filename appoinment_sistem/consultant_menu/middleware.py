@@ -11,6 +11,8 @@ from django.utils.deprecation import MiddlewareMixin
 REQUIRE_PASSWORD_SET_EXEMPT_PREFIXES = (
     "/accounts/password/set",   # страница установки пароля и POST на неё
     "/accounts/logout/",
+    "/accounts/google/",        # OAuth callback — должен завершиться, иначе Google не подключится к профилю
+    "/accounts/telegram/",      # OAuth callback Telegram
     "/admin/",
     "/static/",
     "/media/",
