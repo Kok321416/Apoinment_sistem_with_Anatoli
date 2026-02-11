@@ -614,13 +614,25 @@ def handle_history_command(chat_id, user_id):
         ok, data = _fetch_site_api('/api/telegram/client-bookings/', {'telegram_id': user_id})
         if ok and data and data.get('bookings'):
             from collections import Counter
-            names = [b.get('consultant_name') or 'Специалист' for b in data['bookings']]
+            bookings = data['bookings']
+            names = [b.get('consultant_name') or 'Специалист' for b in bookings]
             by_name = Counter(names)
+            name_to_calendar = {}
+            for b in bookings:
+                n = b.get('consultant_name') or 'Специалист'
+                if n not in name_to_calendar and b.get('calendar_id'):
+                    name_to_calendar[n] = b['calendar_id']
             if by_name:
+                site = get_site_url().rstrip('/')
                 lines = ["📜 <b>К кому вы уже записывались:</b>\n"]
                 for name, cnt in by_name.most_common():
                     _raz = "раз" if cnt == 1 else ("раза" if 2 <= cnt <= 4 else "раз")
-                    lines.append(f"• {name} — {cnt} {_raz}")
+                    cal_id = name_to_calendar.get(name)
+                    if cal_id:
+                        url = f"{site}/book/{cal_id}/"
+                        lines.append(f"• <a href=\"{url}\">{name}</a> — {cnt} {_raz}")
+                    else:
+                        lines.append(f"• {name} — {cnt} {_raz}")
                 send_telegram_message(chat_id, "\n".join(lines), get_main_reply_keyboard())
                 return
         # Иначе — из приложения bookings
