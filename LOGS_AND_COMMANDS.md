@@ -264,15 +264,53 @@ cd /путь/к/проекту/appoinment_sistem
 
 ### Автоматизация (cron)
 
-Добавьте в crontab (`crontab -e`) строку (подставьте свой путь к проекту):
+1. **Путь к проекту** — замените на фактический путь на сервере (где лежит репозиторий).  
+   Примеры: `/var/www/Online_appointment_for_consultations`, `/home/username/Online_appointment_for_consultations`.
+
+2. **Один раз выполните на сервере:**
+   ```bash
+   # Создать каталог для логов
+   mkdir -p /путь/к/проекту/logs
+   # Сделать скрипт исполняемым
+   chmod +x /путь/к/проекту/scripts/run_reminders.sh
+   ```
+
+3. Добавьте в crontab (`crontab -e`) строку (подставьте **свой** путь к проекту вместо `/путь/к/проекту`):
 
 ```cron
 */20 * * * * /путь/к/проекту/scripts/run_reminders.sh >> /путь/к/проекту/logs/reminders.log 2>&1
 ```
 
-Это запуск каждые 20 минут. Можно использовать `*/15` или `*/30`. Убедитесь, что каталог `logs/` существует (`mkdir -p logs`).
+**Пример с реальным путём** (если проект развёрнут в `/var/www/Online_appointment_for_consultations`):
+
+```cron
+*/20 * * * * /var/www/Online_appointment_for_consultations/scripts/run_reminders.sh >> /var/www/Online_appointment_for_consultations/logs/reminders.log 2>&1
+```
+
+Это запуск каждые 20 минут. Можно использовать `*/15` или `*/30`. Готовый пример: `scripts/cron_reminders.example`.
 
 На виртуальном хостинге (reg.ru и др.) настройка cron обычно доступна в панели управления (раздел «Планировщик» / «Cron»).
+
+#### Reg.ru: если сайт в www/allyourclients.ru, venv в data/
+
+На reg.ru домашний каталог по SSH — это `/var/www/u3390636/data`. Проект часто лежит в `www/allyourclients.ru`, а venv — в `data/venv`. Скрипт `run_reminders.sh` автоматически подхватывает venv из каталога на уровень выше (`../venv`), если в корне проекта venv нет.
+
+**Один раз на сервере:**
+```bash
+export PROJECT_ROOT="/var/www/u3390636/data/www/allyourclients.ru"
+mkdir -p "$PROJECT_ROOT/logs"
+chmod +x "$PROJECT_ROOT/scripts/run_reminders.sh"
+```
+
+**Строка для cron** (в панели reg.ru «Планировщик» или `crontab -e`):
+```cron
+*/20 * * * * /var/www/u3390636/data/www/allyourclients.ru/scripts/run_reminders.sh >> /var/www/u3390636/data/www/allyourclients.ru/logs/reminders.log 2>&1
+```
+
+Проверка вручную:
+```bash
+/var/www/u3390636/data/www/allyourclients.ru/scripts/run_reminders.sh
+```
 
 ---
 
