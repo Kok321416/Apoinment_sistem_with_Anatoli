@@ -85,6 +85,7 @@
             </div>
 
             <button type="submit" class="btn" id="submit-btn">Зарегистрироваться</button>
+            <p class="hint" id="google-telegram-hint" style="display: none; margin-top: 8px;">Нажатие кнопки перенаправит вас на страницу входа через выбранный способ.</p>
         </form>
 
         <div class="links">
@@ -116,12 +117,26 @@
                     emailInput.required = true;
                     passwordInput.required = true;
                     passwordConfirm.required = true;
+                    document.getElementById('submit-btn').textContent = 'Зарегистрироваться';
+                    var hint = document.getElementById('google-telegram-hint');
+                    if (hint) hint.style.display = 'none';
                 } else {
                     emailBlock.classList.remove('show');
                     emailInput.required = false;
                     passwordInput.required = false;
                     passwordConfirm.required = false;
+                    var btn = document.getElementById('submit-btn');
+                    var hint = document.getElementById('google-telegram-hint');
+                    if (method === 'google') btn.textContent = 'Перейти к входу через Google';
+                    else if (method === 'telegram') btn.textContent = 'Перейти к входу через Telegram';
+                    else if (btn) btn.textContent = 'Зарегистрироваться';
+                    if (hint) hint.style.display = (method === 'google' || method === 'telegram') ? 'block' : 'none';
                 }
+            }
+
+            function syncAuthMethod() {
+                var checkedRadio = form.querySelector('input[name="auth_radio"]:checked');
+                if (checkedRadio) setMethod(checkedRadio.value);
             }
 
             labels.forEach(function(label) {
@@ -134,12 +149,13 @@
                     setMethod(method);
                 });
             });
+            radios.forEach(function(radio) {
+                if (radio.disabled) return;
+                radio.addEventListener('change', function() { setMethod(this.value); });
+            });
 
             form.addEventListener('submit', function(e) {
-                var checkedRadio = form.querySelector('input[name="auth_radio"]:checked');
-                if (checkedRadio) {
-                    authMethod.value = checkedRadio.value;
-                }
+                syncAuthMethod();
                 if (authMethod.value === 'email') {
                     if (passwordInput.value !== passwordConfirm.value) {
                         e.preventDefault();
