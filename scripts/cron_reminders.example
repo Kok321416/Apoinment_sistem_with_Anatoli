@@ -1,0 +1,18 @@
+# Напоминания о консультациях — пример строки для cron
+# -----------------------------------------------
+# 1. Замените PROJECT_ROOT на полный путь к корню проекта на сервере.
+#    Примеры:
+#      Linux:  /var/www/Online_appointment_for_consultations
+#      Linux:  /home/username/Online_appointment_for_consultations
+# 2. Создайте каталог для логов (один раз):
+#      mkdir -p PROJECT_ROOT/logs
+# 3. Сделайте скрипт исполняемым (один раз):
+#      chmod +x PROJECT_ROOT/scripts/run_reminders.sh
+# 4. Добавьте строку в crontab: crontab -e
+#
+# Строка для cron (каждые 20 минут):
+
+*/20 * * * * /var/www/Online_appointment_for_consultations/scripts/run_reminders.sh >> /var/www/Online_appointment_for_consultations/logs/reminders.log 2>&1
+
+# Вариант с переменной (в начале crontab добавьте строку PROJECT_ROOT=...):
+# */20 * * * * $PROJECT_ROOT/scripts/run_reminders.sh >> $PROJECT_ROOT/logs/reminders.log 2>&1
