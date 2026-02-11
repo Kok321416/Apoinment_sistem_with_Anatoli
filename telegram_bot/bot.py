@@ -90,11 +90,11 @@ def get_main_reply_keyboard():
 
 
 def get_client_reply_keyboard():
-    """Меню клиента: запись, мои записи, история, связь, помощь."""
+    """Меню клиента: запись, мои записи, регистрация, история, связь, помощь."""
     return {
         'keyboard': [
             [{'text': '📱 Записаться'}, {'text': '📋 Мои записи'}],
-            [{'text': '📜 История'}, {'text': '📞 Связаться'}],
+            [{'text': '📝 Регистрация'}, {'text': '📜 История'}, {'text': '📞 Связаться'}],
             [{'text': '❓ Помощь'}],
         ],
         'resize_keyboard': True,
@@ -217,7 +217,7 @@ def handle_telegram_update(update_data):
                     handle_connect_via_bot(chat_id)
             elif text.startswith('/start connect') or text == '/start connect':
                 handle_connect_via_bot(chat_id)
-            elif text == '/register':
+            elif text == '/register' or text == '📝 Регистрация':
                 handle_register_command(chat_id, user_id, username, first_name)
             elif text == '/appointments' or text == '📋 Мои записи':
                 handle_appointments_command(chat_id, user_id)
@@ -275,7 +275,7 @@ def handle_telegram_update(update_data):
                 user_id = callback_query['from']['id']
                 handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query_id, token_str)
             else:
-                send_telegram_message(chat_id, "Выберите действие в меню.", get_main_reply_keyboard())
+                send_telegram_message(chat_id, "Выберите действие по кнопкам ниже.", get_main_reply_keyboard())
     
     except Exception as e:
         logger.exception("TG bot: ошибка обработки обновления: %s", e)
@@ -533,7 +533,7 @@ def handle_start_command(chat_id, user_id, username, first_name):
             }
             msg = f"👋 Добро пожаловать, {first_name}!\n\nВы вошли как <b>специалист</b>.\nВыберите действие:"
             send_telegram_message(chat_id, msg, keyboard)
-            send_telegram_message(chat_id, "Или используйте меню внизу:", get_specialist_reply_keyboard())
+            send_telegram_message(chat_id, "Кнопки внизу экрана — для быстрого доступа.", get_specialist_reply_keyboard())
             return
 
         # Кнопки: inline под сообщением + постоянное меню внизу
@@ -585,21 +585,26 @@ def handle_start_command(chat_id, user_id, username, first_name):
 
 
 def handle_register_command(chat_id, user_id, username, first_name):
-    """Обработка команды /register"""
+    """Обработка команды /register: текст и кнопка перехода на страницу регистрации."""
+    site = get_site_url().rstrip('/')
+    register_url = f"{site}/register/"
     message = f"""
 📝 <b>Регистрация</b>
 
-Для регистрации в системе:
-1. Перейдите на сайт
-2. Создайте аккаунт
-3. Укажите ваш Telegram: @{username if username else 'username'}
+Для регистрации перейдите на сайт по кнопке ниже, укажите ФИО и телефон, выберите способ входа (Google, Telegram или почта).
 
 После регистрации вы сможете:
 • Записываться на консультации
-• Получать уведомления
+• Получать уведомления и напоминания
 • Управлять записями
 """
-    send_telegram_message(chat_id, message)
+    keyboard = {
+        'inline_keyboard': [
+            [{'text': '📝 Перейти на страницу регистрации', 'url': register_url}],
+            [{'text': '📱 Записаться (без регистрации)', 'url': _get_booking_url()}],
+        ]
+    }
+    send_telegram_message(chat_id, message, keyboard)
 
 
 def handle_history_command(chat_id, user_id):
@@ -665,16 +670,16 @@ def handle_contact_admin_command(chat_id):
 
 
 def _send_specialist_webapp(chat_id, app_type):
-    """Отправить сообщение с кнопкой открытия веб-приложения специалиста (статистика или ближайшие)."""
+    """Отправить сообщение с кнопкой перехода на сайт (календари или запись). Открывается в браузере."""
     site = get_site_url().rstrip('/')
     if app_type == 'stats':
-        url = f"{site}/telegram/specialist/stats/"
-        text = "📊 Откройте статистику записей в браузере или в окне Telegram:"
+        url = f"{site}/calendars/"
+        text = "📊 Откройте календари и записи на сайте:"
     else:
-        url = f"{site}/telegram/specialist/upcoming/"
-        text = "📅 Откройте список ближайших записей:"
+        url = f"{site}/calendars/"
+        text = "📅 Откройте календари и ближайшие записи на сайте:"
     keyboard = {
-        'inline_keyboard': [[{'text': 'Открыть' if app_type == 'stats' else 'Открыть', 'web_app': {'url': url}}]]
+        'inline_keyboard': [[{'text': 'Открыть на сайте', 'url': url}]]
     }
     send_telegram_message(chat_id, text, keyboard)
 
@@ -817,6 +822,7 @@ def handle_book_appointment(chat_id, service_id):
 def handle_help_command(chat_id):
     """Показать справку"""
     admin_username = getattr(settings, 'ADMIN_TELEGRAM_USERNAME', 'andrievskypsy').lstrip('@')
+    site = get_site_url().rstrip('/')
     keyboard = {
         'inline_keyboard': [
             [
@@ -824,6 +830,7 @@ def handle_help_command(chat_id):
                 {'text': '📋 Мои записи', 'callback_data': 'my_appointments'},
             ],
             [
+                {'text': '📝 Регистрация', 'url': f'{site}/register/'},
                 {'text': '📜 История', 'callback_data': 'history'},
                 {'text': '📞 Связаться', 'url': f'https://t.me/{admin_username}'},
             ]
@@ -841,10 +848,10 @@ def handle_help_command(chat_id):
 /help - Эта справка
 
 <b>Возможности:</b>
-• Запись на консультацию через мини-приложение
+• Запись на консультацию — кнопка «Записаться» откроет сайт в браузере
 • Просмотр своих записей и истории по специалистам
 • Связь с администрацией в Telegram
-• Уведомления о записях
+• Уведомления и напоминания о записях (если подтвердили Telegram)
 """
     send_telegram_message(chat_id, message, keyboard)
 

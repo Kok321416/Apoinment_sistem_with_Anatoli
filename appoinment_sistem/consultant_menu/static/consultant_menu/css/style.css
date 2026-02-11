@@ -306,6 +306,13 @@ h2 {
     transform: translateY(0) scale(0.98);
 }
 
+/* Ссылки «Регистрация» на главной — всегда кликабельны */
+a.btn-register {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+}
+
 /* ========== ФОРМЫ ========== */
 .form-group {
     margin-bottom: 20px;
