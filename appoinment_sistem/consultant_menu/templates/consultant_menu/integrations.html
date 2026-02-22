@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Интеграции - Система записи</title>
     {% load static %}
-    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}?v=2">
     <style>
         .integrations-container {
             max-width: 900px;
@@ -97,6 +97,12 @@
                 <span class="brand-page">/ Интеграции</span>
             </h1>
             <div class="user-info">
+                {% if user.is_authenticated %}
+                    <div class="header-user-block">
+                        <div class="header-user-name">{{ header_consultant_name }}</div>
+                        <div class="header-user-account">{{ header_account_display }}</div>
+                    </div>
+                {% endif %}
                 <a href="{% url 'home' %}" class="btn btn-secondary">← На главную</a>
             </div>
         </div>

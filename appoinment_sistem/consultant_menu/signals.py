@@ -113,10 +113,8 @@ def _get_integration_for_booking(booking):
         consultant = booking.service.consultant
     if not consultant:
         return None
-    try:
-        return consultant.integration
-    except Integration.DoesNotExist:
-        return None
+    integration, _ = Integration.objects.get_or_create(consultant=consultant)
+    return integration
 
 
 @receiver(post_save, sender=Booking)

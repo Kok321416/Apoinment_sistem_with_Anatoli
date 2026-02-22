@@ -5,20 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Вход</title>
     {% load static %}
-    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}?v=2">
+    <style>
+        .auth-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 24px; }
+        .auth-method { display: flex; align-items: center; justify-content: center; padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; transition: all 0.2s; background: #fff; text-decoration: none; color: inherit; font-weight: 600; font-size: 15px; box-sizing: border-box; min-height: 52px; }
+        .auth-method:hover { border-color: var(--card-border); background: var(--bg-subtle); }
+        .auth-method.google-btn { border-color: #4285f4; color: #4285f4; }
+        .auth-method.google-btn:hover { background: #e8f0fe; border-color: #4285f4; color: #1a73e8; }
+        .auth-method.telegram-btn { border-color: #0088cc; color: #0088cc; }
+        .auth-method.telegram-btn:hover { background: #e3f2fd; border-color: #0088cc; color: #006699; }
+        .auth-method.email-btn { border-color: var(--card-border); }
+        .auth-method.email-btn:hover { border-color: var(--accent); background: var(--hover-bg); }
+        .login-email-block { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
+        .form-divider { text-align: center; margin: 1rem 0; color: #666; }
+    </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" style="max-width: 520px;">
         <h1>Вход</h1>
-        
+
         {% if error %}
         <div class="error-message">{{ error }}</div>
         {% endif %}
-        
+
         {% load socialaccount %}
-        <a href="{% provider_login_url 'google' next=request.GET.next|default:'/' %}" class="btn btn-google" style="display: block; width: 100%; margin-bottom: 0.75rem; background: #4285f4; color: #fff; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; box-sizing: border-box;">Войти через Google</a>
+        <div class="form-group">
+            <label>Способ входа:</label>
+            <div class="auth-methods">
+                <a href="{% provider_login_url 'google' next=request.GET.next|default:'/' %}" class="auth-method google-btn">Google</a>
+                {% if telegram_bot_username %}
+                <a id="btnTelegramApp" href="https://t.me/{{ telegram_bot_username }}?start=login" class="auth-method telegram-btn" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=login">Telegram</a>
+                {% else %}
+                <a href="{% provider_login_url 'telegram' next=request.GET.next|default:'/' %}" class="auth-method telegram-btn">Telegram</a>
+                {% endif %}
+            </div>
+        </div>
         {% if telegram_bot_username %}
-        <a id="btnTelegramApp" href="https://t.me/{{ telegram_bot_username }}?start=login" class="btn btn-telegram" style="display: block; width: 100%; margin-bottom: 0.5rem; background: #0088cc; color: #fff; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; box-sizing: border-box;" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=login">Войти через Telegram (открыть в приложении)</a>
         <script>
         (function() {
             var btn = document.getElementById('btnTelegramApp');
@@ -27,27 +49,25 @@
             }
         })();
         </script>
-        <a href="{% provider_login_url 'telegram' next=request.GET.next|default:'/' %}" style="display: block; width: 100%; margin-bottom: 1rem; font-size: 0.9rem; text-align: center; color: #666;">или войти через Telegram в браузере</a>
-        {% else %}
-        <a href="{% provider_login_url 'telegram' next=request.GET.next|default:'/' %}" class="btn btn-telegram" style="display: block; width: 100%; margin-bottom: 1rem; background: #0088cc; color: #fff; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; box-sizing: border-box;">Войти через Telegram</a>
         {% endif %}
-        <p class="form-divider" style="text-align: center; margin: 1rem 0; color: #666;">или</p>
-        <form method="POST" action="{% url 'login' %}">
-            {% csrf_token %}
-            
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required placeholder="your@email.com">
-            </div>
-            
-            <div class="form-group">
-                <label for="password">Пароль:</label>
-                <input type="password" id="password" name="password" required placeholder="Введите пароль">
-            </div>
-            
-            <button type="submit" class="btn">Войти</button>
-        </form>
-        
+
+        <p class="form-divider">или</p>
+
+        <div class="login-email-block">
+            <form method="POST" action="{% url 'login' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль:</label>
+                    <input type="password" id="password" name="password" required placeholder="Введите пароль">
+                </div>
+                <button type="submit" class="btn">Войти</button>
+            </form>
+        </div>
+
         <div class="links">
             <p>Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
             <p><a href="{% url 'home' %}">На главную</a></p>

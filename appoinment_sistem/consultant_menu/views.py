@@ -17,6 +17,7 @@ from allauth.account.models import EmailAddress
 from datetime import datetime, date, timedelta
 from django.utils import timezone
 from django.conf import settings
+from urllib.parse import urlencode
 import uuid
 import hashlib
 import hmac
@@ -74,14 +75,24 @@ def register_view(request):
         if auth_method == 'telegram':
             request.session['register_fio'] = fio
             request.session['register_phone'] = phone
-            next_url = request.GET.get('next', '/')
-            return redirect(f'/accounts/telegram/login/?process=signup&next={next_url}')
+            next_url = (request.GET.get('next') or '/').strip()
+            try:
+                provider_url = reverse('provider_login', kwargs={'provider_id': 'telegram'})
+            except Exception:
+                provider_url = '/accounts/telegram/login/'
+            params = urlencode({'process': 'signup', 'next': next_url})
+            return redirect(f'{provider_url}?{params}')
 
         if auth_method == 'google':
             request.session['register_fio'] = fio
             request.session['register_phone'] = phone
-            next_url = request.GET.get('next', '/')
-            return redirect(f'/accounts/google/login/?process=signup&next={next_url}')
+            next_url = (request.GET.get('next') or '/').strip()
+            try:
+                provider_url = reverse('provider_login', kwargs={'provider_id': 'google'})
+            except Exception:
+                provider_url = '/accounts/google/login/'
+            params = urlencode({'process': 'signup', 'next': next_url})
+            return redirect(f'{provider_url}?{params}')
 
         # auth_method == 'email'
         email = request.POST.get('email', '').strip()
@@ -405,8 +416,19 @@ def calendar_settings_edit(request, calendar_id):
     })
 
 
+def booking_redirect_view(request):
+    """Редирект /book/ на первый активный календарь (для ссылки из Telegram-бота и др.)."""
+    calendar = Calendar.objects.filter(is_active=True).order_by('id').first()
+    if not calendar:
+        raise Http404("Нет доступных календарей для записи")
+    return redirect('public_booking', calendar_id=calendar.id)
+
+
 def public_booking_view(request, calendar_id):
-    """Публичная страница записи через календарь (без авторизации)"""
+    """Публичная страница записи через календарь (без авторизации).
+    Шаги: 0) Вход (по телефону) или Регистрация (указать данные);
+    1) при регистрации — ввод контактных данных (имя, телефон, Telegram, email);
+    2) выбор услуги, даты и времени. Данные используются в карточках клиентов и для уведомлений в Telegram."""
     try:
         calendar = Calendar.objects.get(id=calendar_id, is_active=True)
     except Calendar.DoesNotExist:
@@ -415,29 +437,115 @@ def public_booking_view(request, calendar_id):
     consultant = calendar.consultant
     services = Service.objects.filter(consultant=consultant, is_active=True)
 
+    # Сброс контактов по запросу (кнопка «Изменить»)
+    if request.method == 'GET' and request.GET.get('change_contact'):
+        for key in ('booking_contact_done', 'booking_client_name', 'booking_client_phone',
+                    'booking_client_telegram', 'booking_client_email'):
+            request.session.pop(key, None)
+        return redirect('public_booking', calendar_id=calendar_id)
+
     if request.method == 'POST':
+        # Вход клиента по телефону (поиск карточки у этого специалиста)
+        if request.POST.get('action') == 'client_login':
+            from django.db.models import Q
+            login_phone = (request.POST.get('client_phone', '') or '').strip()
+            login_email = (request.POST.get('client_email', '') or '').strip()
+            if not login_phone:
+                return render(request, 'consultant_menu/public_booking.html', {
+                    'calendar': calendar,
+                    'services': services,
+                    'show_client_choice': True,
+                    'show_contact_form': False,
+                    'show_booking_form': False,
+                    'error': 'Введите номер телефона для входа',
+                })
+            q = Q(consultant=consultant)
+            cond = Q(phone=login_phone)
+            if login_email:
+                cond |= Q(email=login_email)
+            card = ClientCard.objects.filter(q & cond).first()
+            if card:
+                request.session['booking_contact_done'] = True
+                request.session['booking_client_name'] = (card.name or '').strip()
+                request.session['booking_client_phone'] = (card.phone or login_phone).strip()
+                request.session['booking_client_telegram'] = (card.telegram or '').strip()
+                request.session['booking_client_email'] = (card.email or login_email).strip()
+                return redirect('public_booking', calendar_id=calendar_id)
+            return render(request, 'consultant_menu/public_booking.html', {
+                'calendar': calendar,
+                'services': services,
+                'show_client_choice': False,
+                'show_contact_form': True,
+                'show_booking_form': False,
+                'error': 'Клиент с таким телефоном не найден. Укажите данные для записи (регистрация).',
+                'contact_phone': login_phone,
+                'contact_email': login_email,
+            })
+
+        # Регистрация / сохранение контактов в сессию
+        if request.POST.get('action') == 'set_contact':
+            client_name = request.POST.get('client_name', '').strip()
+            client_phone = request.POST.get('client_phone', '').strip()
+            client_email = request.POST.get('client_email', '').strip()
+            client_telegram = (request.POST.get('client_telegram', '') or '').strip().replace(' ', '')
+            if not client_phone:
+                return render(request, 'consultant_menu/public_booking.html', {
+                    'calendar': calendar,
+                    'services': services,
+                    'show_booking_form': False,
+                    'show_client_choice': False,
+                    'show_contact_form': True,
+                    'error': 'Укажите телефон для связи',
+                    'contact_name': client_name,
+                    'contact_phone': client_phone,
+                    'contact_telegram': client_telegram,
+                    'contact_email': client_email,
+                })
+            request.session['booking_contact_done'] = True
+            request.session['booking_client_name'] = client_name
+            request.session['booking_client_phone'] = client_phone
+            request.session['booking_client_telegram'] = client_telegram
+            request.session['booking_client_email'] = client_email
+            return redirect('public_booking', calendar_id=calendar_id)
+
+        # Шаг 2: создание записи (контакты из сессии)
         service_id = request.POST.get('service_id')
         booking_date = request.POST.get('booking_date')
         booking_time = request.POST.get('booking_time')
         booking_end_time = request.POST.get('booking_end_time')
 
-        client_name = request.POST.get('client_name')
-        client_phone = request.POST.get('client_phone', '').strip()
-        client_email = request.POST.get('client_email', '').strip()
+        client_name = request.session.get('booking_client_name', '').strip()
+        client_phone = request.session.get('booking_client_phone', '').strip()
+        client_email = request.session.get('booking_client_email', '').strip()
+        client_telegram = (request.session.get('booking_client_telegram', '') or '').strip().replace(' ', '')
 
-        # Контакт: телефон обязателен для связи. Telegram подтверждается на странице успеха (приложение или браузер).
         if not client_phone:
+            for key in ('booking_contact_done', 'booking_client_name', 'booking_client_phone',
+                        'booking_client_telegram', 'booking_client_email'):
+                request.session.pop(key, None)
             return render(request, 'consultant_menu/public_booking.html', {
                 'calendar': calendar,
                 'services': services,
-                'error': 'Укажите телефон для связи'
+                'show_booking_form': False,
+                'show_client_choice': False,
+                'show_contact_form': True,
+                'error': 'Сессия истекла. Укажите контактные данные снова.',
             })
+
+        booking_ctx = {
+            'calendar': calendar,
+            'services': services,
+            'show_booking_form': True,
+            'booking_client_name': client_name,
+            'booking_client_phone': client_phone,
+            'booking_client_telegram': client_telegram,
+            'booking_client_email': client_email,
+        }
 
         if not all([service_id, booking_date, booking_time, booking_end_time, client_name]):
             return render(request, 'consultant_menu/public_booking.html', {
-                'calendar': calendar,
-                'services': services,
-                'error': 'Заполните все обязательные поля'
+                **booking_ctx,
+                'error': 'Заполните все обязательные поля (услуга, дата, время)',
             })
 
         try:
@@ -452,9 +560,8 @@ def public_booking_view(request, calendar_id):
             duration_minutes = (end_time_obj - start_time_obj).total_seconds() / 60
             if abs(duration_minutes - service.duration_minutes) > 1:
                 return render(request, 'consultant_menu/public_booking.html', {
-                    'calendar': calendar,
-                    'services': services,
-                    'error': 'Неверная длительность. Выберите время из списка доступных слотов.'
+                    **booking_ctx,
+                    'error': 'Неверная длительность. Выберите время из списка доступных слотов.',
                 })
 
             day_of_week = date_obj.weekday()
@@ -471,9 +578,8 @@ def public_booking_view(request, calendar_id):
             ).first()
             if not time_slot:
                 return render(request, 'consultant_menu/public_booking.html', {
-                    'calendar': calendar,
-                    'services': services,
-                    'error': 'Выбранное время не входит в доступные окна приёма. Выберите предложенное время или введите своё в пределах показанных окон.'
+                    **booking_ctx,
+                    'error': 'Выбранное время не входит в доступные окна приёма. Выберите предложенное время или введите своё в пределах показанных окон.',
                 })
 
             break_minutes = getattr(calendar, 'break_between_services_minutes', 0) or 0
@@ -497,45 +603,101 @@ def public_booking_view(request, calendar_id):
                     # Учитываем перерыв между консультациями: между концом одной и началом другой должно быть >= break_minutes
                     if not (end_time_obj + break_delta <= booking_start or start_time_obj >= booking_end + break_delta):
                         return render(request, 'consultant_menu/public_booking.html', {
-                            'calendar': calendar,
-                            'services': services,
-                            'error': 'Это время уже занято или слишком близко к другой записи. Выберите другое.'
+                            **booking_ctx,
+                            'error': 'Это время уже занято или слишком близко к другой записи. Выберите другое.',
                         })
 
-                # Создаем запись (link_token для подтверждения в Telegram — необязательно)
+                # Найти или создать карточку клиента у этого специалиста (по телефону, email или Telegram)
+                from django.db.models import Q
+                card = None
+                if client_phone or client_email or client_telegram:
+                    q = Q(consultant=consultant)
+                    cond = Q()
+                    if client_phone:
+                        cond |= Q(phone=client_phone)
+                    if client_email:
+                        cond |= Q(email=client_email)
+                    if client_telegram:
+                        tg_norm = client_telegram.lstrip('@').split('/')[-1].split('?')[0]
+                        if tg_norm:
+                            cond |= Q(telegram__icontains=tg_norm)
+                    if cond:
+                        card = ClientCard.objects.filter(q & cond).first()
+                if not card:
+                    card = ClientCard.objects.create(
+                        consultant=consultant,
+                        name=client_name or None,
+                        phone=client_phone or None,
+                        email=client_email or None,
+                        telegram=client_telegram or None,
+                    )
+                else:
+                    # Обновить данные карточки, если пришли новые
+                    updated = False
+                    if client_name and not card.name:
+                        card.name = client_name
+                        updated = True
+                    if client_phone and card.phone != client_phone:
+                        card.phone = client_phone
+                        updated = True
+                    if client_email and card.email != client_email:
+                        card.email = client_email
+                        updated = True
+                    if client_telegram and (not card.telegram or client_telegram not in (card.telegram or '')):
+                        card.telegram = client_telegram
+                        updated = True
+                    if updated:
+                        card.save(update_fields=['name', 'phone', 'email', 'telegram', 'updated_at'])
+
                 link_token = uuid.uuid4().hex[:24]
                 booking = Booking.objects.create(
                     service=service,
                     time_slot=time_slot,
                     calendar=calendar,
+                    client_card=card,
                     booking_date=booking_date,
                     booking_time=booking_time,
                     booking_end_time=booking_end_time,
                     client_name=client_name,
                     client_phone=client_phone or "",
-                    client_telegram="",  # заполняется при подтверждении в Telegram (приложение или браузер)
+                    client_telegram=client_telegram or "",
                     client_email=client_email or "",
                     status='pending',
                     link_token=link_token,
                 )
 
+            for key in ('booking_contact_done', 'booking_client_name', 'booking_client_phone',
+                        'booking_client_telegram', 'booking_client_email'):
+                request.session.pop(key, None)
             return render(request, 'consultant_menu/booking_success.html', {
                 'booking': booking,
                 'service': service,
                 'telegram_bot_username': getattr(settings, 'TELEGRAM_BOT_USERNAME', ''),
             })
 
-        except (Service.DoesNotExist, ValueError) as e:
+        except (Service.DoesNotExist, ValueError):
             return render(request, 'consultant_menu/public_booking.html', {
-                'calendar': calendar,
-                'services': services,
-                'error': 'Ошибка при создании записи'
+                **booking_ctx,
+                'error': 'Ошибка при создании записи',
             })
 
-    return render(request, 'consultant_menu/public_booking.html', {
+    show_booking_form = request.session.get('booking_contact_done') and request.session.get('booking_client_phone')
+    step_register = request.GET.get('step') == 'register'
+    show_client_choice = not show_booking_form and not step_register
+    show_contact_form = not show_booking_form and step_register
+    ctx = {
         'calendar': calendar,
-        'services': services
-    })
+        'services': services,
+        'show_booking_form': show_booking_form,
+        'show_client_choice': show_client_choice,
+        'show_contact_form': show_contact_form,
+    }
+    if show_booking_form:
+        ctx['booking_client_name'] = request.session.get('booking_client_name', '')
+        ctx['booking_client_phone'] = request.session.get('booking_client_phone', '')
+        ctx['booking_client_telegram'] = request.session.get('booking_client_telegram', '')
+        ctx['booking_client_email'] = request.session.get('booking_client_email', '')
+    return render(request, 'consultant_menu/public_booking.html', ctx)
 
 
 @csrf_exempt
@@ -685,6 +847,7 @@ def api_telegram_client_bookings(request):
             'time': time_str,
             'service_name': b.service.name if b.service_id else 'Консультация',
             'consultant_name': consultant_name,
+            'calendar_id': b.calendar_id,
             'status': b.status,
             'is_upcoming': b.booking_date >= now,
         })
@@ -1010,8 +1173,22 @@ def services_view(request):
 
 
 
+def _mark_past_bookings_completed(calendars):
+    """Пометить подтверждённые записи как «завершена», если время консультации уже прошло. Без уведомлений в Telegram."""
+    now = timezone.now()
+    tz = timezone.get_current_timezone() if timezone.is_aware(now) else None
+    for b in Booking.objects.filter(calendar__in=calendars, status='confirmed').select_related('calendar'):
+        end_time = getattr(b, 'booking_end_time', None) or b.booking_time
+        end_dt = datetime.combine(b.booking_date, end_time)
+        if tz:
+            end_dt = timezone.make_aware(end_dt, tz)
+        if end_dt <= now:
+            b.status = 'completed'
+            b.save(update_fields=['status'])
+
+
 def  booking_view(request):
-    '''Страница клиенты, которые уже записались и проведеннные консультации'''
+    '''Страница клиенты, которые уже записались и проведеннные консультации. Завершение — по истечении времени, без ручной кнопки и без уведомлений в Telegram.'''
     if not request.user.is_authenticated:
         return redirect('login')
 
@@ -1021,7 +1198,9 @@ def  booking_view(request):
         return redirect('home')
 
     calendars = Calendar.objects.filter(consultant=consultant)
-    bookings = Booking.objects.filter(calendar__in = calendars).order_by('booking_date', 'booking_time')
+    _mark_past_bookings_completed(calendars)
+
+    bookings = Booking.objects.filter(calendar__in=calendars).order_by('booking_date', 'booking_time')
     status_filter = request.GET.get('status', 'all')
 
     if status_filter != 'all':
@@ -1029,21 +1208,6 @@ def  booking_view(request):
 
     today = date.today()
     now = datetime.now().time()
-
-    if status_filter == 'cancelled':
-        upcoming_bookings = bookings
-        past_bookings = Booking.objects.none()
-    else:
-        upcoming_bookings = bookings.filter(
-            booking_date__gte=today
-        ).exclude(status='cancelled')
-
-        past_bookings = bookings.filter(
-            booking_date__lt=today
-        ) | bookings.filter(
-            booking_date=today,
-            booking_time__lt=now
-        )
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -1061,26 +1225,24 @@ def  booking_view(request):
                 booking.status = 'cancelled'
                 booking.save()
                 notify_booking_status_changed(booking, old_status=old_status)
-            elif action == 'complete':
-                booking.status = 'completed'
-                booking.save()
-                notify_booking_status_changed(booking, old_status=old_status)
 
         except Booking.DoesNotExist:
             pass
 
-        # Пересчитываем списки после изменения статуса
-        bookings = Booking.objects.filter(calendar__in=calendars).order_by('booking_date', 'booking_time')
+        _mark_past_bookings_completed(calendars)
+
+    if status_filter == 'cancelled':
+        upcoming_bookings = Booking.objects.filter(calendar__in=calendars, status='cancelled').order_by('-booking_date', '-booking_time')
+        past_bookings = Booking.objects.none()
+    else:
+        upcoming_bookings = Booking.objects.filter(calendar__in=calendars, booking_date__gte=today).exclude(status='cancelled').order_by('booking_date', 'booking_time')
+        past_bookings = (
+            Booking.objects.filter(calendar__in=calendars, booking_date__lt=today).order_by('-booking_date', '-booking_time')
+            | Booking.objects.filter(calendar__in=calendars, booking_date=today, booking_time__lt=now).order_by('-booking_date', '-booking_time')
+        )
         if status_filter != 'all':
-            bookings = bookings.filter(status=status_filter)
-        if status_filter == 'cancelled':
-            upcoming_bookings = bookings
-            past_bookings = Booking.objects.none()
-        else:
-            upcoming_bookings = bookings.filter(booking_date__gte=today).exclude(status='cancelled')
-            past_bookings = bookings.filter(booking_date__lt=today) | bookings.filter(
-                booking_date=today, booking_time__lt=now
-            )
+            upcoming_bookings = upcoming_bookings.filter(status=status_filter)
+            past_bookings = past_bookings.filter(status=status_filter)
 
     return render(request, 'consultant_menu/booking.html', {
         'upcoming_bookings': upcoming_bookings,
@@ -1269,8 +1431,10 @@ def client_card_detail_view(request, card_id):
     history_q = Q(calendar__in=calendars) & Q(client_card=card)
     if card.email:
         history_q |= Q(calendar__in=calendars, client_email=card.email)
+    if card.phone:
+        history_q |= Q(calendar__in=calendars, client_phone=card.phone)
     if card.telegram:
-        t = (card.telegram or '').replace('@', '').strip()
+        t = (card.telegram or '').replace('@', '').strip().split('/')[-1].split('?')[0]
         if t:
             history_q |= Q(calendar__in=calendars, client_telegram__icontains=t)
     history = Booking.objects.filter(history_q).distinct().order_by('-booking_date', '-booking_time')[:50]
@@ -1293,10 +1457,17 @@ def client_card_detail_view(request, card_id):
             card.delete()
             return redirect('client_cards_list')
 
+    # Подсчёт записей и посещений по той же выборке (без [:50])
+    history_full_qs = Booking.objects.filter(history_q).distinct()
+    total_bookings = history_full_qs.count()
+    completed_count = history_full_qs.filter(status='completed').count()
+
     return render(request, 'consultant_menu/client_card_detail.html', {
         'consultant': consultant,
         'card': card,
         'history': history,
+        'total_bookings': total_bookings,
+        'completed_count': completed_count,
         'success': success,
         'error': error,
     })

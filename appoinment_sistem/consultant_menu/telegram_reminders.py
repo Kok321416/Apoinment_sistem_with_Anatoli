@@ -86,17 +86,29 @@ def format_reminder_message(booking, hours_ahead: int) -> str:
         )
 
 
+def _telegram_link(username: str) -> str:
+    """Ссылка на Telegram: t.me/username (без @)."""
+    u = (username or "").strip().lstrip("@").split("/")[-1].split("?")[0]
+    return f"https://t.me/{u}" if u else ""
+
+
 def format_new_booking_message_for_specialist(booking) -> str:
-    """Текст уведомления специалисту о новой записи."""
+    """Текст уведомления специалисту о новой записи (включая ссылку на Telegram клиента)."""
     info = _booking_base_info(booking)
     contact = []
     if getattr(booking, 'client_phone', None) and booking.client_phone:
         contact.append(f"📞 {booking.client_phone}")
-    if getattr(booking, 'client_telegram', None) and booking.client_telegram:
-        contact.append(f"✈️ {booking.client_telegram}")
+    telegram_raw = getattr(booking, 'client_telegram', None) or ""
+    if telegram_raw.strip():
+        link = _telegram_link(telegram_raw)
+        if link:
+            contact.append(f"✈️ Telegram: {link}")
+        else:
+            contact.append(f"✈️ {telegram_raw}")
     if getattr(booking, 'client_email', None) and booking.client_email:
         contact.append(f"📧 {booking.client_email}")
     contact_str = "\n".join(contact) if contact else "—"
+    status_note = "\n⏳ Данные ждут подтверждения (клиент может подтвердить Telegram на странице после записи)."
     return (
         f"🆕 <b>Новая запись</b>\n\n"
         f"👤 Клиент: {getattr(booking, 'client_name', '') or '—'}\n"
@@ -105,6 +117,7 @@ def format_new_booking_message_for_specialist(booking) -> str:
         f"🕐 Время: {info['slot']}\n"
         f"📍 Календарь: {info['calendar_name']}\n\n"
         f"<b>Контакты:</b>\n{contact_str}"
+        f"{status_note}"
     )
 
 
@@ -211,9 +224,10 @@ def notify_booking_status_changed(booking, old_status: str = None) -> None:
     """
     Отправить клиенту и специалисту уведомления об изменении записи (статус и т.д.).
     Вызывать после сохранения записи (например при смене статуса на сайте).
+    При смене на «завершена» уведомления не отправляются (завершение по истечении времени).
     """
     new_status = getattr(booking, 'status', None) or ''
-    if not new_status:
+    if not new_status or new_status == 'completed':
         return
     try:
         # Клиенту — если привязан Telegram

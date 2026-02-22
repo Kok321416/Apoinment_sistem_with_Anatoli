@@ -132,6 +132,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "consultant_menu.context_processors.header_user",
                 "consultant_menu.context_processors.telegram_bot_username",
                 "consultant_menu.context_processors.telegram_welcome",
             ],
@@ -199,6 +200,7 @@ TIME_ZONE = "Europe/Moscow"
 USE_I18N = True
 
 USE_TZ = True
+TIMEZONE = os.getenv('TIMEZONE', 'Europe/Moscow')
 
 # Django 3.2+ default primary key type (avoid warnings)
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

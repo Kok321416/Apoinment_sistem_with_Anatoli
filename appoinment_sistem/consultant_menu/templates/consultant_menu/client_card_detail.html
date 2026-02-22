@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Карточка: {{ card.name|default:"Клиент" }}</title>
     {% load static %}
-    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}?v=2">
     <style>
         .detail-panel {
             background: var(--card-bg, #fff);
@@ -103,6 +103,11 @@
 
         <div class="detail-panel">
             <h2>История консультаций</h2>
+            <p style="margin: 0 0 16px 0; color: var(--text-muted); font-size: 14px;">
+                Записей всего: <strong>{{ total_bookings|default:0 }}</strong>
+                &nbsp;·&nbsp;
+                Посещено (завершено): <strong>{{ completed_count|default:0 }}</strong>
+            </p>
             {% if history %}
                 <ul class="history-list">
                     {% for b in history %}
@@ -116,7 +121,7 @@
                     {% endfor %}
                 </ul>
             {% else %}
-                <p style="color: var(--text-muted);">Пока нет записей по этой карточке. История строится по совпадению email/Telegram в записях.</p>
+                <p style="color: var(--text-muted);">Пока нет записей по этой карточке. История строится по карточке, телефону, email и Telegram.</p>
             {% endif %}
         </div>
 

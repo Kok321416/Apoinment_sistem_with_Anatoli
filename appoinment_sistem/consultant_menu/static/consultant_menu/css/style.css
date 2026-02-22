@@ -167,6 +167,26 @@ h2 {
 .user-info {
     color: var(--text-primary);
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.header-user-block {
+    text-align: right;
+    margin-right: 8px;
+}
+.header-user-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+.header-user-account {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.3;
 }
 
 /* ========== КАРТОЧКИ НАВИГАЦИИ (UPROCK: МЯГКИЕ ТЕНИ, СКРУГЛЕНИЯ) ========== */
@@ -284,6 +304,13 @@ h2 {
 
 .btn-secondary:active {
     transform: translateY(0) scale(0.98);
+}
+
+/* Ссылки «Регистрация» на главной — всегда кликабельны */
+a.btn-register {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
 }
 
 /* ========== ФОРМЫ ========== */

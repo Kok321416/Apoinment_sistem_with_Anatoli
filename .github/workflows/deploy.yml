@@ -86,7 +86,7 @@ jobs:
             echo "❌ Secret APP_DIR is required (example: /home/<user>/appointment-system)"
             exit 1
           fi
-
+          export APP_DIR
           echo "📁 Using APP_DIR=$APP_DIR"
           cd "$APP_DIR"
 
@@ -138,8 +138,13 @@ jobs:
           rm -rf venv
           "$PYTHON_BIN" -m venv venv
           . venv/bin/activate
+          # На некоторых хостингах venv создаётся с неполным pip (No module named 'pip._vendor.packaging.markers') — переустанавливаем
+          python -m ensurepip --upgrade 2>/dev/null || true
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+          python -m pip install --force-reinstall --no-cache-dir "Django==5.2.7"
+          python -c "import pymysql; print('PyMySQL', pymysql.__version__, 'OK')" || { echo "❌ PyMySQL not in venv. Check requirements.txt"; exit 1; }
+          python -c "from django.conf.locale import LANG_INFO; print('Django locale OK')" || { echo "❌ Django locale broken"; exit 1; }
 
           # Do NOT overwrite hosting .htaccess.
           # On reg.ru nginx-fronted hosting, an invalid .htaccess often causes 500.
@@ -152,7 +157,7 @@ jobs:
           fi
 
           # Миграции для обоих проектов (скрипт можно запускать и вручную на сервере: ./scripts/migrate.sh)
-          chmod +x scripts/migrate.sh
+          chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh
           ./scripts/migrate.sh
 
           # Passenger restart hook (safe even if Passenger is not used)
@@ -189,18 +194,29 @@ jobs:
             --pid "$PIDFILE" \
             > "$LOGFILE" 2>&1 &
 
-          # Перезапуск Telegram-бота: ставим PyMySQL тем же интерпретатором, которым запускаем бота
-          ./venv/bin/python -m pip install -q PyMySQL sqlparse
-          ./venv/bin/python -c "import pymysql; pymysql.install_as_MySQLdb(); import MySQLdb; print('MySQLdb OK')" || true
-          BOT_PIDFILE="bot.pid"
-          BOT_LOG="bot.log"
+          # Telegram-бот: проверка PyMySQL (уже из requirements.txt) и подключения к MySQL перед запуском
+          ./venv/bin/python -c "
+          import pymysql
+          pymysql.install_as_MySQLdb()
+          import os
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'appoiment_system.settings')
+          import django
+          django.setup()
+          from django.db import connection
+          connection.ensure_connection()
+          print('MySQL connection OK')
+          " || { echo "❌ MySQL/PyMySQL check failed. Bot will not start."; exit 1; }
+
+          BOT_PIDFILE="$APP_DIR/bot.pid"
+          BOT_LOG="$APP_DIR/bot.log"
           if [ -f "$BOT_PIDFILE" ]; then
             OLD_PID=$(cat "$BOT_PIDFILE")
             kill -TERM "$OLD_PID" 2>/dev/null || true
             rm -f "$BOT_PIDFILE"
             sleep 2
           fi
-          cd "$APP_DIR" && nohup ./venv/bin/python manage.py run_bot >> "$BOT_LOG" 2>&1 &
+          : > "$BOT_LOG"
+          cd "$APP_DIR" && nohup "$APP_DIR/scripts/run_bot.sh" >> "$BOT_LOG" 2>&1 &
           BOT_PID=$!
           echo $BOT_PID > "$BOT_PIDFILE"
           sleep 2

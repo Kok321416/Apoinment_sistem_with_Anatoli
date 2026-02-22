@@ -13,7 +13,8 @@ jobs:
     # Запускаем только для PR из develop в main
     if: |
       github.event.pull_request.base.ref == 'main' && 
-      github.event.pull_request.head.ref == 'develop'
+      (github.event.pull_request.head.ref == 'develop' || 
+      github.event.pull_request.head.ref == 'frontend')
     
     steps:
       - name: Checkout code
