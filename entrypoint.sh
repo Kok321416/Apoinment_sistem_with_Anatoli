@@ -34,7 +34,9 @@ fi
 python -m ensurepip --upgrade 2>/dev/null || true
 python -m pip install --upgrade pip -q
 python -m pip install -r requirements.txt -q
+python -m pip install -q python-dotenv
 python -c "import pymysql; print('PyMySQL', pymysql.__version__, 'OK')" || { echo "❌ PyMySQL not in venv. pip install -r requirements.txt"; exit 1; }
+python -c "from dotenv import load_dotenv; print('python-dotenv OK')" || { echo "❌ python-dotenv not in venv (required by appoiment_system.settings)"; exit 1; }
 
 # Миграции (оба проекта)
 chmod +x scripts/migrate.sh scripts/run_bot.sh 2>/dev/null || true
