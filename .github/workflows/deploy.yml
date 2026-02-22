@@ -142,8 +142,10 @@ jobs:
           python -m ensurepip --upgrade 2>/dev/null || true
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+          python -m pip install -q python-dotenv
           python -m pip install --force-reinstall --no-cache-dir "Django==5.2.7"
           python -c "import pymysql; print('PyMySQL', pymysql.__version__, 'OK')" || { echo "❌ PyMySQL not in venv. Check requirements.txt"; exit 1; }
+          python -c "from dotenv import load_dotenv; print('python-dotenv OK')" || { echo "❌ python-dotenv required for run_bot (appoiment_system.settings)"; exit 1; }
           python -c "from django.conf.locale import LANG_INFO; print('Django locale OK')" || { echo "❌ Django locale broken"; exit 1; }
 
           # Do NOT overwrite hosting .htaccess.
