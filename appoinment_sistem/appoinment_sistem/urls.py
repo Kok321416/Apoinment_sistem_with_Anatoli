@@ -30,6 +30,7 @@ from consultant_menu.views import (
     confirm_booking_telegram_browser, confirm_booking_telegram_browser_api,
     api_telegram_client_bookings,
     api_telegram_specialist_bookings,
+    api_booking_calendar_events,
 )
 
 urlpatterns = [
@@ -74,6 +75,7 @@ urlpatterns = [
 
     # Записи, карточки клиентов
     path("booking/", booking_view, name="booking"),
+    path("api/booking/calendar-events/", api_booking_calendar_events, name="api_booking_calendar_events"),
     path("clients/", client_cards_list_view, name="client_cards_list"),
     path("clients/<int:card_id>/", client_card_detail_view, name="client_card_detail"),
 
