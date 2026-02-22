@@ -1173,8 +1173,22 @@ def services_view(request):
 
 
 
+def _mark_past_bookings_completed(calendars):
+    """Пометить подтверждённые записи как «завершена», если время консультации уже прошло. Без уведомлений в Telegram."""
+    now = timezone.now()
+    tz = timezone.get_current_timezone() if timezone.is_aware(now) else None
+    for b in Booking.objects.filter(calendar__in=calendars, status='confirmed').select_related('calendar'):
+        end_time = getattr(b, 'booking_end_time', None) or b.booking_time
+        end_dt = datetime.combine(b.booking_date, end_time)
+        if tz:
+            end_dt = timezone.make_aware(end_dt, tz)
+        if end_dt <= now:
+            b.status = 'completed'
+            b.save(update_fields=['status'])
+
+
 def  booking_view(request):
-    '''Страница клиенты, которые уже записались и проведеннные консультации'''
+    '''Страница клиенты, которые уже записались и проведеннные консультации. Завершение — по истечении времени, без ручной кнопки и без уведомлений в Telegram.'''
     if not request.user.is_authenticated:
         return redirect('login')
 
@@ -1184,7 +1198,9 @@ def  booking_view(request):
         return redirect('home')
 
     calendars = Calendar.objects.filter(consultant=consultant)
-    bookings = Booking.objects.filter(calendar__in = calendars).order_by('booking_date', 'booking_time')
+    _mark_past_bookings_completed(calendars)
+
+    bookings = Booking.objects.filter(calendar__in=calendars).order_by('booking_date', 'booking_time')
     status_filter = request.GET.get('status', 'all')
 
     if status_filter != 'all':
@@ -1192,21 +1208,6 @@ def  booking_view(request):
 
     today = date.today()
     now = datetime.now().time()
-
-    if status_filter == 'cancelled':
-        upcoming_bookings = bookings
-        past_bookings = Booking.objects.none()
-    else:
-        upcoming_bookings = bookings.filter(
-            booking_date__gte=today
-        ).exclude(status='cancelled')
-
-        past_bookings = bookings.filter(
-            booking_date__lt=today
-        ) | bookings.filter(
-            booking_date=today,
-            booking_time__lt=now
-        )
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -1224,18 +1225,24 @@ def  booking_view(request):
                 booking.status = 'cancelled'
                 booking.save()
                 notify_booking_status_changed(booking, old_status=old_status)
-            elif action == 'complete':
-                booking.status = 'completed'
-                booking.save()
-                notify_booking_status_changed(booking, old_status=old_status)
 
         except Booking.DoesNotExist:
             pass
 
+        _mark_past_bookings_completed(calendars)
 
-        bookings = Booking.objects.filter(calendar__in = calendars).order_by('booking_date', 'booking_time')
-        if status_filter:
-            bookings = bookings.filter(status=status_filter)
+    if status_filter == 'cancelled':
+        upcoming_bookings = Booking.objects.filter(calendar__in=calendars, status='cancelled').order_by('-booking_date', '-booking_time')
+        past_bookings = Booking.objects.none()
+    else:
+        upcoming_bookings = Booking.objects.filter(calendar__in=calendars, booking_date__gte=today).exclude(status='cancelled').order_by('booking_date', 'booking_time')
+        past_bookings = (
+            Booking.objects.filter(calendar__in=calendars, booking_date__lt=today).order_by('-booking_date', '-booking_time')
+            | Booking.objects.filter(calendar__in=calendars, booking_date=today, booking_time__lt=now).order_by('-booking_date', '-booking_time')
+        )
+        if status_filter != 'all':
+            upcoming_bookings = upcoming_bookings.filter(status=status_filter)
+            past_bookings = past_bookings.filter(status=status_filter)
 
     return render(request, 'consultant_menu/booking.html', {
         'upcoming_bookings': upcoming_bookings,

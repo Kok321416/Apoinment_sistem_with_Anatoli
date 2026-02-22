@@ -157,9 +157,6 @@
             <a href="{% url 'booking' %}?status=confirmed" class="filter-tab {% if status_filter == 'confirmed' %}active{% endif %}">
                 Подтверждены
             </a>
-            <a href="{% url 'booking' %}?status=completed" class="filter-tab {% if status_filter == 'completed' %}active{% endif %}">
-                Завершены
-            </a>
             <a href="{% url 'booking' %}?status=cancelled" class="filter-tab {% if status_filter == 'cancelled' %}active{% endif %}">
                 Отменены
             </a>
@@ -210,14 +207,6 @@
                             <input type="hidden" name="action" value="cancel">
                             <input type="hidden" name="booking_id" value="{{ booking.id }}">
                             <button type="submit" class="btn-small btn-cancel" onclick="return confirm('Отменить запись?')">✕ Отменить</button>
-                        </form>
-                        {% endif %}
-                        {% if booking.status == 'confirmed' %}
-                        <form method="POST" style="margin: 0;">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="complete">
-                            <input type="hidden" name="booking_id" value="{{ booking.id }}">
-                            <button type="submit" class="btn-small btn-complete">✓ Завершить</button>
                         </form>
                         {% endif %}
                     </div>
