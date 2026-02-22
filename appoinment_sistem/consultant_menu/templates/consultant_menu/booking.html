@@ -228,6 +228,68 @@
             .calendar-day { min-height: 72px; }
             .cal-event { font-size: 10px; padding: 2px 5px; }
         }
+
+        /* Переключатель вида */
+        .view-switcher {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .view-switcher-btn {
+            padding: 10px 20px;
+            border: 2px solid var(--card-border);
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .view-switcher-btn:hover { background: var(--hover-bg); }
+        .view-switcher-btn.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        #viewCalendar { display: none; }
+        #viewCalendar.active { display: block; }
+        #viewList.active { display: block; }
+        #viewList { display: none; }
+
+        /* Полноэкранный календарь */
+        .booking-calendar-full-wrap {
+            width: 100%;
+            max-width: 100%;
+            margin-top: 0;
+            padding: 20px 0;
+        }
+        .booking-calendar-full-wrap .calendar-header { margin-bottom: 16px; }
+        .booking-calendar-full-wrap .calendar-title { font-size: 22px; }
+        .booking-calendar-full-wrap .calendar-nav-btn { width: 44px; height: 44px; font-size: 20px; }
+        .booking-calendar-full-wrap .calendar-weekdays { font-size: 13px; margin-bottom: 8px; }
+        .booking-calendar-full-wrap .calendar-grid {
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+        .booking-calendar-full-wrap .calendar-day {
+            min-height: 100px;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+        .booking-calendar-full-wrap .day-num { margin-bottom: 6px; font-weight: 600; }
+        .booking-calendar-full-wrap .day-events { gap: 4px; }
+        .booking-calendar-full-wrap .cal-event {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        .booking-calendar-full-wrap .calendar-legend { margin-top: 16px; font-size: 12px; }
+        .booking-calendar-full-wrap .legend-dot { width: 12px; height: 12px; }
+        @media (min-width: 900px) {
+            .booking-calendar-full-wrap .calendar-day { min-height: 120px; }
+            .booking-calendar-full-wrap .cal-event { font-size: 13px; padding: 5px 10px; }
+        }
     </style>
 </head>
 <body>
@@ -247,8 +309,14 @@
             <a href="{% url 'booking' %}?status=cancelled" class="filter-tab {% if status_filter == 'cancelled' %}active{% endif %}">Отменены</a>
         </div>
 
-        <div class="booking-page-layout">
-            <div class="booking-list-col">
+        <div class="view-switcher">
+            <button type="button" class="view-switcher-btn active" data-view="list">📋 Список</button>
+            <button type="button" class="view-switcher-btn" data-view="calendar">📅 Календарь</button>
+        </div>
+
+        <div id="viewList" class="active">
+            <div class="booking-page-layout">
+                <div class="booking-list-col" id="bookingListCol">
                 <div class="bookings-container">
                     <h2 class="section-title">📅 Запланированные консультации</h2>
                     {% if upcoming_bookings %}
@@ -347,6 +415,28 @@
                     <span><span class="legend-dot cancelled"></span> Отменена</span>
                 </div>
             </aside>
+            </div>
+        </div>
+
+        <div id="viewCalendar">
+            <div class="booking-calendar-full-wrap">
+                <div class="calendar-header">
+                    <button type="button" class="calendar-nav-btn" id="calPrevFull" aria-label="Предыдущий месяц">‹</button>
+                    <span class="calendar-title" id="calTitleFull">—</span>
+                    <button type="button" class="calendar-nav-btn" id="calNextFull" aria-label="Следующий месяц">›</button>
+                </div>
+                <div class="calendar-weekdays">
+                    <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+                </div>
+                <div class="calendar-grid" id="calGridFull"></div>
+                <div class="calendar-legend">
+                    <span><span class="legend-dot confirmed"></span> Подтверждена</span>
+                    <span><span class="legend-dot pending"></span> Ожидает</span>
+                    <span><span class="legend-dot completed"></span> Завершена</span>
+                    <span><span class="legend-dot cancelled"></span> Отменена</span>
+                </div>
+            </div>
+            <div id="bookingListColPlaceholder"></div>
         </div>
 
         <div id="eventPopover" class="event-popover" style="display: none;"></div>
@@ -394,34 +484,40 @@
             var prevLast = new Date(prevYear, prevMonth, 0);
             var daysPrev = prevLast.getDate();
 
-            document.getElementById('calTitle').textContent = monthNames[month - 1] + ' ' + year;
+            var titleText = monthNames[month - 1] + ' ' + year;
+            document.getElementById('calTitle').textContent = titleText;
+            document.getElementById('calTitleFull').textContent = titleText;
 
-            var grid = document.getElementById('calGrid');
-            grid.innerHTML = '';
             var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            var gridIds = ['calGrid', 'calGridFull'];
 
-            var dayCount = 0;
-            for (var i = 0; i < startDay; i++) {
-                var d = daysPrev - startDay + i + 1;
-                var dateStr = prevYear + '-' + String(prevMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-                var cell = makeDayCell(dateStr, d, true);
-                grid.appendChild(cell);
-                dayCount++;
-            }
-            for (var d = 1; d <= daysInMonth; d++) {
-                var dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-                var cell = makeDayCell(dateStr, d, false);
-                if (dateStr === todayStr) cell.classList.add('today');
-                grid.appendChild(cell);
-                dayCount++;
-            }
-            var rest = (7 - (dayCount % 7)) % 7;
-            var nextMonth = month === 12 ? 1 : month + 1;
-            var nextYear = month === 12 ? year + 1 : year;
-            for (var i = 1; i <= rest; i++) {
-                var dateStr = nextYear + '-' + String(nextMonth).padStart(2, '0') + '-' + String(i).padStart(2, '0');
-                var cell = makeDayCell(dateStr, i, true);
-                grid.appendChild(cell);
+            for (var g = 0; g < gridIds.length; g++) {
+                var grid = document.getElementById(gridIds[g]);
+                if (!grid) continue;
+                grid.innerHTML = '';
+                var dayCount = 0;
+                for (var i = 0; i < startDay; i++) {
+                    var d = daysPrev - startDay + i + 1;
+                    var dateStr = prevYear + '-' + String(prevMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                    var cell = makeDayCell(dateStr, d, true);
+                    grid.appendChild(cell);
+                    dayCount++;
+                }
+                for (var d = 1; d <= daysInMonth; d++) {
+                    var dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                    var cell = makeDayCell(dateStr, d, false);
+                    if (dateStr === todayStr) cell.classList.add('today');
+                    grid.appendChild(cell);
+                    dayCount++;
+                }
+                var rest = (7 - (dayCount % 7)) % 7;
+                var nextMonth = month === 12 ? 1 : month + 1;
+                var nextYear = month === 12 ? year + 1 : year;
+                for (var i = 1; i <= rest; i++) {
+                    var dateStr = nextYear + '-' + String(nextMonth).padStart(2, '0') + '-' + String(i).padStart(2, '0');
+                    var cell = makeDayCell(dateStr, i, true);
+                    grid.appendChild(cell);
+                }
             }
         }
 
@@ -472,21 +568,53 @@
             document.getElementById('eventPopover').style.display = 'none';
         }
 
-        document.getElementById('calPrev').onclick = function() {
+        function goPrev() {
             if (current.month === 1) { current.year--; current.month = 12; } else current.month--;
             loadEvents();
-        };
-        document.getElementById('calNext').onclick = function() {
+        }
+        function goNext() {
             if (current.month === 12) { current.year++; current.month = 1; } else current.month++;
             loadEvents();
-        };
+        }
+        document.getElementById('calPrev').onclick = goPrev;
+        document.getElementById('calNext').onclick = goNext;
+        document.getElementById('calPrevFull').onclick = goPrev;
+        document.getElementById('calNextFull').onclick = goNext;
 
         document.getElementById('calGrid').addEventListener('click', function(e) {
             var el = e.target.closest('.cal-event');
             if (el) showPopover(e, el);
         });
+        document.getElementById('calGridFull').addEventListener('click', function(e) {
+            var el = e.target.closest('.cal-event');
+            if (el) showPopover(e, el);
+        });
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.cal-event') && !e.target.closest('#eventPopover')) hidePopover();
+        });
+
+        var viewList = document.getElementById('viewList');
+        var viewCalendar = document.getElementById('viewCalendar');
+        var listCol = document.getElementById('bookingListCol');
+        var listPlaceholder = document.getElementById('bookingListColPlaceholder');
+        var layoutList = viewList.querySelector('.booking-page-layout');
+
+        document.querySelectorAll('.view-switcher-btn').forEach(function(btn) {
+            btn.onclick = function() {
+                var v = this.getAttribute('data-view');
+                document.querySelectorAll('.view-switcher-btn').forEach(function(b) { b.classList.remove('active'); });
+                this.classList.add('active');
+                if (v === 'calendar') {
+                    viewList.classList.remove('active');
+                    viewCalendar.classList.add('active');
+                    listPlaceholder.appendChild(listCol);
+                } else {
+                    viewCalendar.classList.remove('active');
+                    viewList.classList.add('active');
+                    var firstEl = layoutList.querySelector('.booking-calendar-col') || layoutList.firstElementChild || layoutList.firstChild;
+                layoutList.insertBefore(listCol, firstEl);
+                }
+            };
         });
 
         loadEvents();
