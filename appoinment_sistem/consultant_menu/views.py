@@ -1069,10 +1069,18 @@ def  booking_view(request):
         except Booking.DoesNotExist:
             pass
 
-
-        bookings = Booking.objects.filter(calendar__in = calendars).order_by('booking_date', 'booking_time')
-        if status_filter:
+        # Пересчитываем списки после изменения статуса
+        bookings = Booking.objects.filter(calendar__in=calendars).order_by('booking_date', 'booking_time')
+        if status_filter != 'all':
             bookings = bookings.filter(status=status_filter)
+        if status_filter == 'cancelled':
+            upcoming_bookings = bookings
+            past_bookings = Booking.objects.none()
+        else:
+            upcoming_bookings = bookings.filter(booking_date__gte=today).exclude(status='cancelled')
+            past_bookings = bookings.filter(booking_date__lt=today) | bookings.filter(
+                booking_date=today, booking_time__lt=now
+            )
 
     return render(request, 'consultant_menu/booking.html', {
         'upcoming_bookings': upcoming_bookings,
@@ -1080,6 +1088,49 @@ def  booking_view(request):
         'status_filter': status_filter,
         'today': today
     })
+
+
+def api_booking_calendar_events(request):
+    """События записей по месяцу для календаря (год, месяц). Только для авторизованного консультанта."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'events': []})
+    try:
+        consultant = Consultant.objects.get(user=request.user)
+    except Consultant.DoesNotExist:
+        return JsonResponse({'success': False, 'events': []})
+    year = request.GET.get('year')
+    month = request.GET.get('month')
+    if not year or not month:
+        return JsonResponse({'success': False, 'events': []})
+    try:
+        year, month = int(year), int(month)
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'events': []})
+    from calendar import monthrange
+    calendars = Calendar.objects.filter(consultant=consultant)
+    _, last_day = monthrange(year, month)
+    start_date = date(year, month, 1)
+    end_date = date(year, month, last_day)
+    bookings = Booking.objects.filter(
+        calendar__in=calendars,
+        booking_date__gte=start_date,
+        booking_date__lte=end_date
+    ).order_by('booking_date', 'booking_time')
+    events = []
+    for b in bookings:
+        events.append({
+            'id': b.id,
+            'date': b.booking_date.isoformat(),
+            'time': b.booking_time.strftime('%H:%M') if b.booking_time else '',
+            'end_time': b.booking_end_time.strftime('%H:%M') if b.booking_end_time else '',
+            'client_name': b.client_name or '',
+            'client_phone': b.client_phone or '',
+            'client_email': b.client_email or '',
+            'client_telegram': b.client_telegram or '',
+            'status': b.status,
+            'service': b.service.name if b.service_id else '',
+        })
+    return JsonResponse({'success': True, 'events': events})
 
 
 

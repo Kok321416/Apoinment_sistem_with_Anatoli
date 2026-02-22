@@ -7,13 +7,21 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'consultant_menu/css/style.css' %}">
     <style>
-        .bookings-container {
-            margin-top: 30px;
+        .booking-page-layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 32px;
+            margin-top: 24px;
+            align-items: start;
         }
+        @media (max-width: 1024px) {
+            .booking-page-layout { grid-template-columns: 1fr; }
+        }
+        .bookings-container { margin-top: 0; }
         .filter-tabs {
             display: flex;
             gap: 10px;
-            margin-bottom: 30px;
+            margin-bottom: 24px;
             flex-wrap: wrap;
         }
         .filter-tab {
@@ -26,9 +34,7 @@
             font-weight: 500;
             transition: all 0.3s;
         }
-        .filter-tab:hover {
-            background: #e0e0e0;
-        }
+        .filter-tab:hover { background: #e0e0e0; }
         .filter-tab.active {
             background: var(--accent);
             color: white;
@@ -45,16 +51,9 @@
             align-items: flex-start;
             transition: box-shadow 0.3s;
         }
-        .booking-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .booking-info {
-            flex: 1;
-        }
-        .booking-info h3 {
-            margin: 0 0 10px 0;
-            color: #333;
-        }
+        .booking-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .booking-info { flex: 1; }
+        .booking-info h3 { margin: 0 0 10px 0; color: #333; }
         .booking-details {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -62,9 +61,7 @@
             margin-top: 10px;
             color: #666;
         }
-        .booking-details p {
-            margin: 5px 0;
-        }
+        .booking-details p { margin: 5px 0; }
         .status-badge {
             display: inline-block;
             padding: 5px 12px;
@@ -73,27 +70,11 @@
             font-weight: 600;
             margin-top: 10px;
         }
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-        .status-confirmed {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        .status-completed {
-            background: #d4edda;
-            color: #155724;
-        }
-        .status-cancelled {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .booking-actions {
-            display: flex;
-            gap: 10px;
-            flex-direction: column;
-        }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-confirmed { background: #d1ecf1; color: #0c5460; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .booking-actions { display: flex; gap: 10px; flex-direction: column; }
         .btn-small {
             padding: 6px 14px;
             font-size: 13px;
@@ -102,43 +83,137 @@
             cursor: pointer;
             font-weight: 500;
         }
-        .btn-confirm {
-            background: #28a745;
-            color: white;
-        }
-        .btn-confirm:hover {
-            background: #218838;
-        }
-        .btn-cancel {
-            background: #dc3545;
-            color: white;
-        }
-        .btn-cancel:hover {
-            background: #c82333;
-        }
-        .btn-complete {
-            background: #17a2b8;
-            color: white;
-        }
-        .btn-complete:hover {
-            background: #138496;
-        }
+        .btn-confirm { background: #28a745; color: white; }
+        .btn-confirm:hover { background: #218838; }
+        .btn-cancel { background: #dc3545; color: white; }
+        .btn-cancel:hover { background: #c82333; }
+        .btn-complete { background: #17a2b8; color: white; }
+        .btn-complete:hover { background: #138496; }
         .section-title {
             margin-top: 40px;
             margin-bottom: 20px;
             padding-bottom: 10px;
             border-bottom: 2px solid var(--card-border);
         }
-        .empty-message {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-            font-style: italic;
+        .section-title:first-of-type { margin-top: 0; }
+        .empty-message { text-align: center; padding: 40px; color: #999; font-style: italic; }
+
+        /* Календарь */
+        .booking-calendar-col {
+            position: sticky;
+            top: 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
         }
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .calendar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .calendar-nav {
+            display: flex;
+            gap: 8px;
+        }
+        .calendar-nav-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+        }
+        .calendar-nav-btn:hover {
+            background: var(--hover-bg);
+        }
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            margin-bottom: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+        .calendar-day {
+            min-height: 64px;
+            padding: 4px;
+            border-radius: 6px;
+            background: var(--bg-subtle);
+            font-size: 13px;
+        }
+        .calendar-day.other-month { opacity: 0.45; }
+        .calendar-day.today { background: #e3f2fd; font-weight: 600; }
+        .day-num { margin-bottom: 4px; }
+        .day-events { display: flex; flex-direction: column; gap: 2px; }
+        .cal-event {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #fff;
+            font-weight: 500;
+        }
+        .cal-event.confirmed { background: #2e7d32; }
+        .cal-event.pending { background: #f9a825; color: #1a1a1a; }
+        .cal-event.completed { background: #546e7a; }
+        .cal-event.cancelled { background: #c62828; }
+        .cal-event:hover { filter: brightness(1.1); }
+
+        .event-popover {
+            position: fixed;
+            z-index: 1000;
+            background: #fff;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            box-shadow: var(--shadow-lg);
+            max-width: 320px;
+            font-size: 13px;
+        }
+        .event-popover h4 { margin: 0 0 8px 0; font-size: 14px; }
+        .event-popover p { margin: 4px 0; color: var(--text-muted); }
+        .event-popover .time { font-weight: 600; color: var(--text-primary); }
+        .calendar-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+        .legend-dot.confirmed { background: #2e7d32; }
+        .legend-dot.pending { background: #f9a825; }
+        .legend-dot.completed { background: #546e7a; }
+        .legend-dot.cancelled { background: #c62828; }
     </style>
 </head>
 <body>
-    <div class="container" style="max-width: 1200px;">
+    <div class="container" style="max-width: 1400px;">
         <div class="page-header">
             <h1>Записи (Консультации)</h1>
             <div>
@@ -146,124 +221,258 @@
             </div>
         </div>
 
-        <!-- Фильтры по статусу -->
         <div class="filter-tabs">
-            <a href="{% url 'booking' %}" class="filter-tab {% if not status_filter %}active{% endif %}">
-                Все
-            </a>
-            <a href="{% url 'booking' %}?status=pending" class="filter-tab {% if status_filter == 'pending' %}active{% endif %}">
-                Ожидают
-            </a>
-            <a href="{% url 'booking' %}?status=confirmed" class="filter-tab {% if status_filter == 'confirmed' %}active{% endif %}">
-                Подтверждены
-            </a>
-            <a href="{% url 'booking' %}?status=completed" class="filter-tab {% if status_filter == 'completed' %}active{% endif %}">
-                Завершены
-            </a>
-            <a href="{% url 'booking' %}?status=cancelled" class="filter-tab {% if status_filter == 'cancelled' %}active{% endif %}">
-                Отменены
-            </a>
+            <a href="{% url 'booking' %}" class="filter-tab {% if not status_filter or status_filter == 'all' %}active{% endif %}">Все</a>
+            <a href="{% url 'booking' %}?status=pending" class="filter-tab {% if status_filter == 'pending' %}active{% endif %}">Ожидают</a>
+            <a href="{% url 'booking' %}?status=confirmed" class="filter-tab {% if status_filter == 'confirmed' %}active{% endif %}">Подтверждены</a>
+            <a href="{% url 'booking' %}?status=completed" class="filter-tab {% if status_filter == 'completed' %}active{% endif %}">Завершены</a>
+            <a href="{% url 'booking' %}?status=cancelled" class="filter-tab {% if status_filter == 'cancelled' %}active{% endif %}">Отменены</a>
         </div>
 
-        <div class="bookings-container">
-            <!-- Запланированные консультации -->
-            <h2 class="section-title">📅 Запланированные консультации</h2>
-            {% if upcoming_bookings %}
-                {% for booking in upcoming_bookings %}
-                <div class="booking-card">
-                    <div class="booking-info">
-                        <h3>{{ booking.client_name }}</h3>
-                        <div class="booking-details">
-                            <p><strong>Услуга:</strong> {{ booking.service.name }}</p>
-                            <p><strong>Дата:</strong> {{ booking.booking_date|date:"d.m.Y" }}</p>
-                            <p><strong>Время:</strong>
-                                {{ booking.booking_time|time:"H:i" }}
-                                {% if booking.booking_end_time %}
-                                - {{ booking.booking_end_time|time:"H:i" }}
+        <div class="booking-page-layout">
+            <div class="booking-list-col">
+                <div class="bookings-container">
+                    <h2 class="section-title">📅 Запланированные консультации</h2>
+                    {% if upcoming_bookings %}
+                        {% for booking in upcoming_bookings %}
+                        <div class="booking-card">
+                            <div class="booking-info">
+                                <h3>{{ booking.client_name }}</h3>
+                                <div class="booking-details">
+                                    <p><strong>Услуга:</strong> {{ booking.service.name }}</p>
+                                    <p><strong>Дата:</strong> {{ booking.booking_date|date:"d.m.Y" }}</p>
+                                    <p><strong>Время:</strong>
+                                        {{ booking.booking_time|time:"H:i" }}
+                                        {% if booking.booking_end_time %} – {{ booking.booking_end_time|time:"H:i" }}{% endif %}
+                                    </p>
+                                    <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
+                                    {% if booking.client_email %}<p><strong>Email:</strong> {{ booking.client_email }}</p>{% endif %}
+                                    <p><strong>Календарь:</strong> {{ booking.calendar.name }}</p>
+                                </div>
+                                {% if booking.notes %}<p style="margin-top: 10px;"><strong>Примечания:</strong> {{ booking.notes }}</p>{% endif %}
+                                <span class="status-badge status-{{ booking.status }}">{{ booking.get_status_display }}</span>
+                            </div>
+                            <div class="booking-actions">
+                                {% if booking.status == 'pending' %}
+                                <form method="POST" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="confirm">
+                                    <input type="hidden" name="booking_id" value="{{ booking.id }}">
+                                    <button type="submit" class="btn-small btn-confirm">✓ Подтвердить</button>
+                                </form>
                                 {% endif %}
-                            </p>
-                            <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
-                            {% if booking.client_email %}
-                            <p><strong>Email:</strong> {{ booking.client_email }}</p>
-                            {% endif %}
-                            <p><strong>Календарь:</strong> {{ booking.calendar.name }}</p>
+                                {% if booking.status != 'cancelled' and booking.status != 'completed' %}
+                                <form method="POST" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="cancel">
+                                    <input type="hidden" name="booking_id" value="{{ booking.id }}">
+                                    <button type="submit" class="btn-small btn-cancel" onclick="return confirm('Отменить запись?')">✕ Отменить</button>
+                                </form>
+                                {% endif %}
+                                {% if booking.status == 'confirmed' %}
+                                <form method="POST" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="complete">
+                                    <input type="hidden" name="booking_id" value="{{ booking.id }}">
+                                    <button type="submit" class="btn-small btn-complete">✓ Завершить</button>
+                                </form>
+                                {% endif %}
+                            </div>
                         </div>
-                        {% if booking.notes %}
-                        <p style="margin-top: 10px;"><strong>Примечания:</strong> {{ booking.notes }}</p>
-                        {% endif %}
-                        <span class="status-badge status-{{ booking.status }}">
-                            {{ booking.get_status_display }}
-                        </span>
-                    </div>
-                    <div class="booking-actions">
-                        {% if booking.status == 'pending' %}
-                        <form method="POST" style="margin: 0;">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="confirm">
-                            <input type="hidden" name="booking_id" value="{{ booking.id }}">
-                            <button type="submit" class="btn-small btn-confirm">✓ Подтвердить</button>
-                        </form>
-                        {% endif %}
-                        {% if booking.status != 'cancelled' and booking.status != 'completed' %}
-                        <form method="POST" style="margin: 0;">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="cancel">
-                            <input type="hidden" name="booking_id" value="{{ booking.id }}">
-                            <button type="submit" class="btn-small btn-cancel" onclick="return confirm('Отменить запись?')">✕ Отменить</button>
-                        </form>
-                        {% endif %}
-                        {% if booking.status == 'confirmed' %}
-                        <form method="POST" style="margin: 0;">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="complete">
-                            <input type="hidden" name="booking_id" value="{{ booking.id }}">
-                            <button type="submit" class="btn-small btn-complete">✓ Завершить</button>
-                        </form>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-message">Нет запланированных консультаций</div>
-            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-message">Нет запланированных консультаций</div>
+                    {% endif %}
 
-            <!-- Прошедшие консультации -->
-            <h2 class="section-title">📋 Прошедшие консультации</h2>
-            {% if past_bookings %}
-                {% for booking in past_bookings %}
-                <div class="booking-card">
-                    <div class="booking-info">
-                        <h3>{{ booking.client_name }}</h3>
-                        <div class="booking-details">
-                            <p><strong>Услуга:</strong> {{ booking.service.name }}</p>
-                            <p><strong>Дата:</strong> {{ booking.booking_date|date:"d.m.Y" }}</p>
-                            <p><strong>Время:</strong>
-                                {{ booking.booking_time|time:"H:i" }}
-                                {% if booking.booking_end_time %}
-                                - {{ booking.booking_end_time|time:"H:i" }}
-                                {% endif %}
-                            </p>
-                            <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
-                            {% if booking.client_email %}
-                            <p><strong>Email:</strong> {{ booking.client_email }}</p>
-                            {% endif %}
-                            <p><strong>Календарь:</strong> {{ booking.calendar.name }}</p>
+                    <h2 class="section-title">📋 Прошедшие консультации</h2>
+                    {% if past_bookings %}
+                        {% for booking in past_bookings %}
+                        <div class="booking-card">
+                            <div class="booking-info">
+                                <h3>{{ booking.client_name }}</h3>
+                                <div class="booking-details">
+                                    <p><strong>Услуга:</strong> {{ booking.service.name }}</p>
+                                    <p><strong>Дата:</strong> {{ booking.booking_date|date:"d.m.Y" }}</p>
+                                    <p><strong>Время:</strong>
+                                        {{ booking.booking_time|time:"H:i" }}
+                                        {% if booking.booking_end_time %} – {{ booking.booking_end_time|time:"H:i" }}{% endif %}
+                                    </p>
+                                    <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
+                                    {% if booking.client_email %}<p><strong>Email:</strong> {{ booking.client_email }}</p>{% endif %}
+                                    <p><strong>Календарь:</strong> {{ booking.calendar.name }}</p>
+                                </div>
+                                {% if booking.notes %}<p style="margin-top: 10px;"><strong>Примечания:</strong> {{ booking.notes }}</p>{% endif %}
+                                <span class="status-badge status-{{ booking.status }}">{{ booking.get_status_display }}</span>
+                            </div>
                         </div>
-                        {% if booking.notes %}
-                        <p style="margin-top: 10px;"><strong>Примечания:</strong> {{ booking.notes }}</p>
-                        {% endif %}
-                        <span class="status-badge status-{{ booking.status }}">
-                            {{ booking.get_status_display }}
-                        </span>
-                    </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-message">Нет прошедших консультаций</div>
+                    {% endif %}
                 </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-message">Нет прошедших консультаций</div>
-            {% endif %}
+            </div>
+
+            <aside class="booking-calendar-col">
+                <div class="calendar-header">
+                    <button type="button" class="calendar-nav-btn" id="calPrev" aria-label="Предыдущий месяц">‹</button>
+                    <span class="calendar-title" id="calTitle">—</span>
+                    <button type="button" class="calendar-nav-btn" id="calNext" aria-label="Следующий месяц">›</button>
+                </div>
+                <div class="calendar-weekdays">
+                    <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+                </div>
+                <div class="calendar-grid" id="calGrid"></div>
+                <div class="calendar-legend">
+                    <span><span class="legend-dot confirmed"></span> Подтверждена</span>
+                    <span><span class="legend-dot pending"></span> Ожидает</span>
+                    <span><span class="legend-dot completed"></span> Завершена</span>
+                    <span><span class="legend-dot cancelled"></span> Отменена</span>
+                </div>
+            </aside>
         </div>
+
+        <div id="eventPopover" class="event-popover" style="display: none;"></div>
 
         {% include 'consultant_menu/footer.html' %}
     </div>
+
+    <script>
+    (function() {
+        var monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+        var today = new Date();
+        var current = { year: today.getFullYear(), month: today.getMonth() + 1 };
+        var eventsByDate = {};
+
+        function loadEvents() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api/booking/calendar-events/?year=' + current.year + '&month=' + current.month, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.onload = function() {
+                if (xhr.status !== 200) return;
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.success && data.events) {
+                        eventsByDate = {};
+                        data.events.forEach(function(ev) {
+                            if (!eventsByDate[ev.date]) eventsByDate[ev.date] = [];
+                            eventsByDate[ev.date].push(ev);
+                        });
+                    }
+                } catch (e) {}
+                renderCalendar();
+            };
+            xhr.send();
+        }
+
+        function renderCalendar() {
+            var year = current.year;
+            var month = current.month;
+            var first = new Date(year, month - 1, 1);
+            var last = new Date(year, month, 0);
+            var startDay = (first.getDay() || 7) - 1;
+            var daysInMonth = last.getDate();
+            var prevMonth = month === 1 ? 12 : month - 1;
+            var prevYear = month === 1 ? year - 1 : year;
+            var prevLast = new Date(prevYear, prevMonth, 0);
+            var daysPrev = prevLast.getDate();
+
+            document.getElementById('calTitle').textContent = monthNames[month - 1] + ' ' + year;
+
+            var grid = document.getElementById('calGrid');
+            grid.innerHTML = '';
+            var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+            var dayCount = 0;
+            for (var i = 0; i < startDay; i++) {
+                var d = daysPrev - startDay + i + 1;
+                var dateStr = prevYear + '-' + String(prevMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                var cell = makeDayCell(dateStr, d, true);
+                grid.appendChild(cell);
+                dayCount++;
+            }
+            for (var d = 1; d <= daysInMonth; d++) {
+                var dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                var cell = makeDayCell(dateStr, d, false);
+                if (dateStr === todayStr) cell.classList.add('today');
+                grid.appendChild(cell);
+                dayCount++;
+            }
+            var rest = (7 - (dayCount % 7)) % 7;
+            var nextMonth = month === 12 ? 1 : month + 1;
+            var nextYear = month === 12 ? year + 1 : year;
+            for (var i = 1; i <= rest; i++) {
+                var dateStr = nextYear + '-' + String(nextMonth).padStart(2, '0') + '-' + String(i).padStart(2, '0');
+                var cell = makeDayCell(dateStr, i, true);
+                grid.appendChild(cell);
+            }
+        }
+
+        function makeDayCell(dateStr, dayNum, otherMonth) {
+            var cell = document.createElement('div');
+            cell.className = 'calendar-day' + (otherMonth ? ' other-month' : '');
+            cell.setAttribute('data-date', dateStr);
+            var events = eventsByDate[dateStr] || [];
+            var timeStr = '';
+            var html = '<div class="day-num">' + dayNum + '</div><div class="day-events">';
+            events.forEach(function(ev) {
+                timeStr = ev.time;
+                if (ev.end_time) timeStr += ' – ' + ev.end_time;
+                html += '<div class="cal-event ' + (ev.status || '') + '" data-id="' + ev.id + '" data-client_name="' + escapeAttr(ev.client_name) + '" data-client_phone="' + escapeAttr(ev.client_phone) + '" data-client_email="' + escapeAttr(ev.client_email || '') + '" data-client_telegram="' + escapeAttr(ev.client_telegram || '') + '" data-time="' + escapeAttr(timeStr) + '" data-service="' + escapeAttr(ev.service || '') + '">' + (ev.time || '') + ' ' + (ev.client_name || '') + '</div>';
+            });
+            html += '</div>';
+            cell.innerHTML = html;
+            return cell;
+        }
+
+        function escapeAttr(s) {
+            return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function showPopover(ev, el) {
+            var name = el.getAttribute('data-client_name') || '';
+            var phone = el.getAttribute('data-client_phone') || '';
+            var email = el.getAttribute('data-client_email') || '';
+            var telegram = el.getAttribute('data-client_telegram') || '';
+            var time = el.getAttribute('data-time') || '';
+            var service = el.getAttribute('data-service') || '';
+            var pop = document.getElementById('eventPopover');
+            var parts = ['<h4>' + (name || '—') + '</h4>'];
+            if (time) parts.push('<p class="time">🕐 ' + time + '</p>');
+            if (service) parts.push('<p>Услуга: ' + service + '</p>');
+            if (phone) parts.push('<p>Телефон: ' + phone + '</p>');
+            if (email) parts.push('<p>Email: ' + email + '</p>');
+            if (telegram) parts.push('<p>Telegram: ' + telegram + '</p>');
+            pop.innerHTML = parts.join('');
+            pop.style.display = 'block';
+            var rect = el.getBoundingClientRect();
+            pop.style.left = (rect.left + window.scrollX) + 'px';
+            pop.style.top = (rect.bottom + 4 + window.scrollY) + 'px';
+            if (rect.left + 320 > window.innerWidth) pop.style.left = (rect.right - 320 + window.scrollX) + 'px';
+        }
+
+        function hidePopover() {
+            document.getElementById('eventPopover').style.display = 'none';
+        }
+
+        document.getElementById('calPrev').onclick = function() {
+            if (current.month === 1) { current.year--; current.month = 12; } else current.month--;
+            loadEvents();
+        };
+        document.getElementById('calNext').onclick = function() {
+            if (current.month === 12) { current.year++; current.month = 1; } else current.month++;
+            loadEvents();
+        };
+
+        document.getElementById('calGrid').addEventListener('click', function(e) {
+            var el = e.target.closest('.cal-event');
+            if (el) showPopover(e, el);
+        });
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.cal-event') && !e.target.closest('#eventPopover')) hidePopover();
+        });
+
+        loadEvents();
+    })();
+    </script>
 </body>
 </html>
