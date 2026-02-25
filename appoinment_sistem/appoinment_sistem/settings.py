@@ -37,7 +37,8 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 if DEBUG:
     ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']  # Для разработки разрешаем все хосты
 else:
-    ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '').split(',') if host.strip()] if os.getenv('ALLOWED_HOSTS') else []
+    _hosts = os.getenv('ALLOWED_HOSTS', '').strip()
+    ALLOWED_HOSTS = [h.strip() for h in _hosts.split(',') if h.strip()] if _hosts else ['localhost', '127.0.0.1']
 
 
 # Application definition
