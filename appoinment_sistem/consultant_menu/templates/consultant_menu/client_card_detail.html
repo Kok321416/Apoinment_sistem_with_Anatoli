@@ -69,6 +69,15 @@
                     <input type="text" name="name" value="{{ card.name|default:'' }}" placeholder="Необязательно">
                 </div>
                 <div class="form-group">
+                    <label>Пол</label>
+                    <select name="gender" style="width:100%; padding:12px; border:1px solid var(--card-border,#ddd); border-radius:8px;">
+                        <option value="">Не указан</option>
+                        <option value="male" {% if card.gender == 'male' %}selected{% endif %}>Мужской</option>
+                        <option value="female" {% if card.gender == 'female' %}selected{% endif %}>Женский</option>
+                        <option value="other" {% if card.gender == 'other' %}selected{% endif %}>Другой</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label>Email</label>
                     <input type="email" name="email" value="{{ card.email|default:'' }}" placeholder="Необязательно">
                 </div>
@@ -86,6 +95,9 @@
                 </div>
                 <button type="submit" class="btn">Сохранить</button>
             </form>
+            {% if card.gender %}
+            <p style="margin: 12px 0 0 0; color: var(--text-muted); font-size: 14px;"><strong>Пол:</strong> {{ card.get_gender_display }}</p>
+            {% endif %}
             {% if card.email or card.telegram or card.phone %}
             <div class="contact-links" style="margin-top:20px;">
                 {% if card.phone %}

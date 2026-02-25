@@ -38,7 +38,7 @@ DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 
 # На сервере: ALLOWED_HOSTS=ваш-домен.ru,www.ваш-домен.ru,127.0.0.1
 _allowed = os.environ.get("ALLOWED_HOSTS", "").strip()
-ALLOWED_HOSTS = [h.strip() for h in _allowed.split(",") if h.strip()] if _allowed else []
+ALLOWED_HOSTS = [h.strip() for h in _allowed.split(",") if h.strip()] if _allowed else ["localhost", "127.0.0.1"]
 
 # Django 4+: без этого POST с вашего домена за прокси даёт 403 CSRF
 _site = os.environ.get("SITE_URL", "").strip().rstrip("/")
