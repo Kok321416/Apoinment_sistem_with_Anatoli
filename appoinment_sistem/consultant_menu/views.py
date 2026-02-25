@@ -1381,6 +1381,7 @@ def client_cards_list_view(request):
         action = request.POST.get('action')
         if action == 'create':
             name = (request.POST.get('name') or '').strip() or None
+            gender = (request.POST.get('gender') or '').strip() or ''
             email = (request.POST.get('email') or '').strip() or None
             phone = (request.POST.get('phone') or '').strip() or None
             telegram = (request.POST.get('telegram') or '').strip() or None
@@ -1388,6 +1389,7 @@ def client_cards_list_view(request):
             ClientCard.objects.create(
                 consultant=consultant,
                 name=name,
+                gender=gender,
                 email=email,
                 phone=phone,
                 telegram=telegram,
@@ -1444,6 +1446,7 @@ def client_card_detail_view(request, card_id):
         action = request.POST.get('action')
         if action == 'update':
             card.name = (request.POST.get('name') or '').strip() or None
+            card.gender = (request.POST.get('gender') or '').strip() or ''
             card.email = (request.POST.get('email') or '').strip() or None
             card.phone = (request.POST.get('phone') or '').strip() or None
             card.telegram = (request.POST.get('telegram') or '').strip() or None
