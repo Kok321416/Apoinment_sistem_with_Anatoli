@@ -30,6 +30,8 @@ from consultant_menu.views import (
     confirm_booking_telegram_browser, confirm_booking_telegram_browser_api,
     api_telegram_client_bookings,
     api_telegram_specialist_bookings,
+    api_telegram_specialist_clients,
+    api_booking_specialist_set_status,
     api_booking_calendar_events,
 )
 
@@ -72,6 +74,8 @@ urlpatterns = [
     path("api/specialist/connect-telegram/", confirm_specialist_telegram_api, name="confirm_specialist_telegram"),
     path("api/telegram/client-bookings/", api_telegram_client_bookings, name="api_telegram_client_bookings"),
     path("api/telegram/specialist-bookings/", api_telegram_specialist_bookings, name="api_telegram_specialist_bookings"),
+    path("api/telegram/specialist-clients/", api_telegram_specialist_clients, name="api_telegram_specialist_clients"),
+    path("api/booking/specialist-set-status/", api_booking_specialist_set_status, name="api_booking_specialist_set_status"),
 
     # Записи, карточки клиентов
     path("booking/", booking_view, name="booking"),

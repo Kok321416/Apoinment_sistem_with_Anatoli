@@ -51,6 +51,13 @@
         }
         .btn-telegram:hover { background: #4f46e5; }
         .btn-telegram::before { content: "✈"; font-size: 18px; }
+        /* Итоговая табличка */
+        .success-summary-table { border-left: 4px solid #059669; }
+        .summary-table { width: 100%; border-collapse: collapse; }
+        .summary-table .summary-label { color: #6b7280; padding: 8px 12px 8px 0; width: 100px; vertical-align: top; }
+        .summary-table .summary-value { padding: 8px 0; color: #111827; }
+        .summary-done { margin: 16px 0 0 0; padding: 12px; background: #ecfdf5; border-radius: 8px; color: #059669; font-size: 14px; }
+        .summary-done-muted { background: #f3f4f6; color: #6b7280; }
         /* Мобильная версия */
         @media (max-width: 768px) {
             .success-page {
@@ -85,8 +92,38 @@
             <p style="margin: 0; opacity: 0.95;">Ожидает подтверждения специалиста</p>
         </div>
 
+        <!-- Итоговая табличка: что получилось -->
+        <div class="success-card success-summary-table">
+            <h3 style="margin: 0 0 16px 0; color: #059669; font-size: 1.1rem;">✅ Итог — запись принята</h3>
+            <table class="summary-table" role="presentation">
+                <tbody>
+                    <tr><td class="summary-label">Услуга</td><td class="summary-value">{{ service.name }}</td></tr>
+                    <tr><td class="summary-label">Дата</td><td class="summary-value">{{ booking.booking_date|date:"d.m.Y" }}</td></tr>
+                    <tr><td class="summary-label">Время</td><td class="summary-value">
+                        {% if booking.booking_end_time %}
+                            {{ booking.booking_time|time:"H:i" }} – {{ booking.booking_end_time|time:"H:i" }}
+                        {% else %}
+                            {{ booking.booking_time|time:"H:i" }}
+                        {% endif %}
+                    </td></tr>
+                    <tr><td class="summary-label">Имя</td><td class="summary-value">{{ booking.client_name }}</td></tr>
+                    <tr><td class="summary-label">Телефон</td><td class="summary-value">{{ booking.client_phone|default:"—" }}</td></tr>
+                    {% if booking.client_email %}
+                    <tr><td class="summary-label">Email</td><td class="summary-value">{{ booking.client_email }}</td></tr>
+                    {% endif %}
+                    <tr><td class="summary-label">Статус</td><td class="summary-value"><strong>{{ booking.get_status_display }}</strong></td></tr>
+                </tbody>
+            </table>
+            {% if booking.telegram_id %}
+            <p class="summary-done">✓ Сообщение о записи отправлено вам в Telegram.</p>
+            {% else %}
+            <p class="summary-done summary-done-muted">Подтвердите Telegram по кнопке ниже — и придёт сообщение о записи и напоминания.</p>
+            {% endif %}
+        </div>
+
         <div class="success-card">
-            <h3>{{ service.name }}</h3>
+            <h3>Детали записи</h3>
+            <p><strong>Услуга:</strong> {{ service.name }}</p>
             <p><strong>Дата:</strong> {{ booking.booking_date|date:"d.m.Y" }}</p>
             <p><strong>Время:</strong>
                 {% if booking.booking_end_time %}

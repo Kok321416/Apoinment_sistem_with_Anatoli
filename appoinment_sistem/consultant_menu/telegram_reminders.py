@@ -9,8 +9,8 @@ import requests
 logger = logging.getLogger(__name__)
 
 
-def _send_telegram(chat_id, text: str) -> bool:
-    """Отправить сообщение в Telegram (chat_id — число или строка). Возвращает True при успехе."""
+def _send_telegram(chat_id, text: str, reply_markup: dict = None) -> bool:
+    """Отправить сообщение в Telegram (chat_id — число или строка). reply_markup — опционально (inline_keyboard)."""
     token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None) or ''
     if not token:
         logger.warning("TELEGRAM_BOT_TOKEN не задан — сообщение не отправлено")
@@ -21,6 +21,9 @@ def _send_telegram(chat_id, text: str) -> bool:
         'text': text,
         'parse_mode': 'HTML',
     }
+    if reply_markup:
+        import json
+        data['reply_markup'] = json.dumps(reply_markup)
     try:
         r = requests.post(url, json=data, timeout=10)
         r.raise_for_status()
@@ -220,6 +223,38 @@ def format_booking_status_changed_specialist(booking, new_status: str, old_statu
     )
 
 
+def format_booking_rescheduled_client(booking, old_date_str: str, old_slot: str) -> str:
+    """Текст клиенту о переносе консультации на другое время."""
+    info = _booking_base_info(booking)
+    return (
+        f"📅 <b>Время консультации перенесено</b>\n\n"
+        f"Было: {old_date_str}, {old_slot}\n"
+        f"Стало: {info['date_str']}, {info['slot']}\n\n"
+        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
+        f"👤 Специалист: {info['consultant_name']}\n"
+        f"📍 Место: {info['calendar_name']}"
+    )
+
+
+def notify_booking_rescheduled(booking, old_date, old_time, old_end_time) -> None:
+    """Отправить клиенту в Telegram уведомление о переносе времени консультации."""
+    from datetime import date, time
+    if isinstance(old_date, date):
+        old_date_str = old_date.strftime('%d.%m.%Y')
+    else:
+        old_date_str = str(old_date)
+    old_t = old_time.strftime('%H:%M') if hasattr(old_time, 'strftime') else str(old_time)
+    old_e = old_end_time.strftime('%H:%M') if old_end_time and hasattr(old_end_time, 'strftime') else ''
+    old_slot = old_t + (f' – {old_e}' if old_e else '')
+    try:
+        telegram_id = getattr(booking, 'telegram_id', None)
+        if telegram_id:
+            text = format_booking_rescheduled_client(booking, old_date_str, old_slot)
+            _send_telegram(telegram_id, text)
+    except Exception as e:
+        logger.exception("Ошибка уведомления о переносе записи: %s", e)
+
+
 def notify_booking_status_changed(booking, old_status: str = None) -> None:
     """
     Отправить клиенту и специалисту уведомления об изменении записи (статус и т.д.).
@@ -253,7 +288,7 @@ def notify_booking_status_changed(booking, old_status: str = None) -> None:
 
 
 def notify_specialist_new_booking(booking) -> bool:
-    """Отправить специалисту уведомление о новой записи в Telegram. Возвращает True при успехе."""
+    """Отправить специалисту уведомление о новой записи в Telegram с кнопками «Подтвердить» / «Отклонить»."""
     try:
         consultant = getattr(booking.calendar, 'consultant', None)
         if not consultant:
@@ -265,8 +300,20 @@ def notify_specialist_new_booking(booking) -> bool:
         chat_id = getattr(integration, 'telegram_chat_id', None) or ''
         if not str(chat_id).strip():
             return False
-        text = format_new_booking_message_for_specialist(booking)
-        return _send_telegram(chat_id.strip(), text)
+        text = (
+            "🆕 <b>Вам новая запись</b>\n\n"
+            + format_new_booking_message_for_specialist(booking).replace("🆕 <b>Новая запись</b>\n\n", "", 1)
+            + "\n\n<b>Подтвердить или отклонить?</b>"
+        )
+        reply_markup = {
+            'inline_keyboard': [
+                [
+                    {'text': '✅ Подтвердить', 'callback_data': f'spec_bok_ok_{booking.id}'},
+                    {'text': '❌ Отклонить', 'callback_data': f'spec_bok_no_{booking.id}'},
+                ],
+            ]
+        }
+        return _send_telegram(chat_id.strip(), text, reply_markup)
     except Exception as e:
         logger.exception("Ошибка уведомления специалисту: %s", e)
         return False

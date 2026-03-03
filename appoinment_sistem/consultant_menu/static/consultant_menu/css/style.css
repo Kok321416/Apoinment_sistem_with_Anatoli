@@ -401,6 +401,42 @@ a:hover {
     line-height: 1.5;
 }
 
+.telegram-reminder-after-register {
+    max-width: 800px;
+    margin: 0 auto 28px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 2px solid #2196f3;
+    border-radius: var(--radius);
+    color: #0d47a1;
+    font-size: 15px;
+    line-height: 1.5;
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+.telegram-reminder-after-register .telegram-reminder-title {
+    margin: 0 0 8px 0;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+.telegram-reminder-after-register .telegram-reminder-text {
+    margin: 0 0 16px 0;
+    color: #1565c0;
+}
+.telegram-reminder-after-register .btn-telegram-reminder {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #0088cc;
+    color: #fff !important;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+.telegram-reminder-after-register .btn-telegram-reminder:hover {
+    background: #006699;
+    color: #fff !important;
+}
+
 /* ========== ФОРМЫ И СЕКЦИИ (UPROCK: МЯГКИЕ БЛОКИ) ========== */
 .form-section {
     background: var(--card-bg);

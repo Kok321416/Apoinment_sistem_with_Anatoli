@@ -25,7 +25,7 @@ def get_site_url():
 def _fetch_site_api(path, json_data):
     """
     Вызов API основного сайта (consultant_menu). Заголовок X-Bot-Token для доступа.
-    Возвращает (success: bool, data: dict или None).
+    Возвращает (success: bool, data: dict или None). При ошибке data может содержать error из ответа.
     """
     site_url = get_site_url().rstrip('/')
     token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None) or ''
@@ -34,9 +34,12 @@ def _fetch_site_api(path, json_data):
     url = f"{site_url}{path}"
     try:
         r = requests.post(url, json=json_data, timeout=10, headers={'X-Bot-Token': token})
+        try:
+            data = r.json() if r.text else {}
+        except Exception:
+            data = {}
         if r.status_code != 200:
-            return False, None
-        data = r.json()
+            return False, data
         return data.get('success') is True, data
     except Exception as e:
         logger.debug("Site API %s: %s", path, e)
@@ -84,6 +87,27 @@ def answer_callback_query(callback_query_id, text=None):
         return False
 
 
+def edit_telegram_message(chat_id, message_id, text, remove_keyboard=True):
+    """Изменить текст сообщения. Если remove_keyboard=True — убрать inline-кнопки (передаём пустой inline_keyboard)."""
+    if not TELEGRAM_BOT_TOKEN:
+        return False
+    url = f"{TELEGRAM_API_URL}/editMessageText"
+    payload = {
+        'chat_id': chat_id,
+        'message_id': message_id,
+        'text': text,
+        'parse_mode': 'HTML',
+    }
+    if remove_keyboard:
+        payload['reply_markup'] = json.dumps({'inline_keyboard': []})
+    try:
+        requests.post(url, json=payload, timeout=5)
+        return True
+    except Exception as e:
+        logger.error("Ошибка editMessageText: %s", e)
+        return False
+
+
 def get_main_reply_keyboard():
     """Постоянное меню внизу экрана для клиентов (кнопки всегда видны)."""
     return get_client_reply_keyboard()
@@ -103,12 +127,12 @@ def get_client_reply_keyboard():
 
 
 def get_specialist_reply_keyboard():
-    """Меню специалиста: ближайшие записи, статистика, управление аккаунтами, помощь."""
+    """Меню специалиста: записи, клиенты, ближайшие записи, статистика, управление, помощь."""
     return {
         'keyboard': [
+            [{'text': '📋 Записи'}, {'text': '👥 Клиенты'}],
             [{'text': '📅 Ближайшие записи'}, {'text': '📊 Статистика'}],
-            [{'text': '🔗 Управление аккаунтами'}],
-            [{'text': '❓ Помощь'}],
+            [{'text': '🔗 Управление аккаунтами'}, {'text': '❓ Помощь'}],
         ],
         'resize_keyboard': True,
         'persistent': True,
@@ -229,6 +253,10 @@ def handle_telegram_update(update_data):
                 handle_contact_admin_command(chat_id)
             elif text == '📱 Записаться':
                 _send_webapp_button(chat_id)
+            elif text == '📋 Записи':
+                handle_specialist_bookings_list(chat_id, user_id)
+            elif text == '👥 Клиенты':
+                handle_specialist_clients_list(chat_id, user_id)
             elif text == '📅 Ближайшие записи':
                 handle_specialist_next_appointments(chat_id, user_id)
             elif text == '📊 Статистика':
@@ -246,7 +274,7 @@ def handle_telegram_update(update_data):
             user_id = callback_query.get('from', {}).get('id')
             logger.info("TG bot: callback chat_id=%s user_id=%s data=%r", chat_id, user_id, (data or '')[:60])
             # Не отвечаем сразу для кнопок, которые показывают свой текст (иначе второй answer не сработает)
-            if not data.startswith('booklink_') and not data.startswith('spec_confirm_'):
+            if not data.startswith('booklink_') and not data.startswith('spec_confirm_') and not data.startswith('spec_bok_ok_') and not data.startswith('spec_bok_no_'):
                 answer_callback_query(callback_query_id)
 
             if data == 'my_appointments':
@@ -274,6 +302,22 @@ def handle_telegram_update(update_data):
                 token_str = data.replace('spec_confirm_', '', 1)
                 user_id = callback_query['from']['id']
                 handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query_id, token_str)
+            elif data.startswith('spec_bok_ok_'):
+                try:
+                    bid = int(data.replace('spec_bok_ok_', '', 1))
+                    message_id = callback_query['message']['message_id']
+                    handle_specialist_booking_confirm_decline(chat_id, callback_query_id, message_id, bid, 'confirm')
+                except (ValueError, KeyError) as e:
+                    logger.warning("spec_bok_ok_ parse: %s", e)
+                    answer_callback_query(callback_query_id, 'Ошибка. Попробуйте позже.')
+            elif data.startswith('spec_bok_no_'):
+                try:
+                    bid = int(data.replace('spec_bok_no_', '', 1))
+                    message_id = callback_query['message']['message_id']
+                    handle_specialist_booking_confirm_decline(chat_id, callback_query_id, message_id, bid, 'decline')
+                except (ValueError, KeyError) as e:
+                    logger.warning("spec_bok_no_ parse: %s", e)
+                    answer_callback_query(callback_query_id, 'Ошибка. Попробуйте позже.')
             else:
                 send_telegram_message(chat_id, "Выберите действие по кнопкам ниже.", get_main_reply_keyboard())
     
@@ -420,6 +464,26 @@ def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
         answer_callback_query(callback_query_id, 'Ошибка. Попробуйте позже.')
 
 
+def handle_specialist_booking_confirm_decline(chat_id, callback_query_id, message_id, booking_id, action):
+    """Специалист нажал «Подтвердить» или «Отклонить» по новой записи — вызываем API сайта и обновляем сообщение."""
+    ok, data = _fetch_site_api('/api/booking/specialist-set-status/', {
+        'booking_id': booking_id,
+        'action': action,
+        'telegram_chat_id': str(chat_id),
+    })
+    if ok:
+        if action == 'confirm':
+            answer_callback_query(callback_query_id, 'Запись подтверждена.')
+            edit_telegram_message(chat_id, message_id, '✅ <b>Запись подтверждена.</b>')
+        else:
+            answer_callback_query(callback_query_id, 'Запись отклонена.')
+            edit_telegram_message(chat_id, message_id, '❌ <b>Запись отклонена.</b>')
+    else:
+        err = (data or {}).get('error', 'Ошибка сервера')
+        answer_callback_query(callback_query_id, err[:200])
+        edit_telegram_message(chat_id, message_id, f'⚠️ Не удалось изменить статус: {err}')
+
+
 def handle_link_token(chat_id, user_id, username, first_name, token_str):
     """
     Обработка /start link_TOKEN: привязка Telegram к аккаунту специалиста (или клиента).
@@ -518,22 +582,27 @@ def handle_start_command(chat_id, user_id, username, first_name):
             if ok and data.get('is_specialist'):
                 is_specialist = True
         if is_specialist:
-            web_stats = f"{get_site_url()}/telegram/specialist/stats/"
-            web_upcoming = f"{get_site_url()}/telegram/specialist/upcoming/"
+            site_url = get_site_url().rstrip('/')
+            web_stats = f"{site_url}/telegram/specialist/stats/"
+            web_upcoming = f"{site_url}/telegram/specialist/upcoming/"
             keyboard = {
                 "inline_keyboard": [
+                    [
+                        {"text": "📋 Записи", "url": f"{site_url}/booking/"},
+                        {"text": "👥 Клиенты", "url": f"{site_url}/clients/"},
+                    ],
                     [
                         {"text": "📊 Статистика", "web_app": {"url": web_stats}},
                         {"text": "📅 Ближайшие записи", "web_app": {"url": web_upcoming}},
                     ],
                     [
-                        {"text": "📅 Показать 5 ближайших (в чат)", "callback_data": "spec_next"},
+                        {"text": "📅 5 ближайших в чат", "callback_data": "spec_next"},
                     ],
                 ]
             }
-            msg = f"👋 Добро пожаловать, {first_name}!\n\nВы вошли как <b>специалист</b>.\nВыберите действие:"
+            msg = f"👋 Добро пожаловать, {first_name}!\n\nВы вошли как <b>специалист</b>.\nКнопки внизу: <b>Записи</b> — кто записался, <b>Клиенты</b> — карточки клиентов."
             send_telegram_message(chat_id, msg, keyboard)
-            send_telegram_message(chat_id, "Кнопки внизу экрана — для быстрого доступа.", get_specialist_reply_keyboard())
+            send_telegram_message(chat_id, "Используйте кнопки внизу экрана.", get_specialist_reply_keyboard())
             return
 
         # Кнопки: inline под сообщением + постоянное меню внизу
@@ -919,6 +988,90 @@ def handle_specialist_next_appointments(chat_id, user_id):
         send_telegram_message(chat_id, text)
     except Exception as e:
         send_telegram_message(chat_id, f"Ошибка: {e}")
+
+
+def handle_specialist_bookings_list(chat_id, user_id):
+    """Список записей к специалисту (кто записался): с основного сайта consultant_menu."""
+    site_url = get_site_url().rstrip('/')
+    booking_url = f"{site_url}/booking/"
+    try:
+        ok, data = _fetch_site_api('/api/telegram/specialist-bookings/', {'telegram_chat_id': str(chat_id)})
+        if not ok or not data.get('is_specialist'):
+            send_telegram_message(chat_id, "Список записей доступен только специалистам с привязанным Telegram.")
+            return
+        bookings = data.get('bookings') or []
+        upcoming = [b for b in bookings if b.get('is_upcoming')][:15]
+        past = [b for b in bookings if not b.get('is_upcoming')][:5]
+        def _fmt_date(d):
+            if not d:
+                return ''
+            try:
+                from datetime import datetime
+                dt = datetime.strptime(d[:10], '%Y-%m-%d')
+                return dt.strftime('%d.%m.%Y')
+            except Exception:
+                return d[:10]
+
+        if not upcoming and not past:
+            text = "📋 <b>Записи</b>\n\nПока нет записей."
+        else:
+            text = "📋 <b>Записи</b> (кто к вам записался)\n\n"
+            if upcoming:
+                text += "<b>Предстоящие:</b>\n"
+                for b in upcoming:
+                    text += f"• {_fmt_date(b.get('date'))} {b.get('time', '')} — {b.get('client_name', '—')}\n"
+                    text += f"  {b.get('service_name', 'Консультация')}\n"
+                text += "\n"
+            if past:
+                text += "<b>Прошедшие:</b>\n"
+                for b in past:
+                    text += f"• {_fmt_date(b.get('date'))} {b.get('client_name', '—')}\n"
+        keyboard = {
+            'inline_keyboard': [[{'text': '📅 Открыть календарь на сайте', 'url': booking_url}]]
+        }
+        send_telegram_message(chat_id, text, keyboard)
+    except Exception as e:
+        logger.exception("handle_specialist_bookings_list: %s", e)
+        send_telegram_message(chat_id, "Не удалось загрузить записи. Попробуйте позже.")
+
+
+def handle_specialist_clients_list(chat_id, user_id):
+    """Список клиентов из карточек клиентов специалиста (consultant_menu.ClientCard)."""
+    site_url = get_site_url().rstrip('/')
+    clients_url = f"{site_url}/clients/"
+    try:
+        ok, data = _fetch_site_api('/api/telegram/specialist-clients/', {'telegram_chat_id': str(chat_id)})
+        if not ok or not data.get('is_specialist'):
+            send_telegram_message(chat_id, "Список клиентов доступен только специалистам с привязанным Telegram.")
+            return
+        clients = data.get('clients') or []
+        if not clients:
+            text = "👥 <b>Клиенты</b>\n\nПока нет карточек клиентов."
+        else:
+            text = "👥 <b>Клиенты</b> (карточки)\n\n"
+            for c in clients[:20]:
+                name = c.get('name') or '—'
+                contact = []
+                if c.get('phone'):
+                    contact.append(c['phone'])
+                if c.get('telegram'):
+                    contact.append(c['telegram'])
+                if c.get('email'):
+                    contact.append(c['email'])
+                text += f"• <b>{name}</b>\n"
+                if contact:
+                    text += "  " + ", ".join(contact) + "\n"
+                else:
+                    text += "  —\n"
+            if len(clients) > 20:
+                text += f"\n… и ещё {len(clients) - 20}. Полный список на сайте."
+        keyboard = {
+            'inline_keyboard': [[{'text': '👥 Карточки клиентов на сайте', 'url': clients_url}]]
+        }
+        send_telegram_message(chat_id, text, keyboard)
+    except Exception as e:
+        logger.exception("handle_specialist_clients_list: %s", e)
+        send_telegram_message(chat_id, "Не удалось загрузить клиентов. Попробуйте позже.")
 
 
 def send_broadcast_message(message_text, user_type=None):
