@@ -158,15 +158,8 @@ class ClientCard(models.Model):
     Карточка клиента у специалиста: основные данные, примечания, ссылки на Telegram/почту.
     История консультаций строится по совпадению email/telegram или по связи через booking.client_card.
     """
-    GENDER_CHOICES = [
-        ('', 'Не указан'),
-        ('male', 'Мужской'),
-        ('female', 'Женский'),
-        ('other', 'Другой'),
-    ]
     consultant = models.ForeignKey(Consultant, on_delete=models.CASCADE, related_name='client_cards')
     name = models.CharField(max_length=255, blank=True, null=True, verbose_name='Имя')
-    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, default='', verbose_name='Пол')
     email = models.EmailField(blank=True, null=True, verbose_name='Email')
     phone = models.CharField(max_length=30, blank=True, null=True, verbose_name='Телефон')
     telegram = models.CharField(max_length=255, blank=True, null=True, verbose_name='Telegram (ник или ссылка)')
