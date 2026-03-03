@@ -15,6 +15,25 @@
             align-items: start;
             max-width: 100%;
         }
+        /* Компьютерная версия: календарь во весь экран сверху, записи — ниже */
+        @media (min-width: 1025px) {
+            .booking-page-layout {
+                grid-template-columns: 1fr;
+                grid-template-areas: "calendar" "list";
+            }
+            .booking-calendar-col {
+                grid-area: calendar;
+                order: -1;
+                position: static;
+                max-width: 100%;
+                width: 100%;
+            }
+            .booking-list-col {
+                grid-area: list;
+                min-width: 0;
+                width: 100%;
+            }
+        }
         @media (max-width: 1024px) {
             .booking-page-layout {
                 grid-template-columns: 1fr;
@@ -51,6 +70,15 @@
             background: var(--accent);
             color: white;
             border-color: var(--accent);
+        }
+        /* На десктопе календарь в списке — шире, сетка повыше */
+        @media (min-width: 1025px) {
+            .booking-calendar-col .calendar-grid {
+                min-height: 320px;
+            }
+            .booking-calendar-col .calendar-day {
+                min-height: 100px;
+            }
         }
         /* Карточки записей — компактнее */
         .booking-card {
@@ -279,6 +307,11 @@
             display: flex;
             flex-direction: column;
             min-height: 0;
+        }
+        .booking-page-calendar-view #bookingListColPlaceholder {
+            width: 100%;
+            max-width: 100%;
+            margin-top: 24px;
         }
         .booking-page-calendar-view .booking-calendar-full-wrap .calendar-grid {
             flex: 1;

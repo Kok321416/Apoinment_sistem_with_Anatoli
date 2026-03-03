@@ -1337,20 +1337,23 @@ def  booking_view(request):
     if request.method == 'POST':
         action = request.POST.get('action')
         booking_id = request.POST.get('booking_id')
+        redirect_url = reverse('booking')
+        if status_filter and status_filter != 'all':
+            redirect_url += '?status=' + status_filter
 
         try:
             booking = Booking.objects.get(id=booking_id, calendar__in=calendars)
             old_status = booking.status
 
-            if action == 'confirm':
+            if action == 'confirm' and old_status != 'confirmed':
                 booking.status = 'confirmed'
                 booking.save()
                 notify_booking_status_changed(booking, old_status=old_status)
-            elif action == 'cancel':
+            elif action == 'cancel' and old_status != 'cancelled':
                 booking.status = 'cancelled'
                 booking.save()
                 notify_booking_status_changed(booking, old_status=old_status)
-            elif action == 'complete':
+            elif action == 'complete' and old_status != 'completed':
                 booking.status = 'completed'
                 booking.save()
                 notify_booking_status_changed(booking, old_status=old_status)
@@ -1366,7 +1369,6 @@ def  booking_view(request):
                     if new_date_obj and new_time_obj and booking.service_id:
                         duration = getattr(booking.service, 'duration_minutes', 60) or 60
                         new_end_time_obj = (datetime.combine(new_date_obj, new_time_obj) + timedelta(minutes=duration)).time()
-                        # Проверка пересечения с другими записями (кроме текущей)
                         others = Booking.objects.filter(
                             calendar=booking.calendar,
                             booking_date=new_date_obj,
@@ -1394,17 +1396,16 @@ def  booking_view(request):
                             booking.booking_end_time = new_end_time_obj
                             booking.save(update_fields=['booking_date', 'booking_time', 'booking_end_time'])
                             notify_booking_rescheduled(booking, old_date, old_time, old_end_time)
-                            # Сброс напоминаний при переносе
                             booking.reminder_24h_sent = False
                             booking.reminder_1h_sent = False
                             booking.specialist_reminder_24h_sent = False
                             booking.specialist_reminder_1h_sent = False
                             booking.save(update_fields=['reminder_24h_sent', 'reminder_1h_sent', 'specialist_reminder_24h_sent', 'specialist_reminder_1h_sent'])
-
         except Booking.DoesNotExist:
             pass
 
         _mark_past_bookings_completed(calendars)
+        return redirect(redirect_url)
 
     if status_filter == 'cancelled':
         upcoming_bookings = Booking.objects.filter(calendar__in=calendars, status='cancelled').order_by('-booking_date', '-booking_time')
