@@ -7,7 +7,29 @@ from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from consultant_menu.models import Consultant, Clients, Category, Calendar, Service, TimeSlot, Booking, Integration, ClientCard
-from consultant_menu.telegram_reminders import notify_booking_status_changed
+from consultant_menu.telegram_reminders import notify_booking_status_changed, notify_booking_rescheduled
+
+
+def normalize_phone(phone: str) -> str:
+    """Нормализация телефона: только цифры, 8 в начале заменяется на +7, максимум 11 цифр (7 + 10)."""
+    if not phone:
+        return ''
+    digits = ''.join(c for c in str(phone).strip() if c.isdigit())
+    if not digits:
+        return ''
+    if digits.startswith('8') and len(digits) >= 11:
+        digits = '7' + digits[1:12]
+    elif digits.startswith('8'):
+        digits = '7' + digits[1:11]
+    elif not digits.startswith('7') and len(digits) <= 10:
+        digits = '7' + digits[:10]
+    elif digits.startswith('7'):
+        digits = digits[:11]
+    else:
+        digits = ('7' + digits)[:11]
+    return '+7' + digits[1:] if len(digits) > 1 else ('+7' if digits == '7' else '')
+
+
 from django.http import Http404, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -57,7 +79,7 @@ def register_view(request):
 
     if request.method == 'POST':
         fio = request.POST.get('fio', '').strip()
-        phone = request.POST.get('phone', '').strip()
+        phone = normalize_phone(request.POST.get('phone', '') or '')
         auth_method = request.POST.get('auth_method', 'email')
 
         if not fio or not phone:
@@ -129,6 +151,7 @@ def register_view(request):
             category_of_specialist=category,
         )
         login(request, user)
+        request.session['show_telegram_reminder_after_register'] = True
         return redirect('home')
 
     return render(request, 'consultant_menu/register.html')
@@ -249,7 +272,10 @@ class ConsultantAPIView(APIView):
 # ========== ДОМАШНЯЯ СТРАНИЦА ==========
 def home_view(request):
     """Главная страница с навигацией по инструментам"""
-    return render(request, 'consultant_menu/home.html')
+    show_telegram_reminder = request.session.pop('show_telegram_reminder_after_register', False)
+    return render(request, 'consultant_menu/home.html', {
+        'show_telegram_reminder_after_register': show_telegram_reminder,
+    })
 
 
 def privacy_page_view(request):
@@ -448,7 +474,7 @@ def public_booking_view(request, calendar_id):
         # Вход клиента по телефону (поиск карточки у этого специалиста)
         if request.POST.get('action') == 'client_login':
             from django.db.models import Q
-            login_phone = (request.POST.get('client_phone', '') or '').strip()
+            login_phone = normalize_phone(request.POST.get('client_phone', '') or '')
             login_email = (request.POST.get('client_email', '') or '').strip()
             if not login_phone:
                 return render(request, 'consultant_menu/public_booking.html', {
@@ -485,7 +511,7 @@ def public_booking_view(request, calendar_id):
         # Регистрация / сохранение контактов в сессию
         if request.POST.get('action') == 'set_contact':
             client_name = request.POST.get('client_name', '').strip()
-            client_phone = request.POST.get('client_phone', '').strip()
+            client_phone = normalize_phone(request.POST.get('client_phone', '') or '')
             client_email = request.POST.get('client_email', '').strip()
             client_telegram = (request.POST.get('client_telegram', '') or '').strip().replace(' ', '')
             if not client_phone:
@@ -650,6 +676,15 @@ def public_booking_view(request, calendar_id):
                         card.save(update_fields=['name', 'phone', 'email', 'telegram', 'updated_at'])
 
                 link_token = uuid.uuid4().hex[:24]
+                # Если пользователь авторизован через Telegram — подставить telegram_id, чтобы сразу отправить сообщение в бота
+                telegram_id_for_booking = None
+                if request.user.is_authenticated:
+                    sa = SocialAccount.objects.filter(user=request.user, provider='telegram').first()
+                    if sa and getattr(sa, 'uid', None):
+                        try:
+                            telegram_id_for_booking = int(sa.uid)
+                        except (ValueError, TypeError):
+                            pass
                 booking = Booking.objects.create(
                     service=service,
                     time_slot=time_slot,
@@ -664,6 +699,7 @@ def public_booking_view(request, calendar_id):
                     client_email=client_email or "",
                     status='pending',
                     link_token=link_token,
+                    telegram_id=telegram_id_for_booking,
                 )
 
             for key in ('booking_contact_done', 'booking_client_name', 'booking_client_phone',
@@ -907,6 +943,88 @@ def api_telegram_specialist_bookings(request):
     return JsonResponse({'success': True, 'bookings': items[:30], 'is_specialist': True})
 
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_telegram_specialist_clients(request):
+    """
+    API для бота: список карточек клиентов специалиста (ClientCard) по telegram_chat_id.
+    POST JSON: {"telegram_chat_id": "123456789"}. Заголовок X-Bot-Token: TELEGRAM_BOT_TOKEN.
+    """
+    if not _check_bot_token(request):
+        return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
+    try:
+        data = __import__('json').loads(request.body) if request.body else {}
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    raw = data.get('telegram_chat_id')
+    if raw is None:
+        return JsonResponse({'success': False, 'error': 'telegram_chat_id required'}, status=400)
+    telegram_chat_id = str(raw).strip()
+    try:
+        integration = Integration.objects.get(telegram_chat_id=telegram_chat_id)
+    except Integration.DoesNotExist:
+        return JsonResponse({'success': True, 'clients': [], 'is_specialist': False})
+    consultant = integration.consultant
+    cards = ClientCard.objects.filter(consultant=consultant).order_by('-updated_at')[:50]
+    items = []
+    for c in cards:
+        items.append({
+            'id': c.id,
+            'name': c.name or '—',
+            'phone': (c.phone or '').strip() or None,
+            'email': (c.email or '').strip() or None,
+            'telegram': (c.telegram or '').strip() or None,
+        })
+    return JsonResponse({'success': True, 'clients': items, 'is_specialist': True})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_booking_specialist_set_status(request):
+    """
+    API для бота: специалист подтверждает или отклоняет запись из Telegram.
+    POST JSON: {"booking_id": 123, "action": "confirm"|"decline", "telegram_chat_id": "123456789"}.
+    Заголовок X-Bot-Token: TELEGRAM_BOT_TOKEN.
+    """
+    if not _check_bot_token(request):
+        return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
+    try:
+        data = __import__('json').loads(request.body) if request.body else {}
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    booking_id = data.get('booking_id')
+    action = (data.get('action') or '').strip().lower()
+    raw_chat = data.get('telegram_chat_id')
+    if booking_id is None or action not in ('confirm', 'decline') or raw_chat is None:
+        return JsonResponse({'success': False, 'error': 'booking_id, action (confirm|decline), telegram_chat_id required'}, status=400)
+    try:
+        booking_id = int(booking_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'booking_id must be integer'}, status=400)
+    telegram_chat_id = str(raw_chat).strip()
+    try:
+        integration = Integration.objects.get(telegram_chat_id=telegram_chat_id)
+    except Integration.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Integration not found'}, status=404)
+    try:
+        booking = Booking.objects.select_related('calendar', 'calendar__consultant').get(id=booking_id)
+    except Booking.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Booking not found'}, status=404)
+    if booking.calendar.consultant_id != integration.consultant_id:
+        return JsonResponse({'success': False, 'error': 'Forbidden'}, status=403)
+    old_status = booking.status
+    if action == 'confirm':
+        new_status = 'confirmed'
+    else:
+        new_status = 'cancelled'
+    if old_status == new_status:
+        return JsonResponse({'success': True, 'status': new_status, 'message': 'Already in this status'})
+    booking.status = new_status
+    booking.save(update_fields=['status', 'updated_at'])
+    notify_booking_status_changed(booking, new_status, old_status)
+    return JsonResponse({'success': True, 'status': new_status})
+
+
 def _verify_telegram_widget_hash(payload: dict, received_hash: str) -> bool:
     """Проверка подписи данных от Telegram Login Widget. payload — все поля кроме hash."""
     bot_token = (getattr(settings, 'TELEGRAM_BOT_TOKEN', None) or '').strip()
@@ -1030,12 +1148,19 @@ def get_available_slots_api(request, calendar_id):
         is_available=True
     ).order_by('start_time')
 
-    # Получаем существующие записи на эту дату
-    existing_bookings = list(Booking.objects.filter(
+    # Получаем существующие записи на эту дату (при переносе исключаем текущую запись)
+    existing_qs = Booking.objects.filter(
         calendar=calendar,
         booking_date=booking_date,
         status__in=['pending', 'confirmed']
-    ))
+    )
+    exclude_booking_id = request.GET.get('exclude_booking_id')
+    if exclude_booking_id:
+        try:
+            existing_qs = existing_qs.exclude(id=int(exclude_booking_id))
+        except (ValueError, TypeError):
+            pass
+    existing_bookings = list(existing_qs)
 
     # Лимит записей в день: если уже достигнут — не показываем слоты
     max_per_day = getattr(calendar, 'max_services_per_day', 0) or 0
@@ -1225,6 +1350,56 @@ def  booking_view(request):
                 booking.status = 'cancelled'
                 booking.save()
                 notify_booking_status_changed(booking, old_status=old_status)
+            elif action == 'complete':
+                booking.status = 'completed'
+                booking.save()
+                notify_booking_status_changed(booking, old_status=old_status)
+            elif action == 'reschedule':
+                new_date_str = (request.POST.get('new_date') or '').strip()
+                new_time_str = (request.POST.get('new_time') or '').strip()
+                if new_date_str and new_time_str:
+                    try:
+                        new_date_obj = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+                        new_time_obj = datetime.strptime(new_time_str, '%H:%M').time()
+                    except ValueError:
+                        new_date_obj = new_time_obj = None
+                    if new_date_obj and new_time_obj and booking.service_id:
+                        duration = getattr(booking.service, 'duration_minutes', 60) or 60
+                        new_end_time_obj = (datetime.combine(new_date_obj, new_time_obj) + timedelta(minutes=duration)).time()
+                        # Проверка пересечения с другими записями (кроме текущей)
+                        others = Booking.objects.filter(
+                            calendar=booking.calendar,
+                            booking_date=new_date_obj,
+                            status__in=['pending', 'confirmed']
+                        ).exclude(id=booking.id)
+                        break_minutes = getattr(booking.calendar, 'break_between_services_minutes', 0) or 0
+                        break_delta = timedelta(minutes=break_minutes)
+                        start_dt = datetime.combine(new_date_obj, new_time_obj)
+                        end_dt = datetime.combine(new_date_obj, new_end_time_obj)
+                        overlap = False
+                        for b in others:
+                            if not b.booking_end_time:
+                                continue
+                            b_start = datetime.combine(new_date_obj, b.booking_time)
+                            b_end = datetime.combine(new_date_obj, b.booking_end_time)
+                            if not (end_dt + break_delta <= b_start or start_dt >= b_end + break_delta):
+                                overlap = True
+                                break
+                        if not overlap:
+                            old_date = booking.booking_date
+                            old_time = booking.booking_time
+                            old_end_time = booking.booking_end_time
+                            booking.booking_date = new_date_obj
+                            booking.booking_time = new_time_obj
+                            booking.booking_end_time = new_end_time_obj
+                            booking.save(update_fields=['booking_date', 'booking_time', 'booking_end_time'])
+                            notify_booking_rescheduled(booking, old_date, old_time, old_end_time)
+                            # Сброс напоминаний при переносе
+                            booking.reminder_24h_sent = False
+                            booking.reminder_1h_sent = False
+                            booking.specialist_reminder_24h_sent = False
+                            booking.specialist_reminder_1h_sent = False
+                            booking.save(update_fields=['reminder_24h_sent', 'reminder_1h_sent', 'specialist_reminder_24h_sent', 'specialist_reminder_1h_sent'])
 
         except Booking.DoesNotExist:
             pass
@@ -1291,6 +1466,8 @@ def api_booking_calendar_events(request):
             'client_telegram': b.client_telegram or '',
             'status': b.status,
             'service': b.service.name if b.service_id else '',
+            'calendar_id': b.calendar_id,
+            'service_id': b.service_id,
         })
     return JsonResponse({'success': True, 'events': events})
 
@@ -1316,7 +1493,7 @@ def profile_view(request):
             consultant.first_name = request.POST.get('first_name', '')
             consultant.last_name = request.POST.get('last_name', '')
             consultant.middle_name = request.POST.get('middle_name', '')
-            consultant.phone = request.POST.get('phone', '')
+            consultant.phone = normalize_phone(request.POST.get('phone', ''))
             consultant.telegram_nickname = request.POST.get('telegram_nickname', '')
             consultant.email = request.POST.get('email', '')
 
@@ -1382,7 +1559,7 @@ def client_cards_list_view(request):
         if action == 'create':
             name = (request.POST.get('name') or '').strip() or None
             email = (request.POST.get('email') or '').strip() or None
-            phone = (request.POST.get('phone') or '').strip() or None
+            phone = normalize_phone(request.POST.get('phone') or '') or None
             telegram = (request.POST.get('telegram') or '').strip() or None
             notes = (request.POST.get('notes') or '').strip() or None
             ClientCard.objects.create(
@@ -1445,7 +1622,7 @@ def client_card_detail_view(request, card_id):
         if action == 'update':
             card.name = (request.POST.get('name') or '').strip() or None
             card.email = (request.POST.get('email') or '').strip() or None
-            card.phone = (request.POST.get('phone') or '').strip() or None
+            card.phone = normalize_phone(request.POST.get('phone') or '') or None
             card.telegram = (request.POST.get('telegram') or '').strip() or None
             card.notes = (request.POST.get('notes') or '').strip() or None
             try:

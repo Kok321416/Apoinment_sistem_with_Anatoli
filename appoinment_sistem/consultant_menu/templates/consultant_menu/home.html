@@ -44,6 +44,14 @@
         </div>
         {% endif %}
 
+        {% if show_telegram_reminder_after_register %}
+        <div class="telegram-reminder-after-register" role="alert">
+            <p class="telegram-reminder-title">📬 Хотите получать уведомления и статус консультации?</p>
+            <p class="telegram-reminder-text">Подключите Telegram-бота — и вы будете получать напоминания о записях и изменения статуса.</p>
+            <a href="{% url 'integrations' %}" class="btn btn-telegram-reminder">Подключить Telegram-бота →</a>
+        </div>
+        {% endif %}
+
         {% if user.is_authenticated %}
         <h2 style="text-align: center; margin-bottom: 40px;">Доступные инструменты</h2>
         

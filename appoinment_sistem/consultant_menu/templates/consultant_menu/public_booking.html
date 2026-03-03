@@ -48,16 +48,38 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px 18px;
+            padding: 18px 20px;
             border: 2px solid var(--book-border);
             border-radius: var(--book-radius-sm);
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
+            position: relative;
         }
-        .service-tile:hover { border-color: var(--book-primary-light); background: #f5f3ff; }
-        .service-tile.selected { border-color: var(--book-primary); background: #eef2ff; }
-        .service-tile strong { display: block; margin-bottom: 4px; }
+        .service-tile:hover { border-color: var(--book-primary-light); background: #f5f3ff; transform: translateY(-1px); }
+        .service-tile.selected {
+            border-color: var(--book-primary);
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
+        .service-tile.selected::after {
+            content: '✓';
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            background: var(--book-primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .service-tile strong { display: block; margin-bottom: 4px; padding-right: 36px; }
         .service-tile .meta { font-size: 13px; color: var(--book-muted); }
         .service-tile input { display: none; }
 
@@ -68,23 +90,31 @@
             box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
             animation: step-pulse 2s ease-in-out infinite;
         }
+        .book-card.step-service .step-service-intro {
+            margin: 0 0 16px 0;
+            font-size: 14px;
+            color: var(--book-muted);
+            line-height: 1.5;
+        }
         .book-card.step-service h2 {
             color: var(--book-primary);
-            font-size: 1rem;
+            font-size: 1.15rem;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            margin-bottom: 4px;
         }
         .book-card.step-service h2 .step-badge {
             display: inline-block;
             background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
             color: white;
-            padding: 4px 10px;
+            padding: 5px 12px;
             border-radius: 999px;
             font-size: 12px;
             font-weight: 700;
             animation: step-badge 1.5s ease-in-out infinite;
         }
+        .book-card.step-service h2 .step-icon { font-size: 1.3em; }
         @keyframes step-pulse {
             0%, 100% { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); }
             50%  { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0.08); }
@@ -442,7 +472,8 @@
             <input type="hidden" id="booking_end_time" name="booking_end_time" required>
 
             <div class="book-card step-service">
-                <h2><span class="step-badge">Шаг 1</span> Выберите услугу</h2>
+                <h2><span class="step-badge">Шаг 1</span> <span class="step-icon">📌</span> Выберите услугу</h2>
+                <p class="step-service-intro">От выбора услуги зависят длительность приёма и доступное время. Нажмите на карточку.</p>
                 {% for service in services %}
                 <label class="service-tile" data-service-id="{{ service.id }}" data-duration="{{ service.duration_minutes }}">
                     <div>
@@ -512,6 +543,16 @@
                 if (d) loadTimeSlots();
             });
         });
+
+        // Если услуга одна — выбираем её автоматически
+        const serviceTiles = document.querySelectorAll('.service-tile');
+        if (serviceTiles.length === 1) {
+            const single = serviceTiles[0];
+            single.classList.add('selected');
+            selectedServiceId = single.dataset.serviceId;
+            selectedDuration = parseInt(single.dataset.duration, 10) || 60;
+            document.getElementById('service_id').value = selectedServiceId || '';
+        }
 
         function renderCalendar() {
             const y = currentCalDate.getFullYear();
@@ -675,5 +716,35 @@
         });
     </script>
     {% endif %}
+
+    <script>
+    (function() {
+        function formatPhone(value) {
+            var digits = (value || '').replace(/\D/g, '');
+            if (digits.charAt(0) === '8') digits = '7' + digits.slice(1);
+            if (digits.charAt(0) !== '7') digits = '7' + digits;
+            digits = digits.slice(0, 11);
+            if (digits.length <= 1) return digits ? '+7' : '';
+            return '+7 (' + digits.slice(1, 4) + ') ' + digits.slice(4, 7) + '-' + digits.slice(7, 9) + '-' + digits.slice(9, 11);
+        }
+        function onPhoneInput(e) {
+            var el = e.target;
+            var start = el.selectionStart, oldLen = el.value.length;
+            el.value = formatPhone(el.value);
+            var newLen = el.value.length;
+            var newStart = Math.max(0, start + (newLen - oldLen));
+            el.setSelectionRange(newStart, newStart);
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            ['login_phone', 'client_phone'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', onPhoneInput);
+                    if (el.value) el.value = formatPhone(el.value);
+                }
+            });
+        });
+    })();
+    </script>
 </body>
 </html>

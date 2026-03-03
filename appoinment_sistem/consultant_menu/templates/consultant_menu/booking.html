@@ -104,6 +104,8 @@
         .btn-cancel:hover { background: #c82333; }
         .btn-complete { background: #17a2b8; color: white; }
         .btn-complete:hover { background: #138496; }
+        .btn-reschedule { background: #6f42c1; color: white; }
+        .btn-reschedule:hover { background: #5a32a3; }
         .section-title {
             margin-top: 24px;
             margin-bottom: 12px;
@@ -257,6 +259,31 @@
         #viewList { display: none; }
 
         /* Полноэкранный календарь */
+        .booking-page-calendar-view .container {
+            max-width: 100%;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        .booking-page-calendar-view .booking-calendar-full-wrap {
+            width: 100%;
+            max-width: 100%;
+            margin-top: 0;
+            padding: 16px 0 24px;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .booking-page-calendar-view #viewCalendar {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        .booking-page-calendar-view .booking-calendar-full-wrap .calendar-grid {
+            flex: 1;
+            min-height: 400px;
+        }
         .booking-calendar-full-wrap {
             width: 100%;
             max-width: 100%;
@@ -290,10 +317,43 @@
             .booking-calendar-full-wrap .calendar-day { min-height: 120px; }
             .booking-calendar-full-wrap .cal-event { font-size: 13px; padding: 5px 10px; }
         }
+        @media (min-width: 1200px) {
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-day { min-height: 140px; }
+        }
+        .booking-page-wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 80px);
+        }
+        .event-popover .popover-actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .event-popover .popover-actions form { display: inline; margin: 0; }
+        .event-popover .popover-actions .btn-small {
+            padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none;
+            cursor: pointer; font-weight: 500;
+        }
+        .event-popover .btn-confirm { background: #28a745; color: white; }
+        .event-popover .btn-cancel { background: #dc3545; color: white; }
+        .event-popover .btn-complete { background: #17a2b8; color: white; }
+        .event-popover .btn-reschedule { background: #6f42c1; color: white; }
+        /* Модальное окно переноса */
+        .reschedule-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .reschedule-overlay.show { display: flex; }
+        .reschedule-modal { background: #fff; border-radius: 12px; padding: 24px; max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        .reschedule-modal h3 { margin: 0 0 16px 0; font-size: 18px; }
+        .reschedule-modal .form-group { margin-bottom: 16px; }
+        .reschedule-modal label { display: block; margin-bottom: 6px; font-weight: 500; }
+        .reschedule-modal input[type="date"] { width: 100%; padding: 10px; border: 1px solid var(--card-border,#ddd); border-radius: 8px; }
+        #rescheduleSlots { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+        #rescheduleSlots .slot-btn { padding: 8px 14px; border: 2px solid var(--card-border); border-radius: 8px; background: #fff; cursor: pointer; font-size: 14px; }
+        #rescheduleSlots .slot-btn:hover { border-color: var(--accent); background: var(--hover-bg); }
+        #rescheduleSlots .slot-btn.selected { border-color: var(--accent); background: var(--accent); color: #fff; }
+        .reschedule-modal .modal-actions { margin-top: 20px; display: flex; gap: 10px; }
+        .reschedule-modal .btn-reschedule-submit { padding: 10px 20px; background: #6f42c1; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
+        .reschedule-modal .btn-reschedule-cancel { padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="container" style="max-width: 1400px;">
+    <div id="bookingPageContainer" class="container booking-page-wrapper" style="max-width: 1400px;">
         <div class="page-header">
             <h1>Записи (Консультации)</h1>
             <div>
@@ -321,7 +381,7 @@
                     <h2 class="section-title">📅 Запланированные консультации</h2>
                     {% if upcoming_bookings %}
                         {% for booking in upcoming_bookings %}
-                        <div class="booking-card">
+                        <div class="booking-card" data-booking-id="{{ booking.id }}" data-calendar-id="{{ booking.calendar.id }}" data-service-id="{{ booking.service.id }}">
                             <div class="booking-info">
                                 <h3>{{ booking.client_name }}</h3>
                                 <div class="booking-details">
@@ -362,6 +422,9 @@
                                     <input type="hidden" name="booking_id" value="{{ booking.id }}">
                                     <button type="submit" class="btn-small btn-complete">✓ Завершить</button>
                                 </form>
+                                {% endif %}
+                                {% if booking.status != 'cancelled' and booking.status != 'completed' %}
+                                <button type="button" class="btn-small btn-reschedule" data-booking-id="{{ booking.id }}" data-calendar-id="{{ booking.calendar.id }}" data-service-id="{{ booking.service.id }}">📅 Перенести время</button>
                                 {% endif %}
                             </div>
                         </div>
@@ -439,7 +502,32 @@
             <div id="bookingListColPlaceholder"></div>
         </div>
 
+        <div id="rescheduleOverlay" class="reschedule-overlay">
+            <div class="reschedule-modal">
+                <h3>Перенести консультацию</h3>
+                <form method="POST" id="rescheduleForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reschedule">
+                    <input type="hidden" name="booking_id" id="rescheduleBookingId" value="">
+                    <input type="hidden" name="new_date" id="rescheduleNewDate" value="">
+                    <input type="hidden" name="new_time" id="rescheduleNewTime" value="">
+                    <div class="form-group">
+                        <label for="rescheduleDate">Новая дата</label>
+                        <input type="date" id="rescheduleDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Новое время</label>
+                        <div id="rescheduleSlots"></div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn-reschedule-submit" id="rescheduleSubmit" disabled>Перенести</button>
+                        <button type="button" class="btn-reschedule-cancel" id="rescheduleCancel">Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </div>
         <div id="eventPopover" class="event-popover" style="display: none;"></div>
+        <input type="hidden" id="csrfToken" value="{{ csrf_token }}">
 
         {% include 'consultant_menu/footer.html' %}
     </div>
@@ -531,7 +619,7 @@
             events.forEach(function(ev) {
                 timeStr = ev.time;
                 if (ev.end_time) timeStr += ' – ' + ev.end_time;
-                html += '<div class="cal-event ' + (ev.status || '') + '" data-id="' + ev.id + '" data-client_name="' + escapeAttr(ev.client_name) + '" data-client_phone="' + escapeAttr(ev.client_phone) + '" data-client_email="' + escapeAttr(ev.client_email || '') + '" data-client_telegram="' + escapeAttr(ev.client_telegram || '') + '" data-time="' + escapeAttr(timeStr) + '" data-service="' + escapeAttr(ev.service || '') + '">' + (ev.time || '') + ' ' + (ev.client_name || '') + '</div>';
+                html += '<div class="cal-event ' + (ev.status || '') + '" data-id="' + ev.id + '" data-status="' + escapeAttr(ev.status || '') + '" data-calendar-id="' + (ev.calendar_id || '') + '" data-service-id="' + (ev.service_id || '') + '" data-client_name="' + escapeAttr(ev.client_name) + '" data-client_phone="' + escapeAttr(ev.client_phone) + '" data-client_email="' + escapeAttr(ev.client_email || '') + '" data-client_telegram="' + escapeAttr(ev.client_telegram || '') + '" data-time="' + escapeAttr(timeStr) + '" data-service="' + escapeAttr(ev.service || '') + '">' + (ev.time || '') + ' ' + (ev.client_name || '') + '</div>';
             });
             html += '</div>';
             cell.innerHTML = html;
@@ -549,6 +637,8 @@
             var telegram = el.getAttribute('data-client_telegram') || '';
             var time = el.getAttribute('data-time') || '';
             var service = el.getAttribute('data-service') || '';
+            var bookingId = el.getAttribute('data-id') || '';
+            var status = (el.getAttribute('data-status') || '').toLowerCase();
             var pop = document.getElementById('eventPopover');
             var parts = ['<h4>' + (name || '—') + '</h4>'];
             if (time) parts.push('<p class="time">🕐 ' + time + '</p>');
@@ -556,6 +646,28 @@
             if (phone) parts.push('<p>Телефон: ' + phone + '</p>');
             if (email) parts.push('<p>Email: ' + email + '</p>');
             if (telegram) parts.push('<p>Telegram: ' + telegram + '</p>');
+            var actionUrl = window.location.pathname + (window.location.search || '');
+            var csrf = (document.getElementById('csrfToken') && document.getElementById('csrfToken').value) || '';
+            var actionsHtml = [];
+            if (bookingId && csrf) {
+                actionsHtml.push('<div class="popover-actions">');
+                if (status === 'pending') {
+                    actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '" style="display:inline;"><input type="hidden" name="csrfmiddlewaretoken" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="confirm"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn-small btn-confirm">✓ Подтвердить</button></form>');
+                }
+                if (status !== 'cancelled' && status !== 'completed') {
+                    actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '" style="display:inline;" onsubmit="return confirm(\'Отменить запись?\');"><input type="hidden" name="csrfmiddlewaretoken" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="cancel"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn-small btn-cancel">✕ Отменить</button></form>');
+                }
+                if (status === 'confirmed') {
+                    actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '" style="display:inline;"><input type="hidden" name="csrfmiddlewaretoken" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="complete"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn-small btn-complete">✓ Завершить</button></form>');
+                }
+                if (status !== 'cancelled' && status !== 'completed') {
+                    var calId = el.getAttribute('data-calendar-id') || '';
+                    var svcId = el.getAttribute('data-service-id') || '';
+                    actionsHtml.push('<button type="button" class="btn-small btn-reschedule" data-booking-id="' + escapeAttr(bookingId) + '" data-calendar-id="' + escapeAttr(calId) + '" data-service-id="' + escapeAttr(svcId) + '">📅 Перенести время</button>');
+                }
+                actionsHtml.push('</div>');
+            }
+            parts.push(actionsHtml.join(''));
             pop.innerHTML = parts.join('');
             pop.style.display = 'block';
             var rect = el.getBoundingClientRect();
@@ -599,6 +711,7 @@
         var listPlaceholder = document.getElementById('bookingListColPlaceholder');
         var layoutList = viewList.querySelector('.booking-page-layout');
 
+        var pageContainer = document.getElementById('bookingPageContainer');
         document.querySelectorAll('.view-switcher-btn').forEach(function(btn) {
             btn.onclick = function() {
                 var v = this.getAttribute('data-view');
@@ -608,16 +721,86 @@
                     viewList.classList.remove('active');
                     viewCalendar.classList.add('active');
                     listPlaceholder.appendChild(listCol);
+                    if (pageContainer) pageContainer.classList.add('booking-page-calendar-view');
                 } else {
                     viewCalendar.classList.remove('active');
                     viewList.classList.add('active');
+                    if (pageContainer) pageContainer.classList.remove('booking-page-calendar-view');
                     var firstEl = layoutList.querySelector('.booking-calendar-col') || layoutList.firstElementChild || layoutList.firstChild;
-                layoutList.insertBefore(listCol, firstEl);
+                    layoutList.insertBefore(listCol, firstEl);
                 }
             };
         });
 
         loadEvents();
+
+        // Модальное окно «Перенести время»
+        var rescheduleBookingId = null, rescheduleCalendarId = null, rescheduleServiceId = null;
+        function openRescheduleModal(bookingId, calendarId, serviceId) {
+            rescheduleBookingId = bookingId;
+            rescheduleCalendarId = calendarId;
+            rescheduleServiceId = serviceId;
+            document.getElementById('rescheduleBookingId').value = bookingId;
+            document.getElementById('rescheduleNewDate').value = '';
+            document.getElementById('rescheduleNewTime').value = '';
+            document.getElementById('rescheduleDate').value = '';
+            document.getElementById('rescheduleSlots').innerHTML = '';
+            document.getElementById('rescheduleSubmit').disabled = true;
+            document.getElementById('rescheduleOverlay').classList.add('show');
+            hidePopover();
+        }
+        function closeRescheduleModal() {
+            document.getElementById('rescheduleOverlay').classList.remove('show');
+        }
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('.btn-reschedule');
+            if (btn && btn.dataset.bookingId) {
+                e.preventDefault();
+                openRescheduleModal(btn.dataset.bookingId, btn.dataset.calendarId || '', btn.dataset.serviceId || '');
+            }
+        });
+        document.getElementById('rescheduleCancel').onclick = closeRescheduleModal;
+        document.getElementById('rescheduleOverlay').onclick = function(e) {
+            if (e.target === document.getElementById('rescheduleOverlay')) closeRescheduleModal();
+        };
+        document.querySelector('.reschedule-modal').onclick = function(e) { e.stopPropagation(); };
+        document.getElementById('rescheduleDate').addEventListener('change', function() {
+            var dateVal = this.value;
+            document.getElementById('rescheduleNewTime').value = '';
+            document.getElementById('rescheduleSubmit').disabled = true;
+            var slotsEl = document.getElementById('rescheduleSlots');
+            slotsEl.innerHTML = '';
+            if (!dateVal || !rescheduleCalendarId || !rescheduleServiceId) return;
+            var url = '/book/' + rescheduleCalendarId + '/slots/?date=' + encodeURIComponent(dateVal) + '&service_id=' + encodeURIComponent(rescheduleServiceId) + '&exclude_booking_id=' + encodeURIComponent(rescheduleBookingId || '');
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.onload = function() {
+                if (xhr.status !== 200) return;
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    var slots = data.available_slots || [];
+                    slots.forEach(function(s) {
+                        var btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'slot-btn';
+                        btn.textContent = s.start_time + (s.end_time ? ' – ' + s.end_time : '');
+                        btn.dataset.time = s.start_time || '';
+                        btn.onclick = function() {
+                            document.querySelectorAll('#rescheduleSlots .slot-btn').forEach(function(b) { b.classList.remove('selected'); });
+                            btn.classList.add('selected');
+                            document.getElementById('rescheduleNewTime').value = btn.dataset.time;
+                            document.getElementById('rescheduleSubmit').disabled = false;
+                        };
+                        slotsEl.appendChild(btn);
+                    });
+                    if (slots.length === 0) slotsEl.innerHTML = '<span style="color:#999;">Нет доступных слотов на эту дату</span>';
+                } catch (err) {}
+            };
+            xhr.send();
+        });
+        document.getElementById('rescheduleForm').onsubmit = function() {
+            document.getElementById('rescheduleNewDate').value = document.getElementById('rescheduleDate').value;
+        };
     })();
     </script>
 </body>

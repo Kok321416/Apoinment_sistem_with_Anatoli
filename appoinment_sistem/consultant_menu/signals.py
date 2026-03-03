@@ -102,6 +102,8 @@ def create_consultant_on_social_signup(request, user, **kwargs):
     )
     # Сразу привязать Telegram к Integration, если регистрация была через Telegram
     _sync_telegram_to_integration(user)
+    # Напоминание на главной: подключить бота для уведомлений
+    request.session["show_telegram_reminder_after_register"] = True
 
 
 def _get_integration_for_booking(booking):
