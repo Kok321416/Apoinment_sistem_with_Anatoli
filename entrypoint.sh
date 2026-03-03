@@ -66,7 +66,7 @@ if [ -f "$BOT_PIDFILE" ]; then
   sleep 2
 fi
 : > "$BOT_LOG"
-nohup "$APP_DIR/scripts/run_bot.sh" >> "$BOT_LOG" 2>&1 &
+nohup env APP_DIR="$APP_DIR" "$APP_DIR/scripts/run_bot.sh" >> "$BOT_LOG" 2>&1 &
 echo $! > "$BOT_PIDFILE"
 sleep 2
 if kill -0 "$(cat "$BOT_PIDFILE")" 2>/dev/null; then

@@ -87,7 +87,7 @@ class Command(BaseCommand):
         url = f"https://api.telegram.org/bot{token}/getUpdates"
         offset = 0
         error_count = 0
-        max_errors = 50  # больше попыток при нестабильной сети (раньше 10)
+        max_errors = 150  # много попыток при нестабильной сети или блокировках
         sleep_after_error = 30  # секунд перед повтором после сетевой ошибки
 
         self.stdout.write(self.style.SUCCESS('Бот запущен. Ожидание обновлений...'))
@@ -143,7 +143,8 @@ class Command(BaseCommand):
                 if error_count >= max_errors:
                     self.stdout.write(self.style.ERROR('Превышено максимальное количество ошибок сети. Остановка.'))
                     break
-                wait = min(sleep_after_error * (1 + (error_count // 5)), 300)  # до 5 мин при частых ошибках
+                # Увеличенный backoff: 30s, 60s, 90s, ... до 600s (10 мин) при нестабильной сети
+                wait = min(sleep_after_error * (1 + (error_count // 3)), 600)
                 logger.info("TG bot: повтор через %s сек (ошибка %s/%s)", wait, error_count, max_errors)
                 time.sleep(wait)
             except Exception as e:
