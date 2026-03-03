@@ -55,15 +55,6 @@
                         <input type="text" id="name" name="name" placeholder="Необязательно">
                     </div>
                     <div class="form-group">
-                        <label for="gender">Пол</label>
-                        <select id="gender" name="gender" style="width:100%; padding:12px; border:1px solid var(--card-border,#ddd); border-radius:8px;">
-                            <option value="">Не указан</option>
-                            <option value="male">Мужской</option>
-                            <option value="female">Женский</option>
-                            <option value="other">Другой</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
                         <label for="email">Email</label>
                         <input type="email" id="email" name="email" placeholder="Необязательно">
                     </div>
@@ -95,11 +86,10 @@
                     <a href="{% url 'client_card_detail' card.id %}" class="card-tile">
                         <h3>{{ card.name|default:"Без имени" }}</h3>
                         <div class="meta">
-                            {% if card.gender %}<span>Пол: {{ card.get_gender_display }}</span>{% endif %}
                             {% if card.phone %}<span>📞 Телефон: {{ card.phone }}</span>{% endif %}
                             {% if card.email %}<span>📧 {{ card.email }}</span>{% endif %}
                             {% if card.telegram %}<span>✈️ {{ card.telegram }}</span>{% endif %}
-                            {% if not card.email and not card.telegram and not card.phone and not card.gender %}<span>Карточка #{{ card.id }}</span>{% endif %}
+                            {% if not card.email and not card.telegram and not card.phone %}<span>Карточка #{{ card.id }}</span>{% endif %}
                         </div>
                         {% if card.notes %}<p style="margin-top:10px; font-size:13px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ card.notes }}</p>{% endif %}
                     </a>
