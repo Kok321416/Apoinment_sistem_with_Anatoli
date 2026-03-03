@@ -218,7 +218,7 @@ jobs:
             sleep 2
           fi
           : > "$BOT_LOG"
-          cd "$APP_DIR" && nohup "$APP_DIR/scripts/run_bot.sh" >> "$BOT_LOG" 2>&1 &
+          cd "$APP_DIR" && nohup env APP_DIR="$APP_DIR" "$APP_DIR/scripts/run_bot.sh" >> "$BOT_LOG" 2>&1 &
           BOT_PID=$!
           echo $BOT_PID > "$BOT_PIDFILE"
           sleep 2
