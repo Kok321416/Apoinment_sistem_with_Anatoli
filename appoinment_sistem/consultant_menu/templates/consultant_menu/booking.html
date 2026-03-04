@@ -15,11 +15,12 @@
             align-items: start;
             max-width: 100%;
         }
-        /* Компьютерная версия: календарь во весь экран сверху, записи — ниже */
+        /* Компьютерная версия: два отдельных блока — календарь (компактный) сверху, записи ниже */
         @media (min-width: 1025px) {
             .booking-page-layout {
                 grid-template-columns: 1fr;
                 grid-template-areas: "calendar" "list";
+                gap: 0;
             }
             .booking-calendar-col {
                 grid-area: calendar;
@@ -27,11 +28,29 @@
                 position: static;
                 max-width: 100%;
                 width: 100%;
+                padding: 20px;
+                margin-bottom: 24px;
+                background: #f8f9fa;
+                border-radius: 12px;
+                border: 1px solid #e9ecef;
+            }
+            .booking-calendar-col .calendar-grid {
+                max-height: 280px;
+                min-height: 200px;
+                overflow-y: auto;
+            }
+            .booking-calendar-col .calendar-day {
+                min-height: 72px;
             }
             .booking-list-col {
                 grid-area: list;
                 min-width: 0;
                 width: 100%;
+                padding: 20px 0 0;
+                border-top: 1px solid #e9ecef;
+            }
+            .booking-list-col .bookings-container {
+                background: transparent;
             }
         }
         @media (max-width: 1024px) {
@@ -45,6 +64,68 @@
         }
         @media (max-width: 640px) {
             .booking-page-layout { gap: 16px; }
+        }
+        /* Телефон: календарь на весь экран, адаптивная сетка */
+        @media (max-width: 768px) {
+            #bookingPageContainer.booking-page-wrapper {
+                max-width: 100%;
+                padding-left: max(12px, env(safe-area-inset-left));
+                padding-right: max(12px, env(safe-area-inset-right));
+            }
+            .booking-page-layout {
+                margin-top: 16px;
+                gap: 20px;
+                display: flex;
+                flex-direction: column;
+            }
+            .booking-calendar-col {
+                order: -1;
+                position: static;
+                width: 100%;
+                max-width: 100%;
+                margin-left: 0;
+                margin-right: 0;
+                padding: 12px;
+                border-radius: 12px;
+                box-sizing: border-box;
+            }
+            .booking-calendar-col .calendar-header { margin-bottom: 10px; }
+            .booking-calendar-col .calendar-title { font-size: 15px; }
+            .booking-calendar-col .calendar-nav-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+                min-width: 40px;
+            }
+            .booking-calendar-col .calendar-weekdays {
+                gap: 2px;
+                font-size: 11px;
+                margin-bottom: 6px;
+            }
+            .booking-calendar-col .calendar-grid {
+                gap: 4px;
+                min-height: 0;
+                max-height: none;
+            }
+            .booking-calendar-col .calendar-day {
+                min-height: 44px;
+                padding: 4px;
+                font-size: 13px;
+            }
+            .booking-calendar-col .day-num { font-size: 12px; margin-bottom: 2px; }
+            .booking-calendar-col .cal-event {
+                font-size: 10px;
+                padding: 2px 4px;
+            }
+            .booking-calendar-col .calendar-legend {
+                font-size: 11px;
+                margin-top: 12px;
+                gap: 10px;
+            }
+            .booking-list-col {
+                width: 100%;
+                padding-top: 4px;
+            }
         }
         .booking-list-col { min-width: 0; }
         .bookings-container { margin-top: 0; }
@@ -71,15 +152,15 @@
             color: white;
             border-color: var(--accent);
         }
-        /* На десктопе календарь в списке — шире, сетка повыше */
-        @media (min-width: 1025px) {
-            .booking-calendar-col .calendar-grid {
-                min-height: 320px;
-            }
-            .booking-calendar-col .calendar-day {
-                min-height: 100px;
-            }
+        /* Заголовки блоков календаря и записей */
+        .booking-block-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #495057;
+            margin: 0 0 12px 0;
+            padding-bottom: 8px;
         }
+        .booking-calendar-col .booking-block-title { margin-top: 0; }
         /* Карточки записей — компактнее */
         .booking-card {
             background: white;
@@ -142,6 +223,7 @@
             font-size: 16px;
         }
         .section-title:first-of-type { margin-top: 0; }
+        .section-title { font-size: 15px; }
         .empty-message { text-align: center; padding: 24px; color: #999; font-style: italic; font-size: 14px; }
 
         /* Календарь — вписывается в колонку, не вылезает */
@@ -315,7 +397,8 @@
         }
         .booking-page-calendar-view .booking-calendar-full-wrap .calendar-grid {
             flex: 1;
-            min-height: 400px;
+            min-height: 280px;
+            max-height: 420px;
         }
         .booking-calendar-full-wrap {
             width: 100%;
@@ -352,6 +435,49 @@
         }
         @media (min-width: 1200px) {
             .booking-page-calendar-view .booking-calendar-full-wrap .calendar-day { min-height: 140px; }
+        }
+        /* Телефон: вид «Календарь» — на весь экран, адаптивно */
+        @media (max-width: 768px) {
+            .booking-page-calendar-view #bookingPageContainer {
+                padding-left: max(8px, env(safe-area-inset-left));
+                padding-right: max(8px, env(safe-area-inset-right));
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap {
+                width: 100%;
+                max-width: 100%;
+                padding: 12px 0 20px;
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-header { margin-bottom: 12px; }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-title { font-size: 18px; }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-nav-btn {
+                width: 44px;
+                height: 44px;
+                min-width: 44px;
+                font-size: 20px;
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-weekdays {
+                font-size: 12px;
+                margin-bottom: 6px;
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-grid {
+                gap: 4px;
+                min-height: 240px;
+                max-height: 55vh;
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-day {
+                min-height: 56px;
+                padding: 6px;
+                font-size: 14px;
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap .cal-event {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            .booking-page-calendar-view #bookingListColPlaceholder {
+                margin-top: 16px;
+                padding-top: 16px;
+                border-top: 1px solid #e9ecef;
+            }
         }
         .booking-page-wrapper {
             display: flex;
@@ -410,8 +536,9 @@
         <div id="viewList" class="active">
             <div class="booking-page-layout">
                 <div class="booking-list-col" id="bookingListCol">
+                <h2 class="booking-block-title">📋 Записи</h2>
                 <div class="bookings-container">
-                    <h2 class="section-title">📅 Запланированные консультации</h2>
+                    <h3 class="section-title">Запланированные консультации</h3>
                     {% if upcoming_bookings %}
                         {% for booking in upcoming_bookings %}
                         <div class="booking-card" data-booking-id="{{ booking.id }}" data-calendar-id="{{ booking.calendar.id }}" data-service-id="{{ booking.service.id }}">
@@ -466,7 +593,7 @@
                         <div class="empty-message">Нет запланированных консультаций</div>
                     {% endif %}
 
-                    <h2 class="section-title">📋 Прошедшие консультации</h2>
+                    <h3 class="section-title">Прошедшие консультации</h3>
                     {% if past_bookings %}
                         {% for booking in past_bookings %}
                         <div class="booking-card">
@@ -495,6 +622,7 @@
             </div>
 
             <aside class="booking-calendar-col">
+                <h2 class="booking-block-title">📅 Календарь</h2>
                 <div class="calendar-header">
                     <button type="button" class="calendar-nav-btn" id="calPrev" aria-label="Предыдущий месяц">‹</button>
                     <span class="calendar-title" id="calTitle">—</span>
