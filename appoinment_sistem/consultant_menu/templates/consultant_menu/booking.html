@@ -65,6 +65,68 @@
         @media (max-width: 640px) {
             .booking-page-layout { gap: 16px; }
         }
+        /* Телефон: календарь на весь экран, адаптивная сетка */
+        @media (max-width: 768px) {
+            #bookingPageContainer.booking-page-wrapper {
+                max-width: 100%;
+                padding-left: max(12px, env(safe-area-inset-left));
+                padding-right: max(12px, env(safe-area-inset-right));
+            }
+            .booking-page-layout {
+                margin-top: 16px;
+                gap: 20px;
+                display: flex;
+                flex-direction: column;
+            }
+            .booking-calendar-col {
+                order: -1;
+                position: static;
+                width: 100%;
+                max-width: 100%;
+                margin-left: 0;
+                margin-right: 0;
+                padding: 12px;
+                border-radius: 12px;
+                box-sizing: border-box;
+            }
+            .booking-calendar-col .calendar-header { margin-bottom: 10px; }
+            .booking-calendar-col .calendar-title { font-size: 15px; }
+            .booking-calendar-col .calendar-nav-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+                min-width: 40px;
+            }
+            .booking-calendar-col .calendar-weekdays {
+                gap: 2px;
+                font-size: 11px;
+                margin-bottom: 6px;
+            }
+            .booking-calendar-col .calendar-grid {
+                gap: 4px;
+                min-height: 0;
+                max-height: none;
+            }
+            .booking-calendar-col .calendar-day {
+                min-height: 44px;
+                padding: 4px;
+                font-size: 13px;
+            }
+            .booking-calendar-col .day-num { font-size: 12px; margin-bottom: 2px; }
+            .booking-calendar-col .cal-event {
+                font-size: 10px;
+                padding: 2px 4px;
+            }
+            .booking-calendar-col .calendar-legend {
+                font-size: 11px;
+                margin-top: 12px;
+                gap: 10px;
+            }
+            .booking-list-col {
+                width: 100%;
+                padding-top: 4px;
+            }
+        }
         .booking-list-col { min-width: 0; }
         .bookings-container { margin-top: 0; }
         .filter-tabs {
@@ -373,6 +435,49 @@
         }
         @media (min-width: 1200px) {
             .booking-page-calendar-view .booking-calendar-full-wrap .calendar-day { min-height: 140px; }
+        }
+        /* Телефон: вид «Календарь» — на весь экран, адаптивно */
+        @media (max-width: 768px) {
+            .booking-page-calendar-view #bookingPageContainer {
+                padding-left: max(8px, env(safe-area-inset-left));
+                padding-right: max(8px, env(safe-area-inset-right));
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap {
+                width: 100%;
+                max-width: 100%;
+                padding: 12px 0 20px;
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-header { margin-bottom: 12px; }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-title { font-size: 18px; }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-nav-btn {
+                width: 44px;
+                height: 44px;
+                min-width: 44px;
+                font-size: 20px;
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-weekdays {
+                font-size: 12px;
+                margin-bottom: 6px;
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-grid {
+                gap: 4px;
+                min-height: 240px;
+                max-height: 55vh;
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap .calendar-day {
+                min-height: 56px;
+                padding: 6px;
+                font-size: 14px;
+            }
+            .booking-page-calendar-view .booking-calendar-full-wrap .cal-event {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            .booking-page-calendar-view #bookingListColPlaceholder {
+                margin-top: 16px;
+                padding-top: 16px;
+                border-top: 1px solid #e9ecef;
+            }
         }
         .booking-page-wrapper {
             display: flex;
