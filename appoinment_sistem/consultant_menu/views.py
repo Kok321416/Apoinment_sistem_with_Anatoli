@@ -45,6 +45,9 @@ import hashlib
 import hmac
 from django.core.files.storage import default_storage
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_url(value: str | None) -> str | None:
@@ -450,6 +453,22 @@ def booking_redirect_view(request):
     return redirect('public_booking', calendar_id=calendar.id)
 
 
+def booking_success_view(request, link_token):
+    """Страница «Запись успешна» по одноразовому link_token (GET, без повторной отправки)."""
+    try:
+        booking = Booking.objects.select_related('service', 'calendar').get(link_token=link_token)
+    except Booking.DoesNotExist:
+        raise Http404("Запись не найдена")
+    service = getattr(booking, 'service', None)
+    if not service:
+        raise Http404("Данные записи недоступны")
+    return render(request, 'consultant_menu/booking_success.html', {
+        'booking': booking,
+        'service': service,
+        'telegram_bot_username': getattr(settings, 'TELEGRAM_BOT_USERNAME', ''),
+    })
+
+
 def public_booking_view(request, calendar_id):
     """Публичная страница записи через календарь (без авторизации).
     Шаги: 0) Вход (по телефону) или Регистрация (указать данные);
@@ -705,13 +724,10 @@ def public_booking_view(request, calendar_id):
             for key in ('booking_contact_done', 'booking_client_name', 'booking_client_phone',
                         'booking_client_telegram', 'booking_client_email'):
                 request.session.pop(key, None)
-            return render(request, 'consultant_menu/booking_success.html', {
-                'booking': booking,
-                'service': service,
-                'telegram_bot_username': getattr(settings, 'TELEGRAM_BOT_USERNAME', ''),
-            })
+            return redirect('booking_success', link_token=link_token)
 
-        except (Service.DoesNotExist, ValueError):
+        except (Service.DoesNotExist, ValueError) as e:
+            logger.warning("public_booking create error: %s", e)
             return render(request, 'consultant_menu/public_booking.html', {
                 **booking_ctx,
                 'error': 'Ошибка при создании записи',

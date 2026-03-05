@@ -620,25 +620,6 @@
                     {% endif %}
                 </div>
             </div>
-
-            <aside class="booking-calendar-col">
-                <h2 class="booking-block-title">📅 Календарь</h2>
-                <div class="calendar-header">
-                    <button type="button" class="calendar-nav-btn" id="calPrev" aria-label="Предыдущий месяц">‹</button>
-                    <span class="calendar-title" id="calTitle">—</span>
-                    <button type="button" class="calendar-nav-btn" id="calNext" aria-label="Следующий месяц">›</button>
-                </div>
-                <div class="calendar-weekdays">
-                    <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
-                </div>
-                <div class="calendar-grid" id="calGrid"></div>
-                <div class="calendar-legend">
-                    <span><span class="legend-dot confirmed"></span> Подтверждена</span>
-                    <span><span class="legend-dot pending"></span> Ожидает</span>
-                    <span><span class="legend-dot completed"></span> Завершена</span>
-                    <span><span class="legend-dot cancelled"></span> Отменена</span>
-                </div>
-            </aside>
             </div>
         </div>
 
@@ -734,11 +715,11 @@
             var daysPrev = prevLast.getDate();
 
             var titleText = monthNames[month - 1] + ' ' + year;
-            document.getElementById('calTitle').textContent = titleText;
-            document.getElementById('calTitleFull').textContent = titleText;
+            var calTitleFullEl = document.getElementById('calTitleFull');
+            if (calTitleFullEl) calTitleFullEl.textContent = titleText;
 
             var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-            var gridIds = ['calGrid', 'calGridFull'];
+            var gridIds = ['calGridFull'];
 
             for (var g = 0; g < gridIds.length; g++) {
                 var grid = document.getElementById(gridIds[g]);
@@ -849,16 +830,13 @@
             if (current.month === 12) { current.year++; current.month = 1; } else current.month++;
             loadEvents();
         }
-        document.getElementById('calPrev').onclick = goPrev;
-        document.getElementById('calNext').onclick = goNext;
-        document.getElementById('calPrevFull').onclick = goPrev;
-        document.getElementById('calNextFull').onclick = goNext;
+        var calPrevFull = document.getElementById('calPrevFull');
+        var calNextFull = document.getElementById('calNextFull');
+        if (calPrevFull) calPrevFull.onclick = goPrev;
+        if (calNextFull) calNextFull.onclick = goNext;
 
-        document.getElementById('calGrid').addEventListener('click', function(e) {
-            var el = e.target.closest('.cal-event');
-            if (el) showPopover(e, el);
-        });
-        document.getElementById('calGridFull').addEventListener('click', function(e) {
+        var calGridFullEl = document.getElementById('calGridFull');
+        if (calGridFullEl) calGridFullEl.addEventListener('click', function(e) {
             var el = e.target.closest('.cal-event');
             if (el) showPopover(e, el);
         });
@@ -887,8 +865,7 @@
                     viewCalendar.classList.remove('active');
                     viewList.classList.add('active');
                     if (pageContainer) pageContainer.classList.remove('booking-page-calendar-view');
-                    var firstEl = layoutList.querySelector('.booking-calendar-col') || layoutList.firstElementChild || layoutList.firstChild;
-                    layoutList.insertBefore(listCol, firstEl);
+                    if (listCol && listCol.parentNode !== layoutList) layoutList.appendChild(listCol);
                 }
             };
         });
