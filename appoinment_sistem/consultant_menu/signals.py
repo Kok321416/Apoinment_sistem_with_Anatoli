@@ -121,18 +121,24 @@ def _get_integration_for_booking(booking):
 
 @receiver(post_save, sender=Booking)
 def notify_on_new_booking(sender, instance, created, **kwargs):
-    """При создании записи: уведомление специалисту в Telegram; клиенту — если telegram уже привязан."""
+    """При создании записи: уведомление специалисту в Telegram; клиенту — если telegram_id задан (авторизация через Telegram или привязка по link_token)."""
     if not created:
         return
-    from consultant_menu.telegram_reminders import (
-        notify_specialist_new_booking,
-        send_telegram_to_client,
-        format_client_booked_message,
-    )
-    notify_specialist_new_booking(instance)
-    if getattr(instance, 'telegram_id', None):
-        text = format_client_booked_message(instance)
-        send_telegram_to_client(instance.telegram_id, text)
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        from consultant_menu.telegram_reminders import (
+            notify_specialist_new_booking,
+            send_telegram_to_client,
+            format_client_booked_message,
+        )
+        notify_specialist_new_booking(instance)
+        telegram_id = getattr(instance, 'telegram_id', None)
+        if telegram_id:
+            text = format_client_booked_message(instance)
+            send_telegram_to_client(instance.telegram_id, text)
+    except Exception as e:
+        logger.exception("Ошибка отправки уведомления о новой записи в Telegram: %s", e)
 
 
 @receiver(post_save, sender=Booking)

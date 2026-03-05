@@ -400,10 +400,17 @@
         {% if show_client_choice %}
         <div class="book-card">
             <h2>Вход или регистрация</h2>
-            <p class="contact-intro">Вы уже записывались к этому специалисту? Войдите по телефону. Если нет — укажите данные для записи (они сохранятся в карточке клиента и используются для уведомлений в Telegram).</p>
+            <p class="contact-intro">Войдите через Telegram — после записи вам сразу придёт сообщение в бота и напоминания. Или войдите по телефону / укажите данные для записи.</p>
             <div class="client-choice-grid">
                 <div class="client-choice-card">
-                    <h3>Вход</h3>
+                    <h3>Вход через Telegram</h3>
+                    <p class="client-choice-desc">После записи придёт сообщение в бота и напоминания перед консультацией</p>
+                    <a href="/accounts/telegram/login/?next={% url 'public_booking' calendar.id %}" class="btn-submit btn-telegram-inline" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;">
+                        Войти через Telegram
+                    </a>
+                </div>
+                <div class="client-choice-card">
+                    <h3>Вход по телефону</h3>
                     <p class="client-choice-desc">Уже есть запись или карточка у этого специалиста</p>
                     <form method="POST" id="clientLoginForm">
                         {% csrf_token %}
