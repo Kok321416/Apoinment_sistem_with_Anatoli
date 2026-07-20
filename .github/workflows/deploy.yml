@@ -106,6 +106,13 @@ jobs:
           TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_BOT_USERNAME=${{ secrets.TELEGRAM_BOT_USERNAME }}
           ADMIN_TELEGRAM_USERNAME=${{ secrets.ADMIN_TELEGRAM_USERNAME }}
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM=${{ secrets.SMTP_FROM }}
+          SMTP_FROM_NAME=${{ secrets.SMTP_FROM_NAME }}
+          SMTP_USE_SSL=${{ secrets.SMTP_USE_SSL }}
           EOF
 
           # Ensure predictable PATH in non-interactive SSH
@@ -142,72 +149,30 @@ jobs:
           python -m ensurepip --upgrade 2>/dev/null || true
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
-          python -m pip install -q python-dotenv
-          python -m pip install --force-reinstall --no-cache-dir "Django==5.2.7"
-          python -c "import pymysql; print('PyMySQL', pymysql.__version__, 'OK')" || { echo "❌ PyMySQL not in venv. Check requirements.txt"; exit 1; }
-          python -c "from dotenv import load_dotenv; print('python-dotenv OK')" || { echo "❌ python-dotenv required for run_bot (appoiment_system.settings)"; exit 1; }
-          python -c "from django.conf.locale import LANG_INFO; print('Django locale OK')" || { echo "❌ Django locale broken"; exit 1; }
+          python -c "import pymysql; print('PyMySQL OK')" || { echo "❌ PyMySQL not in venv"; exit 1; }
 
-          # Do NOT overwrite hosting .htaccess.
-          # On reg.ru nginx-fronted hosting, an invalid .htaccess often causes 500.
-          # If previous deploy created a broken .htaccess, move it aside and restore backup.
-          if [ -f .htaccess ] && grep -q "PassengerEnabled" .htaccess; then
-            mv .htaccess ".htaccess.broken.$(date +%s)" || true
-          fi
-          if [ ! -f .htaccess ] && [ -f .htaccess.bak ]; then
-            cp .htaccess.bak .htaccess
-          fi
-
-          # Миграции для обоих проектов (скрипт можно запускать и вручную на сервере: ./scripts/migrate.sh)
           chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh
           ./scripts/migrate.sh
 
-          # Passenger restart hook (safe even if Passenger is not used)
-          mkdir -p tmp
+          mkdir -p tmp logs media
           touch tmp/restart.txt
-          # reg.ru (ispmanager) restart trigger for Django apps
-          # File is removed automatically after restart
           touch .restart-app
 
-          # Restart gunicorn (simple, without systemd)
-          PIDFILE="$APP_DIR/gunicorn.pid"
-          LOGFILE="$APP_DIR/gunicorn.log"
-          DJANGO_DIR="appoinment_sistem"
-
-          echo "📌 PWD: $(pwd)"
-          if [ ! -d "$DJANGO_DIR" ]; then
-            echo "❌ Django directory not found: $(pwd)/$DJANGO_DIR"
-            echo "Contents of current directory:"
-            ls -la
-            exit 1
-          fi
+          PIDFILE="$APP_DIR/uvicorn.pid"
+          LOGFILE="$APP_DIR/uvicorn.log"
 
           if [ -f "$PIDFILE" ]; then
-            echo "🛑 Stopping old gunicorn (pidfile)"
+            echo "🛑 Stopping old uvicorn"
             kill -TERM "$(cat "$PIDFILE")" || true
             rm -f "$PIDFILE"
             sleep 2
           fi
 
-          echo "🚀 Starting gunicorn"
-          nohup "$APP_DIR/venv/bin/gunicorn" --chdir "$DJANGO_DIR" appoinment_sistem.wsgi:application \
-            --bind 127.0.0.1:8000 \
-            --workers 2 \
+          echo "🚀 Starting uvicorn (FastAPI)"
+          nohup "$APP_DIR/venv/bin/uvicorn" app.main:app \
+            --host 127.0.0.1 --port 8000 --workers 2 \
             --pid "$PIDFILE" \
             > "$LOGFILE" 2>&1 &
-
-          # Telegram-бот: проверка PyMySQL (уже из requirements.txt) и подключения к MySQL перед запуском
-          ./venv/bin/python -c "
-          import pymysql
-          pymysql.install_as_MySQLdb()
-          import os
-          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'appoiment_system.settings')
-          import django
-          django.setup()
-          from django.db import connection
-          connection.ensure_connection()
-          print('MySQL connection OK')
-          " || { echo "❌ MySQL/PyMySQL check failed. Bot will not start."; exit 1; }
 
           BOT_PIDFILE="$APP_DIR/bot.pid"
           BOT_LOG="$APP_DIR/bot.log"
@@ -228,4 +193,4 @@ jobs:
             echo "⚠️ Bot may have exited. Check $BOT_LOG"
           fi
 
-          echo "✅ Deploy completed. Gunicorn: $LOGFILE, Bot: $BOT_LOG"
+          echo "✅ Deploy completed. Uvicorn: $LOGFILE, Bot: $BOT_LOG"

@@ -21,13 +21,10 @@ services:
   web:
     build: .
     command: >
-      sh -c "cd /app/appoinment_sistem &&
-             python manage.py collectstatic --noinput &&
-             python manage.py migrate &&
-             gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout 120 --worker-class sync appoinment_sistem.wsgi:application"
+      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
     volumes:
       - .:/app
-      - static_volume:/app/appoinment_sistem/staticfiles
+      - media_volume:/app/media
     expose:
       - "8000"
     depends_on:
@@ -42,8 +39,34 @@ services:
       - DB_PORT=3306
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - SITE_URL=${SITE_URL}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID}
+      - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET}
     networks:
       - app_network
+
+  bot:
+    build: .
+    command: python -m bot.run
+    volumes:
+      - .:/app
+    depends_on:
+      - web
+    environment:
+      - DB_NAME=${DB_NAME:-appointment_db}
+      - DB_USER=${DB_USER:-appointment_user}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=db
+      - DB_PORT=3306
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+      - SITE_URL=${SITE_URL}
+      - ADMIN_TELEGRAM_USERNAME=${ADMIN_TELEGRAM_USERNAME}
+    networks:
+      - app_network
+    restart: unless-stopped
 
   nginx:
     image: nginx:alpine
@@ -52,7 +75,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - static_volume:/app/appoinment_sistem/staticfiles:ro
+      - media_volume:/app/media:ro
     depends_on:
       - web
     networks:
@@ -61,7 +84,7 @@ services:
 
 volumes:
   mysql_data:
-  static_volume:
+  media_volume:
 
 networks:
   app_network:

@@ -1,0 +1,367 @@
+"""Telegram bot for appointment system (FastAPI backend)."""
+import json
+import logging
+import time
+from collections import Counter
+
+import requests
+
+from bot.config import get_bot_settings
+
+logger = logging.getLogger(__name__)
+settings = get_bot_settings()
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.telegram_bot_token}" if settings.telegram_bot_token else None
+
+
+def get_site_url() -> str:
+    return settings.site_url
+
+
+def _fetch_site_api(path: str, json_data: dict) -> tuple[bool, dict | None]:
+    site_url = get_site_url().rstrip("/")
+    token = settings.telegram_bot_token
+    if not token or not site_url.startswith("http"):
+        return False, None
+    url = f"{site_url}{path}"
+    try:
+        r = requests.post(url, json=json_data, timeout=10, headers={"X-Bot-Token": token})
+        if r.status_code != 200:
+            return False, None
+        data = r.json()
+        return data.get("success") is True, data
+    except Exception as e:
+        logger.debug("Site API %s: %s", path, e)
+        return False, None
+
+
+def send_telegram_message(chat_id, text, reply_markup=None) -> bool:
+    if not settings.telegram_bot_token:
+        logger.error("TELEGRAM_BOT_TOKEN not set")
+        return False
+    data = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    if reply_markup:
+        data["reply_markup"] = json.dumps(reply_markup)
+    try:
+        response = requests.post(f"{TELEGRAM_API_URL}/sendMessage", json=data, timeout=10)
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error("Telegram send error: %s", e)
+        return False
+
+
+def answer_callback_query(callback_query_id, text=None) -> bool:
+    if not settings.telegram_bot_token:
+        return False
+    payload = {"callback_query_id": callback_query_id}
+    if text:
+        payload["text"] = text[:200]
+    try:
+        requests.post(f"{TELEGRAM_API_URL}/answerCallbackQuery", json=payload, timeout=5)
+        return True
+    except Exception as e:
+        logger.error("answerCallbackQuery error: %s", e)
+        return False
+
+
+def get_client_reply_keyboard():
+    return {
+        "keyboard": [
+            [{"text": "📱 Записаться"}, {"text": "📋 Мои записи"}],
+            [{"text": "📝 Регистрация"}, {"text": "📜 История"}, {"text": "📞 Связаться"}],
+            [{"text": "❓ Помощь"}],
+        ],
+        "resize_keyboard": True,
+        "persistent": True,
+    }
+
+
+def get_specialist_reply_keyboard():
+    return {
+        "keyboard": [
+            [{"text": "📅 Ближайшие записи"}, {"text": "📊 Статистика"}],
+            [{"text": "🔗 Управление аккаунтами"}],
+            [{"text": "❓ Помощь"}],
+        ],
+        "resize_keyboard": True,
+        "persistent": True,
+    }
+
+
+def _get_booking_url() -> str:
+    return f"{get_site_url().rstrip('/')}/book/"
+
+
+def _send_webapp_button(chat_id):
+    keyboard = {"inline_keyboard": [[{"text": "📱 Открыть запись на консультацию", "url": _get_booking_url()}]]}
+    send_telegram_message(chat_id, "Нажмите кнопку ниже, чтобы перейти на страницу записи:", keyboard)
+
+
+def handle_telegram_update(update_data: dict) -> None:
+    try:
+        if "message" in update_data:
+            message = update_data["message"]
+            chat_id = message["chat"]["id"]
+            text = message.get("text", "")
+            username = message.get("from", {}).get("username", "")
+            user_id = message.get("from", {}).get("id")
+            first_name = message.get("from", {}).get("first_name", "")
+            logger.info("TG bot: message chat_id=%s user_id=%s text=%r", chat_id, user_id, (text or "")[:80])
+            if text == "/start":
+                handle_start_command(chat_id, user_id, username, first_name)
+            elif text.startswith("/start link_"):
+                token_str = text.replace("/start link_", "").strip()
+                if token_str:
+                    handle_booking_link_confirm(chat_id, user_id, token_str)
+                else:
+                    handle_start_command(chat_id, user_id, username, first_name)
+            elif text.startswith("/start login"):
+                handle_login_via_bot(chat_id)
+            elif text.startswith("/start connect_spec_"):
+                token_str = text.replace("/start connect_spec_", "").strip()
+                if token_str:
+                    handle_specialist_connect_telegram(chat_id, user_id, token_str)
+                else:
+                    handle_connect_via_bot(chat_id)
+            elif text.startswith("/start connect"):
+                handle_connect_via_bot(chat_id)
+            elif text in ("/register", "📝 Регистрация"):
+                handle_register_command(chat_id)
+            elif text in ("/appointments", "📋 Мои записи"):
+                handle_appointments_command(chat_id, user_id)
+            elif text in ("/help", "❓ Помощь"):
+                handle_help_command(chat_id)
+            elif text in ("📜 История", "/history"):
+                handle_history_command(chat_id, user_id)
+            elif text in ("📞 Связаться", "/admin"):
+                handle_contact_admin_command(chat_id)
+            elif text == "📱 Записаться":
+                _send_webapp_button(chat_id)
+            elif text == "📅 Ближайшие записи":
+                handle_specialist_next_appointments(chat_id, user_id)
+            elif text == "📊 Статистика":
+                _send_specialist_webapp(chat_id)
+            elif text == "🔗 Управление аккаунтами":
+                handle_manage_accounts_command(chat_id)
+            else:
+                send_telegram_message(chat_id, "Неизвестная команда. Нажмите /help.", get_client_reply_keyboard())
+
+        elif "callback_query" in update_data:
+            callback_query = update_data["callback_query"]
+            callback_query_id = callback_query["id"]
+            chat_id = callback_query["message"]["chat"]["id"]
+            data = callback_query.get("data", "")
+            user_id = callback_query.get("from", {}).get("id")
+            if not data.startswith("booklink_") and not data.startswith("spec_confirm_"):
+                answer_callback_query(callback_query_id)
+            if data == "my_appointments":
+                handle_appointments_command(chat_id, user_id)
+            elif data == "history":
+                handle_history_command(chat_id, user_id)
+            elif data.startswith("booklink_"):
+                handle_booking_link_callback(chat_id, user_id, callback_query_id, data.replace("booklink_", "", 1))
+            elif data.startswith("spec_confirm_"):
+                handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query_id, data.replace("spec_confirm_", "", 1))
+    except Exception as e:
+        logger.exception("TG bot update error: %s", e)
+
+
+def handle_login_via_bot(chat_id):
+    login_url = f"{get_site_url().rstrip('/')}/accounts/telegram/login/"
+    keyboard = {"inline_keyboard": [[{"text": "🔐 Войти на сайт", "url": login_url}]]}
+    send_telegram_message(chat_id, "👋 <b>Вход на сайт через Telegram</b>\n\nНажмите кнопку ниже.", keyboard)
+
+
+def handle_connect_via_bot(chat_id):
+    connect_url = f"{get_site_url().rstrip('/')}/accounts/telegram/login/?process=connect&next=/profile/"
+    keyboard = {"inline_keyboard": [[{"text": "🔗 Подключить аккаунт на сайте", "url": connect_url}]]}
+    send_telegram_message(chat_id, "👋 <b>Подключение Telegram к аккаунту</b>", keyboard)
+
+
+def handle_specialist_connect_telegram(chat_id, user_id, token_str):
+    keyboard = {"inline_keyboard": [[{"text": "✅ Подтвердить подключение", "callback_data": f"spec_confirm_{token_str}"}]]}
+    send_telegram_message(chat_id, "👋 <b>Подключение Telegram для уведомлений специалиста</b>", keyboard)
+
+
+def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query_id, token_str):
+    api_url = f"{get_site_url().rstrip('/')}/api/specialist/connect-telegram/"
+    try:
+        r = requests.post(api_url, json={"link_token": token_str, "telegram_id": user_id}, timeout=15)
+        data = r.json() if r.text else {}
+        if r.status_code == 200 and data.get("success"):
+            answer_callback_query(callback_query_id, "Готово!")
+            send_telegram_message(chat_id, "✅ <b>Telegram успешно подключён.</b>")
+        else:
+            msg = data.get("error", "Ссылка недействительна.")
+            answer_callback_query(callback_query_id, msg[:200])
+            send_telegram_message(chat_id, f"❌ Не удалось подключить: {msg}")
+    except Exception as e:
+        logger.warning("Specialist connect error: %s", e)
+        answer_callback_query(callback_query_id, "Ошибка.")
+        send_telegram_message(chat_id, "❌ Ошибка связи с сервером.")
+
+
+def handle_booking_link_confirm(chat_id, user_id, token_str):
+    keyboard = {"inline_keyboard": [[{"text": "✅ Подтвердить и получать уведомления", "callback_data": f"booklink_{token_str}"}]]}
+    send_telegram_message(chat_id, "📌 <b>Подтвердите привязку Telegram к вашей записи</b>", keyboard)
+    return True
+
+
+def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str):
+    api_url = f"{get_site_url().rstrip('/')}/api/booking/confirm-telegram/"
+    try:
+        r = requests.post(api_url, json={"link_token": token_str, "telegram_id": user_id}, timeout=10)
+        data = r.json() if r.text else {}
+        if r.status_code == 200 and data.get("success"):
+            answer_callback_query(callback_query_id, "Готово!")
+            send_telegram_message(chat_id, "✅ Ваш Telegram привязан к записи.")
+        else:
+            answer_callback_query(callback_query_id, "Ссылка недействительна.")
+    except Exception as e:
+        logger.warning("Booking confirm error: %s", e)
+        answer_callback_query(callback_query_id, "Ошибка.")
+
+
+def handle_start_command(chat_id, user_id, username, first_name):
+    ok, data = _fetch_site_api("/api/telegram/specialist-bookings/", {"telegram_chat_id": str(chat_id)})
+    is_specialist = ok and data and data.get("is_specialist")
+    if is_specialist:
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "📅 Показать 5 ближайших (в чат)", "callback_data": "spec_next"}],
+            ]
+        }
+        send_telegram_message(chat_id, f"👋 Добро пожаловать, {first_name}!\n\nВы вошли как <b>специалист</b>.", keyboard)
+        send_telegram_message(chat_id, "Кнопки внизу экрана.", get_specialist_reply_keyboard())
+        return
+
+    admin_username = settings.admin_telegram_username.lstrip("@")
+    booking_url = _get_booking_url()
+    keyboard = {
+        "inline_keyboard": [
+            [{"text": "📱 Записаться на консультацию", "url": booking_url}],
+            [{"text": "📋 Мои записи", "callback_data": "my_appointments"}, {"text": "📜 История", "callback_data": "history"}],
+            [{"text": "📞 Связаться с администрацией", "url": f"https://t.me/{admin_username}"}, {"text": "❓ Помощь", "callback_data": "help"}],
+        ]
+    }
+    send_telegram_message(chat_id, f"👋 Добро пожаловать, {first_name}!", keyboard)
+    send_telegram_message(chat_id, "Используйте кнопки ниже.", get_client_reply_keyboard())
+
+
+def handle_register_command(chat_id):
+    site = get_site_url().rstrip("/")
+    keyboard = {
+        "inline_keyboard": [
+            [{"text": "📝 Перейти на страницу регистрации", "url": f"{site}/register/"}],
+            [{"text": "📱 Записаться (без регистрации)", "url": _get_booking_url()}],
+        ]
+    }
+    send_telegram_message(chat_id, "📝 <b>Регистрация</b>\n\nПерейдите на сайт по кнопке ниже.", keyboard)
+
+
+def handle_history_command(chat_id, user_id):
+    ok, data = _fetch_site_api("/api/telegram/client-bookings/", {"telegram_id": user_id})
+    if ok and data and data.get("bookings"):
+        bookings = data["bookings"]
+        names = [b.get("consultant_name") or "Специалист" for b in bookings]
+        by_name = Counter(names)
+        lines = ["📜 <b>К кому вы уже записывались:</b>\n"]
+        for name, cnt in by_name.most_common():
+            _raz = "раз" if cnt == 1 else ("раза" if 2 <= cnt <= 4 else "раз")
+            lines.append(f"• {name} — {cnt} {_raz}")
+        send_telegram_message(chat_id, "\n".join(lines), get_client_reply_keyboard())
+        return
+    send_telegram_message(chat_id, "У вас пока нет записей.", get_client_reply_keyboard())
+
+
+def handle_contact_admin_command(chat_id):
+    admin = settings.admin_telegram_username.lstrip("@")
+    keyboard = {"inline_keyboard": [[{"text": "📞 Написать администрации", "url": f"https://t.me/{admin}"}]]}
+    send_telegram_message(chat_id, "По вопросам обращайтесь к администрации:", keyboard)
+
+
+def _send_specialist_webapp(chat_id):
+    url = f"{get_site_url().rstrip('/')}/calendars/"
+    keyboard = {"inline_keyboard": [[{"text": "Открыть на сайте", "url": url}]]}
+    send_telegram_message(chat_id, "📊 Откройте календари на сайте:", keyboard)
+
+
+def handle_manage_accounts_command(chat_id):
+    url = f"{get_site_url().rstrip('/')}/accounts/social/connections/"
+    keyboard = {"inline_keyboard": [[{"text": "🔗 Управление аккаунтами", "url": url}]]}
+    send_telegram_message(chat_id, "Управление способами входа на сайте:", keyboard)
+
+
+def handle_appointments_command(chat_id, user_id):
+    keyboard = {"inline_keyboard": [[{"text": "📱 Записаться", "url": _get_booking_url()}]]}
+    ok, data = _fetch_site_api("/api/telegram/client-bookings/", {"telegram_id": user_id})
+    if ok and data and data.get("bookings"):
+        status_emoji = {"pending": "⏳", "confirmed": "✅", "completed": "✔️"}
+        message = "📋 <b>Ваши записи:</b>\n\n"
+        for b in data["bookings"][:15]:
+            em = status_emoji.get(b.get("status"), "📅")
+            message += f"{em} <b>{b.get('date', '')} {b.get('time', '')}</b>\n"
+            message += f"👤 {b.get('consultant_name', '—')}\n"
+            message += f"💼 {b.get('service_name', 'Консультация')}\n\n"
+        send_telegram_message(chat_id, message, keyboard)
+        return
+    send_telegram_message(chat_id, "📋 У вас пока нет записей. Используйте кнопку ниже.", keyboard)
+
+
+def handle_help_command(chat_id):
+    admin = settings.admin_telegram_username.lstrip("@")
+    site = get_site_url().rstrip("/")
+    keyboard = {
+        "inline_keyboard": [
+            [{"text": "📱 Записаться", "url": _get_booking_url()}, {"text": "📋 Мои записи", "callback_data": "my_appointments"}],
+            [{"text": "📝 Регистрация", "url": f"{site}/register/"}, {"text": "📞 Связаться", "url": f"https://t.me/{admin}"}],
+        ]
+    }
+    send_telegram_message(chat_id, "📖 <b>Справка:</b>\n/start, /register, /appointments, /history, /help", keyboard)
+
+
+def handle_specialist_next_appointments(chat_id, user_id):
+    ok, data = _fetch_site_api("/api/telegram/specialist-bookings/", {"telegram_chat_id": str(chat_id)})
+    if ok and data and data.get("bookings"):
+        upcoming = [b for b in data["bookings"] if b.get("is_upcoming")][:5]
+        if upcoming:
+            text = "📅 <b>5 ближайших записей:</b>\n\n"
+            for b in upcoming:
+                text += f"• <b>{b.get('date', '')} {b.get('time', '')}</b> — {b.get('client_name', '—')}\n"
+                text += f"  Услуга: {b.get('service_name', 'Консультация')}\n\n"
+            send_telegram_message(chat_id, text)
+            return
+    send_telegram_message(chat_id, "📭 Ближайших записей нет.")
+
+
+def run_long_polling() -> None:
+    if not settings.telegram_bot_token:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN not set")
+    url = f"{TELEGRAM_API_URL}/getUpdates"
+    offset = 0
+    error_count = 0
+    logger.info("Bot started. SITE_URL=%s", settings.site_url)
+    while True:
+        try:
+            response = requests.get(url, params={"offset": offset, "timeout": 30, "allowed_updates": ["message", "callback_query"]}, timeout=60)
+            response.raise_for_status()
+            data = response.json()
+            if not data.get("ok"):
+                error_count += 1
+                time.sleep(30)
+                continue
+            error_count = 0
+            for update in data.get("result", []):
+                offset = update["update_id"] + 1
+                handle_telegram_update(update)
+            time.sleep(1)
+        except KeyboardInterrupt:
+            break
+        except requests.exceptions.RequestException as e:
+            error_count += 1
+            logger.error("Network error: %s", e)
+            time.sleep(min(30 * error_count, 300))
+        except Exception as e:
+            error_count += 1
+            logger.error("Unexpected error: %s", e)
+            time.sleep(30)
