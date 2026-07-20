@@ -152,8 +152,10 @@ def handle_telegram_update(update_data: dict) -> None:
             if not data.startswith(("booklink_", "spec_confirm_", "login_confirm_")):
                 answer_callback_query(callback_query_id)
             if data == "my_appointments":
+                answer_callback_query(callback_query_id)
                 handle_appointments_command(chat_id, user_id)
             elif data == "history":
+                answer_callback_query(callback_query_id)
                 handle_history_command(chat_id, user_id)
             elif data.startswith("login_confirm_"):
                 handle_login_confirm_callback(
@@ -198,6 +200,7 @@ def handle_login_token(chat_id, user_id, username, first_name, token_str):
 
 
 def handle_login_confirm_callback(chat_id, user_id, callback_query_id, token_str, username, first_name):
+    answer_callback_query(callback_query_id, "Проверяем...")
     status, data = post_site_api(
         "/api/telegram/confirm-login",
         {
@@ -206,10 +209,10 @@ def handle_login_confirm_callback(chat_id, user_id, callback_query_id, token_str
             "username": username or "",
             "first_name": first_name or "",
         },
+        timeout=8,
     )
     try:
         if status == 200 and data and data.get("success"):
-            answer_callback_query(callback_query_id, "Готово!")
             complete_url = data.get("complete_url", "")
             keyboard = {"inline_keyboard": [[{"text": "🌐 Открыть сайт", "url": complete_url}]]} if complete_url else None
             send_telegram_message(
@@ -240,13 +243,14 @@ def handle_specialist_connect_telegram(chat_id, user_id, token_str):
 
 
 def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query_id, token_str):
+    answer_callback_query(callback_query_id, "Подключаем...")
     status, data = post_site_api(
         "/api/specialist/connect-telegram",
         {"link_token": token_str, "telegram_id": user_id},
+        timeout=8,
     )
     try:
         if status == 200 and data and data.get("success"):
-            answer_callback_query(callback_query_id, "Готово!")
             send_telegram_message(chat_id, "✅ <b>Telegram успешно подключён.</b>")
         else:
             msg = (data or {}).get("error", "Ссылка недействительна.")
@@ -265,17 +269,17 @@ def handle_booking_link_confirm(chat_id, user_id, token_str):
 
 
 def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str):
+    answer_callback_query(callback_query_id, "Привязываем...")
     status, data = post_site_api(
         "/api/booking/confirm-telegram",
         {"link_token": token_str, "telegram_id": user_id},
-        timeout=10,
+        timeout=8,
     )
     try:
         if status == 200 and data and data.get("success"):
-            answer_callback_query(callback_query_id, "Готово!")
             send_telegram_message(chat_id, "✅ Ваш Telegram привязан к записи.")
         else:
-            answer_callback_query(callback_query_id, "Ссылка недействительна.")
+            send_telegram_message(chat_id, "❌ Ссылка недействительна или истекла.")
     except Exception as e:
         logger.warning("Booking confirm error: %s", e)
         answer_callback_query(callback_query_id, "Ошибка.")
@@ -393,13 +397,38 @@ def handle_specialist_next_appointments(chat_id, user_id):
     send_telegram_message(chat_id, "📭 Ближайших записей нет.")
 
 
+def verify_bot_identity() -> None:
+    """Warn if TELEGRAM_BOT_USERNAME does not match the token (common misconfiguration)."""
+    if not TELEGRAM_API_URL:
+        return
+    expected = settings.telegram_bot_username.lstrip("@").lower()
+    try:
+        r = requests.get(f"{TELEGRAM_API_URL}/getMe", timeout=10)
+        r.raise_for_status()
+        payload = r.json()
+        if not payload.get("ok"):
+            return
+        actual = (payload.get("result") or {}).get("username", "").lower()
+        if actual:
+            logger.info("Telegram bot identity: @%s", actual)
+        if expected and actual and expected != actual:
+            logger.error(
+                "TELEGRAM_BOT_USERNAME=%s but token belongs to @%s — update GitHub Secret TELEGRAM_BOT_USERNAME",
+                settings.telegram_bot_username,
+                actual,
+            )
+    except Exception as exc:
+        logger.warning("Could not verify bot identity: %s", exc)
+
+
 def run_long_polling() -> None:
     if not settings.telegram_bot_token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN not set")
+    verify_bot_identity()
     url = f"{TELEGRAM_API_URL}/getUpdates"
     offset = 0
     error_count = 0
-    logger.info("Bot started. SITE_URL=%s", settings.site_url)
+    logger.info("Bot started. SITE_URL=%s SITE_INTERNAL_URL=%s", settings.site_url, settings.site_internal_url)
     while True:
         try:
             response = requests.get(url, params={"offset": offset, "timeout": 30, "allowed_updates": ["message", "callback_query"]}, timeout=60)
@@ -407,13 +436,12 @@ def run_long_polling() -> None:
             data = response.json()
             if not data.get("ok"):
                 error_count += 1
-                time.sleep(30)
+                time.sleep(min(5 * error_count, 30))
                 continue
             error_count = 0
             for update in data.get("result", []):
                 offset = update["update_id"] + 1
                 handle_telegram_update(update)
-            time.sleep(1)
         except KeyboardInterrupt:
             break
         except requests.exceptions.RequestException as e:

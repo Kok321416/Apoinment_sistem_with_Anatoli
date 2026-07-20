@@ -227,6 +227,8 @@ jobs:
 
           BOT_PIDFILE="$APP_DIR/bot.pid"
           BOT_LOG="$APP_DIR/bot.log"
+          pkill -f "python -m bot.run" 2>/dev/null || true
+          pkill -f "python.*bot.run" 2>/dev/null || true
           if [ -f "$BOT_PIDFILE" ]; then
             OLD_PID=$(cat "$BOT_PIDFILE")
             kill -TERM "$OLD_PID" 2>/dev/null || true
