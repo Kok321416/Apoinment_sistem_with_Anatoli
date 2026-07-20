@@ -84,6 +84,8 @@ jobs:
         script: |
           set -e
           APP_DIR="${{ secrets.APP_DIR }}"
+          FULL_RESET_ONCE="${{ secrets.FULL_RESET_ONCE }}"
+          RESET_MARKER_FILE="$APP_DIR/.deploy_reset_done"
           if [ -z "$APP_DIR" ]; then
             echo "❌ Secret APP_DIR is required (example: /home/<user>/appointment-system)"
             exit 1
@@ -109,12 +111,12 @@ jobs:
           TELEGRAM_BOT_USERNAME=${{ secrets.TELEGRAM_BOT_USERNAME }}
           ADMIN_TELEGRAM_USERNAME=${{ secrets.ADMIN_TELEGRAM_USERNAME }}
           SMTP_HOST=${{ secrets.SMTP_HOST }}
-          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_PORT=${{ secrets.SMTP_PORT || '465' }}
           SMTP_USER=${{ secrets.SMTP_USER }}
           SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
           SMTP_FROM=${{ secrets.SMTP_FROM }}
-          SMTP_FROM_NAME=${{ secrets.SMTP_FROM_NAME }}
-          SMTP_USE_SSL=${{ secrets.SMTP_USE_SSL }}
+          SMTP_FROM_NAME=${{ secrets.SMTP_FROM_NAME || 'allyourclients' }}
+          SMTP_USE_SSL=${{ secrets.SMTP_USE_SSL || 'true' }}
           EOF
 
           # Ensure predictable PATH in non-interactive SSH
@@ -199,13 +201,27 @@ jobs:
 
           PIDFILE="$APP_DIR/uvicorn.pid"
           LOGFILE="$APP_DIR/uvicorn.log"
+          GUNICORN_PIDFILE="$APP_DIR/gunicorn.pid"
 
-          if [ -f "$PIDFILE" ]; then
-            echo "🛑 Stopping old uvicorn"
-            kill -TERM "$(cat "$PIDFILE")" || true
-            rm -f "$PIDFILE"
-            sleep 2
+          stop_pid() {
+            local pidfile="$1"
+            if [ -f "$pidfile" ]; then
+              kill -TERM "$(cat "$pidfile")" 2>/dev/null || true
+              rm -f "$pidfile"
+            fi
+          }
+
+          echo "🛑 Stopping old web processes"
+          stop_pid "$PIDFILE"
+          stop_pid "$GUNICORN_PIDFILE"
+          pkill -f "gunicorn.*appoinment_sistem" 2>/dev/null || true
+          pkill -f "uvicorn app.main:app" 2>/dev/null || true
+          if command -v fuser >/dev/null 2>&1; then
+            fuser -k 8000/tcp 2>/dev/null || true
+          elif command -v lsof >/dev/null 2>&1; then
+            lsof -ti:8000 | xargs -r kill -TERM 2>/dev/null || true
           fi
+          sleep 2
 
           echo "🚀 Starting uvicorn (FastAPI)"
           nohup "$APP_DIR/venv/bin/uvicorn" app.main:app \
