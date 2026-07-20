@@ -35,7 +35,7 @@ class Settings:
     db_name: str | None = os.getenv("DB_NAME")
     db_user: str = os.getenv("DB_USER", "appointment_user")
     db_password: str = os.getenv("DB_PASSWORD", "")
-    db_host: str = os.getenv("DB_HOST", "localhost")
+    db_host: str = (os.getenv("DB_HOST", "") or "").strip() or "localhost"
     db_port: str = os.getenv("DB_PORT", "3306")
     db_connect_timeout: int = _env_int("DB_CONNECT_TIMEOUT", 10)
 

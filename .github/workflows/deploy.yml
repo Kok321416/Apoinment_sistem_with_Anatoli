@@ -92,7 +92,7 @@ jobs:
           DEBUG=False
           ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
           SITE_URL=${{ secrets.SITE_URL }}
-          SITE_INTERNAL_URL=${{ secrets.SITE_INTERNAL_URL || 'http://127.0.0.1:8000' }}
+          SITE_INTERNAL_URL=${{ secrets.SITE_INTERNAL_URL }}
           GOOGLE_OAUTH_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           GOOGLE_OAUTH_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
           TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}

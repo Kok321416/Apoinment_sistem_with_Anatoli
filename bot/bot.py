@@ -1,7 +1,9 @@
 """Telegram bot for appointment system (FastAPI backend)."""
 import json
 import logging
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from collections import Counter
 
 import requests
@@ -12,6 +14,8 @@ from bot.config import get_bot_settings
 logger = logging.getLogger(__name__)
 settings = get_bot_settings()
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.telegram_bot_token}" if settings.telegram_bot_token else None
+_tg_session = requests.Session()
+_update_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="tg-update")
 
 
 def get_site_url() -> str:
@@ -33,7 +37,7 @@ def send_telegram_message(chat_id, text, reply_markup=None) -> bool:
     if reply_markup:
         data["reply_markup"] = json.dumps(reply_markup)
     try:
-        response = requests.post(f"{TELEGRAM_API_URL}/sendMessage", json=data, timeout=10)
+        response = _tg_session.post(f"{TELEGRAM_API_URL}/sendMessage", json=data, timeout=(5, 10))
         response.raise_for_status()
         return True
     except Exception as e:
@@ -48,7 +52,7 @@ def answer_callback_query(callback_query_id, text=None) -> bool:
     if text:
         payload["text"] = text[:200]
     try:
-        requests.post(f"{TELEGRAM_API_URL}/answerCallbackQuery", json=payload, timeout=5)
+        _tg_session.post(f"{TELEGRAM_API_URL}/answerCallbackQuery", json=payload, timeout=(3, 5))
         return True
     except Exception as e:
         logger.error("answerCallbackQuery error: %s", e)
@@ -286,18 +290,6 @@ def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
 
 
 def handle_start_command(chat_id, user_id, username, first_name):
-    ok, data = _fetch_site_api("/api/telegram/specialist-bookings/", {"telegram_chat_id": str(chat_id)})
-    is_specialist = ok and data and data.get("is_specialist")
-    if is_specialist:
-        keyboard = {
-            "inline_keyboard": [
-                [{"text": "📅 Показать 5 ближайших (в чат)", "callback_data": "spec_next"}],
-            ]
-        }
-        send_telegram_message(chat_id, f"👋 Добро пожаловать, {first_name}!\n\nВы вошли как <b>специалист</b>.", keyboard)
-        send_telegram_message(chat_id, "Кнопки внизу экрана.", get_specialist_reply_keyboard())
-        return
-
     admin_username = settings.admin_telegram_username.lstrip("@")
     booking_url = _get_booking_url()
     keyboard = {
@@ -309,6 +301,24 @@ def handle_start_command(chat_id, user_id, username, first_name):
     }
     send_telegram_message(chat_id, f"👋 Добро пожаловать, {first_name}!", keyboard)
     send_telegram_message(chat_id, "Используйте кнопки ниже.", get_client_reply_keyboard())
+
+    def _maybe_specialist_menu() -> None:
+        ok, data = _fetch_site_api("/api/telegram/specialist-bookings/", {"telegram_chat_id": str(chat_id)})
+        if not (ok and data and data.get("is_specialist")):
+            return
+        spec_keyboard = {
+            "inline_keyboard": [
+                [{"text": "📅 Показать 5 ближайших (в чат)", "callback_data": "spec_next"}],
+            ]
+        }
+        send_telegram_message(
+            chat_id,
+            f"👋 {first_name}, вы вошли как <b>специалист</b>.",
+            spec_keyboard,
+        )
+        send_telegram_message(chat_id, "Кнопки специалиста внизу экрана.", get_specialist_reply_keyboard())
+
+    threading.Thread(target=_maybe_specialist_menu, daemon=True).start()
 
 
 def handle_register_command(chat_id):
@@ -403,7 +413,7 @@ def verify_bot_identity() -> None:
         return
     expected = settings.telegram_bot_username.lstrip("@").lower()
     try:
-        r = requests.get(f"{TELEGRAM_API_URL}/getMe", timeout=10)
+        r = _tg_session.get(f"{TELEGRAM_API_URL}/getMe", timeout=(5, 10))
         r.raise_for_status()
         payload = r.json()
         if not payload.get("ok"):
@@ -431,7 +441,11 @@ def run_long_polling() -> None:
     logger.info("Bot started. SITE_URL=%s SITE_INTERNAL_URL=%s", settings.site_url, settings.site_internal_url)
     while True:
         try:
-            response = requests.get(url, params={"offset": offset, "timeout": 30, "allowed_updates": ["message", "callback_query"]}, timeout=60)
+            response = _tg_session.get(
+                url,
+                params={"offset": offset, "timeout": 20, "allowed_updates": ["message", "callback_query"]},
+                timeout=(5, 30),
+            )
             response.raise_for_status()
             data = response.json()
             if not data.get("ok"):
@@ -441,14 +455,14 @@ def run_long_polling() -> None:
             error_count = 0
             for update in data.get("result", []):
                 offset = update["update_id"] + 1
-                handle_telegram_update(update)
+                _update_pool.submit(handle_telegram_update, update)
         except KeyboardInterrupt:
             break
         except requests.exceptions.RequestException as e:
             error_count += 1
             logger.error("Network error: %s", e)
-            time.sleep(min(30 * error_count, 300))
+            time.sleep(min(10 * error_count, 60))
         except Exception as e:
             error_count += 1
             logger.error("Unexpected error: %s", e)
-            time.sleep(30)
+            time.sleep(min(10 * error_count, 60))

@@ -12,6 +12,8 @@ from bot.config import get_bot_settings
 
 logger = logging.getLogger(__name__)
 
+_session = requests.Session()
+
 
 def _sign_body(body: bytes, secret: str) -> tuple[str, str]:
     ts = str(int(time.time()))
@@ -20,17 +22,20 @@ def _sign_body(body: bytes, secret: str) -> tuple[str, str]:
     return ts, sig
 
 
-def _api_base_urls() -> list[str]:
+def _api_targets(timeout: int) -> list[tuple[str, int]]:
+    """Public HTTPS first; optional internal URL with short timeout only."""
     settings = get_bot_settings()
-    urls: list[str] = []
-    for raw in (settings.site_internal_url, settings.site_url):
-        url = (raw or "").strip().rstrip("/")
-        if url.startswith("http") and url not in urls:
-            urls.append(url)
-    return urls
+    targets: list[tuple[str, int]] = []
+    public = (settings.site_url or "").strip().rstrip("/")
+    internal = (settings.site_internal_url or "").strip().rstrip("/")
+    if public.startswith("http"):
+        targets.append((public, timeout))
+    if internal.startswith("http") and internal.rstrip("/") != public.rstrip("/"):
+        targets.append((internal, min(3, timeout)))
+    return targets
 
 
-def post_site_api(path: str, payload: dict, *, timeout: int = 15) -> tuple[int, dict | None]:
+def post_site_api(path: str, payload: dict, *, timeout: int = 8) -> tuple[int, dict | None]:
     settings = get_bot_settings()
     token = settings.telegram_bot_token
     api_secret = settings.bot_api_secret
@@ -50,11 +55,16 @@ def post_site_api(path: str, payload: dict, *, timeout: int = 15) -> tuple[int, 
     if public_host:
         headers.setdefault("Host", public_host)
 
+    targets = _api_targets(timeout)
+    if not targets:
+        logger.error("SITE_URL is not configured for bot API calls")
+        return 0, None
+
     last_error: Exception | None = None
-    for base in _api_base_urls():
-        url = f"{base}{path}"
+    for base, req_timeout in targets:
+        url = f"{base.rstrip('/')}{path}"
         try:
-            r = requests.post(url, data=body, headers=headers, timeout=timeout)
+            r = _session.post(url, data=body, headers=headers, timeout=(3, req_timeout))
             data = r.json() if r.text else {}
             if r.status_code >= 500:
                 logger.warning("Site API %s returned HTTP %s", url, r.status_code)

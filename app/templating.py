@@ -49,34 +49,36 @@ templates = Jinja2Templates(directory=str(settings.templates_dir))
 def build_header_context(db, user) -> dict:
     if not user:
         return {"header_consultant_name": "", "header_account_display": ""}
-    name = ""
-    consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
-    if consultant:
-        parts = [consultant.first_name or "", consultant.last_name or ""]
-        name = " ".join(p for p in parts if p).strip() or consultant.email or user.username
-    else:
-        db_user = db.get(User, user.id)
-        name = (db_user.get_full_name() if db_user else "") or user.username
+    try:
+        name = ""
+        consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
+        if consultant:
+            parts = [consultant.first_name or "", consultant.last_name or ""]
+            name = " ".join(p for p in parts if p).strip() or consultant.email or user.username
+        else:
+            db_user = db.get(User, user.id)
+            name = (db_user.get_full_name() if db_user else "") or user.username
 
-    account = ""
-    primary = (
-        db.query(EmailAddress)
-        .filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True))
-        .first()
-    )
-    if primary and primary.email:
-        account = primary.email
-    if not account and user.email:
-        account = user.email
-    if not account and "@" in user.username:
-        account = user.username
+        account = ""
+        primary = (
+            db.query(EmailAddress)
+            .filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True))
+            .first()
+        )
+        if primary and primary.email:
+            account = primary.email
+        if not account and user.email:
+            account = user.email
+        if not account and "@" in user.username:
+            account = user.username
 
-    social = db.query(SocialAccount).filter(SocialAccount.user_id == user.id).first()
-    if social:
-        if social.provider == "telegram":
+        social = db.query(SocialAccount).filter(SocialAccount.user_id == user.id).first()
+        if social and social.provider == "telegram":
             account = account or user.username
 
-    return {"header_consultant_name": name, "header_account_display": account or user.username}
+        return {"header_consultant_name": name, "header_account_display": account or user.username}
+    except Exception:
+        return {"header_consultant_name": user.username, "header_account_display": user.username or ""}
 
 
 def _session_pop(request, key: str, default=False):

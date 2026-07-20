@@ -74,7 +74,7 @@ async def security_headers_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def password_required_middleware(request: Request, call_next):
-    from app.auth.session import get_current_user
+    from app.auth.session import get_current_user, get_session_user_id
     from app.database import SessionLocal
 
     exempt_prefixes = (
@@ -86,11 +86,14 @@ async def password_required_middleware(request: Request, call_next):
         "/media/",
         "/api/",
         "/book/",
+        "/health",
     )
     path = request.url.path
     if any(path.startswith(p) for p in exempt_prefixes):
         return await call_next(request)
     if "session" not in request.scope:
+        return await call_next(request)
+    if not get_session_user_id(request):
         return await call_next(request)
     db = None
     try:
