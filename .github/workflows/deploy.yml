@@ -92,6 +92,7 @@ jobs:
           fi
           export APP_DIR
           echo "📁 Using APP_DIR=$APP_DIR"
+          echo "📌 Deploy commit: ${{ github.sha }}"
           cd "$APP_DIR"
           chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh 2>/dev/null || true
 
@@ -241,6 +242,7 @@ jobs:
           sleep 2
           free_port 8000
           sleep 1
+          python scripts/free_port.py 8000
 
           echo "🚀 Starting uvicorn (FastAPI)"
           nohup "$APP_DIR/venv/bin/uvicorn" app.main:app \
