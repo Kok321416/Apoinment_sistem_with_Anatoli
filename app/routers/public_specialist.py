@@ -14,7 +14,6 @@ from app.services.email import send_verification_email
 from app.services.public_client import (
     clear_client_gate,
     client_gate_ok,
-    ensure_public_slug,
     make_email_code,
     set_client_gate,
 )
@@ -31,6 +30,8 @@ def _get_consultant_by_slug(db: Session, slug: str) -> Consultant:
     consultant = resolve_consultant_by_slug(db, slug)
     if not consultant:
         raise HTTPException(status_code=404, detail="Специалист не найден")
+    # Transient (not ORM): templates and redirects use consultant.public_slug
+    consultant.public_slug = slug
     return consultant
 
 
@@ -46,7 +47,8 @@ def _sync_booking_session(request: Request) -> None:
 def _require_gate(request: Request, consultant: Consultant, next_path: str):
     if client_gate_ok(request.session, consultant.id):
         return None
-    return RedirectResponse(f"/s/{consultant.public_slug}/welcome/?{urlencode({'next': next_path})}", status_code=302)
+    slug = getattr(consultant, "public_slug", None) or f"id-{consultant.id}"
+    return RedirectResponse(f"/s/{slug}/welcome/?{urlencode({'next': next_path})}", status_code=302)
 
 
 @router.get("/s/{slug}/")
@@ -229,7 +231,7 @@ async def specialist_client_logout(request: Request, slug: str, db: Session = De
         "booking_client_email",
     ):
         request.session.pop(key, None)
-    return RedirectResponse(f"/s/{consultant.public_slug}/welcome/", status_code=302)
+    return RedirectResponse(f"/s/{slug}/welcome/", status_code=302)
 
 
 @router.get("/s/{slug}/c/{calendar_id}/")
