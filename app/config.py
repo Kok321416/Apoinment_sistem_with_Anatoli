@@ -12,6 +12,16 @@ if _site and not _site.startswith("http"):
     _site = "https://" + _site
 
 
+def _env_int(name: str, default: int) -> int:
+    raw = (os.getenv(name, "") or "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
 class Settings:
     base_dir: Path = BASE_DIR
     secret_key: str = os.getenv("SECRET_KEY", "change-me-in-production")
@@ -38,14 +48,14 @@ class Settings:
 
     # SMTP для писем подтверждения email
     smtp_host: str = os.getenv("SMTP_HOST", "")
-    smtp_port: int = int(os.getenv("SMTP_PORT", "465"))
+    smtp_port: int = _env_int("SMTP_PORT", 465)
     smtp_user: str = os.getenv("SMTP_USER", "")
     smtp_password: str = os.getenv("SMTP_PASSWORD", "")
     smtp_from: str = os.getenv("SMTP_FROM", "") or os.getenv("SMTP_USER", "")
     smtp_from_name: str = os.getenv("SMTP_FROM_NAME", "allyourclients")
     smtp_use_ssl: bool = os.getenv("SMTP_USE_SSL", "true").lower() in ("1", "true", "yes")
-    email_verify_hours: int = int(os.getenv("EMAIL_VERIFY_HOURS", "24"))
-    email_resend_minutes: int = int(os.getenv("EMAIL_RESEND_MINUTES", "5"))
+    email_verify_hours: int = _env_int("EMAIL_VERIFY_HOURS", 24)
+    email_resend_minutes: int = _env_int("EMAIL_RESEND_MINUTES", 5)
 
     media_root: Path = BASE_DIR / "media"
     static_dir: Path = BASE_DIR / "app" / "static"
