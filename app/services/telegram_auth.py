@@ -163,7 +163,7 @@ def confirm_login_via_bot(
             SocialAccount.uid == tg_id,
         ).first()
         if existing and existing.user_id != user.id:
-            return False, "Этот Telegram уже привязан к другому аккаунту", None
+            return False, "Этот аккаунт Телеграм уже привязан к другому пользователю", None
         if not existing:
             db.add(SocialAccount(
                 provider="telegram",

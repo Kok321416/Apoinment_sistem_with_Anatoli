@@ -181,8 +181,8 @@ def handle_login_via_bot(chat_id):
     keyboard = {"inline_keyboard": [[{"text": "🔐 Войти на сайт", "url": f"{site}/login/"}]]}
     send_telegram_message(
         chat_id,
-        "👋 <b>Вход на сайт через Telegram</b>\n\n"
-        "Откройте страницу входа на сайте и нажмите «Telegram» — "
+        "👋 <b>Вход на сайт через Телеграм</b>\n\n"
+        "Откройте страницу входа на сайте и нажмите «Телеграм» — "
         "бот отправит ссылку для подтверждения.",
         keyboard,
     )
@@ -198,7 +198,7 @@ def handle_login_token(chat_id, user_id, username, first_name, token_str):
     send_telegram_message(
         chat_id,
         "🔐 <b>Вход на сайт</b>\n\n"
-        "Нажмите кнопку ниже, чтобы подтвердить вход через Telegram.",
+        "Нажмите кнопку ниже, чтобы подтвердить вход через Телеграм.",
         keyboard,
     )
 
@@ -238,12 +238,12 @@ def handle_login_confirm_callback(chat_id, user_id, callback_query_id, token_str
 def handle_connect_via_bot(chat_id):
     connect_url = f"{get_site_url().rstrip('/')}/accounts/telegram/login/?process=connect&next=/profile/"
     keyboard = {"inline_keyboard": [[{"text": "🔗 Подключить аккаунт на сайте", "url": connect_url}]]}
-    send_telegram_message(chat_id, "👋 <b>Подключение Telegram к аккаунту</b>", keyboard)
+    send_telegram_message(chat_id, "👋 <b>Подключение Телеграм к аккаунту</b>", keyboard)
 
 
 def handle_specialist_connect_telegram(chat_id, user_id, token_str):
     keyboard = {"inline_keyboard": [[{"text": "✅ Подтвердить подключение", "callback_data": f"spec_confirm_{token_str}"}]]}
-    send_telegram_message(chat_id, "👋 <b>Подключение Telegram для уведомлений специалиста</b>", keyboard)
+    send_telegram_message(chat_id, "👋 <b>Подключение Телеграм для уведомлений специалиста</b>", keyboard)
 
 
 def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query_id, token_str):
@@ -255,7 +255,7 @@ def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query
     )
     try:
         if status == 200 and data and data.get("success"):
-            send_telegram_message(chat_id, "✅ <b>Telegram успешно подключён.</b>")
+            send_telegram_message(chat_id, "✅ <b>Телеграм успешно подключён.</b>")
         else:
             msg = (data or {}).get("error", "Ссылка недействительна.")
             answer_callback_query(callback_query_id, msg[:200])
@@ -268,7 +268,7 @@ def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query
 
 def handle_booking_link_confirm(chat_id, user_id, token_str):
     keyboard = {"inline_keyboard": [[{"text": "✅ Подтвердить и получать уведомления", "callback_data": f"booklink_{token_str}"}]]}
-    send_telegram_message(chat_id, "📌 <b>Подтвердите привязку Telegram к вашей записи</b>", keyboard)
+    send_telegram_message(chat_id, "📌 <b>Подтвердите привязку Телеграм к вашей записи</b>", keyboard)
     return True
 
 
@@ -281,7 +281,7 @@ def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
     )
     try:
         if status == 200 and data and data.get("success"):
-            send_telegram_message(chat_id, "✅ Ваш Telegram привязан к записи.")
+            send_telegram_message(chat_id, "✅ Ваш Телеграм привязан к записи.")
         else:
             send_telegram_message(chat_id, "❌ Ссылка недействительна или истекла.")
     except Exception as e:

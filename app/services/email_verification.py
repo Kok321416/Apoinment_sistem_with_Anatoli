@@ -65,12 +65,12 @@ def verify_email_token(db: Session, token: str) -> tuple[User | None, str | None
 def resend_verification_email(db: Session, email: str) -> tuple[bool, str]:
     email = (email or "").strip().lower()
     if not email:
-        return False, "Укажите email."
+        return False, "Укажите почту."
     user = db.query(User).filter(User.username == email).first()
     if not user:
-        return False, "Пользователь с таким email не найден."
+        return False, "Пользователь с такой почтой не найден."
     if user.is_active:
-        return False, "Email уже подтверждён. Можно войти."
+        return False, "Почта уже подтверждена. Можно войти."
     last = (
         db.query(EmailVerificationToken)
         .filter(EmailVerificationToken.user_id == user.id)

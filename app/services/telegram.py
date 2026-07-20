@@ -98,7 +98,7 @@ def format_new_booking_message_for_specialist(booking: Booking) -> str:
     if booking.client_email:
         contact.append(f"📧 {booking.client_email}")
     contact_str = "\n".join(contact) if contact else "—"
-    status_note = "\n⏳ Данные ждут подтверждения (клиент может подтвердить Telegram на странице после записи)."
+    status_note = "\n⏳ Данные ждут подтверждения (клиент может подтвердить Телеграм на странице после записи)."
     return (
         f"🆕 <b>Новая запись</b>\n\n"
         f"👤 Клиент: {booking.client_name or '—'}\n"
