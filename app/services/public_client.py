@@ -18,8 +18,17 @@ def _slugify(value: str) -> str:
 
 
 def ensure_public_slug(db: Session, consultant: Consultant) -> str:
-    if consultant.public_slug:
-        return consultant.public_slug
+    from app.db_schema import ensure_schema_before_query
+
+    ensure_schema_before_query()
+    try:
+        current = consultant.public_slug
+    except Exception:
+        db.expire(consultant)
+        db.refresh(consultant)
+        current = consultant.public_slug
+    if current:
+        return current
     base = _slugify(f"{consultant.first_name}-{consultant.last_name}") or f"spec-{consultant.id}"
     candidate = base
     n = 0

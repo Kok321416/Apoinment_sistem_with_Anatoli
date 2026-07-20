@@ -22,6 +22,9 @@ def require_user(request: Request, db: Session = Depends(get_db)) -> AuthUser:
 
 
 def get_consultant(db: Session, user: AuthUser) -> Consultant:
+    from app.db_schema import ensure_schema_before_query
+
+    ensure_schema_before_query()
     consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
     if not consultant:
         raise HTTPException(status_code=302, headers={"Location": "/"})

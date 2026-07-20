@@ -14,6 +14,47 @@ _TELEGRAM_LOGIN_COLUMNS = {
     "consumed_at": "DATETIME NULL",
 }
 
+_schema_ready = False
+
+
+def _column_exists(table: str, column: str) -> bool:
+    try:
+        inspector = inspect(engine)
+        if not inspector.has_table(table):
+            return False
+        return column in {col["name"] for col in inspector.get_columns(table)}
+    except Exception:
+        logger.exception("Could not inspect %s.%s", table, column)
+        return False
+
+
+def _add_column(table: str, column: str, ddl: str) -> None:
+    if _column_exists(table, column):
+        return
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
+        logger.info("Added column %s.%s", table, column)
+    except Exception as exc:
+        msg = str(exc).lower()
+        if "duplicate" in msg or "exists" in msg or "already" in msg:
+            logger.info("Column %s.%s already present", table, column)
+            return
+        logger.exception("Could not add %s.%s", table, column)
+        raise
+
+
+def _add_unique_index(table: str, index_name: str, column: str) -> None:
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(f"CREATE UNIQUE INDEX {index_name} ON {table} ({column})"))
+        logger.info("Created index %s", index_name)
+    except Exception as exc:
+        msg = str(exc).lower()
+        if "duplicate" in msg or "exists" in msg or "already" in msg:
+            return
+        logger.exception("Could not create index %s", index_name)
+
 
 def ensure_telegram_login_schema() -> None:
     Base.metadata.create_all(bind=engine, tables=[auth_models.TelegramLoginRequest.__table__])
@@ -22,51 +63,44 @@ def ensure_telegram_login_schema() -> None:
     if not inspector.has_table("telegram_login_requests"):
         return
 
-    columns = {col["name"] for col in inspector.get_columns("telegram_login_requests")}
     for name, ddl in _TELEGRAM_LOGIN_COLUMNS.items():
-        if name in columns:
-            continue
         try:
-            with engine.begin() as conn:
-                conn.execute(
-                    text(f"ALTER TABLE telegram_login_requests ADD COLUMN {name} {ddl}")
-                )
-            logger.info("Added column telegram_login_requests.%s", name)
+            _add_column("telegram_login_requests", name, ddl)
         except Exception:
-            logger.exception("Could not add %s to telegram_login_requests", name)
+            logger.exception("telegram_login column %s failed", name)
 
 
 def ensure_app_schema() -> None:
-    inspector = inspect(engine)
-    if inspector.has_table("consultants"):
-        columns = {col["name"] for col in inspector.get_columns("consultants")}
-        if "public_slug" not in columns:
-            try:
-                with engine.begin() as conn:
-                    conn.execute(text("ALTER TABLE consultants ADD COLUMN public_slug VARCHAR(64) NULL"))
-                logger.info("Added column consultants.public_slug")
-            except Exception:
-                logger.exception("Could not add consultants.public_slug")
-            try:
-                with engine.begin() as conn:
-                    conn.execute(text("CREATE UNIQUE INDEX ix_consultants_public_slug ON consultants (public_slug)"))
-            except Exception:
-                logger.exception("Could not index consultants.public_slug")
+    """Idempotent patches required by the current app code."""
+    try:
+        _add_column("consultants", "public_slug", "VARCHAR(64) NULL")
+        _add_unique_index("consultants", "ix_consultants_public_slug", "public_slug")
+    except Exception:
+        logger.exception("consultants.public_slug patch failed")
 
-    if inspector.has_table("services"):
-        columns = {col["name"] for col in inspector.get_columns("services")}
-        if "calendar_id" not in columns:
-            try:
-                with engine.begin() as conn:
-                    conn.execute(text("ALTER TABLE services ADD COLUMN calendar_id INTEGER NULL"))
-                logger.info("Added column services.calendar_id")
-            except Exception:
-                logger.exception("Could not add services.calendar_id")
+    try:
+        _add_column("services", "calendar_id", "INTEGER NULL")
+    except Exception:
+        logger.exception("services.calendar_id patch failed")
 
 
 def ensure_all_schema() -> None:
+    global _schema_ready
     ensure_telegram_login_schema()
     ensure_app_schema()
+    _schema_ready = True
+
+
+def ensure_schema_before_query() -> None:
+    """Best-effort runtime recovery if startup patch did not run."""
+    global _schema_ready
+    if _schema_ready and _column_exists("consultants", "public_slug"):
+        return
+    try:
+        ensure_app_schema()
+        _schema_ready = True
+    except Exception:
+        logger.exception("Runtime schema ensure failed")
 
 
 if __name__ == "__main__":
