@@ -57,6 +57,8 @@ jobs:
         script: |
           set -e
           APP_DIR="${{ secrets.APP_DIR }}"
+          FULL_RESET_ONCE="${{ secrets.FULL_RESET_ONCE }}"
+          RESET_MARKER_FILE="$APP_DIR/.deploy_reset_done"
           if [ -z "$APP_DIR" ]; then
             echo "❌ Secret APP_DIR is required (example: /home/<user>/appointment-system)"
             exit 1
@@ -150,6 +152,43 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -c "import pymysql; print('PyMySQL OK')" || { echo "❌ PyMySQL not in venv"; exit 1; }
+
+          # Optional one-time full reset:
+          # - clean legacy app artifacts
+          # - drop all tables in current DB
+          # Trigger by setting secret FULL_RESET_ONCE=true
+          # Reset runs only once because marker file is written after success.
+          if [ "$FULL_RESET_ONCE" = "true" ] && [ ! -f "$RESET_MARKER_FILE" ]; then
+            echo "🧹 FULL_RESET_ONCE enabled, running one-time project reset"
+            rm -rf appoinment_sistem appoiment_system bookings telegram_bot templates/bookings || true
+            python - <<'PY'
+          import os
+          from sqlalchemy import MetaData, create_engine
+
+          db_name = os.getenv("DB_NAME", "").strip()
+          db_user = os.getenv("DB_USER", "appointment_user")
+          db_password = os.getenv("DB_PASSWORD", "")
+          db_host = os.getenv("DB_HOST", "localhost")
+          db_port = os.getenv("DB_PORT", "3306")
+
+          if not db_name:
+              print("DB_NAME empty, skip full DB reset")
+          else:
+              url = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}?charset=utf8mb4"
+              engine = create_engine(url, pool_pre_ping=True)
+              meta = MetaData()
+              meta.reflect(bind=engine)
+              if meta.tables:
+                  print(f"Dropping {len(meta.tables)} tables from {db_name}")
+                  meta.drop_all(bind=engine)
+              else:
+                  print("No tables found, nothing to drop")
+          PY
+            touch "$RESET_MARKER_FILE"
+            echo "✅ One-time reset completed. Next deploys will be normal updates."
+          else
+            echo "ℹ️ Full reset skipped (normal deploy mode)"
+          fi
 
           chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh
           ./scripts/migrate.sh
