@@ -1,67 +1,55 @@
 # Система онлайн записи консультантов
 
-Django приложение для управления записями на консультации.
+FastAPI приложение для управления записями на консультации.
 
 ## Возможности
 
-- Регистрация и авторизация консультантов
+- Регистрация и авторизация (email, Google, Telegram)
 - Управление календарями и временными окнами
-- Создание и управление услугами
-- Публичная страница для записи клиентов
-- Управление записями (бронированиями)
-- API для интеграций
+- Публичная страница записи клиентов
+- Telegram-бот (запись, мои записи, уведомления)
+- Google Calendar синхронизация
+- Напоминания в Telegram (cron)
 
 ## Технологии
 
-- Django 4.2 (LTS) — совместимо с Python 3.10.x (reg.ru)
-- Django REST Framework
-- MySQL
+- FastAPI + Uvicorn
+- SQLAlchemy + MySQL
+- Jinja2 templates
 - Docker & Docker Compose
-- Gunicorn, Nginx
-- WhiteNoise (для статических файлов)
-
-## Деплой на хостинг (reg.ru и др.)
-
-Инструкция по запуску через Git и консоль: [DEPLOY_REGRU.md](DEPLOY_REGRU.md)
+- Nginx
 
 ## Быстрый старт
 
 ```bash
-# Установка зависимостей
-cd appoinment_sistem
-pip install -r ../requirements.txt
+cp env.example .env
+# Заполните .env (TELEGRAM_BOT_TOKEN, SECRET_KEY, DB_*)
 
-# Миграции
-python manage.py migrate
-
-# Создание суперпользователя
-python manage.py createsuperuser
-
-# Запуск сервера
-python manage.py runserver
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
 
-Приложение будет доступно по адресу: http://127.0.0.1:8000
+В другом терминале:
 
-## Структура проекта
-
-```
-appoinment_sistem/
-├── appoinment_sistem/      # Настройки проекта
-│   ├── settings.py         # Конфигурация Django
-│   ├── urls.py             # URL маршруты
-│   └── wsgi.py             # WSGI конфигурация
-├── consultant_menu/        # Основное приложение
-│   ├── models.py           # Модели данных
-│   ├── views.py            # Представления
-│   ├── templates/          # HTML шаблоны
-│   ├── static/             # Статические файлы (CSS, JS)
-│   └── tests.py            # Тесты
-├── Dockerfile              # Конфигурация Docker образа
-├── docker-compose.yml      # Конфигурация Docker Compose
-└── requirements.txt        # Python зависимости
+```bash
+python -m bot.run
 ```
 
-## Связь HTML с бэкендом
+## Структура
 
-Подробное описание того, как HTML шаблоны связаны с Django бэкендом, см. в файле [HTML_BACKEND_CONNECTION.md](HTML_BACKEND_CONNECTION.md)
+```
+app/           # FastAPI приложение
+  main.py      # Точка входа
+  routers/     # HTTP маршруты
+  models/      # SQLAlchemy модели
+  services/    # Бизнес-логика
+  templates/   # HTML шаблоны
+bot/           # Telegram бот
+scripts/       # run_bot.sh, run_reminders.sh
+```
+
+## Деплой
+
+- Docker: `docker compose up -d`
+- VPS (reg.ru): GitHub Actions deploy.yml
+- Напоминания: cron `./scripts/run_reminders.sh` каждые 15-30 мин

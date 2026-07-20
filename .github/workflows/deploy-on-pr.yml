@@ -30,11 +30,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Django checks (no DB)
-        working-directory: ./appoinment_sistem
+      - name: Run FastAPI import check
         env:
-          SECRET_KEY: ${{ secrets.SECRET_KEY || 'django-insecure-test-key-for-ci' }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY || 'test-secret-key-for-ci' }}
           DEBUG: 'True'
         run: |
-          python manage.py check
-          python manage.py makemigrations --check --dry-run
+          python -c "from app.main import app; print('FastAPI app OK:', app.title)"

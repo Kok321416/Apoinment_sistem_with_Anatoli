@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подтверждение email</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=2">
+</head>
+<body>
+    <div class="container" style="max-width: 520px;">
+        {% if success %}
+        <h1>Email подтверждён</h1>
+        <p>Аккаунт активирован. Теперь можно войти.</p>
+        <p><a href="/login/" class="btn">Войти</a></p>
+        {% else %}
+        <h1>Не удалось подтвердить</h1>
+        <div class="error-message">{{ error }}</div>
+        <p><a href="/login/">На страницу входа</a></p>
+        {% endif %}
+        {% include 'footer.html' %}
+    </div>
+</body>
+</html>

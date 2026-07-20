@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Календари</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=2">
+</head>
+<body>
+    <div class="container" style="max-width: 1000px;">
+        <div class="page-header">
+            <h1>Календари</h1>
+            <div>
+                <a href="/" class="btn btn-secondary" style="padding: 8px 16px;">На главную</a>
+            </div>
+        </div>
+
+        {% if success %}
+        <div class="success-message">{{ success }}</div>
+        {% endif %}
+
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        <!-- Форма создания календаря -->
+        <div class="form-section">
+            <h2>Создать календарь</h2>
+            <form method="POST" action="/calendars/">
+                
+                <input type="hidden" name="action" value="create_calendar">
+                
+                <div class="form-group">
+                    <label for="calendar_name">Название календаря:</label>
+                    <input type="text" id="calendar_name" name="name" required placeholder="Например: Рабочий календарь">
+                </div>
+                
+                <div class="form-group">
+                    <label for="calendar_color">Цвет:</label>
+                    <input type="color" id="calendar_color" name="color" value="#2d2d2d">
+                </div>
+                
+                <button type="submit" class="btn">Создать календарь</button>
+            </form>
+        </div>
+
+        <!-- Список календарей -->
+        <div class="list-section" style="margin-top: 40px;">
+            <h2>Мои календари</h2>
+            
+            {% if calendars_with_links %}
+            <div class="items-grid">
+                {% for item in calendars_with_links %}
+                {% with calendar=item.calendar %}
+                <div class="item-card" style="border-left: 5px solid {{ calendar.color }};">
+                    <div class="item-header">
+                        <h3>{{ calendar.name }}</h3>
+                        <span class="status-badge" style="background: {{ calendar.color }};">
+                            {{ calendar.time_slots.count }} временных окон
+                        </span>
+                    </div>
+                    
+                    <div class="item-info">
+                        <p><strong>Цвет:</strong> <span style="display: inline-block; width: 30px; height: 20px; background: {{ calendar.color }}; border-radius: 4px;"></span></p>
+                        <p><strong>Статус:</strong> {% if calendar.is_active %}Активен{% else %}Неактивен{% endif %}</p>
+                        <p><strong>Создан:</strong> {{ calendar.created_at|date:"d.m.Y" }}</p>
+                        <p><strong>Ссылка:</strong> <small style="word-break: break-all; color: #666;">{{ item.booking_url }}</small></p>
+                    </div>
+                    
+                    <div class="item-actions">
+                        <button onclick="copyLink(this)" data-link="{{ item.booking_url }}" class="btn btn-secondary copy-link-btn" style="padding: 8px 16px; font-size: 14px; margin-right: 10px;">
+                            📋 Скопировать ссылку
+                        </button>
+                        <a href="/calendars/{{ calendar.id }}/" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px; margin-right: 10px;">Управление временем</a>
+                        <form method="POST" action="/calendars/" style="display: inline;">
+                            
+                            <input type="hidden" name="action" value="delete_calendar">
+                            <input type="hidden" name="calendar_id" value="{{ calendar.id }}">
+                            <button type="submit" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px; background: #dc3545; border-color: #dc3545;" onclick="return confirm('Удалить календарь?')">Удалить</button>
+                        </form>
+                    </div>
+                </div>
+                {% endwith %}
+                {% endfor %}
+            </div>
+            {% elif calendars %}
+            <div class="items-grid">
+                {% for calendar in calendars %}
+                <div class="item-card" style="border-left: 5px solid {{ calendar.color }};">
+                    <div class="item-header">
+                        <h3>{{ calendar.name }}</h3>
+                        <span class="status-badge" style="background: {{ calendar.color }};">
+                            {{ calendar.time_slots.count }} временных окон
+                        </span>
+                    </div>
+                    
+                    <div class="item-info">
+                        <p><strong>Цвет:</strong> <span style="display: inline-block; width: 30px; height: 20px; background: {{ calendar.color }}; border-radius: 4px;"></span></p>
+                        <p><strong>Статус:</strong> {% if calendar.is_active %}Активен{% else %}Неактивен{% endif %}</p>
+                        <p><strong>Создан:</strong> {{ calendar.created_at|date:"d.m.Y" }}</p>
+                    </div>
+                    
+                    <div class="item-actions">
+                        <button onclick="copyLink(this)" data-link="/book/{{ calendar.id }}/" class="btn btn-secondary copy-link-btn" style="padding: 8px 16px; font-size: 14px; margin-right: 10px;">
+                            📋 Скопировать ссылку
+                        </button>
+                        <a href="/calendars/{{ calendar.id }}/" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px; margin-right: 10px;">Управление временем</a>
+                        <form method="POST" action="/calendars/" style="display: inline;">
+                            
+                            <input type="hidden" name="action" value="delete_calendar">
+                            <input type="hidden" name="calendar_id" value="{{ calendar.id }}">
+                            <button type="submit" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px; background: #dc3545; border-color: #dc3545;" onclick="return confirm('Удалить календарь?')">Удалить</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="text-align: center; color: #666; padding: 40px;">Календарей пока нет. Создайте первый календарь!</p>
+            {% endif %}
+        </div>
+
+        {% include 'footer.html' %}
+    </div>
+
+    <script>
+        function copyLink(button) {
+            // Получаем ссылку из data-атрибута
+            let link = button.getAttribute('data-link');
+            
+            // Если ссылка относительная, делаем её абсолютной
+            if (link && link.startsWith('/')) {
+                link = window.location.protocol + '//' + window.location.host + link;
+            }
+            
+            // Метод 1: Используем Clipboard API (современные браузеры)
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(link).then(() => {
+                    showCopySuccess(button);
+                }).catch((err) => {
+                    console.error('Ошибка копирования через Clipboard API:', err);
+                    fallbackCopy(link, button);
+                });
+            } else {
+                // Метод 2: Fallback для старых браузеров или небезопасных контекстов
+                fallbackCopy(link, button);
+            }
+        }
+        
+        function fallbackCopy(link, button) {
+            try {
+                // Создаем временный textarea
+                const textArea = document.createElement('textarea');
+                textArea.value = link;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                // Пытаемся скопировать
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                if (successful) {
+                    showCopySuccess(button);
+                } else {
+                    showCopyError(link, button);
+                }
+            } catch (err) {
+                console.error('Ошибка копирования:', err);
+                showCopyError(link, button);
+            }
+        }
+        
+        function showCopySuccess(button) {
+            const originalText = button.innerHTML;
+            button.innerHTML = '✓ Скопировано!';
+            button.style.background = '#28a745';
+            button.style.borderColor = '#28a745';
+            
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.style.background = '';
+                button.style.borderColor = '';
+            }, 2000);
+        }
+        
+        function showCopyError(link, button) {
+            // Показываем ссылку в prompt для ручного копирования
+            const userLink = prompt('Скопируйте ссылку вручную:\n\n', link);
+            if (userLink) {
+                showCopySuccess(button);
+            }
+        }
+    </script>
+</body>
+</html>
+
