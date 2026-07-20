@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.auth.session import get_current_user, login_user
 from app.config import get_settings
 from app.database import get_db
-from app.models import SocialAccount
+from app.models import SocialAccount, User
 from app.services.telegram_auth import consume_completed_login, create_login_request, get_completed_login
 from app.templating import page_context, templates
 

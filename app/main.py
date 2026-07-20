@@ -35,7 +35,10 @@ app.include_router(oauth.router)
 
 @app.on_event("startup")
 def startup():
+    from app.db_schema import ensure_telegram_login_schema
+
     Base.metadata.create_all(bind=engine)
+    ensure_telegram_login_schema()
     if not settings.debug:
         if settings.secret_key in ("", "change-me-in-production"):
             logger.critical("SECRET_KEY is weak or default — set a long random value in production")

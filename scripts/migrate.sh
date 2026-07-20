@@ -17,3 +17,5 @@ with engine.connect() as conn:
     conn.execute(text('SELECT 1'))
 print('Database connection OK')
 "
+
+"$PYTHON" -c "from app.db_schema import ensure_telegram_login_schema; ensure_telegram_login_schema(); print('Auth schema OK')"
