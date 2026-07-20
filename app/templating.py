@@ -79,13 +79,19 @@ def build_header_context(db, user) -> dict:
     return {"header_consultant_name": name, "header_account_display": account or user.username}
 
 
+def _session_pop(request, key: str, default=False):
+    if "session" not in request.scope:
+        return default
+    return request.session.pop(key, default)
+
+
 def page_context(request, db, user=None, **extra):
     ctx = {
         "request": request,
         "user": user,
         "csrf_token": ensure_csrf_token(request),
         "telegram_bot_username": settings.telegram_bot_username,
-        "show_telegram_welcome": request.session.pop("show_telegram_welcome", False),
+        "show_telegram_welcome": _session_pop(request, "show_telegram_welcome", False),
         "url_for": url_for,
         **build_header_context(db, user),
         **extra,

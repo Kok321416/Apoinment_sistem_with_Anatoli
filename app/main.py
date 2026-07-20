@@ -15,13 +15,15 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Appointment System", docs_url="/api/docs" if settings.debug else None)
 
+_session_same_site = settings.session_same_site if settings.session_same_site in ("lax", "strict", "none") else "lax"
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.secret_key,
     session_cookie=settings.session_cookie,
     max_age=settings.session_max_age,
     https_only=settings.site_url.startswith("https://"),
-    same_site=settings.session_same_site,
+    same_site=_session_same_site,
 )
 
 settings.media_root.mkdir(parents=True, exist_ok=True)
@@ -33,12 +35,23 @@ app.include_router(api.router)
 app.include_router(oauth.router)
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 def startup():
     from app.db_schema import ensure_telegram_login_schema
 
-    Base.metadata.create_all(bind=engine)
-    ensure_telegram_login_schema()
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        logger.exception("create_all failed on startup")
+    try:
+        ensure_telegram_login_schema()
+    except Exception:
+        logger.exception("ensure_telegram_login_schema failed on startup")
     if not settings.debug:
         if settings.secret_key in ("", "change-me-in-production"):
             logger.critical("SECRET_KEY is weak or default — set a long random value in production")
@@ -79,8 +92,9 @@ async def password_required_middleware(request: Request, call_next):
         return await call_next(request)
     if "session" not in request.scope:
         return await call_next(request)
-    db = SessionLocal()
+    db = None
     try:
+        db = SessionLocal()
         user = get_current_user(request, db)
         if user and not user.has_usable_password and not path.startswith("/accounts/"):
             next_url = path
@@ -89,6 +103,9 @@ async def password_required_middleware(request: Request, call_next):
             from fastapi.responses import RedirectResponse
             redirect = f"/accounts/password/set/?{__import__('urllib').parse.urlencode({'next': next_url})}"
             return RedirectResponse(redirect, status_code=302)
+    except Exception:
+        logger.exception("password_required_middleware failed for %s", path)
     finally:
-        db.close()
+        if db is not None:
+            db.close()
     return await call_next(request)

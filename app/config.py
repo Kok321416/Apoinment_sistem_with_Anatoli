@@ -37,6 +37,7 @@ class Settings:
     db_password: str = os.getenv("DB_PASSWORD", "")
     db_host: str = os.getenv("DB_HOST", "localhost")
     db_port: str = os.getenv("DB_PORT", "3306")
+    db_connect_timeout: int = _env_int("DB_CONNECT_TIMEOUT", 10)
 
     google_oauth_client_id: str = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
     google_oauth_client_secret: str = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
@@ -45,7 +46,7 @@ class Settings:
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_bot_username: str = os.getenv("TELEGRAM_BOT_USERNAME", "")
     # Separate secret for bot -> API calls (recommended; do not reuse TELEGRAM_BOT_TOKEN in new setups)
-    bot_api_secret: str = os.getenv("BOT_API_SECRET", "")
+    bot_api_secret: str = (os.getenv("BOT_API_SECRET", "") or "").strip()
     admin_telegram_username: str = os.getenv("ADMIN_TELEGRAM_USERNAME", "andrievskypsy")
 
     # SMTP для писем подтверждения email
@@ -65,7 +66,7 @@ class Settings:
 
     session_cookie: str = "session"
     session_max_age: int = 60 * 60 * 24 * 14
-    session_same_site: str = os.getenv("SESSION_SAME_SITE", "lax")
+    session_same_site: str = (os.getenv("SESSION_SAME_SITE", "lax") or "lax").strip().lower()
 
     @property
     def database_url(self) -> str:
