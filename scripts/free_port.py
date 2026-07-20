@@ -21,6 +21,20 @@ def pids_on_port(port: int) -> set[int]:
     return found
 
 
+def port_is_bindable(port: int) -> bool:
+    import socket
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("127.0.0.1", port))
+        return True
+    except OSError:
+        return False
+    finally:
+        sock.close()
+
+
 def main() -> int:
     if len(sys.argv) != 2 or not sys.argv[1].isdigit():
         print("Usage: python scripts/free_port.py <port>", file=sys.stderr)
@@ -30,8 +44,12 @@ def main() -> int:
     for attempt in range(3):
         pids = pids_on_port(port)
         if not pids:
-            print(f"Port {port} is free")
-            return 0
+            if port_is_bindable(port):
+                print(f"Port {port} is free")
+                return 0
+            print(f"Port {port} looks free in ss but is not bindable (attempt {attempt + 1})")
+            time.sleep(2)
+            continue
         print(f"Port {port} busy, killing PIDs: {sorted(pids)} (attempt {attempt + 1})")
         for pid in pids:
             try:
@@ -50,6 +68,9 @@ def main() -> int:
     remaining = pids_on_port(port)
     if remaining:
         print(f"ERROR: port {port} still in use by PIDs: {sorted(remaining)}", file=sys.stderr)
+        return 1
+    if not port_is_bindable(port):
+        print(f"ERROR: port {port} is not bindable on 127.0.0.1", file=sys.stderr)
         return 1
     print(f"Port {port} is free")
     return 0
