@@ -51,6 +51,7 @@ jobs:
             exit 1
           fi
           cd "$APP_DIR"
+          chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh 2>/dev/null || true
 
           # Код на сервер попадает через основной workflow (deploy.yml, SCP). git pull не делаем — без учётки даёт "could not read Username".
 
@@ -81,7 +82,7 @@ jobs:
             rm -f "$BOT_PIDFILE"
             sleep 2
           fi
-          nohup ./scripts/run_bot.sh >> "$BOT_LOG" 2>&1 &
+          nohup bash "$APP_DIR/scripts/run_bot.sh" >> "$BOT_LOG" 2>&1 &
           BOT_PID=$!
           echo $BOT_PID > "$BOT_PIDFILE"
           sleep 3
