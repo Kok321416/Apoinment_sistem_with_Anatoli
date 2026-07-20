@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    {% block meta_tags %}
+    {% set meta_description = meta_description | default('') %}
+    {% include "components/meta.html" %}
+    {% endblock %}
+    {% block page_css %}
+    <link rel="stylesheet" href="/static/css/landing.css?v=15">
+    {% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    {% include "components/skip_link.html" %}
+    {% block body %}{% endblock %}
+    {% include "components/yandex_metrika.html" %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

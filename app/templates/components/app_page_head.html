@@ -1,0 +1,6 @@
+{% macro app_page_head(title, back_href='/dashboard/', back_label='← Кабинет') %}
+<div class="app-page-head">
+    <h1 class="text-h1 app-page-head__title">{{ title }}</h1>
+    <a href="{{ back_href }}" class="btn btn--ghost btn--sm">{{ back_label }}</a>
+</div>
+{% endmacro %}

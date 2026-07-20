@@ -13,8 +13,8 @@ settings = get_settings()
 TIMEZONE_STR = "Europe/Moscow"
 
 
-def _send_telegram(chat_id, text: str) -> bool:
-    token = settings.telegram_bot_token
+def _send_telegram(chat_id, text: str, bot_token: str | None = None) -> bool:
+    token = (bot_token or "").strip() or settings.telegram_bot_token
     if not token:
         logger.warning("TELEGRAM_BOT_TOKEN not set")
         return False
@@ -27,6 +27,13 @@ def _send_telegram(chat_id, text: str) -> bool:
     except Exception as e:
         logger.exception("Telegram send error: %s", e)
         return False
+
+
+def _integration_bot_token(integration: Integration | None) -> str | None:
+    if not integration:
+        return None
+    token = (integration.telegram_bot_token or "").strip()
+    return token or None
 
 
 def send_telegram_to_client(telegram_id: int, text: str) -> bool:
@@ -218,7 +225,7 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
             chat_id = (consultant.integration.telegram_chat_id or "").strip()
             if chat_id:
                 text_spec = format_booking_status_changed_specialist(booking, new_status, old_status)
-                _send_telegram(chat_id, text_spec)
+                _send_telegram(chat_id, text_spec, _integration_bot_token(consultant.integration))
     except Exception as e:
         logger.exception("Status change notification error: %s", e)
 
@@ -235,7 +242,7 @@ def notify_specialist_new_booking(booking: Booking) -> bool:
         if not chat_id:
             return False
         text = format_new_booking_message_for_specialist(booking)
-        return _send_telegram(chat_id, text)
+        return _send_telegram(chat_id, text, _integration_bot_token(integration))
     except Exception as e:
         logger.exception("New booking notification error: %s", e)
         return False
@@ -276,10 +283,12 @@ def send_reminders(db: Session) -> dict:
             continue
 
         specialist_chat_id = None
+        specialist_bot_token = None
         if booking.calendar and booking.calendar.consultant and booking.calendar.consultant.integration:
             integration = booking.calendar.consultant.integration
             if integration.telegram_connected:
                 specialist_chat_id = (integration.telegram_chat_id or "").strip()
+                specialist_bot_token = _integration_bot_token(integration)
 
         h1 = booking.calendar.reminder_hours_first if booking.calendar else 24
         h2 = booking.calendar.reminder_hours_second if booking.calendar else 1
@@ -293,7 +302,7 @@ def send_reminders(db: Session) -> dict:
                     booking.reminder_24h_sent = True
                     sent["client_24"] += 1
             if specialist_chat_id and not booking.specialist_reminder_24h_sent:
-                if _send_telegram(specialist_chat_id, format_specialist_reminder_message(booking, h1)):
+                if _send_telegram(specialist_chat_id, format_specialist_reminder_message(booking, h1), specialist_bot_token):
                     booking.specialist_reminder_24h_sent = True
                     sent["spec_24"] += 1
 
@@ -303,7 +312,7 @@ def send_reminders(db: Session) -> dict:
                     booking.reminder_1h_sent = True
                     sent["client_1"] += 1
             if specialist_chat_id and not booking.specialist_reminder_1h_sent:
-                if _send_telegram(specialist_chat_id, format_specialist_reminder_message(booking, h2)):
+                if _send_telegram(specialist_chat_id, format_specialist_reminder_message(booking, h2), specialist_bot_token):
                     booking.specialist_reminder_1h_sent = True
                     sent["spec_1"] += 1
 

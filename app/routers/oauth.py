@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models import SocialAccount, User
 from app.services.telegram_auth import consume_completed_login, create_login_request, get_completed_login
 from app.templating import page_context, templates
+from app.utils.safe_redirect import safe_next_url
 
 router = APIRouter(prefix="/accounts", tags=["oauth"])
 settings = get_settings()
@@ -20,7 +21,7 @@ settings = get_settings()
 async def telegram_login_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     process = request.query_params.get("process", "login")
-    next_url = request.query_params.get("next", "/")
+    next_url = safe_next_url(request.query_params.get("next"))
 
     if process == "connect":
         if not user:
@@ -33,7 +34,7 @@ async def telegram_login_page(request: Request, db: Session = Depends(get_db)):
         )
     else:
         if user:
-            return RedirectResponse(next_url or "/", status_code=302)
+            return RedirectResponse(next_url, status_code=302)
         register_fio = request.session.pop("register_fio", None)
         register_phone = request.session.pop("register_phone", None)
         if process == "signup" and register_fio and register_phone:
@@ -97,7 +98,7 @@ async def telegram_complete_login(complete_token: str, request: Request, db: Ses
     login_user(request, user)
     request.session["show_telegram_welcome"] = True
     consume_completed_login(db, req)
-    return RedirectResponse(req.next_url or "/", status_code=302)
+    return RedirectResponse(safe_next_url(req.next_url), status_code=302)
 
 
 @router.get("/confirm-email/{token}/")
@@ -122,7 +123,7 @@ async def set_password_page(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse("/login/", status_code=302)
     if user.has_usable_password:
-        return RedirectResponse("/", status_code=302)
+        return RedirectResponse("/dashboard/", status_code=302)
     error = None
     if request.method == "POST":
         form = await request.form()
@@ -136,7 +137,7 @@ async def set_password_page(request: Request, db: Session = Depends(get_db)):
             db_user = db.get(User, user.id)
             db_user.password = hash_password(p1)
             db.commit()
-            next_url = request.query_params.get("next", "/")
+            next_url = safe_next_url(request.query_params.get("next"))
             return RedirectResponse(next_url, status_code=302)
     return templates.TemplateResponse("password_set.html", page_context(request, db, user, error=error))
 

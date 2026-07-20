@@ -1,75 +1,70 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Вход</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=2">
-    <style>
-        .auth-methods { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 16px 0 24px; }
-        .auth-method { display: flex; align-items: center; justify-content: center; padding: 14px 16px; border: 2px solid #0088cc; border-radius: 12px; text-decoration: none; color: #0088cc; font-weight: 600; font-size: 15px; }
-        .login-email-block { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
-        .success-message { background: #ecfdf5; color: #065f46; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
-        .resend-block { margin-top: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; }
-        .hint { font-size: 13px; color: #666; margin-top: 8px; }
-    </style>
-</head>
-<body>
-    <div class="container" style="max-width: 520px;">
-        <h1>Вход</h1>
+{% extends "layouts/auth.html" %}
 
-        {% if success %}
-        <div class="success-message">{{ success }}</div>
+{% block meta_tags %}
+{% set page_title = "Вход — " ~ site_brand_name %}
+{% set meta_description = "Вход в личный кабинет — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-card card card--static animate-fade-in-up">
+    <h1 class="text-h1 auth-card__title">Вход</h1>
+    <p class="text-body-sm text-muted auth-card__lead">Войдите в кабинет специалиста</p>
+
+    {% if success %}
+    <div class="alert alert--success" role="status">{{ success }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <div class="form-field">
+        <span class="form-field__label">Быстрый вход</span>
+        {% if telegram_bot_username %}
+        <div class="auth-methods">
+            <a href="/accounts/telegram/login/?next={{ next_url | urlencode }}" class="auth-method auth-method--telegram">Телеграм</a>
+        </div>
+        <p class="form-field__hint">Откроется бот — подтвердите вход кнопкой в чате.</p>
+        {% else %}
+        <p class="form-field__hint">Вход через Телеграм временно недоступен (не настроен бот).</p>
         {% endif %}
-        {% if error %}
-        <div class="error-message">{{ error }}</div>
-        {% endif %}
-
-        <div class="form-group">
-            <label>Быстрый вход:</label>
-            {% if telegram_bot_username %}
-            <div class="auth-methods">
-                <a href="/accounts/telegram/login/" class="auth-method">Телеграм</a>
-            </div>
-            <p class="hint">Откроется бот - подтвердите вход кнопкой в чате.</p>
-            {% else %}
-            <p class="hint">Вход через Телеграм временно недоступен (не настроен бот).</p>
-            {% endif %}
-        </div>
-
-        <div class="login-email-block">
-            <form method="POST" action="/login/">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <div class="form-group">
-                    <label for="email">Почта:</label>
-                    <input type="email" id="email" name="email" required placeholder="your@email.com" value="{{ resend_email|default('') }}">
-                </div>
-                <div class="form-group">
-                    <label for="password">Пароль:</label>
-                    <input type="password" id="password" name="password" required placeholder="Введите пароль">
-                </div>
-                <button type="submit" class="btn">Войти</button>
-            </form>
-        </div>
-
-        <div class="resend-block">
-            <p style="margin:0 0 8px;font-size:14px;">Не пришло письмо с подтверждением?</p>
-            <form method="POST" action="/login/">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="action" value="resend_verification">
-                <div class="form-group">
-                    <input type="email" name="email" required placeholder="Ваш email" value="{{ resend_email|default('') }}">
-                </div>
-                <button type="submit" class="btn btn-secondary">Отправить письмо повторно</button>
-            </form>
-        </div>
-
-        <div class="links">
-            <p>Нет аккаунта? <a href="/register/">Зарегистрироваться</a></p>
-            <p><a href="/">На главную</a></p>
-        </div>
-
-        {% include 'footer.html' %}
     </div>
-</body>
-</html>
+
+    <hr class="auth-divider">
+
+    <form method="POST" action="/login/{% if next_url %}?next={{ next_url | urlencode }}{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+
+        <div class="stack">
+            <div class="form-field">
+                <label class="form-field__label" for="email">Почта</label>
+                <input class="input" type="email" id="email" name="email" required placeholder="your@email.com" value="{{ resend_email|default('') }}" autocomplete="username">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="password">Пароль</label>
+                <input class="input" type="password" id="password" name="password" required placeholder="Введите пароль" autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn--primary">Войти</button>
+        </div>
+    </form>
+
+    <div class="resend-block">
+        <p class="form-field__label" id="resendLabel">Не пришло письмо с подтверждением?</p>
+        <form method="POST" action="/login/" class="stack mt-lg" aria-labelledby="resendLabel">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="resend_verification">
+            <div class="form-field">
+                <label class="form-field__label" for="resend_email">Почта для повторной отправки</label>
+                <input class="input" type="email" id="resend_email" name="email" required placeholder="Ваш email" value="{{ resend_email|default('') }}" autocomplete="email">
+            </div>
+            <button type="submit" class="btn btn--secondary btn--sm">Отправить письмо повторно</button>
+        </form>
+    </div>
+
+    <div class="auth-footer-links">
+        <p>Нет аккаунта? <a href="/register/">Зарегистрироваться</a></p>
+        <p><a href="/">На главную</a></p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>{{ page_title | default(site_brand_name) }}</title>
+{% block meta %}
+<meta name="description" content="{{ meta_description | default('') }}">
+{% if meta_keywords %}<meta name="keywords" content="{{ meta_keywords }}">{% endif %}
+<meta name="theme-color" content="#0B0D12">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="{{ canonical_url | default(request.url) }}">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:site_name" content="{{ site_brand_name }}">
+<meta property="og:title" content="{{ page_title | default(site_brand_name) }}">
+<meta property="og:description" content="{{ meta_description | default('') }}">
+<meta property="og:url" content="{{ canonical_url | default(request.url) }}">
+<meta property="og:image" content="{{ site_url }}/static/svg/logo.svg">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{{ page_title | default(site_brand_name) }}">
+<meta name="twitter:description" content="{{ meta_description | default('') }}">
+{% endblock %}
+<link rel="icon" href="/static/svg/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="/static/css/main.css?v=15" as="style">
+<link rel="preload" href="/static/svg/logo.svg" as="image" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/static/css/main.css?v=15">
+{% block head_extra %}{% endblock %}

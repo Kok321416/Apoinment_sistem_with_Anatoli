@@ -1,16 +1,33 @@
 from datetime import date, datetime, time
+from urllib.parse import quote
 
 from fastapi.templating import Jinja2Templates
 
 from app.branding import auth_provider_label, booking_status_label
 from app.config import get_settings
+from app.content.landing_copy import (
+    CTA_BLOCK,
+    FEATURES,
+    GUIDE,
+    GUIDE_META,
+    HERO,
+    HOW_IT_WORKS,
+    LANDING_META,
+    STATS_LABELS,
+    faq_with_support,
+    footer_with_context,
+)
 from app.security.csrf import ensure_csrf_token
 from app.models import Consultant, EmailAddress, SocialAccount, User
+from app.services.landing_stats import landing_stats
 
 settings = get_settings()
 
 URL_MAP = {
     "home": "/",
+    "landing": "/",
+    "dashboard": "/dashboard/",
+    "guide": "/guide/",
     "privacy": "/privacy/",
     "terms": "/terms/",
     "register": "/register/",
@@ -109,7 +126,7 @@ templates.env.filters["media_url"] = media_url
 templates.env.filters["date"] = django_date
 templates.env.filters["time"] = django_time
 templates.env.filters["truncatewords"] = truncatewords
-templates.env.filters["booking_status"] = booking_status_label
+templates.env.filters["urlencode"] = lambda value: quote(str(value or ""), safe="/")
 templates.env.filters["auth_provider"] = auth_provider_label
 
 
@@ -163,7 +180,37 @@ def page_context(request, db, user=None, **extra):
         "show_telegram_welcome": _session_pop(request, "show_telegram_welcome", False),
         "url_for": url_for,
         "site_brand_name": settings.site_brand_name,
+        "site_url": settings.site_url.rstrip("/"),
+        "canonical_url": str(request.url).split("?")[0],
+        "support_email": settings.support_email,
+        "yandex_metrika_id": settings.yandex_metrika_id,
+        "admin_telegram_username": settings.admin_telegram_username,
         **build_header_context(db, user),
         **extra,
     }
+    return ctx
+
+
+def landing_context(request, db, user=None, **extra):
+    year = datetime.now().year
+    ctx = page_context(request, db, user, **extra)
+    ctx.update(
+        {
+            "landing_meta": LANDING_META,
+            "hero": HERO,
+            "stats_labels": STATS_LABELS,
+            "stats": landing_stats(db),
+            "features": FEATURES,
+            "how_it_works": HOW_IT_WORKS,
+            "cta_block": CTA_BLOCK,
+            "faq_items": faq_with_support(settings.support_email),
+            "footer_copy": footer_with_context(settings.support_email, settings.site_brand_name, year),
+        }
+    )
+    return ctx
+
+
+def guide_context(request, db, user=None, **extra):
+    ctx = landing_context(request, db, user, **extra)
+    ctx.update({"guide_meta": GUIDE_META, "guide": GUIDE})
     return ctx

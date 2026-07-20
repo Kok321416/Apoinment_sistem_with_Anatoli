@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="logoGrad" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7D5CFF"/>
+      <stop offset="1" stop-color="#49D1FF"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="28" stroke="url(#logoGrad)" stroke-width="2.5"/>
+  <rect x="29" y="22" width="6" height="24" rx="3" fill="url(#logoGrad)"/>
+  <circle cx="32" cy="18" r="4" fill="#7D5CFF"/>
+</svg>

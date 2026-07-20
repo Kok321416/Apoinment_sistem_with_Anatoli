@@ -1,0 +1,150 @@
+/*
+ * Motion Design — Design System V1
+ * Единый easing: --ease-out / --ease-in-out из tokens.css
+ * Цель: иерархия и присутствие, без визуального шума
+ */
+
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(var(--space-4xl));
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slide-in-down {
+    from {
+        opacity: 0;
+        transform: translateY(calc(var(--space-lg) * -1));
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes soft-float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(calc(var(--space-md) * -1));
+    }
+}
+
+@keyframes shimmer {
+    from {
+        background-position: -200% 0;
+    }
+    to {
+        background-position: 200% 0;
+    }
+}
+
+@keyframes glow-pulse {
+    0%, 100% {
+        opacity: var(--opacity-glow-soft);
+    }
+    50% {
+        opacity: var(--opacity-glow-medium);
+    }
+}
+
+/* Immediate entrance (hero, auth) */
+.animate-fade-in-up {
+    animation: fade-in-up var(--duration-slow) var(--ease-out) both;
+}
+
+.animate-fade-in {
+    animation: fade-in var(--duration-slow) var(--ease-out) both;
+}
+
+.animate-soft-float {
+    animation: soft-float var(--duration-ambient) var(--ease-in-out) infinite;
+}
+
+.animate-delay-1 { animation-delay: var(--delay-1); }
+.animate-delay-2 { animation-delay: var(--delay-2); }
+.animate-delay-3 { animation-delay: var(--delay-3); }
+.animate-delay-4 { animation-delay: var(--delay-4); }
+.animate-delay-5 { animation-delay: var(--delay-5); }
+.animate-delay-6 { animation-delay: var(--delay-6); }
+
+/* Scroll reveal */
+.reveal {
+    opacity: 0;
+    transform: translateY(var(--space-2xl));
+    transition:
+        opacity var(--duration-slow) var(--ease-out),
+        transform var(--duration-slow) var(--ease-out);
+    will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    will-change: auto;
+}
+
+.reveal-stagger > * {
+    opacity: 0;
+    transform: translateY(var(--space-xl));
+    transition:
+        opacity var(--duration-slow) var(--ease-out),
+        transform var(--duration-slow) var(--ease-out);
+}
+
+.reveal-stagger.is-visible > *:nth-child(1) { transition-delay: var(--delay-1); }
+.reveal-stagger.is-visible > *:nth-child(2) { transition-delay: var(--delay-2); }
+.reveal-stagger.is-visible > *:nth-child(3) { transition-delay: var(--delay-3); }
+.reveal-stagger.is-visible > *:nth-child(4) { transition-delay: var(--delay-4); }
+.reveal-stagger.is-visible > *:nth-child(5) { transition-delay: var(--delay-5); }
+.reveal-stagger.is-visible > *:nth-child(6) { transition-delay: var(--delay-6); }
+.reveal-stagger.is-visible > *:nth-child(n+7) { transition-delay: var(--delay-6); }
+
+.reveal-stagger.is-visible > * {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Alerts: soft entrance */
+.alert {
+    animation: slide-in-down var(--duration-base) var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .animate-fade-in-up,
+    .animate-fade-in,
+    .animate-soft-float,
+    .alert,
+    .loader__svg,
+    .loader__ring {
+        animation: none !important;
+        opacity: 1;
+        transform: none;
+    }
+
+    .reveal,
+    .reveal-stagger > * {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}

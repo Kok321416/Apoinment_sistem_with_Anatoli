@@ -125,7 +125,6 @@ def minimal_context(template_name: str):
             error="",
         ),
         "booking_success.html": dict(booking=booking, calendar=calendar, service=service),
-        "home.html": dict(),
         "login.html": dict(error="", next_url="/"),
         "register.html": dict(error="", fio="", phone="", email=""),
     }

@@ -1,0 +1,17 @@
+{% macro icon(name, size='md', class_name='') -%}
+<span class="icon icon--{{ size }} {{ class_name }}" aria-hidden="true">
+    <img src="/static/svg/icons/{{ name }}.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+</span>
+{%- endmacro %}
+
+{% macro icon_tile(name, class_name='') -%}
+<span class="icon-tile {{ class_name }}" aria-hidden="true">
+    <img src="/static/svg/icons/{{ name }}.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+</span>
+{%- endmacro %}
+
+{% macro loader(size='') -%}
+<span class="loader{% if size %} loader--{{ size }}{% endif %}" role="status" aria-label="Загрузка">
+    <img class="loader__svg" src="/static/svg/loader.svg" alt="" width="48" height="48">
+</span>
+{%- endmacro %}

@@ -1,0 +1,110 @@
+/* Spacing */
+.mt-sm { margin-top: var(--space-sm); }
+.mt-lg { margin-top: var(--space-lg); }
+.mt-2xl { margin-top: var(--space-2xl); }
+.mt-3xl { margin-top: var(--space-3xl); }
+.mt-4xl { margin-top: var(--space-4xl); }
+
+.mb-0 { margin-bottom: 0; }
+.mb-lg { margin-bottom: var(--space-lg); }
+.max-w-prose { max-width: var(--content-max-prose); }
+.max-w-lead { max-width: var(--content-max-lead); }
+.mx-auto { margin-inline: auto; }
+
+.w-full { width: 100%; }
+.text-center { text-align: center; }
+.text-pre-wrap { white-space: pre-wrap; }
+.break-all { word-break: break-all; }
+.justify-end { justify-content: flex-end; }
+
+.btn--block { width: 100%; }
+
+.app-actions-row--end {
+    justify-content: flex-end;
+    margin-bottom: var(--space-2xl);
+}
+
+.booking-panel--narrow {
+    max-width: 560px;
+    margin-inline: auto;
+}
+
+.booking-panel--form {
+    max-width: 520px;
+    margin-inline: auto;
+}
+
+.input--color {
+    padding: var(--space-sm);
+    min-height: var(--btn-height-sm);
+}
+
+.app-section__title--plain {
+    margin-bottom: 0;
+    border: none;
+    padding: 0;
+}
+
+.divider {
+    margin: var(--space-3xl) 0;
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.app-section--inset {
+    background: var(--surface-200);
+}
+
+.text-success {
+    color: var(--accent-success);
+}
+
+.booking-summary {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.booking-summary td {
+    padding: var(--space-sm) 0;
+}
+
+.booking-summary td:first-child {
+    padding-right: var(--space-lg);
+    width: 35%;
+}
+
+.footer-sep {
+    color: var(--text-muted);
+}
+
+.footer-brand {
+    color: var(--text-muted);
+    font-size: var(--font-size-body-sm);
+}
+
+/* Alias: glass-panel = static card (backward compatible) */
+.glass-panel {
+    padding: var(--space-3xl);
+    border-radius: var(--radius-xl);
+    background: var(--glass-medium);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-inner);
+    backdrop-filter: blur(var(--blur-lg));
+    -webkit-backdrop-filter: blur(var(--blur-lg));
+}
+
+.glass-panel--heavy {
+    background: var(--glass-heavy);
+}
+
+.gradient-text {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.focus-ring:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+}

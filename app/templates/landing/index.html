@@ -1,0 +1,150 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ landing_meta.title }}{% endblock %}
+
+{% block meta_tags %}
+{% set page_title = landing_meta.title %}
+{% set meta_description = landing_meta.description %}
+{% set meta_keywords = landing_meta.keywords %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block body %}
+{% include "components/landing_header.html" %}
+
+<main id="main" tabindex="-1">
+    <section class="hero section" id="top">
+        <div class="hero__glow hero__glow--purple" aria-hidden="true"></div>
+        <div class="hero__glow hero__glow--cyan" aria-hidden="true"></div>
+        <div class="hero__pattern" aria-hidden="true"></div>
+        <img class="hero__arcs" src="/static/svg/decorative/hero-arcs.svg" alt="" aria-hidden="true" width="640" height="200" loading="lazy" decoding="async">
+        <div class="container hero__grid">
+            <div class="animate-fade-in-up">
+                <p class="text-eyebrow hero__eyebrow"><span class="badge badge--secondary">{{ hero.eyebrow }}</span></p>
+                <h1 class="text-display-xl">{{ hero.title }}</h1>
+                <p class="text-body-lg text-muted mt-2xl max-w-prose">{{ hero.subtitle }}</p>
+                <div class="cluster mt-4xl">
+                    <a href="{{ hero.cta_primary_href }}" class="btn btn--primary focus-ring">{{ hero.cta_primary_label }}</a>
+                    <a href="{{ hero.cta_secondary_href }}" class="btn btn--secondary focus-ring">{{ hero.cta_secondary_label }}</a>
+                </div>
+                <div class="hero__stats" aria-label="Статистика платформы">
+                    <div>
+                        <div class="hero__stat-value">{{ stats.bookings }}+</div>
+                        <div class="hero__stat-label">{{ stats_labels.bookings }}</div>
+                    </div>
+                    <div>
+                        <div class="hero__stat-value">{{ stats.specialists }}+</div>
+                        <div class="hero__stat-label">{{ stats_labels.specialists }}</div>
+                    </div>
+                    <div>
+                        <div class="hero__stat-value">{{ stats.calendars }}+</div>
+                        <div class="hero__stat-label">{{ stats_labels.calendars }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="hero__preview card card--static animate-fade-in-up animate-delay-3" aria-hidden="true">
+                <div class="preview-card animate-soft-float">
+                    <p class="text-caption">Сегодня</p>
+                    <p class="text-h3">+3 новые записи</p>
+                </div>
+                <div class="preview-card animate-soft-float animate-delay-2">
+                    <p class="text-caption">Ближайшая запись</p>
+                    <p class="text-h3">14:30 · Консультация</p>
+                </div>
+                <div class="preview-card animate-soft-float animate-delay-4">
+                    <p class="text-caption">Календарь</p>
+                    <p class="text-body-sm text-muted">15:00 · 16:00 · 17:30</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-sm section--defer" id="stats">
+        <div class="container">
+            <div class="stats-grid reveal-stagger">
+                <article class="stat-card card card--static">
+                    <div class="stat-card__value">{{ stats.bookings }}+</div>
+                    <p class="text-body-sm text-muted">{{ stats_labels.bookings }}</p>
+                </article>
+                <article class="stat-card card card--static">
+                    <div class="stat-card__value">{{ stats.specialists }}+</div>
+                    <p class="text-body-sm text-muted">{{ stats_labels.specialists }}</p>
+                </article>
+                <article class="stat-card card card--static">
+                    <div class="stat-card__value">{{ stats.calendars }}+</div>
+                    <p class="text-body-sm text-muted">{{ stats_labels.calendars }}</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section--defer" id="features">
+        <div class="container stack-lg">
+            <div class="text-center reveal">
+                <h2 class="text-display">Возможности платформы</h2>
+                <p class="text-body-lg text-muted max-w-lead mx-auto">Всё необходимое для записи клиентов — без перегруженной CRM.</p>
+            </div>
+            <div class="features-grid reveal-stagger">
+                {% for feature in features %}
+                <article class="feature-card card card--static">
+                    <div class="icon-tile feature-card__icon" aria-hidden="true">
+                        <img src="/static/svg/icons/{{ feature.icon }}.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+                    </div>
+                    <h3 class="text-h3">{{ feature.title }}</h3>
+                    <p class="text-body-sm text-muted">{{ feature.description }}</p>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="section section--defer" id="how">
+        <div class="container stack-lg">
+            <div class="text-center reveal">
+                <h2 class="text-display">Как это работает</h2>
+            </div>
+            <div class="timeline reveal-stagger">
+                {% for item in how_it_works %}
+                <article class="card card--static">
+                    <div class="timeline__step-num">{{ item.step }}</div>
+                    <h3 class="text-h3">{{ item.title }}</h3>
+                    <p class="text-body-sm text-muted">{{ item.description }}</p>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="section-sm section--defer" id="cta">
+        <div class="container">
+            <div class="cta-panel card card--static reveal">
+                <h2 class="text-h1">{{ cta_block.title }}</h2>
+                <p class="text-body-lg text-muted mt-lg">{{ cta_block.subtitle }}</p>
+                <a href="{{ cta_block.button_href }}" class="btn btn--primary focus-ring mt-3xl">{{ cta_block.button_label }}</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section--defer" id="faq">
+        <div class="container stack-lg">
+            <div class="text-center reveal">
+                <h2 class="text-display">Частые вопросы</h2>
+            </div>
+            <div class="accordion reveal" role="list">
+                {% for item in faq_items %}
+                <details class="accordion__item" role="listitem">
+                    <summary class="accordion__trigger">{{ item.question }}</summary>
+                    <div class="accordion__content">{{ item.answer }}</div>
+                </details>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+</main>
+
+{% include "components/landing_footer.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/motion-reveal.js?v=1" defer></script>
+{% endblock %}

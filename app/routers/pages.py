@@ -6,7 +6,8 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
+
 from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -40,7 +41,8 @@ from app.services.email_verification import ensure_email_address, resend_verific
 from app.services.entity_delete import delete_calendar, delete_client_card, delete_service, delete_time_slot
 from app.services.slots import get_available_slots
 from app.services.telegram import notify_booking_status_changed
-from app.templating import page_context, templates
+from app.templating import guide_context, landing_context, page_context, templates
+from app.utils.safe_redirect import login_url_with_next, safe_next_url
 
 router = APIRouter(tags=["pages"])
 settings = get_settings()
@@ -113,10 +115,73 @@ def _require_user(request: Request, db: Session):
     return user
 
 
+def _login_redirect(request: Request) -> RedirectResponse:
+    return RedirectResponse(login_url_with_next(request.url.path), status_code=302)
+
+
 @router.get("/")
-async def home(request: Request, db: Session = Depends(get_db)):
+async def landing_page(request: Request, db: Session = Depends(get_db)):
     user = _optional_user(request, db)
-    return templates.TemplateResponse("home.html", page_context(request, db, user))
+    return templates.TemplateResponse("landing/index.html", landing_context(request, db, user))
+
+
+@router.get("/robots.txt", response_class=PlainTextResponse)
+async def robots_txt():
+    base = settings.site_url.rstrip("/")
+    return (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Allow: /guide/\n"
+        "Allow: /privacy/\n"
+        "Allow: /terms/\n"
+        "Allow: /book/\n"
+        "Disallow: /dashboard/\n"
+        "Disallow: /profile/\n"
+        "Disallow: /calendars/\n"
+        "Disallow: /services/\n"
+        "Disallow: /booking/\n"
+        "Disallow: /clients/\n"
+        "Disallow: /integrations/\n"
+        "Disallow: /login/\n"
+        "Disallow: /register/\n"
+        "Disallow: /accounts/\n"
+        "Disallow: /api/\n"
+        "Disallow: /media/\n"
+        f"\nSitemap: {base}/sitemap.xml\n"
+    )
+
+
+@router.get("/sitemap.xml")
+async def sitemap_xml():
+    base = settings.site_url.rstrip("/")
+    urls = ["/", "/guide/", "/privacy/", "/terms/", "/login/", "/register/"]
+    body = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for path in urls:
+        body.append(f"  <url><loc>{base}{path}</loc></url>")
+    body.append("</urlset>")
+    return Response("\n".join(body), media_type="application/xml")
+
+
+@router.get("/guide/")
+async def guide_page(request: Request, db: Session = Depends(get_db)):
+    user = _optional_user(request, db)
+    return templates.TemplateResponse("landing/guide.html", guide_context(request, db, user))
+
+
+@router.get("/dashboard/")
+async def dashboard_page(request: Request, db: Session = Depends(get_db)):
+    user = _require_user(request, db)
+    if not user:
+        return _login_redirect(request)
+    return templates.TemplateResponse("app/dashboard.html", page_context(request, db, user))
+
+
+@router.get("/home/")
+async def legacy_home_redirect():
+    return RedirectResponse("/dashboard/", status_code=301)
 
 
 @router.get("/privacy/")
@@ -132,7 +197,7 @@ async def legal_pages(request: Request, db: Session = Depends(get_db)):
 async def register_page(request: Request, db: Session = Depends(get_db)):
     user = _optional_user(request, db)
     if user:
-        return RedirectResponse("/", status_code=302)
+        return RedirectResponse("/dashboard/", status_code=302)
     error = fio = phone = email = None
     if request.method == "POST":
         form = await request.form()
@@ -148,7 +213,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         elif auth_method == "telegram":
             request.session["register_fio"] = fio
             request.session["register_phone"] = phone
-            return RedirectResponse(f"/accounts/telegram/login/?{urlencode({'process': 'signup', 'next': '/'})}", status_code=302)
+            return RedirectResponse(f"/accounts/telegram/login/?{urlencode({'process': 'signup', 'next': '/dashboard/'})}", status_code=302)
         else:
             email = (form.get("email") or "").strip()
             password = form.get("password", "")
@@ -192,8 +257,9 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
 @router.post("/login/")
 async def login_page(request: Request, db: Session = Depends(get_db)):
     user = _optional_user(request, db)
+    next_url = safe_next_url(request.query_params.get("next"))
     if user:
-        return RedirectResponse("/", status_code=302)
+        return RedirectResponse(next_url, status_code=302)
     error = success = None
     if request.query_params.get("verified") == "1":
         success = "Почта подтверждена. Теперь можно войти."
@@ -223,10 +289,12 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
                     error = "Подтвердите почту. Проверьте письмо или отправьте его повторно ниже."
                 else:
                     login_user(request, db_user)
-                    return RedirectResponse("/", status_code=302)
+                    post_next = safe_next_url(form.get("next") or request.query_params.get("next"))
+                    return RedirectResponse(post_next, status_code=302)
     return templates.TemplateResponse("login.html", page_context(
         request, db, user, error=error, success=success,
         resend_email=request.query_params.get("email", ""),
+        next_url=next_url,
     ))
 
 
@@ -243,7 +311,7 @@ async def logout_page(request: Request):
 async def calendars_page(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
-        return RedirectResponse("/login/", status_code=302)
+        return _login_redirect(request)
     consultant = get_consultant(db, user)
     success = error = None
     if request.method == "POST":
@@ -293,7 +361,7 @@ async def calendars_page(request: Request, db: Session = Depends(get_db)):
 async def calendar_detail(request: Request, calendar_id: int, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
-        return RedirectResponse("/login/", status_code=302)
+        return _login_redirect(request)
     consultant = get_consultant(db, user)
     calendar = db.query(Calendar).filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id).first()
     if not calendar:
@@ -342,7 +410,7 @@ async def calendar_detail(request: Request, calendar_id: int, db: Session = Depe
 async def calendar_settings(request: Request, calendar_id: int, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
-        return RedirectResponse("/login/", status_code=302)
+        return _login_redirect(request)
     consultant = get_consultant(db, user)
     calendar = db.query(Calendar).filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id).first()
     if not calendar:
@@ -364,7 +432,7 @@ async def calendar_settings(request: Request, calendar_id: int, db: Session = De
 async def services_page(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
-        return RedirectResponse("/login/", status_code=302)
+        return _login_redirect(request)
     consultant = get_consultant(db, user)
     success = error = None
     if request.method == "POST":
@@ -563,7 +631,7 @@ async def available_slots(
 async def specialist_bookings(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
-        return RedirectResponse("/login/", status_code=302)
+        return _login_redirect(request)
     consultant = get_consultant(db, user)
     calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).all()
     mark_past_bookings_completed(db, calendars)
@@ -658,7 +726,7 @@ async def calendar_events(request: Request, db: Session = Depends(get_db)):
 async def profile_page(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
-        return RedirectResponse("/login/", status_code=302)
+        return _login_redirect(request)
     consultant = get_consultant(db, user)
     success = error = None
     if request.method == "POST":
@@ -704,7 +772,7 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
 async def client_cards_list(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
-        return RedirectResponse("/login/", status_code=302)
+        return _login_redirect(request)
     consultant = get_consultant(db, user)
     success = error = None
     if request.method == "POST":
@@ -742,7 +810,7 @@ async def client_cards_list(request: Request, db: Session = Depends(get_db)):
 async def client_card_detail(request: Request, card_id: int, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
-        return RedirectResponse("/login/", status_code=302)
+        return _login_redirect(request)
     consultant = get_consultant(db, user)
     card = db.query(ClientCard).filter(ClientCard.id == card_id, ClientCard.consultant_id == consultant.id).first()
     if not card:
@@ -788,7 +856,7 @@ async def client_card_detail(request: Request, card_id: int, db: Session = Depen
 async def integrations_page(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
-        return RedirectResponse("/login/", status_code=302)
+        return _login_redirect(request)
     consultant = get_consultant(db, user)
     integration = db.query(Integration).filter(Integration.consultant_id == consultant.id).first()
     if not integration:
@@ -805,6 +873,18 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
             integration.telegram_enabled = not integration.telegram_enabled
             db.commit()
             success = "Уведомления Телеграм включены" if integration.telegram_enabled else "Уведомления Телеграм отключены"
+        elif action == "connect_telegram":
+            bot_token = (form.get("bot_token") or "").strip()
+            chat_id = (form.get("chat_id") or "").strip()
+            if not chat_id:
+                error = "Укажите идентификатор чата."
+            else:
+                integration.telegram_chat_id = chat_id
+                integration.telegram_bot_token = bot_token or None
+                integration.telegram_connected = True
+                integration.telegram_enabled = True
+                db.commit()
+                success = "Телеграм подключён."
         elif action == "disconnect_telegram":
             integration.telegram_connected = False
             integration.telegram_bot_token = None
@@ -822,7 +902,7 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
 async def connect_telegram_app(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
-        return RedirectResponse("/login/", status_code=302)
+        return _login_redirect(request)
     consultant = get_consultant(db, user)
     integration = db.query(Integration).filter(Integration.consultant_id == consultant.id).first()
     if not integration:

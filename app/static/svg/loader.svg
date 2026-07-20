@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="loaderGrad" x1="8" y1="8" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7D5CFF"/>
+      <stop offset="1" stop-color="#49D1FF"/>
+    </linearGradient>
+  </defs>
+  <circle cx="24" cy="24" r="18" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+  <circle class="loader-svg__arc" cx="24" cy="24" r="18" stroke="url(#loaderGrad)" stroke-width="3" stroke-linecap="round" stroke-dasharray="28 86" transform="rotate(-90 24 24)"/>
+</svg>

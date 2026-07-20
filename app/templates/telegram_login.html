@@ -1,39 +1,33 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Вход через Телеграм</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=2">
-    <style>
-        .tg-login-box { max-width: 480px; margin: 24px auto; padding: 24px; background: #f8fafc; border-radius: 12px; }
-        .tg-login-box p { line-height: 1.6; color: #334155; }
-        .tg-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
-        .btn-telegram { background: #0088cc; color: #fff; text-align: center; text-decoration: none; padding: 14px 18px; border-radius: 10px; font-weight: 600; }
-        .btn-telegram:hover { background: #0077b5; }
-        .status { margin-top: 16px; padding: 12px; border-radius: 8px; background: #eff6ff; color: #1e40af; font-size: 14px; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>Вход через Телеграм</h1>
+{% extends "layouts/auth.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Вход через Телеграм — " ~ site_brand_name %}
+{% set meta_description = "Вход через Телеграм — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-card card card--static animate-fade-in-up">
+    <h1 class="text-h1 auth-card__title">Вход через Телеграм</h1>
 
     {% if error %}
-    <div class="error-message">{{ error }}</div>
+    <div class="alert alert--error" role="alert">{{ error }}</div>
     {% elif login_token and bot_url %}
-    <div class="tg-login-box">
-        <p><strong>Шаг 1.</strong> Откройте бота и нажмите «Подтвердить вход».</p>
-        <p><strong>Шаг 2.</strong> Вернитесь сюда - вход завершится автоматически, или откройте ссылку из бота.</p>
-        <div class="tg-actions">
-            <a id="btnOpenBot" href="{{ bot_url }}" class="btn-telegram" data-tg="{{ tg_app_url }}">Открыть бота в Телеграм</a>
-        </div>
-        <div class="status" id="loginStatus">Ожидаем подтверждение в боте...</div>
+    <div class="stack">
+        <p class="text-body"><strong>Шаг 1.</strong> Откройте бота и нажмите «Подтвердить вход».</p>
+        <p class="text-body text-muted"><strong>Шаг 2.</strong> Вернитесь сюда — вход завершится автоматически.</p>
+        <a id="btnOpenBot" href="{{ bot_url }}" class="btn btn--primary" data-tg="{{ tg_app_url }}">Открыть бота в Телеграм</a>
+        <div class="tg-status" id="loginStatus">Ожидаем подтверждение в боте...</div>
     </div>
     {% endif %}
 
-    <p style="margin-top: 24px;"><a href="/login/">Назад ко входу</a></p>
+    <div class="auth-footer-links">
+        <p><a href="/login/">Назад ко входу</a></p>
+    </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 {% if login_token %}
 <script>
 (function() {
@@ -71,5 +65,4 @@
 })();
 </script>
 {% endif %}
-</body>
-</html>
+{% endblock %}

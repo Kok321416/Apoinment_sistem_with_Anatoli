@@ -1,0 +1,237 @@
+/*
+ * Design System V1 — Design Tokens
+ * Единственный источник цветов, размеров, motion и layout.
+ * Запрещено дублировать значения в других CSS-файлах.
+ */
+:root {
+    /* ── Background ── */
+    --bg-900: #0b0d12;
+    --bg-800: #111827;
+    --bg-700: #151821;
+    --bg-600: #1e2430;
+
+    /* ── Surface ── */
+    --surface-100: #151821;
+    --surface-200: #1a2030;
+    --surface-300: #222838;
+
+    /* ── Glass (Liquid Premium) ── */
+    --glass-light: rgba(255, 255, 255, 0.04);
+    --glass-medium: rgba(18, 22, 35, 0.68);
+    --glass-heavy: rgba(12, 16, 28, 0.88);
+    --glass-header: rgba(11, 13, 18, 0.82);
+
+    /* ── Text ── */
+    --text-primary: #f4f6fa;
+    --text-secondary: #b4bac6;
+    --text-muted: #8b93a3;
+    --text-disabled: #6b7280;
+    --text-on-accent: #ffffff;
+
+    /* ── Accent ── */
+    --accent-primary: #7d5cff;
+    --accent-secondary: #49d1ff;
+    --accent-success: #3be4c8;
+    --accent-warning: #f5a623;
+    --accent-danger: #ff5c7a;
+
+    /* ── Borders ── */
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-default: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+
+    /* ── Opacity ── */
+    --opacity-disabled: 0.48;
+    --opacity-muted: 0.72;
+    --opacity-hover: 0.88;
+    --opacity-glow-soft: 0.22;
+    --opacity-glow-medium: 0.28;
+    --opacity-icon: 0.9;
+
+    /* ── Gradients (только из DS) ── */
+    --gradient-primary: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    --gradient-secondary: linear-gradient(135deg, var(--accent-secondary) 0%, var(--accent-success) 100%);
+    --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+    --gradient-glow-purple: radial-gradient(circle, rgba(125, 92, 255, 0.35) 0%, transparent 70%);
+    --gradient-glow-cyan: radial-gradient(circle, rgba(73, 209, 255, 0.3) 0%, transparent 70%);
+    --gradient-inner-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
+
+    /* ── Spacing (2 → 128) ── */
+    --space-2xs: 2px;
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 20px;
+    --space-2xl: 24px;
+    --space-3xl: 32px;
+    --space-4xl: 40px;
+    --space-5xl: 48px;
+    --space-6xl: 56px;
+    --space-7xl: 64px;
+    --space-8xl: 80px;
+    --space-9xl: 96px;
+    --space-10xl: 128px;
+
+    /* ── Radius ── */
+    --radius-xs: 8px;
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 18px;
+    --radius-xl: 24px;
+    --radius-2xl: 32px;
+    --radius-full: 9999px;
+
+    /* ── Shadows ── */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.24);
+    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.28);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.32);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.36);
+    --shadow-xl: 0 24px 56px rgba(0, 0, 0, 0.42);
+    --shadow-glow: 0 0 40px rgba(125, 92, 255, 0.25);
+    --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+    /* ── Blur ── */
+    --blur-sm: 8px;
+    --blur-md: 12px;
+    --blur-lg: 18px;
+    --blur-xl: 24px;
+    --blur-orb: 80px;
+
+    /* ── Typography: family ── */
+    --font-family-base: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+    /* ── Typography: size ── */
+    --font-size-display-xl: clamp(2.5rem, 5vw, 4rem);
+    --font-size-display: clamp(2rem, 4vw, 3rem);
+    --font-size-h1: clamp(1.75rem, 3vw, 2.25rem);
+    --font-size-h2: clamp(1.375rem, 2.5vw, 1.75rem);
+    --font-size-h3: 1.125rem;
+    --font-size-body-lg: 1.125rem;
+    --font-size-body: 1rem;
+    --font-size-body-sm: 0.875rem;
+    --font-size-caption: 0.875rem;
+    --font-size-nav: 0.9375rem;
+    --font-size-stat: 1.5rem;
+    --font-size-stat-lg: 2rem;
+
+    /* ── Typography: weight ── */
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* ── Typography: line-height ── */
+    --line-height-tight: 1.1;
+    --line-height-snug: 1.15;
+    --line-height-heading: 1.2;
+    --line-height-subheading: 1.25;
+    --line-height-compact: 1.3;
+    --line-height-caption: 1.4;
+    --line-height-body: 1.5;
+    --line-height-body-lg: 1.6;
+
+    /* ── Typography: letter-spacing ── */
+    --letter-spacing-tight: -0.02em;
+    --letter-spacing-eyebrow: 0.08em;
+
+    /* ── Motion: easing ── */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+    /* ── Motion: duration ── */
+    --duration-fast: 150ms;
+    --duration-base: 250ms;
+    --duration-slow: 450ms;
+    --duration-slower: 900ms;
+    --duration-ambient: 4.5s;
+
+    /* ── Motion: stagger ── */
+    --delay-1: 80ms;
+    --delay-2: 160ms;
+    --delay-3: 240ms;
+    --delay-4: 320ms;
+    --delay-5: 400ms;
+    --delay-6: 480ms;
+
+    /* ── Motion: transitions ── */
+    --transition-color: color var(--duration-base) var(--ease-out);
+    --transition-transform: transform var(--duration-base) var(--ease-out);
+    --transition-shadow: box-shadow var(--duration-base) var(--ease-out);
+    --transition-background: background var(--duration-base) var(--ease-out);
+    --transition-button: transform var(--duration-base) var(--ease-out),
+        box-shadow var(--duration-base) var(--ease-out),
+        background var(--duration-base) var(--ease-out);
+    --transition-fade: opacity var(--duration-slow) var(--ease-out);
+
+    /* ── Layout ── */
+    --container-max: 1440px;
+    --container-narrow: 880px;
+    --container-padding: var(--space-3xl);
+    --header-height: 72px;
+    --content-max-prose: 36rem;
+    --content-max-lead: 40rem;
+
+    /* Breakpoints (literal in @media): sm 480 | md 768 | lg 1024 | xl 1280 */
+
+    /* ── Grid ── */
+    --grid-columns: 12;
+    --grid-gap: var(--space-3xl);
+    --grid-hero-ratio-left: 1.1fr;
+    --grid-hero-ratio-right: 0.9fr;
+
+    /* ── Z-index ── */
+    --z-base: 0;
+    --z-elevated: 10;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-modal: 300;
+    --z-toast: 400;
+
+    /* ── Focus ── */
+    --focus-ring-width: 2px;
+    --focus-ring-color: var(--accent-secondary);
+    --focus-ring-offset: 2px;
+
+    /* ── Components (UI Kit) ── */
+    --btn-height: 56px;
+    --btn-height-sm: 48px;
+    --btn-height-icon: var(--btn-height);
+    --btn-padding-x: var(--space-3xl);
+    --btn-padding-x-sm: var(--space-2xl);
+    --input-height: 56px;
+    --input-padding-x: var(--space-2xl);
+    --icon-size-sm: 24px;
+    --icon-size-md: 40px;
+    --icon-size-lg: 48px;
+    --brand-mark-size: var(--icon-size-md);
+    --step-badge-size: 40px;
+    --step-badge-size-sm: 36px;
+
+    /* Field states */
+    --field-bg: var(--surface-200);
+    --field-border: var(--border-default);
+    --field-border-focus: var(--accent-secondary);
+    --field-border-error: var(--accent-danger);
+    --field-border-success: var(--accent-success);
+    --field-glow-focus: 0 0 0 3px rgba(73, 209, 255, 0.2);
+    --field-glow-error: 0 0 0 3px rgba(255, 92, 122, 0.2);
+    --field-glow-success: 0 0 0 3px rgba(59, 228, 200, 0.2);
+
+    /* Alert / toast surfaces */
+    --alert-info-bg: rgba(73, 209, 255, 0.12);
+    --alert-success-bg: rgba(59, 228, 200, 0.12);
+    --alert-warning-bg: rgba(245, 166, 35, 0.12);
+    --alert-error-bg: rgba(255, 92, 122, 0.12);
+
+    /* ── Hero decorative ── */
+    --orb-size-purple: 420px;
+    --orb-size-cyan: 360px;
+    --orb-offset-purple: calc(var(--space-8xl) * -1);
+    --orb-offset-cyan: calc(var(--space-6xl) * -1);
+    --color-glow-purple: rgba(125, 92, 255, var(--opacity-glow-medium));
+    --color-glow-cyan: rgba(73, 209, 255, var(--opacity-glow-soft));
+
+    /* ── Calendar widget (Stage 5 prep) ── */
+    --calendar-width: 420px;
+}

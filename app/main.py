@@ -61,6 +61,21 @@ def startup():
 
 
 @app.middleware("http")
+async def static_cache_middleware(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static/"):
+        # Versioned assets (?v=) can be cached long-term; unversioned get 1 day.
+        if request.url.query and "v=" in request.url.query:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers.setdefault("Cache-Control", "public, max-age=86400")
+    elif path.startswith("/media/"):
+        response.headers.setdefault("Cache-Control", "public, max-age=604800")
+    return response
+
+
+@app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")

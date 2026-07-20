@@ -1,473 +1,75 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ calendar.name }} - Временные окна</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=2">
-    <style>
-        .calendar-settings-bar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 24px;
-            padding: 14px 18px;
-            background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-            border-radius: 16px;
-            border: 1px solid #e9e5ff;
-        }
-        .setting-pill {
-            padding: 6px 12px;
-            background: white;
-            border-radius: 999px;
-            font-size: 13px;
-            color: var(--text-primary);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-        }
-        .setting-edit {
-            margin-left: auto;
-            font-size: 13px;
-            color: var(--text-primary);
-            text-decoration: none;
-        }
-        .setting-edit:hover { text-decoration: underline; }
+{% extends "layouts/app.html" %}
+{% from "components/app_page_head.html" import app_page_head %}
 
-        .day-schedule {
-            background: #f8f9fa;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-radius: 16px;
-            border: 1px solid #e9e5ff;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-        .time-slot-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            background: white;
-            border-radius: 14px;
-            margin: 8px 0;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-        }
-        .time-slot-time {
-            font-weight: 600;
-            color: #333;
-            font-size: 15px;
-            font-family: 'Courier New', monospace;
-        }
-        .add-slot-form {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #e0e0e0;
-        }
-        .time-select-container {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
-        }
-        .time-select-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .time-select-group label {
-            font-weight: 600;
-            color: #555;
-            font-size: 15px;
-            min-width: 30px;
-        }
-        .time-select-group select {
-            padding: 10px 15px;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 15px;
-            min-width: 120px;
-            background: white;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .time-select-group select:focus {
-            outline: none;
-            border-color: var(--text-primary);
-            box-shadow: 0 0 0 3px rgba(45, 45, 45, 0.12);
-        }
-        .btn-delete-slot {
-            padding: 6px 14px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
-        .btn-delete-slot:hover {
-            background: #c82333;
-            transform: translateY(-1px);
-        }
-        .btn-add-slot {
-            padding: 11px 24px;
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 600;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-        .btn-add-slot:hover {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-        }
-        .no-slots {
-            color: #999;
-            font-style: italic;
-            padding: 20px;
-            text-align: center;
-            background: white;
-            border-radius: 8px;
-        }
-        .time-arrow {
-            color: var(--text-primary);
-            font-size: 18px;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <div class="container" style="max-width: 950px;">
-        <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
-            <h1>{{ calendar.name }}</h1>
-            <a href="/calendars/" class="btn btn-secondary">← Назад к календарям</a>
-        </div>
+{% block meta_tags %}
+{% set page_title = calendar.name ~ " — временные окна — " ~ site_brand_name %}
+{% set meta_description = "Управление временными окнами календаря — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
 
-        <div class="calendar-settings-bar">
-            <span class="setting-pill"><strong>Перерыв:</strong> {{ calendar.break_between_services_minutes|default(0) }} мин</span>
-            <span class="setting-pill"><strong>Лимит в день:</strong> {% if calendar.max_services_per_day %}{{ calendar.max_services_per_day }}{% else %}—{% endif %}</span>
-            <span class="setting-pill"><strong>Запись за:</strong> {{ calendar.book_ahead_hours|default(24) }} ч</span>
-            <span class="setting-pill"><strong>Напоминания:</strong> за {{ calendar.reminder_hours_first|default(24) }} ч и за {{ calendar.reminder_hours_second|default(1) }} ч</span>
-            <a href="/calendars/{{ calendar.id }}/settings/" class="setting-edit">Изменить</a>
-        </div>
+{% block app_content %}
+{{ app_page_head(calendar.name, '/calendars/', '← Календари') }}
 
-        {% if success %}
-        <div class="success-message">{{ success }}</div>
-        {% endif %}
+<div class="calendar-settings-bar">
+    <span class="badge badge--secondary"><strong>Перерыв:</strong> {{ calendar.break_between_services_minutes|default(0) }} мин</span>
+    <span class="badge badge--secondary"><strong>Лимит в день:</strong> {% if calendar.max_services_per_day %}{{ calendar.max_services_per_day }}{% else %}—{% endif %}</span>
+    <span class="badge badge--secondary"><strong>Запись за:</strong> {{ calendar.book_ahead_hours|default(24) }} ч</span>
+    <span class="badge badge--secondary"><strong>Напоминания:</strong> за {{ calendar.reminder_hours_first|default(24) }} ч и за {{ calendar.reminder_hours_second|default(1) }} ч</span>
+    <a href="/calendars/{{ calendar.id }}/settings/" class="btn btn--ghost btn--sm calendar-settings-bar__edit">Изменить</a>
+</div>
 
-        {% if error %}
-        <div class="error-message">{{ error }}</div>
-        {% endif %}
+{% if success %}
+<div class="alert alert--success" role="status">{{ success }}</div>
+{% endif %}
+{% if error %}
+<div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
+{% endif %}
 
-        <h2 style="margin-bottom: 25px;">Временные окна для записи</h2>
+<section class="app-section">
+    <h2 class="app-section__title">Временные окна для записи</h2>
 
-        <!-- Понедельник -->
-        <div class="day-schedule">
-            <h3 style="margin-bottom: 15px; color: var(--text-primary);">Понедельник</h3>
-            {% for slot in time_slots_by_day[0] %}
-            <div class="time-slot-item">
-                <span class="time-slot-time">{{ slot.start_time|time('H:i') }} — {{ slot.end_time|time('H:i') }}</span>
-                <form method="POST" style="display: inline;">
-                    
-                    <input type="hidden" name="action" value="delete_time_slot">
-                    <input type="hidden" name="slot_id" value="{{ slot.id }}">
-                    <button type="submit" class="btn-delete-slot" onclick="return confirm('Удалить это окно?')">✕ Удалить</button>
-                </form>
-            </div>
-            {% else %}
-            <div class="no-slots">Нет временных окон</div>
-            {% endfor %}
-            <form method="POST" class="add-slot-form">
-                
-                <input type="hidden" name="action" value="add_time_slot">
-                <input type="hidden" name="day_of_week" value="0">
-                <div class="time-select-container">
-                    <div class="time-select-group">
-                        <label>С:</label>
-                        <select name="start_time" id="start_0" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <span class="time-arrow">→</span>
-                    <div class="time-select-group">
-                        <label>До:</label>
-                        <select name="end_time" id="end_0" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-add-slot">+ Добавить окно</button>
-                </div>
+    {% for day in range(7) %}
+    <div class="day-schedule">
+        <h3 class="day-schedule__title">{{ days_names[day] }}</h3>
+
+        {% for slot in time_slots_by_day[day] %}
+        <div class="time-slot-item">
+            <span class="time-slot-item__time">{{ slot.start_time|time('H:i') }} — {{ slot.end_time|time('H:i') }}</span>
+            <form method="POST" class="time-slot-item__form">
+                <input type="hidden" name="action" value="delete_time_slot">
+                <input type="hidden" name="slot_id" value="{{ slot.id }}">
+                <button type="submit" class="btn btn--danger btn--sm" onclick="return confirm('Удалить это окно?')">Удалить</button>
             </form>
         </div>
+        {% else %}
+        <p class="day-schedule__empty">Нет временных окон</p>
+        {% endfor %}
 
-        <!-- Вторник -->
-        <div class="day-schedule">
-            <h3 style="margin-bottom: 15px; color: var(--text-primary);">Вторник</h3>
-            {% for slot in time_slots_by_day[1] %}
-            <div class="time-slot-item">
-                <span class="time-slot-time">{{ slot.start_time|time('H:i') }} — {{ slot.end_time|time('H:i') }}</span>
-                <form method="POST" style="display: inline;">
-                    
-                    <input type="hidden" name="action" value="delete_time_slot">
-                    <input type="hidden" name="slot_id" value="{{ slot.id }}">
-                    <button type="submit" class="btn-delete-slot" onclick="return confirm('Удалить это окно?')">✕ Удалить</button>
-                </form>
-            </div>
-            {% else %}
-            <div class="no-slots">Нет временных окон</div>
-            {% endfor %}
-            <form method="POST" class="add-slot-form">
-                
-                <input type="hidden" name="action" value="add_time_slot">
-                <input type="hidden" name="day_of_week" value="1">
-                <div class="time-select-container">
-                    <div class="time-select-group">
-                        <label>С:</label>
-                        <select name="start_time" id="start_1" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <span class="time-arrow">→</span>
-                    <div class="time-select-group">
-                        <label>До:</label>
-                        <select name="end_time" id="end_1" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-add-slot">+ Добавить окно</button>
+        <form method="POST" class="add-slot-form">
+            <input type="hidden" name="action" value="add_time_slot">
+            <input type="hidden" name="day_of_week" value="{{ day }}">
+            <div class="add-slot-form__row">
+                <div class="form-field">
+                    <label class="form-field__label" for="start_{{ day }}">С</label>
+                    <select class="select" name="start_time" id="start_{{ day }}" required>
+                        <option value="">Выберите</option>
+                    </select>
                 </div>
-            </form>
-        </div>
-
-        <!-- Среда -->
-        <div class="day-schedule">
-            <h3 style="margin-bottom: 15px; color: var(--text-primary);">Среда</h3>
-            {% for slot in time_slots_by_day[2] %}
-            <div class="time-slot-item">
-                <span class="time-slot-time">{{ slot.start_time|time('H:i') }} — {{ slot.end_time|time('H:i') }}</span>
-                <form method="POST" style="display: inline;">
-                    
-                    <input type="hidden" name="action" value="delete_time_slot">
-                    <input type="hidden" name="slot_id" value="{{ slot.id }}">
-                    <button type="submit" class="btn-delete-slot" onclick="return confirm('Удалить это окно?')">✕ Удалить</button>
-                </form>
-            </div>
-            {% else %}
-            <div class="no-slots">Нет временных окон</div>
-            {% endfor %}
-            <form method="POST" class="add-slot-form">
-                
-                <input type="hidden" name="action" value="add_time_slot">
-                <input type="hidden" name="day_of_week" value="2">
-                <div class="time-select-container">
-                    <div class="time-select-group">
-                        <label>С:</label>
-                        <select name="start_time" id="start_2" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <span class="time-arrow">→</span>
-                    <div class="time-select-group">
-                        <label>До:</label>
-                        <select name="end_time" id="end_2" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-add-slot">+ Добавить окно</button>
+                <span class="add-slot-form__arrow" aria-hidden="true">→</span>
+                <div class="form-field">
+                    <label class="form-field__label" for="end_{{ day }}">До</label>
+                    <select class="select" name="end_time" id="end_{{ day }}" required>
+                        <option value="">Выберите</option>
+                    </select>
                 </div>
-            </form>
-        </div>
-
-        <!-- Четверг -->
-        <div class="day-schedule">
-            <h3 style="margin-bottom: 15px; color: var(--text-primary);">Четверг</h3>
-            {% for slot in time_slots_by_day[3] %}
-            <div class="time-slot-item">
-                <span class="time-slot-time">{{ slot.start_time|time('H:i') }} — {{ slot.end_time|time('H:i') }}</span>
-                <form method="POST" style="display: inline;">
-                    
-                    <input type="hidden" name="action" value="delete_time_slot">
-                    <input type="hidden" name="slot_id" value="{{ slot.id }}">
-                    <button type="submit" class="btn-delete-slot" onclick="return confirm('Удалить это окно?')">✕ Удалить</button>
-                </form>
+                <button type="submit" class="btn btn--primary btn--sm">+ Добавить окно</button>
             </div>
-            {% else %}
-            <div class="no-slots">Нет временных окон</div>
-            {% endfor %}
-            <form method="POST" class="add-slot-form">
-                
-                <input type="hidden" name="action" value="add_time_slot">
-                <input type="hidden" name="day_of_week" value="3">
-                <div class="time-select-container">
-                    <div class="time-select-group">
-                        <label>С:</label>
-                        <select name="start_time" id="start_3" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <span class="time-arrow">→</span>
-                    <div class="time-select-group">
-                        <label>До:</label>
-                        <select name="end_time" id="end_3" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-add-slot">+ Добавить окно</button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Пятница -->
-        <div class="day-schedule">
-            <h3 style="margin-bottom: 15px; color: var(--text-primary);">Пятница</h3>
-            {% for slot in time_slots_by_day[4] %}
-            <div class="time-slot-item">
-                <span class="time-slot-time">{{ slot.start_time|time('H:i') }} — {{ slot.end_time|time('H:i') }}</span>
-                <form method="POST" style="display: inline;">
-                    
-                    <input type="hidden" name="action" value="delete_time_slot">
-                    <input type="hidden" name="slot_id" value="{{ slot.id }}">
-                    <button type="submit" class="btn-delete-slot" onclick="return confirm('Удалить это окно?')">✕ Удалить</button>
-                </form>
-            </div>
-            {% else %}
-            <div class="no-slots">Нет временных окон</div>
-            {% endfor %}
-            <form method="POST" class="add-slot-form">
-                
-                <input type="hidden" name="action" value="add_time_slot">
-                <input type="hidden" name="day_of_week" value="4">
-                <div class="time-select-container">
-                    <div class="time-select-group">
-                        <label>С:</label>
-                        <select name="start_time" id="start_4" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <span class="time-arrow">→</span>
-                    <div class="time-select-group">
-                        <label>До:</label>
-                        <select name="end_time" id="end_4" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-add-slot">+ Добавить окно</button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Суббота -->
-        <div class="day-schedule">
-            <h3 style="margin-bottom: 15px; color: var(--text-primary);">Суббота</h3>
-            {% for slot in time_slots_by_day[5] %}
-            <div class="time-slot-item">
-                <span class="time-slot-time">{{ slot.start_time|time('H:i') }} — {{ slot.end_time|time('H:i') }}</span>
-                <form method="POST" style="display: inline;">
-                    
-                    <input type="hidden" name="action" value="delete_time_slot">
-                    <input type="hidden" name="slot_id" value="{{ slot.id }}">
-                    <button type="submit" class="btn-delete-slot" onclick="return confirm('Удалить это окно?')">✕ Удалить</button>
-                </form>
-            </div>
-            {% else %}
-            <div class="no-slots">Нет временных окон</div>
-            {% endfor %}
-            <form method="POST" class="add-slot-form">
-                
-                <input type="hidden" name="action" value="add_time_slot">
-                <input type="hidden" name="day_of_week" value="5">
-                <div class="time-select-container">
-                    <div class="time-select-group">
-                        <label>С:</label>
-                        <select name="start_time" id="start_5" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <span class="time-arrow">→</span>
-                    <div class="time-select-group">
-                        <label>До:</label>
-                        <select name="end_time" id="end_5" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-add-slot">+ Добавить окно</button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Воскресенье -->
-        <div class="day-schedule">
-            <h3 style="margin-bottom: 15px; color: var(--text-primary);">Воскресенье</h3>
-            {% for slot in time_slots_by_day[6] %}
-            <div class="time-slot-item">
-                <span class="time-slot-time">{{ slot.start_time|time('H:i') }} — {{ slot.end_time|time('H:i') }}</span>
-                <form method="POST" style="display: inline;">
-                    
-                    <input type="hidden" name="action" value="delete_time_slot">
-                    <input type="hidden" name="slot_id" value="{{ slot.id }}">
-                    <button type="submit" class="btn-delete-slot" onclick="return confirm('Удалить это окно?')">✕ Удалить</button>
-                </form>
-            </div>
-            {% else %}
-            <div class="no-slots">Нет временных окон</div>
-            {% endfor %}
-            <form method="POST" class="add-slot-form">
-                
-                <input type="hidden" name="action" value="add_time_slot">
-                <input type="hidden" name="day_of_week" value="6">
-                <div class="time-select-container">
-                    <div class="time-select-group">
-                        <label>С:</label>
-                        <select name="start_time" id="start_6" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <span class="time-arrow">→</span>
-                    <div class="time-select-group">
-                        <label>До:</label>
-                        <select name="end_time" id="end_6" required>
-                            <option value="">Выберите</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-add-slot">+ Добавить окно</button>
-                </div>
-            </form>
-        </div>
-
-        {% include 'footer.html' %}
+        </form>
     </div>
+    {% endfor %}
+</section>
+{% endblock %}
 
-    <script>
-        // Функция для генерации вариантов времени (каждые 30 минут)
-        function generateTimeOptions(selectElement) {
-            for (let hour = 0; hour < 24; hour++) {
-                for (let minute = 0; minute < 60; minute += 30) {
-                    const timeString = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
-                    const timeDisplay = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
-                    const option = document.createElement('option');
-                    option.value = timeString;
-                    option.textContent = timeDisplay;
-                    selectElement.appendChild(option);
-                }
-            }
-        }
-
-        // Заполняем все селекты при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            for (let i = 0; i < 7; i++) {
-                const startSelect = document.getElementById('start_' + i);
-                const endSelect = document.getElementById('end_' + i);
-                if (startSelect) generateTimeOptions(startSelect);
-                if (endSelect) generateTimeOptions(endSelect);
-            }
-        });
-    </script>
-</body>
-</html>
+{% block scripts %}
+<script src="/static/js/calendar-time-slots.js?v=1" defer></script>
+{% endblock %}

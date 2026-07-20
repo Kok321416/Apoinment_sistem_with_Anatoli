@@ -1,136 +1,90 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Карточка: {{ card.name|default('Клиент') }}</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=2">
-    <style>
-        .detail-panel {
-            background: var(--card-bg, #fff);
-            border: 1px solid var(--card-border, #ddd);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-        .detail-panel h2 { margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid var(--card-border); }
-        .contact-links { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
-        .contact-links a {
-            padding: 8px 14px;
-            background: var(--bg-subtle, #f5f5f5);
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            text-decoration: none;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-        .contact-links a:hover { background: var(--hover-bg, #eee); }
-        .notes-block { white-space: pre-wrap; color: var(--text-muted); line-height: 1.5; }
-        .history-list { list-style: none; padding: 0; margin: 0; }
-        .history-list li {
-            padding: 14px 16px;
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            margin-bottom: 10px;
-            background: var(--card-bg);
-            transition: box-shadow 0.2s;
-        }
-        .history-list li:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-        .history-list .date { font-weight: 600; color: var(--text-primary); }
-        .history-list .service { color: var(--text-muted); font-size: 14px; }
-        .history-list .status { font-size: 12px; padding: 2px 8px; border-radius: 6px; display: inline-block; margin-top: 4px; }
-        .status-completed { background: #d4edda; color: #155724; }
-        .status-cancelled { background: #f8d7da; color: #721c24; }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-confirmed { background: #d1ecf1; color: #0c5460; }
-    </style>
-</head>
-<body>
-    <div class="container" style="max-width: 800px;">
-        <div class="page-header">
-            <h1>{{ card.name|default('Карточка клиента') }}</h1>
-            <div>
-                <a href="/clients/" class="btn btn-secondary" style="padding: 8px 16px;">← К списку</a>
-            </div>
+{% extends "layouts/app.html" %}
+{% from "components/app_page_head.html" import app_page_head %}
+{% from "components/booking_card.html" import booking_status_badge %}
+
+{% block meta_tags %}
+{% set page_title = (card.name|default('Клиент')) ~ " — " ~ site_brand_name %}
+{% set meta_description = "Карточка клиента — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block app_content %}
+{{ app_page_head(card.name|default('Карточка клиента'), '/clients/', '← К списку') }}
+
+{% if success %}
+<div class="alert alert--success" role="status">{{ success }}</div>
+{% endif %}
+{% if error %}
+<div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
+{% endif %}
+
+<section class="app-section">
+    <h2 class="app-section__title">Данные и контакты</h2>
+    <form method="POST" action="/clients/{{ card.id }}/" class="stack">
+        <input type="hidden" name="action" value="update">
+        <div class="form-field">
+            <label class="form-field__label" for="card_name">Имя</label>
+            <input class="input" type="text" id="card_name" name="name" value="{{ card.name|default('') }}" placeholder="Необязательно" autocomplete="name">
         </div>
-
-        {% if success %}<div class="success-message">{{ success }}</div>{% endif %}
-        {% if error %}<div class="error-message">{{ error }}</div>{% endif %}
-
-        <div class="detail-panel">
-            <h2>Данные и контакты</h2>
-            <form method="POST" action="/clients/{{ card.id }}/">
-                
-                <input type="hidden" name="action" value="update">
-                <div class="form-group">
-                    <label>Имя</label>
-                    <input type="text" name="name" value="{{ card.name|default('') }}" placeholder="Необязательно">
-                </div>
-                <div class="form-group">
-                    <label>Почта</label>
-                    <input type="email" name="email" value="{{ card.email|default('') }}" placeholder="Необязательно">
-                </div>
-                <div class="form-group">
-                    <label>Телефон</label>
-                    <input type="text" name="phone" value="{{ card.phone|default('') }}" placeholder="Необязательно">
-                </div>
-                <div class="form-group">
-                    <label>Телеграм (ник или ссылка)</label>
-                    <input type="text" name="telegram" value="{{ card.telegram|default('') }}" placeholder="@ник или t.me/...">
-                </div>
-                <div class="form-group">
-                    <label>Примечания</label>
-                    <textarea name="notes" rows="4" style="width:100%; padding:12px; border:1px solid var(--card-border,#ddd); border-radius:8px;">{{ card.notes|default('') }}</textarea>
-                </div>
-                <button type="submit" class="btn">Сохранить</button>
-            </form>
-            {% if card.email or card.telegram or card.phone %}
-            <div class="contact-links" style="margin-top:20px;">
-                {% if card.phone %}
-                    <a href="tel:{{ card.phone }}">📞 Позвонить</a>
-                {% endif %}
-                {% if card.email %}
-                    <a href="mailto:{{ card.email }}">📧 Написать на почту</a>
-                {% endif %}
-                {% if card.telegram %}
-                    <a href="https://t.me/{{ card.telegram|cut('@') }}" target="_blank" rel="noopener">✈️ Открыть в Телеграм</a>
-                {% endif %}
-            </div>
-            {% endif %}
+        <div class="form-field">
+            <label class="form-field__label" for="card_email">Почта</label>
+            <input class="input" type="email" id="card_email" name="email" value="{{ card.email|default('') }}" placeholder="Необязательно" autocomplete="email">
         </div>
-
-        <div class="detail-panel">
-            <h2>История консультаций</h2>
-            <p style="margin: 0 0 16px 0; color: var(--text-muted); font-size: 14px;">
-                Записей всего: <strong>{{ total_bookings|default(0) }}</strong>
-                &nbsp;·&nbsp;
-                Посещено (завершено): <strong>{{ completed_count|default(0) }}</strong>
-            </p>
-            {% if history %}
-                <ul class="history-list">
-                    {% for b in history %}
-                    <li>
-                        <span class="date">{{ b.booking_date|date('d.m.Y') }} {{ b.booking_time|time('H:i') }}</span>
-                        <span class="service"> — {{ b.service.name }}{% if b.calendar %} ({{ b.calendar.name }}){% endif %}</span>
-                        <br>
-                        <span class="status status-{{ b.status }}">{{ b.status|booking_status }}</span>
-                        {% if b.notes %}<br><small>{{ b.notes }}</small>{% endif %}
-                    </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p style="color: var(--text-muted);">Пока нет записей по этой карточке. История строится по карточке, телефону, email и Телеграм.</p>
-            {% endif %}
+        <div class="form-field">
+            <label class="form-field__label" for="card_phone">Телефон</label>
+            <input class="input" type="tel" id="card_phone" name="phone" value="{{ card.phone|default('') }}" placeholder="Необязательно" autocomplete="tel">
         </div>
+        <div class="form-field">
+            <label class="form-field__label" for="card_telegram">Телеграм (ник или ссылка)</label>
+            <input class="input" type="text" id="card_telegram" name="telegram" value="{{ card.telegram|default('') }}" placeholder="@ник или t.me/...">
+        </div>
+        <div class="form-field">
+            <label class="form-field__label" for="card_notes">Примечания</label>
+            <textarea class="textarea" id="card_notes" name="notes" rows="4">{{ card.notes|default('') }}</textarea>
+        </div>
+        <button type="submit" class="btn btn--primary">Сохранить</button>
+    </form>
 
-        <form method="POST" action="/clients/{{ card.id }}/" onsubmit="return confirm('Удалить карточку?');" style="margin-top: 24px;">
-            
-            <input type="hidden" name="action" value="delete">
-            <button type="submit" class="btn btn-secondary" style="background: #dc3545; border-color: #dc3545; color: #fff;">Удалить карточку</button>
-        </form>
-
-        {% include 'footer.html' %}
+    {% if card.email or card.telegram or card.phone %}
+    <div class="contact-links-row mt-lg">
+        {% if card.phone %}
+        <a href="tel:{{ card.phone }}" class="btn btn--secondary btn--sm">Позвонить</a>
+        {% endif %}
+        {% if card.email %}
+        <a href="mailto:{{ card.email }}" class="btn btn--secondary btn--sm">Написать на почту</a>
+        {% endif %}
+        {% if card.telegram %}
+        <a href="https://t.me/{{ card.telegram|cut('@') }}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">Открыть в Телеграм</a>
+        {% endif %}
     </div>
-</body>
-</html>
+    {% endif %}
+</section>
+
+<section class="app-section">
+    <h2 class="app-section__title">История консультаций</h2>
+    <p class="text-muted mb-lg">
+        Записей всего: <strong>{{ total_bookings|default(0) }}</strong>
+        · Посещено (завершено): <strong>{{ completed_count|default(0) }}</strong>
+    </p>
+
+    {% if history %}
+    <ul class="history-list">
+        {% for b in history %}
+        <li class="history-list__item">
+            <span class="history-list__date">{{ b.booking_date|date('d.m.Y') }} {{ b.booking_time|time('H:i') }}</span>
+            <span class="history-list__service"> — {{ b.service.name }}{% if b.calendar %} ({{ b.calendar.name }}){% endif %}</span>
+            <div class="mt-sm">{{ booking_status_badge(b.status) }}</div>
+            {% if b.notes %}<p class="history-list__notes">{{ b.notes }}</p>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted">Пока нет записей по этой карточке. История строится по карточке, телефону, email и Телеграм.</p>
+    {% endif %}
+</section>
+
+<form method="POST" action="/clients/{{ card.id }}/" onsubmit="return confirm('Удалить карточку?');">
+    <input type="hidden" name="action" value="delete">
+    <button type="submit" class="btn btn--danger">Удалить карточку</button>
+</form>
+{% endblock %}

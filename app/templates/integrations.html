@@ -1,193 +1,79 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Интеграции - Система записи</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=2">
-    <style>
-        .integrations-container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .integration-card {
-            background: white;
-            border-radius: 10px;
-            padding: 25px;
-            margin-bottom: 25px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .integration-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .integration-header h3 {
-            margin: 0;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .integration-icon {
-            font-size: 32px;
-        }
-        .status-badge {
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .status-enabled {
-            background: #d4edda;
-            color: #155724;
-        }
-        .status-disabled {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .status-connected {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        .integration-description {
-            color: #666;
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }
-        .connect-form {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-        .placeholder-note {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        @media (max-width: 768px) {
-            .integrations-container { padding: 12px 0; }
-            .integration-card { padding: 16px; margin-bottom: 16px; }
-            .integration-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-                margin-bottom: 14px;
-            }
-            .integration-header h3 { font-size: 1.1rem; }
-            .connect-form { padding: 14px; }
-            .connect-form .btn { min-height: 44px; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="nav-header">
-            <h1 class="brand-title">
-                <a href="/" class="brand-link" aria-label="{{ site_brand_name }} — на главную">
-                    <span class="brand-badge" aria-hidden="true">В</span>
-                    <span class="brand-name">{{ site_brand_name }}</span>
-                </a>
-                <span class="brand-page">/ Интеграции</span>
-            </h1>
-            <div class="user-info">
-                {% if user.is_authenticated %}
-                    <div class="header-user-block">
-                        <div class="header-user-name">{{ header_consultant_name }}</div>
-                        <div class="header-user-account">{{ header_account_display }}</div>
-                    </div>
-                {% endif %}
-                <a href="/" class="btn btn-secondary">← На главную</a>
-            </div>
-        </div>
+{% extends "layouts/app.html" %}
+{% from "components/app_page_head.html" import app_page_head %}
 
-        {% if error %}
-        <div class="error-message" style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin: 20px 0;">{{ error }}</div>
+{% block meta_tags %}
+{% set page_title = "Интеграции — " ~ site_brand_name %}
+{% set meta_description = "Подключение уведомлений и интеграций — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block app_content %}
+{{ app_page_head("Интеграции") }}
+
+{% if error %}
+<div class="alert alert--error" role="alert">{{ error }}</div>
+{% endif %}
+{% if success %}
+<div class="alert alert--success mt-lg" role="status">{{ success }}</div>
+{% endif %}
+
+<section class="app-section">
+    <div class="integration-card__head">
+        <h2 class="app-section__title app-section__title--plain">Телеграм</h2>
+        {% if integration.telegram_connected %}
+        <span class="badge badge--success">Подключено</span>
+        {% elif integration.telegram_enabled %}
+        <span class="badge badge--warning">Включено, бот не подключён</span>
+        {% else %}
+        <span class="badge badge--ghost">Отключено</span>
         {% endif %}
-
-        {% if success %}
-        <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            {{ success }}
-        </div>
-        {% endif %}
-
-        <div class="integrations-container">
-            <!-- Telegram: статус и кнопки по реальному состоянию -->
-            <div class="integration-card">
-                <div class="integration-header">
-                    <h3>
-                        <span class="integration-icon">✈️</span>
-                        Телеграм
-                    </h3>
-                    {% if integration.telegram_connected %}
-                    <span class="status-badge status-connected">Подключено</span>
-                    {% elif integration.telegram_enabled %}
-                    <span class="status-badge status-enabled">Включено, бот не подключён</span>
-                    {% else %}
-                    <span class="status-badge status-disabled">Отключено</span>
-                    {% endif %}
-                </div>
-
-                <div class="integration-description">
-                    <p>Получайте уведомления о новых записях в Телеграм. Создайте бота через @BotFather 
-                    и подключите его к системе для автоматических уведомлений.</p>
-                </div>
-
-                {% if integration.telegram_connected %}
-                <div>
-                    <p style="margin: 0 0 10px 0; color: #0c5460;">Бот Телеграм подключён.</p>
-                    {% if integration.telegram_chat_id %}
-                    <p style="margin-top: 10px; color: #666;">Идентификатор чата: {{ integration.telegram_chat_id }}</p>
-                    {% endif %}
-                    <form method="POST" action="/integrations/" style="margin-top: 15px;">
-                        
-                        <input type="hidden" name="action" value="disconnect_telegram">
-                        <button type="submit" class="btn btn-secondary">Отключить Телеграм</button>
-                    </form>
-                </div>
-                {% else %}
-                <div>
-                    {% if integration.telegram_enabled %}
-                    <p style="margin-bottom: 16px;">Подключите Телеграм - уведомления о новых записях и напоминания о консультациях будут приходить в приложение.</p>
-                    <p style="margin-bottom: 8px;">
-                        <a href="/integrations/telegram/connect-app/" class="btn" style="display: inline-block;">📱 Подключить через бота Телеграм</a>
-                    </p>
-                    <p style="font-size: 14px; color: #666;">Откроется бот - нажмите «Подтвердить подключение» в чате.</p>
-                    <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
-                    <p style="font-size: 14px; color: #666; margin-bottom: 12px;">Или вручную (токен и идентификатор чата):</p>
-                    <form method="POST" class="connect-form">
-                        
-                        <input type="hidden" name="action" value="connect_telegram">
-                        <div class="form-group">
-                            <label>Токен бота:</label>
-                            <input type="text" name="bot_token" placeholder="123456:ABC-DEF..." value="">
-                            <small>Получите токен у @BotFather в Телеграм</small>
-                        </div>
-                        <div class="form-group">
-                            <label>Идентификатор чата:</label>
-                            <input type="text" name="chat_id" placeholder="123456789" value="">
-                            <small>ID чата для отправки уведомлений</small>
-                        </div>
-                        <button type="submit" class="btn btn-secondary">Подключить вручную</button>
-                    </form>
-                    {% else %}
-                    <form method="POST">
-                        
-                        <input type="hidden" name="action" value="toggle_telegram">
-                        <button type="submit" class="btn">Включить интеграцию</button>
-                    </form>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        {% include 'footer.html' %}
     </div>
-</body>
-</html>
+
+    <p class="text-muted mt-lg mb-lg">
+        Получайте уведомления о новых записях в Телеграм. Создайте бота через @BotFather
+        и подключите его к системе для автоматических уведомлений.
+    </p>
+
+    {% if integration.telegram_connected %}
+    <div class="auth-provider-card is-connected">
+        <p class="mb-0">Бот Телеграм подключён.</p>
+        {% if integration.telegram_chat_id %}
+        <p class="text-muted mt-sm">Идентификатор чата: {{ integration.telegram_chat_id }}</p>
+        {% endif %}
+    </div>
+    <form method="POST" action="/integrations/" class="mt-lg">
+        <input type="hidden" name="action" value="disconnect_telegram">
+        <button type="submit" class="btn btn--secondary">Отключить Телеграм</button>
+    </form>
+    {% else %}
+        {% if integration.telegram_enabled %}
+        <p class="mb-lg">Подключите Телеграм - уведомления о новых записях и напоминания о консультациях будут приходить в приложение.</p>
+        <a href="/integrations/telegram/connect-app/" class="btn btn--primary">Подключить через бота Телеграм</a>
+        <p class="form-field__hint mt-lg">Откроется бот - нажмите «Подтвердить подключение» в чате.</p>
+
+        <hr class="divider">
+
+        <p class="form-field__hint mb-lg">Или вручную (токен своего бота и идентификатор чата). Без токена используется бот платформы:</p>
+        <form method="POST" action="/integrations/" class="stack app-section app-section--inset">
+            <input type="hidden" name="action" value="connect_telegram">
+            <div class="form-field">
+                <label class="form-field__label" for="bot_token">Токен бота</label>
+                <input class="input" type="text" id="bot_token" name="bot_token" placeholder="123456:ABC-DEF..." autocomplete="off">
+                <p class="form-field__hint">Опционально. Получите токен у @BotFather, если используете своего бота</p>
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="chat_id">Идентификатор чата</label>
+                <input class="input" type="text" id="chat_id" name="chat_id" placeholder="123456789" required autocomplete="off">
+                <p class="form-field__hint">ID чата для отправки уведомлений</p>
+            </div>
+            <button type="submit" class="btn btn--secondary">Подключить вручную</button>
+        </form>
+        {% else %}
+        <form method="POST" action="/integrations/">
+            <input type="hidden" name="action" value="toggle_telegram">
+            <button type="submit" class="btn btn--primary">Включить интеграцию</button>
+        </form>
+        {% endif %}
+    {% endif %}
+</section>
+{% endblock %}

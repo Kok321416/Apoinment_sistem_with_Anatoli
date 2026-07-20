@@ -1,0 +1,28 @@
+@media (max-width: 1024px) {
+    :root {
+        --container-padding: var(--space-2xl);
+        --grid-hero-ratio-left: 1fr;
+        --grid-hero-ratio-right: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --container-padding: var(--space-xl);
+        --header-height: 64px;
+        --btn-height: var(--btn-height-sm);
+        --orb-size-purple: 280px;
+        --orb-size-cyan: 240px;
+    }
+
+    .section {
+        padding-block: var(--space-6xl);
+    }
+}
+
+@media (max-width: 480px) {
+    :root {
+        --container-padding: var(--space-lg);
+        --space-8xl: var(--space-6xl);
+    }
+}

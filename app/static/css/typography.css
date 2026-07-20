@@ -1,0 +1,89 @@
+body {
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--line-height-body);
+    color: var(--text-primary);
+    background: var(--bg-900);
+    -webkit-font-smoothing: antialiased;
+}
+
+.text-display-xl {
+    font-size: var(--font-size-display-xl);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+.text-display {
+    font-size: var(--font-size-display);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-snug);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+.text-h1 {
+    font-size: var(--font-size-h1);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-heading);
+}
+
+.text-h2 {
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-subheading);
+}
+
+.text-h3 {
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-compact);
+}
+
+.text-body-lg {
+    font-size: var(--font-size-body-lg);
+    line-height: var(--line-height-body-lg);
+}
+
+.text-body {
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
+
+.text-body-sm {
+    font-size: var(--font-size-body-sm);
+    line-height: var(--line-height-body);
+}
+
+.text-caption {
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    color: var(--text-secondary);
+}
+
+.text-muted {
+    color: var(--text-secondary);
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-eyebrow {
+    color: var(--accent-secondary);
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: var(--letter-spacing-eyebrow);
+}
+
+.link-accent {
+    color: var(--accent-secondary);
+    text-decoration: none;
+    transition: var(--transition-color);
+}
+
+.link-accent:hover,
+.link-accent:focus-visible {
+    color: var(--text-primary);
+}

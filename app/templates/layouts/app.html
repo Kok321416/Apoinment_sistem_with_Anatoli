@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    {% block meta_tags %}
+    {% set meta_description = meta_description | default('') %}
+    {% include "components/meta.html" %}
+    {% endblock %}
+    {% block page_css %}
+    <link rel="stylesheet" href="/static/css/app.css?v=16">
+    {% endblock %}
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="app-shell">
+    {% include "components/skip_link.html" %}
+    {% include "components/app_header.html" %}
+    <main id="main" class="app-main" tabindex="-1">
+        <div class="container">
+            {% block app_content %}{% endblock %}
+        </div>
+    </main>
+    {% block app_footer %}
+    <footer class="app-footer-mini" role="contentinfo">
+        <a href="/">На сайт</a>
+        <a href="/guide/">Гайд</a>
+        <a href="/privacy/">Конфиденциальность</a>
+        <a href="/terms/">Условия</a>
+    </footer>
+    {% endblock %}
+    {% include "components/yandex_metrika.html" %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

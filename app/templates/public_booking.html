@@ -1,756 +1,171 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Запись — {{ calendar.name }}</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=2">
-    <style>
-        :root {
-            --book-primary: #6366f1;
-            --book-primary-light: #818cf8;
-            --book-bg: #f8fafc;
-            --book-card: #ffffff;
-            --book-border: #e2e8f0;
-            --book-text: #1e293b;
-            --book-muted: #64748b;
-            --book-radius: 16px;
-            --book-radius-sm: 12px;
-            --book-shadow: 0 4px 20px rgba(99, 102, 241, 0.08);
-        }
-        body { background: var(--book-bg); color: var(--book-text); }
-        .book-container { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
-        .book-hero {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: white;
-            padding: 28px 24px;
-            border-radius: var(--book-radius);
-            margin-bottom: 24px;
-            box-shadow: var(--book-shadow);
-        }
-        .book-hero h1 { margin: 0; font-size: 1.5rem; font-weight: 700; }
-        .book-card {
-            background: var(--book-card);
-            border-radius: var(--book-radius);
-            box-shadow: var(--book-shadow);
-            padding: 24px;
-            margin-bottom: 20px;
-            border: 1px solid var(--book-border);
-        }
-        .book-card h2 {
-            margin: 0 0 20px 0;
-            font-size: 1.1rem;
-            color: var(--book-muted);
-            font-weight: 600;
-        }
-        .service-tile {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 18px 20px;
-            border: 2px solid var(--book-border);
-            border-radius: var(--book-radius-sm);
-            margin-bottom: 12px;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            position: relative;
-        }
-        .service-tile:hover { border-color: var(--book-primary-light); background: #f5f3ff; transform: translateY(-1px); }
-        .service-tile.selected {
-            border-color: var(--book-primary);
-            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
-        }
-        .service-tile.selected::after {
-            content: '✓';
-            position: absolute;
-            right: 18px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 28px;
-            height: 28px;
-            background: var(--book-primary);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .service-tile strong { display: block; margin-bottom: 4px; padding-right: 36px; }
-        .service-tile .meta { font-size: 13px; color: var(--book-muted); }
-        .service-tile input { display: none; }
+{% extends "layouts/booking.html" %}
 
-        /* Шаг «Выберите услугу» — выделение и призыв к действию */
-        .book-card.step-service {
-            position: relative;
-            border: 2px solid var(--book-primary);
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
-            animation: step-pulse 2s ease-in-out infinite;
-        }
-        .book-card.step-service .step-service-intro {
-            margin: 0 0 16px 0;
-            font-size: 14px;
-            color: var(--book-muted);
-            line-height: 1.5;
-        }
-        .book-card.step-service h2 {
-            color: var(--book-primary);
-            font-size: 1.15rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 4px;
-        }
-        .book-card.step-service h2 .step-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: white;
-            padding: 5px 12px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 700;
-            animation: step-badge 1.5s ease-in-out infinite;
-        }
-        .book-card.step-service h2 .step-icon { font-size: 1.3em; }
-        @keyframes step-pulse {
-            0%, 100% { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); }
-            50%  { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0.08); }
-        }
-        @keyframes step-badge {
-            0%, 100% { transform: scale(1); }
-            50%  { transform: scale(1.05); }
-        }
+{% block meta_tags %}
+{% set page_title = "Запись — " ~ calendar.name ~ " — " ~ site_brand_name %}
+{% set meta_description = "Онлайн-запись: " ~ calendar.name %}
+{% include "components/meta.html" %}
+{% endblock %}
 
-        .contact-intro {
-            margin: 0 0 16px 0;
-            font-size: 14px;
-            color: var(--book-muted);
-        }
-        .client-summary {
-            margin-bottom: 16px;
-        }
-        .client-summary-text {
-            margin: 0 0 8px 0;
-            font-size: 15px;
-        }
-        .link-change-contact {
-            font-size: 14px;
-            color: var(--book-primary);
-            text-decoration: none;
-        }
-        .link-change-contact:hover {
-            text-decoration: underline;
-        }
+{% block booking_content %}
+<div class="booking-hero">
+    <h1 class="booking-hero__title">{{ calendar.name }}</h1>
+    {% if calendar.consultant %}
+    <p class="booking-hero__meta">
+        {{ calendar.consultant.first_name }} {{ calendar.consultant.last_name }}
+    </p>
+    {% endif %}
+</div>
 
-        .client-choice-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-top: 16px;
-        }
-        .client-choice-card {
-            padding: 20px;
-            border: 2px solid var(--book-border);
-            border-radius: var(--book-radius-sm);
-            background: #fafafa;
-        }
-        .client-choice-card h3 {
-            margin: 0 0 8px 0;
-            font-size: 1.05rem;
-            color: var(--book-text);
-        }
-        .client-choice-desc {
-            margin: 0 0 16px 0;
-            font-size: 13px;
-            color: var(--book-muted);
-            line-height: 1.4;
-        }
-        .client-choice-card .btn-submit {
-            margin-top: 0;
-            width: 100%;
-            box-sizing: border-box;
-            display: inline-block;
-            text-align: center;
-            text-decoration: none;
-            line-height: 1.3;
-        }
-        @media (max-width: 600px) {
-            .client-choice-grid { grid-template-columns: 1fr; }
-        }
+{% if error %}
+<div class="alert alert--error" role="alert">{{ error }}</div>
+{% endif %}
 
-        /* Календарь-сетка */
-        .cal-wrap {
-            background: #fafafa;
-            border-radius: var(--book-radius-sm);
-            padding: 16px;
-            margin-bottom: 20px;
-        }
-        .cal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-        .cal-header button {
-            width: 36px;
-            height: 36px;
-            border: none;
-            background: var(--book-border);
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 18px;
-            line-height: 1;
-            color: var(--book-text);
-        }
-        .cal-header button:hover { background: var(--book-primary-light); color: white; }
-        .cal-month { font-weight: 600; color: var(--book-text); }
-        .cal-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
-            text-align: center;
-        }
-        .cal-weekday { font-size: 11px; color: var(--book-muted); padding: 6px 0; }
-        .cal-day {
-            padding: 10px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        .cal-day:hover:not(.other):not(.past) { background: #e0e7ff; }
-        .cal-day.other { color: #cbd5e1; cursor: default; }
-        .cal-day.past { color: #cbd5e1; cursor: not-allowed; }
-        .cal-day.today { background: #eef2ff; font-weight: 700; color: var(--book-primary); }
-        .cal-day.selected { background: var(--book-primary); color: white; }
-        .cal-day.selected:hover { background: var(--book-primary-light); }
-        input#booking_date { display: none; }
-
-        /* Таймлайн выбора времени */
-        .time-section { margin-top: 8px; }
-        .time-windows {
-            padding: 14px 18px;
-            background: #f0fdf4;
-            border: 1px solid #86efac;
-            border-radius: var(--book-radius-sm);
-            margin-bottom: 14px;
-            font-size: 15px;
-            color: #166534;
-        }
-        .time-windows strong { display: block; margin-bottom: 6px; font-size: 14px; color: var(--book-text); }
-        .time-no-windows {
-            padding: 14px 18px;
-            background: #fef3c7;
-            border: 1px solid #f59e0b;
-            border-radius: var(--book-radius-sm);
-            margin-bottom: 12px;
-            font-size: 15px;
-            color: #92400e;
-        }
-        .time-enter-manual {
-            padding: 14px 18px;
-            background: #eef2ff;
-            border: 1px solid var(--book-primary-light);
-            border-radius: var(--book-radius-sm);
-            margin-bottom: 12px;
-            font-size: 14px;
-            color: var(--book-text);
-        }
-        .time-enter-manual strong { display: block; margin-bottom: 8px; }
-        .time-timeline {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 12px;
-        }
-        .time-chip {
-            padding: 10px 16px;
-            border-radius: 999px;
-            border: 2px solid var(--book-border);
-            background: white;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-            min-width: 72px;
-            text-align: center;
-        }
-        .time-chip:hover:not(.disabled) { border-color: var(--book-primary); background: #eef2ff; }
-        .time-chip.selected { border-color: var(--book-primary); background: var(--book-primary); color: white; }
-        .time-chip.disabled { opacity: 0.4; cursor: not-allowed; }
-        .time-custom-row {
-            margin-top: 16px;
-            flex-wrap: wrap;
-        }
-        .time-custom-row label { display: block; font-size: 13px; color: var(--book-muted); margin-bottom: 6px; }
-        .time-custom-row input[type="time"] {
-            padding: 10px 14px;
-            border: 2px solid var(--book-border);
-            border-radius: var(--book-radius-sm);
-            font-size: 16px;
-        }
-        .time-custom-row input[type="time"]:focus {
-            outline: none;
-            border-color: var(--book-primary);
-        }
-        .time-hint { font-size: 12px; color: var(--book-muted); margin-top: 8px; }
-        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: var(--book-text); }
-        .form-group input[type="text"],
-        .form-group input[type="tel"],
-        .form-group input[type="email"] {
-            width: 100%;
-            padding: 12px 14px;
-            border: 2px solid var(--book-border);
-            border-radius: var(--book-radius-sm);
-            font-size: 16px;
-        }
-        .form-group input:focus { outline: none; border-color: var(--book-primary); }
-        .form-group { margin-bottom: 18px; }
-        .form-group small { display: block; margin-top: 4px; font-size: 12px; color: var(--book-muted); }
-        .btn-submit {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: white;
-            border: none;
-            border-radius: var(--book-radius-sm);
-            font-size: 17px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 24px;
-        }
-        .btn-submit:hover { opacity: 0.95; transform: translateY(-1px); }
-        .error-message {
-            background: #fef2f2;
-            color: #dc2626;
-            padding: 14px;
-            border-radius: var(--book-radius-sm);
-            margin-bottom: 20px;
-        }
-        /* Мобильная версия страницы записи */
-        @media (max-width: 768px) {
-            .book-container {
-                padding: 12px 10px 20px;
-                padding-left: max(10px, env(safe-area-inset-left));
-                padding-right: max(10px, env(safe-area-inset-right));
-            }
-            .book-hero {
-                padding: 20px 16px;
-                margin-bottom: 16px;
-            }
-            .book-hero h1 { font-size: 1.25rem; }
-            .book-card {
-                padding: 16px;
-                margin-bottom: 16px;
-            }
-            .book-card h2 { font-size: 1rem; margin-bottom: 12px; }
-            .service-tile {
-                padding: 14px 12px;
-                min-height: 48px;
-            }
-            .service-tile strong { font-size: 15px; }
-            .cal-day {
-                padding: 8px 4px;
-                font-size: 13px;
-                min-height: 40px;
-            }
-            .cal-header button {
-                width: 44px;
-                height: 44px;
-                font-size: 20px;
-            }
-            .cal-month { font-size: 14px; }
-            .time-chip {
-                min-height: 44px;
-                min-width: 64px;
-                padding: 12px 14px;
-            }
-            .form-group input[type="text"],
-            .form-group input[type="tel"],
-            .form-group input[type="email"],
-            .time-custom-row input[type="time"] {
-                min-height: 48px;
-                font-size: 16px;
-            }
-            .btn-submit {
-                min-height: 52px;
-                font-size: 17px;
-                margin-top: 20px;
-            }
-        }
-        @media (max-width: 480px) {
-            .cal-day { padding: 6px 2px; font-size: 12px; }
-            .time-timeline { gap: 6px; }
-        }
-    </style>
-</head>
-<body>
-    <div class="book-container">
-        <div class="book-hero">
-            <h1>{{ calendar.name }}</h1>
+{% if show_client_choice %}
+<section class="booking-panel">
+    <h2 class="booking-panel__title">Вход или регистрация</h2>
+    <p class="booking-panel__hint">Войдите через Телеграм для напоминаний или укажите контакты для записи.</p>
+    <div class="booking-client-grid">
+        <div class="card card--static">
+            <h3 class="text-h3">Вход через Телеграм</h3>
+            <p class="text-body-sm text-muted">Сообщения в бота и напоминания перед консультацией</p>
+            <a href="/accounts/telegram/login/?next=/book/{{ calendar.id }}/" class="btn btn--primary mt-lg">Войти через Телеграм</a>
         </div>
-
-        {% if error %}
-        <div class="error-message">{{ error }}</div>
-        {% endif %}
-
-        {% if show_client_choice %}
-        <div class="book-card">
-            <h2>Вход или регистрация</h2>
-            <p class="contact-intro">Войдите через Телеграм — после записи вам сразу придёт сообщение в бота и напоминания. Или войдите по телефону / укажите данные для записи.</p>
-            <div class="client-choice-grid">
-                <div class="client-choice-card">
-                    <h3>Вход через Телеграм</h3>
-                    <p class="client-choice-desc">После записи придёт сообщение в бота и напоминания перед консультацией</p>
-                    <a href="/accounts/telegram/login/?next=/book/{{ calendar.id }}/" class="btn-submit btn-telegram-inline" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;">
-                        Войти через Телеграм
-                    </a>
+        <div class="card card--static">
+            <h3 class="text-h3">Вход по телефону</h3>
+            <p class="text-body-sm text-muted">Если уже есть карточка у специалиста</p>
+            <form method="POST" class="stack mt-lg">
+                <input type="hidden" name="action" value="client_login">
+                <div class="form-field">
+                    <label class="form-field__label" for="login_phone">Телефон</label>
+                    <input class="input" type="tel" id="login_phone" name="client_phone" required placeholder="+7 (999) 123-45-67">
                 </div>
-                <div class="client-choice-card">
-                    <h3>Вход по телефону</h3>
-                    <p class="client-choice-desc">Уже есть запись или карточка у этого специалиста</p>
-                    <form method="POST" id="clientLoginForm">
-                        
-                        <input type="hidden" name="action" value="client_login">
-                        <div class="form-group">
-                            <label for="login_phone">Телефон *</label>
-                            <input type="tel" id="login_phone" name="client_phone" required placeholder="+7 (999) 123-45-67">
-                        </div>
-                        <div class="form-group">
-                            <label for="login_email">Почта (необязательно)</label>
-                            <input type="email" id="login_email" name="client_email" placeholder="email@example.com">
-                        </div>
-                        <button type="submit" class="btn-submit">Войти</button>
-                    </form>
+                <div class="form-field">
+                    <label class="form-field__label" for="login_email">Почта (необязательно)</label>
+                    <input class="input" type="email" id="login_email" name="client_email" placeholder="email@example.com">
                 </div>
-                <div class="client-choice-card">
-                    <h3>Регистрация</h3>
-                    <p class="client-choice-desc">Новая запись — укажите контактные данные</p>
-                    <a href="/book/{{ calendar.id }}/?step=register" class="btn-submit">Указать данные и записаться</a>
-                </div>
-            </div>
-        </div>
-        {% elif show_contact_form %}
-        <div class="book-card">
-            <h2>Ваши контактные данные</h2>
-            <p class="contact-intro">Укажите данные для записи. Они сохранятся в карточке клиента и понадобятся для связи и напоминаний в Телеграм.</p>
-            <form method="POST" id="contactForm">
-                
-                <input type="hidden" name="action" value="set_contact">
-                <div class="form-group">
-                    <label for="client_name">Имя *</label>
-                    <input type="text" id="client_name" name="client_name" required placeholder="Как к вам обращаться" value="{{ contact_name|default('') }}">
-                </div>
-                <div class="form-group">
-                    <label for="client_phone">Телефон *</label>
-                    <input type="tel" id="client_phone" name="client_phone" required placeholder="+7 (999) 123-45-67" value="{{ contact_phone|default('') }}">
-                    <small>Для связи и напоминаний</small>
-                </div>
-                <div class="form-group">
-                    <label for="client_telegram">Телеграм (ник)</label>
-                    <input type="text" id="client_telegram" name="client_telegram" placeholder="@ник или t.me/ник (необязательно)" value="{{ contact_telegram|default('') }}">
-                    <small>Можно указать сейчас или подтвердить в боте после записи — тогда будут приходить напоминания.</small>
-                </div>
-                <div class="form-group">
-                    <label for="client_email">Почта</label>
-                    <input type="email" id="client_email" name="client_email" placeholder="email@example.com" value="{{ contact_email|default('') }}">
-                </div>
-                <button type="submit" class="btn-submit">Продолжить к записи</button>
+                <button type="submit" class="btn btn--secondary">Войти</button>
             </form>
-            <p style="margin-top: 16px; font-size: 14px; color: var(--book-muted);"><a href="/book/{{ calendar.id }}/">← Вернуться к выбору (Вход / Регистрация)</a></p>
         </div>
-        {% else %}
-        <div class="book-card client-summary">
-            <p class="client-summary-text">
-                <strong>Записывается:</strong> {{ booking_client_name|default('—') }}, {{ booking_client_phone }}
-                {% if booking_client_telegram %} · {{ booking_client_telegram }}{% endif %}
-            </p>
-            <a href="/book/{{ calendar.id }}/?change_contact=1" class="link-change-contact">Изменить контактные данные</a>
+        <div class="card card--static">
+            <h3 class="text-h3">Новая запись</h3>
+            <p class="text-body-sm text-muted">Укажите контактные данные и выберите время</p>
+            <a href="/book/{{ calendar.id }}/?step=register" class="btn btn--primary mt-lg">Указать данные</a>
         </div>
+    </div>
+</section>
 
-        <form method="POST" id="bookingForm">
-            
-            <input type="hidden" id="service_id" name="service_id" required>
-            <input type="hidden" id="booking_date" name="booking_date" required>
-            <input type="hidden" id="booking_time" name="booking_time" required>
-            <input type="hidden" id="booking_end_time" name="booking_end_time" required>
+{% elif show_contact_form %}
+<section class="booking-panel booking-panel--form">
+    <h2 class="booking-panel__title">Контактные данные</h2>
+    <p class="booking-panel__hint">Данные сохранятся в карточке клиента для связи и напоминаний.</p>
+    <form method="POST" class="stack">
+        <input type="hidden" name="action" value="set_contact">
+        <div class="form-field">
+            <label class="form-field__label" for="client_name">Имя</label>
+            <input class="input" type="text" id="client_name" name="client_name" required placeholder="Как к вам обращаться" value="{{ contact_name|default('') }}">
+        </div>
+        <div class="form-field">
+            <label class="form-field__label" for="client_phone">Телефон</label>
+            <input class="input" type="tel" id="client_phone" name="client_phone" required placeholder="+7 (999) 123-45-67" value="{{ contact_phone|default('') }}">
+            <span class="form-field__hint">Для связи и напоминаний</span>
+        </div>
+        <div class="form-field">
+            <label class="form-field__label" for="client_telegram">Телеграм</label>
+            <input class="input" type="text" id="client_telegram" name="client_telegram" placeholder="@ник (необязательно)" value="{{ contact_telegram|default('') }}">
+        </div>
+        <div class="form-field">
+            <label class="form-field__label" for="client_email">Почта</label>
+            <input class="input" type="email" id="client_email" name="client_email" placeholder="email@example.com" value="{{ contact_email|default('') }}">
+        </div>
+        <button type="submit" class="btn btn--primary">Продолжить к записи</button>
+    </form>
+    <p class="mt-3xl text-body-sm"><a href="/book/{{ calendar.id }}/" class="link-accent">← Вернуться к выбору</a></p>
+</section>
 
-            <div class="book-card step-service">
-                <h2><span class="step-badge">Шаг 1</span> <span class="step-icon">📌</span> Выберите услугу</h2>
-                <p class="step-service-intro">От выбора услуги зависят длительность приёма и доступное время. Нажмите на карточку.</p>
+{% else %}
+<div class="booking-summary">
+    <div>
+        <span class="text-body-sm text-muted">Записывается:</span>
+        <strong>{{ booking_client_name|default('—') }}</strong>,
+        {{ booking_client_phone }}
+        {% if booking_client_telegram %} · {{ booking_client_telegram }}{% endif %}
+    </div>
+    <a href="/book/{{ calendar.id }}/?change_contact=1" class="link-accent">Изменить контакты</a>
+</div>
+
+<div class="booking-steps" aria-label="Шаги записи">
+    <span class="booking-step" data-step="1">1. Услуга</span>
+    <span class="booking-step" data-step="2">2. Дата</span>
+    <span class="booking-step" data-step="3">3. Время</span>
+</div>
+
+<form method="POST" id="bookingForm">
+    <input type="hidden" id="service_id" name="service_id" required>
+    <input type="hidden" id="booking_date" name="booking_date" required>
+    <input type="hidden" id="booking_time" name="booking_time" required>
+    <input type="hidden" id="booking_end_time" name="booking_end_time" required>
+
+    <div class="booking-layout" id="bookingRoot" data-calendar-id="{{ calendar.id }}">
+        <section class="booking-panel is-highlight" id="panelService">
+            <h2 class="booking-panel__title">Услуга</h2>
+            <p class="booking-panel__hint">От выбора зависят длительность и доступные слоты</p>
+            <div class="booking-services">
                 {% for service in services %}
-                <label class="service-tile" data-service-id="{{ service.id }}" data-duration="{{ service.duration_minutes }}">
-                    <div>
-                        <strong>{{ service.name }}</strong>
-                        {% if service.description %}<p class="meta">{{ service.description|truncatewords(12) }}</p>{% endif %}
-                        <span class="meta">{{ service.duration_minutes }} мин. {% if service.price %} · {{ service.price }} ₽{% endif %}</span>
-                    </div>
-                </label>
+                <div class="booking-service" data-service-id="{{ service.id }}" data-duration="{{ service.duration_minutes }}" role="button" tabindex="0">
+                    <span class="booking-service__name">{{ service.name }}</span>
+                    {% if service.description %}
+                    <span class="booking-service__meta">{{ service.description|truncatewords(12) }}</span>
+                    {% endif %}
+                    <span class="booking-service__meta">{{ service.duration_minutes }} мин.{% if service.price %} · {{ service.price }} ₽{% endif %}</span>
+                </div>
                 {% endfor %}
                 {% if not services %}
-                <p style="color: var(--book-muted);">Нет доступных услуг</p>
+                <div class="booking-empty">Нет доступных услуг</div>
                 {% endif %}
             </div>
+        </section>
 
-            <div class="book-card">
-                <h2>Дата</h2>
-                <div class="cal-wrap">
-                    <div class="cal-header">
-                        <button type="button" id="calPrev" aria-label="Назад">‹</button>
-                        <span class="cal-month" id="calMonthYear"></span>
-                        <button type="button" id="calNext" aria-label="Вперёд">›</button>
-                    </div>
-                    <div class="cal-grid" id="calWeekdays">
-                        <span class="cal-weekday">Пн</span><span class="cal-weekday">Вт</span><span class="cal-weekday">Ср</span>
-                        <span class="cal-weekday">Чт</span><span class="cal-weekday">Пт</span><span class="cal-weekday">Сб</span><span class="cal-weekday">Вс</span>
-                    </div>
-                    <div class="cal-grid" id="calDays"></div>
+        <section class="booking-panel" id="panelDate">
+            <h2 class="booking-panel__title">Дата</h2>
+            <div class="booking-cal">
+                <div class="booking-cal__header">
+                    <button type="button" class="booking-cal__nav" id="calPrev" aria-label="Предыдущий месяц">‹</button>
+                    <span class="booking-cal__month" id="calMonthYear"></span>
+                    <button type="button" class="booking-cal__nav" id="calNext" aria-label="Следующий месяц">›</button>
                 </div>
-            </div>
-
-            <div class="book-card time-section">
-                <h2>Время</h2>
-                <p class="time-hint" id="timeHint">Сначала выберите услугу и дату — ниже появятся доступные часы</p>
-                <div id="timeNoWindows" class="time-no-windows" style="display: none;"></div>
-                <div id="timeWindows" class="time-windows" style="display: none;"></div>
-                <div id="timeEnterManual" class="time-enter-manual" style="display: none;"></div>
-                <div class="time-timeline" id="timeSlots"></div>
-                <p class="time-subtitle" id="timeSubtitle" style="display: none; font-size: 13px; color: var(--book-muted); margin: 8px 0 4px 0;">Выберите время или укажите своё в пределах окна:</p>
-                <div class="time-custom-row" id="timeCustomRow" style="display: none;">
-                    <label id="timeCustomLabel">Укажите время начала записи:</label>
-                    <input type="time" id="customTimeStart" step="60" min="00:00" max="23:59" aria-describedby="timeCustomHelp">
-                    <small id="timeCustomHelp" style="margin: 6px 0 0 0; display: block; color: var(--book-muted);">Конец приёма посчитается по длительности услуги.</small>
+                <div class="booking-cal__grid" id="calWeekdays">
+                    <span class="booking-cal__weekday">Пн</span>
+                    <span class="booking-cal__weekday">Вт</span>
+                    <span class="booking-cal__weekday">Ср</span>
+                    <span class="booking-cal__weekday">Чт</span>
+                    <span class="booking-cal__weekday">Пт</span>
+                    <span class="booking-cal__weekday">Сб</span>
+                    <span class="booking-cal__weekday">Вс</span>
                 </div>
+                <div class="booking-cal__grid" id="calDays"></div>
             </div>
+        </section>
 
-            <button type="submit" class="btn-submit">Записаться</button>
-        </form>
-        {% endif %}
+        <section class="booking-panel" id="panelTime">
+            <h2 class="booking-panel__title">Время</h2>
+            <p class="booking-panel__hint" id="timeHint">Сначала выберите услугу и дату</p>
+            <div id="timeNoWindows" class="booking-notice booking-notice--warn" hidden></div>
+            <div id="timeWindows" class="booking-notice booking-notice--success" hidden></div>
+            <div id="timeEnterManual" class="booking-notice booking-notice--info" hidden></div>
+            <div class="booking-time-slots" id="timeSlots"></div>
+            <p class="text-body-sm text-muted mt-lg" id="timeSubtitle" hidden>Или укажите своё время:</p>
+            <div class="form-field mt-lg" id="timeCustomRow" hidden>
+                <label class="form-field__label" id="timeCustomLabel" for="customTimeStart">Время начала</label>
+                <input class="input" type="time" id="customTimeStart" step="60">
+                <span class="form-field__hint">Конец приёма рассчитается по длительности услуги</span>
+            </div>
+            <button type="submit" class="btn btn--primary btn--block mt-3xl">Записаться</button>
+        </section>
     </div>
+</form>
+{% endif %}
+{% endblock %}
 
-    {% if show_booking_form %}
-    <script>
-        const calendarId = {{ calendar.id }};
-        let selectedServiceId = null;
-        let selectedDuration = 60;
-        let currentCalDate = new Date();
-        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-
-        document.querySelectorAll('.service-tile').forEach(el => {
-            el.addEventListener('click', function() {
-                document.querySelectorAll('.service-tile').forEach(t => t.classList.remove('selected'));
-                this.classList.add('selected');
-                selectedServiceId = this.dataset.serviceId;
-                selectedDuration = parseInt(this.dataset.duration, 10) || 60;
-                document.getElementById('service_id').value = selectedServiceId;
-                const d = document.getElementById('booking_date').value;
-                if (d) loadTimeSlots();
-            });
-        });
-
-        // Если услуга одна — выбираем её автоматически
-        const serviceTiles = document.querySelectorAll('.service-tile');
-        if (serviceTiles.length === 1) {
-            const single = serviceTiles[0];
-            single.classList.add('selected');
-            selectedServiceId = single.dataset.serviceId;
-            selectedDuration = parseInt(single.dataset.duration, 10) || 60;
-            document.getElementById('service_id').value = selectedServiceId || '';
-        }
-
-        function renderCalendar() {
-            const y = currentCalDate.getFullYear();
-            const m = currentCalDate.getMonth();
-            document.getElementById('calMonthYear').textContent = monthNames[m] + ' ' + y;
-            const first = new Date(y, m, 1);
-            const last = new Date(y, m + 1, 0);
-            let start = first.getDay() - 1;
-            if (start < 0) start += 7;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            let html = '';
-            for (let i = 0; i < start; i++) html += '<span class="cal-day other"></span>';
-            for (let d = 1; d <= last.getDate(); d++) {
-                const date = new Date(y, m, d);
-                let cls = 'cal-day';
-                if (date < today) cls += ' past';
-                else if (date.getTime() === today.getTime()) cls += ' today';
-                const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-                html += '<span class="' + cls + '" data-date="' + dateStr + '">' + d + '</span>';
-            }
-            document.getElementById('calDays').innerHTML = html;
-            document.querySelectorAll('#calDays .cal-day:not(.other):not(.past)').forEach(cell => {
-                cell.addEventListener('click', function() {
-                    document.querySelectorAll('#calDays .cal-day').forEach(c => c.classList.remove('selected'));
-                    this.classList.add('selected');
-                    const dateStr = this.dataset.date;
-                    document.getElementById('booking_date').value = dateStr;
-                    if (selectedServiceId) loadTimeSlots();
-                });
-            });
-        }
-        document.getElementById('calPrev').addEventListener('click', function() {
-            currentCalDate.setMonth(currentCalDate.getMonth() - 1);
-            renderCalendar();
-        });
-        document.getElementById('calNext').addEventListener('click', function() {
-            currentCalDate.setMonth(currentCalDate.getMonth() + 1);
-            renderCalendar();
-        });
-        renderCalendar();
-
-        function loadTimeSlots() {
-            const date = document.getElementById('booking_date').value;
-            const container = document.getElementById('timeSlots');
-            const hint = document.getElementById('timeHint');
-            const customRow = document.getElementById('timeCustomRow');
-            document.getElementById('booking_time').value = '';
-            document.getElementById('booking_end_time').value = '';
-            document.getElementById('customTimeStart').value = '';
-
-            if (!date || !selectedServiceId) {
-                container.innerHTML = '';
-                hint.textContent = 'Сначала выберите услугу и дату — ниже появятся доступные часы';
-                document.getElementById('timeWindows').style.display = 'none';
-                document.getElementById('timeWindows').innerHTML = '';
-                document.getElementById('timeNoWindows').style.display = 'none';
-                document.getElementById('timeEnterManual').style.display = 'none';
-                document.getElementById('timeSubtitle').style.display = 'none';
-                customRow.style.display = 'none';
-                return;
-            }
-            hint.textContent = 'Загрузка...';
-            container.innerHTML = '';
-            document.getElementById('timeNoWindows').style.display = 'none';
-            document.getElementById('timeEnterManual').style.display = 'none';
-
-            fetch('/book/' + calendarId + '/slots/?date=' + date + '&service_id=' + selectedServiceId)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.error) {
-                        hint.textContent = data.error;
-                        document.getElementById('timeWindows').style.display = 'none';
-                        document.getElementById('timeNoWindows').style.display = 'none';
-                        document.getElementById('timeEnterManual').style.display = 'none';
-                        document.getElementById('timeSubtitle').style.display = 'none';
-                        customRow.style.display = 'none';
-                        return;
-                    }
-                    const slots = data.available_slots || [];
-                    const windows = data.available_windows || [];
-                    const windowsEl = document.getElementById('timeWindows');
-                    const subtitleEl = document.getElementById('timeSubtitle');
-
-                    const noWindowsEl = document.getElementById('timeNoWindows');
-                    const enterManualEl = document.getElementById('timeEnterManual');
-                    const customLabel = document.getElementById('timeCustomLabel');
-                    const customInput = document.getElementById('customTimeStart');
-
-                    noWindowsEl.style.display = 'none';
-                    enterManualEl.style.display = 'none';
-
-                    if (windows.length === 0) {
-                        hint.textContent = '';
-                        windowsEl.style.display = 'none';
-                        noWindowsEl.style.display = 'block';
-                        noWindowsEl.innerHTML = '<strong>На эту дату приём не ведётся.</strong><br>Выберите другую дату в календаре выше.';
-                        subtitleEl.style.display = 'none';
-                        customRow.style.display = 'none';
-                        container.innerHTML = '';
-                        return;
-                    }
-
-                    windowsEl.style.display = 'block';
-                    windowsEl.innerHTML = '<strong>Приём в этот день:</strong> ' +
-                        windows.map(function(w) { return w.start_time + ' – ' + w.end_time; }).join('; ');
-
-                    if (slots.length === 0) {
-                        hint.textContent = '';
-                        subtitleEl.style.display = 'none';
-                        enterManualEl.style.display = 'block';
-                        enterManualEl.innerHTML = '<strong>Укажите время начала записи</strong> (например, 10:00 или 10:30). Время должно попасть в один из интервалов выше.';
-                        customRow.style.display = 'block';
-                        customLabel.textContent = 'Время начала:';
-                        customInput.removeAttribute('min');
-                        customInput.removeAttribute('max');
-                        container.innerHTML = '';
-                        return;
-                    }
-
-                    hint.textContent = 'Услуга: ' + selectedDuration + ' мин. Выберите время кнопкой или укажите своё.';
-                    subtitleEl.style.display = 'block';
-                    customRow.style.display = 'block';
-                    customLabel.textContent = 'Или укажите своё время начала:';
-                    customInput.min = '00:00';
-                    customInput.max = '23:59';
-                    container.innerHTML = '';
-                    slots.forEach(slot => {
-                        const chip = document.createElement('button');
-                        chip.type = 'button';
-                        chip.className = 'time-chip';
-                        chip.textContent = slot.start_time;
-                        chip.dataset.start = slot.start_time;
-                        chip.dataset.end = slot.end_time;
-                        chip.addEventListener('click', function() {
-                            document.querySelectorAll('.time-chip').forEach(c => c.classList.remove('selected'));
-                            this.classList.add('selected');
-                            document.getElementById('booking_time').value = this.dataset.start;
-                            document.getElementById('booking_end_time').value = this.dataset.end;
-                            document.getElementById('customTimeStart').value = this.dataset.start;
-                        });
-                        container.appendChild(chip);
-                    });
-                })
-                .catch(() => {
-                    hint.textContent = 'Ошибка загрузки';
-                    customRow.style.display = 'none';
-                });
-        }
-
-        document.getElementById('customTimeStart').addEventListener('change', function() {
-            const v = this.value;
-            if (!v) return;
-            const [h, m] = v.split(':').map(Number);
-            const start = new Date(2000, 0, 1, h, m);
-            const end = new Date(start.getTime() + selectedDuration * 60000);
-            const endStr = String(end.getHours()).padStart(2, '0') + ':' + String(end.getMinutes()).padStart(2, '0');
-            document.getElementById('booking_time').value = v;
-            document.getElementById('booking_end_time').value = endStr;
-            document.querySelectorAll('.time-chip').forEach(c => c.classList.remove('selected'));
-        });
-    </script>
-    {% endif %}
-
-    <script>
-    (function() {
-        function formatPhone(value) {
-            var digits = (value || '').replace(/\D/g, '');
-            if (digits.charAt(0) === '8') digits = '7' + digits.slice(1);
-            if (digits.charAt(0) !== '7') digits = '7' + digits;
-            digits = digits.slice(0, 11);
-            if (digits.length <= 1) return digits ? '+7' : '';
-            return '+7 (' + digits.slice(1, 4) + ') ' + digits.slice(4, 7) + '-' + digits.slice(7, 9) + '-' + digits.slice(9, 11);
-        }
-        function onPhoneInput(e) {
-            var el = e.target;
-            var start = el.selectionStart, oldLen = el.value.length;
-            el.value = formatPhone(el.value);
-            var newLen = el.value.length;
-            var newStart = Math.max(0, start + (newLen - oldLen));
-            el.setSelectionRange(newStart, newStart);
-        }
-        document.addEventListener('DOMContentLoaded', function() {
-            ['login_phone', 'client_phone'].forEach(function(id) {
-                var el = document.getElementById(id);
-                if (el) {
-                    el.addEventListener('input', onPhoneInput);
-                    if (el.value) el.value = formatPhone(el.value);
-                }
-            });
-        });
-    })();
-    </script>
-</body>
-</html>
+{% block scripts %}
+<script src="/static/js/public-booking.js?v=1" defer></script>
+{% endblock %}

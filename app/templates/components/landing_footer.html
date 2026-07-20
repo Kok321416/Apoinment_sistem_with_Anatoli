@@ -1,0 +1,26 @@
+<footer class="site-footer" role="contentinfo">
+    <div class="container site-footer__grid">
+        <div class="stack">
+            {% include "components/logo.html" %}
+            <p class="text-body-sm text-muted">{{ footer_copy.tagline }}</p>
+        </div>
+        {% for column in footer_copy.columns %}
+        <nav aria-label="{{ column.title }}">
+            <h3 class="text-h3 mb-lg">{{ column.title }}</h3>
+            <div class="site-footer__links">
+                {% for link in column.links %}
+                <a href="{{ link.href }}">{{ link.label }}</a>
+                {% endfor %}
+            </div>
+        </nav>
+        {% endfor %}
+    </div>
+    <div class="container site-footer__meta">
+        <p class="text-caption">{{ footer_copy.copyright }}</p>
+        {% if admin_telegram_username %}
+        <p class="text-caption mt-sm">
+            Телеграм: <a href="https://t.me/{{ admin_telegram_username }}">@{{ admin_telegram_username }}</a>
+        </p>
+        {% endif %}
+    </div>
+</footer>

@@ -1,0 +1,22 @@
+<header class="app-header" role="banner">
+    <div class="container app-header__inner">
+        {% set href = '/dashboard/' %}
+        {% include "components/logo.html" %}
+        <div class="app-header__actions">
+            {% if user and user.is_authenticated %}
+            <div class="app-header__user">
+                <div class="app-header__name">{{ header_consultant_name }}</div>
+                <div class="app-header__account">{{ header_account_display }}</div>
+            </div>
+            <nav class="app-header__nav" aria-label="Действия кабинета">
+                <a href="/" class="btn btn--ghost btn--sm">На сайт</a>
+                <a href="/integrations/" class="btn btn--secondary btn--sm">Интеграции</a>
+                <form method="POST" action="/logout/">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn--secondary btn--sm">Выход</button>
+                </form>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</header>

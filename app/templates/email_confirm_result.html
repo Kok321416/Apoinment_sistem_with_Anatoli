@@ -1,23 +1,25 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Подтверждение email</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=2">
-</head>
-<body>
-    <div class="container" style="max-width: 520px;">
-        {% if success %}
-        <h1>Почта подтверждена</h1>
-        <p>Аккаунт активирован. Теперь можно войти.</p>
-        <p><a href="/login/" class="btn">Войти</a></p>
-        {% else %}
-        <h1>Не удалось подтвердить</h1>
-        <div class="error-message">{{ error }}</div>
-        <p><a href="/login/">На страницу входа</a></p>
-        {% endif %}
-        {% include 'footer.html' %}
+{% extends "layouts/auth.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Подтверждение почты — " ~ site_brand_name %}
+{% set meta_description = "Результат подтверждения электронной почты — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-card card card--static animate-fade-in-up">
+    {% if success %}
+    <h1 class="text-h1 auth-card__title">Почта подтверждена</h1>
+    <div class="stack">
+        <p class="text-body">Аккаунт активирован. Теперь можно войти.</p>
+        <a href="/login/" class="btn btn--primary">Войти</a>
     </div>
-</body>
-</html>
+    {% else %}
+    <h1 class="text-h1 auth-card__title">Не удалось подтвердить</h1>
+    <div class="stack">
+        <div class="alert alert--error" role="alert">{{ error }}</div>
+        <a href="/login/" class="btn btn--secondary">На страницу входа</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

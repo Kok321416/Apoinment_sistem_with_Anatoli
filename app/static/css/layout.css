@@ -1,0 +1,109 @@
+.container {
+    width: 100%;
+    max-width: var(--container-max);
+    margin-inline: auto;
+    padding-inline: var(--container-padding);
+}
+
+.container--narrow {
+    max-width: var(--container-narrow);
+}
+
+.section {
+    padding-block: var(--space-8xl);
+}
+
+.section-sm {
+    padding-block: var(--space-6xl);
+}
+
+.section--defer {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 720px;
+}
+
+
+.grid-12 {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: var(--space-3xl);
+}
+
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.stack-lg {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3xl);
+}
+
+.cluster {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-lg);
+}
+
+.cluster--center {
+    justify-content: center;
+}
+
+/* Shared shell footer (auth / app / booking) */
+.app-footer-mini {
+    padding: var(--space-3xl) var(--container-padding);
+    border-top: 1px solid var(--border-subtle);
+    text-align: center;
+}
+
+.app-footer-mini a {
+    color: var(--text-secondary);
+    font-size: var(--font-size-body-sm);
+    text-decoration: none;
+    margin: 0 var(--space-md);
+}
+
+.app-footer-mini a:hover {
+    color: var(--text-primary);
+}
+
+.auth-page__topbar {
+    padding: var(--space-lg) var(--container-padding);
+}
+
+.auth-page__topbar .brand {
+    display: inline-flex;
+}
+
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-md);
+    text-decoration: none;
+    color: var(--text-primary);
+    font-weight: var(--font-weight-semibold);
+}
+
+.brand__mark {
+    width: var(--brand-mark-size);
+    height: var(--brand-mark-size);
+}
+
+.brand__name {
+    font-size: var(--font-size-nav);
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

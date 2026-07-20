@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    {% block meta_tags %}
+    {% set meta_description = meta_description | default('') %}
+    {% include "components/meta.html" %}
+    {% endblock %}
+    {% block page_css %}
+    <link rel="stylesheet" href="/static/css/booking.css?v=15">
+    {% endblock %}
+</head>
+<body class="booking-page">
+    {% include "components/skip_link.html" %}
+    <header class="auth-page__topbar container">
+        {% include "components/logo.html" %}
+    </header>
+    <main id="main" class="booking-page__main container" tabindex="-1">
+        {% block booking_content %}{% endblock %}
+    </main>
+    <footer class="app-footer-mini" role="contentinfo">
+        <a href="/">На главную</a>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <span class="footer-brand">{{ site_brand_name }}</span>
+    </footer>
+    {% include "components/yandex_metrika.html" %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

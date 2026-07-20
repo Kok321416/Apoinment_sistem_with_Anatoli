@@ -1,0 +1,75 @@
+{% extends "layouts/app.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Кабинет — " ~ site_brand_name %}
+{% set meta_description = "Личный кабинет специалиста — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block app_content %}
+{% if show_telegram_welcome %}
+<div class="alert alert--success" role="alert">
+    <strong>Вы успешно подключились через Телеграм.</strong>
+    Добро пожаловать! Теперь вы можете пользоваться всеми возможностями системы записи.
+</div>
+{% endif %}
+
+{% if show_telegram_reminder_after_register %}
+<div class="alert alert--info mt-3xl" role="alert">
+    <p class="text-h3">Хотите получать уведомления о записях?</p>
+    <p class="text-body-sm mt-sm">Подключите бота Телеграм в разделе «Интеграции».</p>
+    <a href="/integrations/" class="btn btn--primary btn--sm mt-lg">Подключить Телеграм</a>
+</div>
+{% endif %}
+
+<h2 class="text-h1 app-main__title animate-fade-in-up">Доступные инструменты</h2>
+
+<div class="app-nav-grid reveal-stagger">
+    <a href="/profile/" class="app-nav-card">
+        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
+            <img src="/static/svg/icons/profile.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+        </span>
+        <h3 class="app-nav-card__title">Мой профиль</h3>
+        <p class="app-nav-card__desc">Редактирование профиля специалиста</p>
+    </a>
+    <a href="/calendars/" class="app-nav-card">
+        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
+            <img src="/static/svg/icons/calendar.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+        </span>
+        <h3 class="app-nav-card__title">Календари</h3>
+        <p class="app-nav-card__desc">Управление календарями и временными окнами для записи</p>
+    </a>
+    <a href="/services/" class="app-nav-card">
+        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
+            <img src="/static/svg/icons/services.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+        </span>
+        <h3 class="app-nav-card__title">Услуги</h3>
+        <p class="app-nav-card__desc">Создание и управление услугами для записи</p>
+    </a>
+    <a href="/booking/" class="app-nav-card">
+        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
+            <img src="/static/svg/icons/clock.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+        </span>
+        <h3 class="app-nav-card__title">Записи</h3>
+        <p class="app-nav-card__desc">Просмотр и управление записями клиентов</p>
+    </a>
+    <a href="/clients/" class="app-nav-card">
+        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
+            <img src="/static/svg/icons/clients.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+        </span>
+        <h3 class="app-nav-card__title">Карточки клиентов</h3>
+        <p class="app-nav-card__desc">Контакты, примечания и история консультаций</p>
+    </a>
+    <a href="/integrations/" class="app-nav-card">
+        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
+            <img src="/static/svg/icons/integrations.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+        </span>
+        <h3 class="app-nav-card__title">Интеграции</h3>
+        <p class="app-nav-card__desc">Телеграм-уведомления и подключение бота</p>
+    </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/motion-reveal.js?v=1" defer></script>
+{% endblock %}

@@ -57,6 +57,8 @@ class Settings:
     smtp_from: str = os.getenv("SMTP_FROM", "") or os.getenv("SMTP_USER", "")
     smtp_from_name: str = os.getenv("SMTP_FROM_NAME", "Все клиенты здесь")
     site_brand_name: str = os.getenv("SITE_BRAND_NAME", "Все клиенты здесь")
+    support_email: str = os.getenv("SUPPORT_EMAIL", "kok321416x@yandex.ru")
+    yandex_metrika_id: str = (os.getenv("YANDEX_METRIKA_ID", "110889652") or "").strip()
     smtp_use_ssl: bool = os.getenv("SMTP_USE_SSL", "true").lower() in ("1", "true", "yes")
     email_verify_hours: int = _env_int("EMAIL_VERIFY_HOURS", 24)
     email_resend_minutes: int = _env_int("EMAIL_RESEND_MINUTES", 5)

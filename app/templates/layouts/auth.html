@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    {% block meta_tags %}
+    {% set meta_description = meta_description | default('') %}
+    {% include "components/meta.html" %}
+    {% endblock %}
+    {% block page_css %}
+    <link rel="stylesheet" href="/static/css/auth.css?v=15">
+    {% endblock %}
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="auth-page">
+    {% include "components/skip_link.html" %}
+    <div class="auth-page__topbar container">
+        {% include "components/logo.html" %}
+    </div>
+    <main id="main" class="auth-page__main" tabindex="-1">
+        {% block auth_content %}{% endblock %}
+    </main>
+    {% block auth_footer %}
+    <footer class="app-footer-mini" role="contentinfo">
+        <a href="/">На главную</a>
+        <a href="/guide/">Как начать</a>
+        <a href="/privacy/">Конфиденциальность</a>
+    </footer>
+    {% endblock %}
+    {% include "components/yandex_metrika.html" %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

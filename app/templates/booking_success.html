@@ -1,183 +1,98 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Запись успешно создана</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=2">
-    <style>
-        .success-page { max-width: 560px; margin: 0 auto; padding: 24px 16px; }
-        .success-hero {
-            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-            color: white;
-            padding: 28px 24px;
-            border-radius: 16px;
-            margin-bottom: 24px;
-            text-align: center;
-        }
-        .success-hero h1 { margin: 0 0 8px 0; font-size: 1.5rem; }
-        .success-card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-            border: 1px solid #e5e7eb;
-        }
-        .success-card h3 { margin: 0 0 16px 0; color: #374151; }
-        .success-card p { margin: 8px 0; color: #4b5563; }
-        .telegram-block {
-            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-            border: 2px solid #818cf8;
-            border-radius: 16px;
-            padding: 24px;
-            margin-top: 24px;
-        }
-        .telegram-block h3 { margin: 0 0 12px 0; color: #4338ca; font-size: 1.1rem; }
-        .telegram-block p { margin: 0 0 16px 0; color: #4f46e5; font-size: 14px; }
-        .btn-telegram {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 14px 24px;
-            background: #6366f1;
-            color: white;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.2s;
-        }
-        .btn-telegram:hover { background: #4f46e5; }
-        .btn-telegram::before { content: "✈"; font-size: 18px; }
-        /* Итоговая табличка */
-        .success-summary-table { border-left: 4px solid #059669; }
-        .summary-table { width: 100%; border-collapse: collapse; }
-        .summary-table .summary-label { color: #6b7280; padding: 8px 12px 8px 0; width: 100px; vertical-align: top; }
-        .summary-table .summary-value { padding: 8px 0; color: #111827; }
-        .summary-done { margin: 16px 0 0 0; padding: 12px; background: #ecfdf5; border-radius: 8px; color: #059669; font-size: 14px; }
-        .summary-done-muted { background: #f3f4f6; color: #6b7280; }
-        /* Мобильная версия */
-        @media (max-width: 768px) {
-            .success-page {
-                padding: 16px 12px 24px;
-                padding-left: max(12px, env(safe-area-inset-left));
-                padding-right: max(12px, env(safe-area-inset-right));
-            }
-            .success-hero { padding: 20px 16px; margin-bottom: 16px; }
-            .success-hero h1 { font-size: 1.25rem; }
-            .success-card { padding: 16px; }
-            .telegram-block {
-                padding: 16px;
-                margin-top: 16px;
-            }
-            .btn-telegram {
-                display: flex;
-                width: 100%;
-                justify-content: center;
-                min-height: 48px;
-                padding: 14px 16px;
-                font-size: 15px;
-                box-sizing: border-box;
-            }
-            .telegram-block p { margin-bottom: 12px; }
-        }
-    </style>
-</head>
-<body>
-    <div class="success-page">
-        <div class="success-hero">
-            <h1>✓ Запись успешна</h1>
-            <p style="margin: 0; opacity: 0.95;">Ожидайте подтверждения специалиста. Данные о записи — ниже.</p>
-        </div>
+{% extends "layouts/booking.html" %}
 
-        <!-- Итоговая табличка: что получилось -->
-        <div class="success-card success-summary-table">
-            <h3 style="margin: 0 0 16px 0; color: #059669; font-size: 1.1rem;">✅ Итог — запись принята</h3>
-            <table class="summary-table" role="presentation">
-                <tbody>
-                    <tr><td class="summary-label">Услуга</td><td class="summary-value">{{ service.name }}</td></tr>
-                    <tr><td class="summary-label">Дата</td><td class="summary-value">{{ booking.booking_date|date('d.m.Y') }}</td></tr>
-                    <tr><td class="summary-label">Время</td><td class="summary-value">
-                        {% if booking.booking_end_time %}
-                            {{ booking.booking_time|time('H:i') }} – {{ booking.booking_end_time|time('H:i') }}
-                        {% else %}
-                            {{ booking.booking_time|time('H:i') }}
-                        {% endif %}
-                    </td></tr>
-                    <tr><td class="summary-label">Имя</td><td class="summary-value">{{ booking.client_name }}</td></tr>
-                    <tr><td class="summary-label">Телефон</td><td class="summary-value">{{ booking.client_phone|default('—') }}</td></tr>
-                    {% if booking.client_email %}
-                    <tr><td class="summary-label">Почта</td><td class="summary-value">{{ booking.client_email }}</td></tr>
-                    {% endif %}
-                    <tr><td class="summary-label">Статус</td><td class="summary-value"><strong>{{ booking.status|booking_status }}</strong></td></tr>
-                </tbody>
-            </table>
-            {% if booking.telegram_id %}
-            <p class="summary-done">✓ Сообщение о записи отправлено вам в Телеграм.</p>
-            {% else %}
-            <p class="summary-done summary-done-muted">Подтвердите Телеграм по кнопке ниже — и придёт сообщение о записи и напоминания.</p>
-            {% endif %}
-        </div>
+{% block meta_tags %}
+{% set page_title = "Запись создана — " ~ site_brand_name %}
+{% set meta_description = "Запись успешно оформлена" %}
+{% include "components/meta.html" %}
+{% endblock %}
 
-        <div class="success-card">
-            <h3>Детали записи</h3>
-            <p><strong>Услуга:</strong> {{ service.name }}</p>
-            <p><strong>Дата:</strong> {{ booking.booking_date|date('d.m.Y') }}</p>
-            <p><strong>Время:</strong>
-                {% if booking.booking_end_time %}
-                    {{ booking.booking_time|time('H:i') }} – {{ booking.booking_end_time|time('H:i') }}
-                {% else %}
-                    {{ booking.booking_time|time('H:i') }}
-                {% endif %}
-            </p>
-            <p><strong>Имя:</strong> {{ booking.client_name }}</p>
-            <p><strong>Телефон:</strong> {{ booking.client_phone|default('—') }}</p>
-            {% if booking.client_email %}<p><strong>Почта:</strong> {{ booking.client_email }}</p>{% endif %}
-            <p style="margin-top: 16px; color: #6b7280;">Статус: <strong>{{ booking.status|booking_status }}</strong></p>
+{% block booking_content %}
+<div class="booking-hero text-center">
+    <h1 class="booking-hero__title">Запись успешна</h1>
+    <p class="booking-hero__meta">Ожидайте подтверждения специалиста</p>
+</div>
 
-            {% if booking.link_token and telegram_bot_username %}
-            <div class="telegram-block">
-                <h3>Получать уведомления в Телеграм?</h3>
-                <p>Подтвердите Телеграм — и вам сразу придёт сообщение о записи в бота, а перед консультацией — напоминания за 24 часа и за 1 час.</p>
-                <p style="margin-bottom: 16px;"><strong>Выберите способ:</strong></p>
-                <p style="margin-bottom: 10px;">
-                    <a id="btnOpenTelegram" href="https://t.me/{{ telegram_bot_username }}?start=link_{{ booking.link_token }}" class="btn-telegram" target="_blank" rel="noopener" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=link_{{ booking.link_token }}">
-                        Подтвердить в приложении Телеграм
-                    </a>
-                </p>
-                <p style="margin: 8px 0 0 0;">
-                    <a href="/book/confirm-telegram/{{ booking.link_token }}/" class="btn-telegram btn-telegram-secondary">Подтвердить в браузере</a>
-                </p>
-                <p class="telegram-success-note" style="margin: 16px 0 0 0; font-size: 13px; color: #059669; display: none;">
-                    ✓ Готово! Проверьте Телеграм — сообщение о записи уже должно прийти.
-                </p>
-                <p style="margin: 12px 0 0 0; font-size: 13px; color: #6366f1;">Необязательно — запись уже сохранена.</p>
-            </div>
-            <style>.btn-telegram-secondary { background: #e0e7ff; color: #4338ca; } .btn-telegram-secondary:hover { background: #c7d2fe; } .btn-telegram-secondary::before { content: "🌐 "; }</style>
-            <script>
-            (function() {
-                var btn = document.getElementById('btnOpenTelegram');
-                if (!btn) return;
-                var tg = btn.getAttribute('data-tg');
-                if (!tg) return;
-                var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                if (isMobile) {
-                    btn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        window.location.href = tg;
-                    });
-                }
-            })();
-            if (window.location.search.indexOf('telegram=confirmed') !== -1) {
-                var note = document.querySelector('.telegram-success-note');
-                if (note) note.style.display = 'block';
-            }
-            </script>
-            {% endif %}
-        </div>
-
-        {% include 'footer.html' %}
+<section class="booking-panel booking-panel--narrow">
+    <div class="alert alert--success" role="status">
+        <strong>Итог:</strong> запись принята
     </div>
-</body>
-</html>
+
+    <table class="booking-summary mt-3xl">
+        <tbody>
+            <tr>
+                <td class="text-body-sm text-muted">Услуга</td>
+                <td class="text-body">{{ service.name }}</td>
+            </tr>
+            <tr>
+                <td class="text-body-sm text-muted">Дата</td>
+                <td class="text-body">{{ booking.booking_date|date('d.m.Y') }}</td>
+            </tr>
+            <tr>
+                <td class="text-body-sm text-muted">Время</td>
+                <td class="text-body">
+                    {% if booking.booking_end_time %}
+                        {{ booking.booking_time|time('H:i') }} – {{ booking.booking_end_time|time('H:i') }}
+                    {% else %}
+                        {{ booking.booking_time|time('H:i') }}
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td class="text-body-sm text-muted">Имя</td>
+                <td class="text-body">{{ booking.client_name }}</td>
+            </tr>
+            <tr>
+                <td class="text-body-sm text-muted">Телефон</td>
+                <td class="text-body">{{ booking.client_phone|default('-') }}</td>
+            </tr>
+            {% if booking.client_email %}
+            <tr>
+                <td class="text-body-sm text-muted">Почта</td>
+                <td class="text-body">{{ booking.client_email }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+                <td class="text-body-sm text-muted">Статус</td>
+                <td class="text-body"><span class="badge badge--secondary">{{ booking.status|booking_status }}</span></td>
+            </tr>
+        </tbody>
+    </table>
+
+    {% if booking.telegram_id %}
+    <p class="booking-notice booking-notice--success mt-3xl">Сообщение о записи отправлено вам в Телеграм.</p>
+    {% elif booking.link_token and telegram_bot_username %}
+    <div class="card card--static mt-3xl">
+        <h3 class="text-h3">Уведомления в Телеграм</h3>
+        <p class="text-body-sm text-muted">Подтвердите Телеграм - придёт сообщение о записи и напоминания перед консультацией.</p>
+        <div class="stack mt-lg">
+            <a id="btnOpenTelegram" href="https://t.me/{{ telegram_bot_username }}?start=link_{{ booking.link_token }}" class="btn btn--primary" target="_blank" rel="noopener" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=link_{{ booking.link_token }}">
+                Подтвердить в Телеграм
+            </a>
+            <a href="/book/confirm-telegram/{{ booking.link_token }}/" class="btn btn--secondary">Подтвердить в браузере</a>
+        </div>
+        <p class="form-field__hint mt-lg">Необязательно - запись уже сохранена.</p>
+        <p class="text-body-sm text-success" id="telegramSuccessNote" hidden>Готово! Проверьте Телеграм.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if booking.link_token and telegram_bot_username and not booking.telegram_id %}
+<script>
+(function() {
+    var btn = document.getElementById('btnOpenTelegram');
+    if (btn && btn.dataset.tg && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = btn.dataset.tg;
+        });
+    }
+    if (window.location.search.indexOf('telegram=confirmed') !== -1) {
+        var note = document.getElementById('telegramSuccessNote');
+        if (note) note.hidden = false;
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}

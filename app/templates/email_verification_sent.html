@@ -1,23 +1,23 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Подтвердите почту</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=2">
-</head>
-<body>
-    <div class="container" style="max-width: 520px;">
-        <h1>Проверьте почту</h1>
-        <p>Мы отправили письмо с ссылкой для подтверждения на адрес:</p>
-        <p><strong>{{ email }}</strong></p>
-        <p>Откройте письмо и нажмите «Подтвердить почту». Ссылка действует 24 часа.</p>
-        <p style="color:#666;font-size:14px;">Если письма нет, проверьте папку «Спам».</p>
-        <div class="links" style="margin-top:24px;">
-            <p><a href="/login/?email={{ email }}">Перейти ко входу</a></p>
-            <p><a href="/">На главную</a></p>
-        </div>
-        {% include 'footer.html' %}
+{% extends "layouts/auth.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Проверьте почту — " ~ site_brand_name %}
+{% set meta_description = "Подтверждение почты — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-card card card--static animate-fade-in-up">
+    <h1 class="text-h1 auth-card__title">Проверьте почту</h1>
+    <div class="stack">
+        <p class="text-body">Мы отправили письмо с ссылкой для подтверждения на адрес:</p>
+        <p class="text-h3">{{ email }}</p>
+        <p class="text-body text-muted">Откройте письмо и нажмите «Подтвердить почту». Ссылка действует 24 часа.</p>
+        <p class="form-field__hint">Если письма нет, проверьте папку «Спам».</p>
     </div>
-</body>
-</html>
+    <div class="auth-footer-links">
+        <p><a href="/login/?email={{ email | urlencode }}">Перейти ко входу</a></p>
+        <p><a href="/">На главную</a></p>
+    </div>
+</div>
+{% endblock %}

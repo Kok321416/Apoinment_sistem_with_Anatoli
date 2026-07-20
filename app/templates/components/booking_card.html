@@ -1,0 +1,64 @@
+{% macro booking_status_badge(status) %}
+{% if status == 'pending' %}
+<span class="badge badge--warning">{{ status|booking_status }}</span>
+{% elif status == 'confirmed' %}
+<span class="badge badge--primary">{{ status|booking_status }}</span>
+{% elif status == 'completed' %}
+<span class="badge badge--success">{{ status|booking_status }}</span>
+{% elif status == 'cancelled' %}
+<span class="badge badge--danger">{{ status|booking_status }}</span>
+{% else %}
+<span class="badge badge--ghost">{{ status|booking_status }}</span>
+{% endif %}
+{% endmacro %}
+
+{% macro booking_card_info(booking) %}
+<div class="booking-card__info">
+    <h3 class="booking-card__title">{{ booking.client_name }}</h3>
+    <div class="booking-card__details">
+        <p><strong>Услуга:</strong> {{ booking.service.name }}</p>
+        <p><strong>Дата:</strong> {{ booking.booking_date|date('d.m.Y') }}</p>
+        <p><strong>Время:</strong>
+            {{ booking.booking_time|time('H:i') }}
+            {% if booking.booking_end_time %} – {{ booking.booking_end_time|time('H:i') }}{% endif %}
+        </p>
+        <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
+        {% if booking.client_email %}<p><strong>Почта:</strong> {{ booking.client_email }}</p>{% endif %}
+        <p><strong>Календарь:</strong> {{ booking.calendar.name }}</p>
+    </div>
+    {% if booking.notes %}<p class="booking-card__notes"><strong>Примечания:</strong> {{ booking.notes }}</p>{% endif %}
+    {{ booking_status_badge(booking.status) }}
+</div>
+{% endmacro %}
+
+{% macro booking_card_actions(booking) %}
+<div class="booking-card__actions">
+    {% if booking.status == 'pending' %}
+    <form method="POST">
+        <input type="hidden" name="action" value="confirm">
+        <input type="hidden" name="booking_id" value="{{ booking.id }}">
+        <button type="submit" class="btn btn--success btn--sm">Подтвердить</button>
+    </form>
+    {% endif %}
+    {% if booking.status != 'cancelled' and booking.status != 'completed' %}
+    <form method="POST" onsubmit="return confirm('Отменить запись?');">
+        <input type="hidden" name="action" value="cancel">
+        <input type="hidden" name="booking_id" value="{{ booking.id }}">
+        <button type="submit" class="btn btn--danger btn--sm">Отменить</button>
+    </form>
+    {% endif %}
+    {% if booking.status == 'confirmed' %}
+    <form method="POST">
+        <input type="hidden" name="action" value="complete">
+        <input type="hidden" name="booking_id" value="{{ booking.id }}">
+        <button type="submit" class="btn btn--secondary btn--sm">Завершить</button>
+    </form>
+    {% endif %}
+    {% if booking.status != 'cancelled' and booking.status != 'completed' %}
+    <button type="button" class="btn btn--ghost btn--sm btn-reschedule"
+            data-booking-id="{{ booking.id }}"
+            data-calendar-id="{{ booking.calendar.id }}"
+            data-service-id="{{ booking.service.id }}">Перенести</button>
+    {% endif %}
+</div>
+{% endmacro %}
