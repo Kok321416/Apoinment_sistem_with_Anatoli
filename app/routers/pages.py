@@ -2,11 +2,13 @@ import os
 import shutil
 import uuid
 from datetime import date, datetime
+from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import or_, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.passwords import hash_password, verify_password
@@ -28,8 +30,14 @@ from app.models import (
     User,
 )
 from app.security.csrf import validate_csrf_token
-from app.services.bookings import create_public_booking, mark_past_bookings_completed, parse_fio
+from app.services.bookings import (
+    create_public_booking,
+    mark_past_bookings_completed,
+    parse_fio,
+    reschedule_booking,
+)
 from app.services.email_verification import ensure_email_address, resend_verification_email, send_user_verification_email
+from app.services.entity_delete import delete_calendar, delete_client_card, delete_service, delete_time_slot
 from app.services.slots import get_available_slots
 from app.services.telegram import notify_booking_status_changed
 from app.templating import page_context, templates
@@ -38,11 +46,60 @@ router = APIRouter(tags=["pages"])
 settings = get_settings()
 DAYS_NAMES = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 DAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+ALLOWED_PHOTO_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 
 def _form_csrf_ok(request: Request, form) -> bool:
     token = form.get("csrf_token") or form.get("csrfmiddlewaretoken")
     return validate_csrf_token(request, token)
+
+
+def _form_int(form, name: str, default: int | None = None) -> int | None:
+    raw = form.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_date(raw: str | None) -> date | None:
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _parse_time(raw: str | None):
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, "%H:%M").time()
+    except ValueError:
+        return None
+
+
+def _save_profile_photo(consultant: Consultant, upload) -> str | None:
+    if not upload or not getattr(upload, "filename", None):
+        return None
+    ext = Path(upload.filename).suffix.lower()
+    if ext not in ALLOWED_PHOTO_EXT:
+        return "Допустимы только JPG, PNG, WebP или GIF"
+    dest_dir = settings.media_root / "consultants" / str(consultant.id)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"photo{ext}"
+    dest_path = dest_dir / filename
+    if consultant.profile_photo:
+        old = settings.media_root / consultant.profile_photo.lstrip("/")
+        if old.is_file():
+            old.unlink(missing_ok=True)
+    with dest_path.open("wb") as out:
+        shutil.copyfileobj(upload.file, out)
+    consultant.profile_photo = f"consultants/{consultant.id}/{filename}"
+    return None
 
 
 def _optional_user(request: Request, db: Session):
@@ -202,13 +259,16 @@ async def calendars_page(request: Request, db: Session = Depends(get_db)):
             else:
                 error = "Укажите название календаря"
         elif action == "delete_calendar":
-            cal = db.query(Calendar).filter(Calendar.id == int(form.get("calendar_id")), Calendar.consultant_id == consultant.id).first()
-            if cal:
-                db.delete(cal)
-                db.commit()
-                success = "Календарь удален"
+            cal_id = _form_int(form, "calendar_id")
+            if cal_id is None:
+                error = "Некорректный ID календаря"
             else:
-                error = "Календарь не найден"
+                cal = db.query(Calendar).filter(Calendar.id == cal_id, Calendar.consultant_id == consultant.id).first()
+                if cal:
+                    ok, msg = delete_calendar(db, cal)
+                    success, error = (msg, None) if ok else (None, msg)
+                else:
+                    error = "Календарь не найден"
     calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).order_by(Calendar.name).all()
     slot_counts = {}
     if calendars:
@@ -243,22 +303,28 @@ async def calendar_detail(request: Request, calendar_id: int, db: Session = Depe
         form = await request.form()
         action = form.get("action")
         if action == "add_time_slot":
-            if form.get("day_of_week") and form.get("start_time") and form.get("end_time"):
+            day = _form_int(form, "day_of_week")
+            start_t = _parse_time(form.get("start_time"))
+            end_t = _parse_time(form.get("end_time"))
+            if day is None or start_t is None or end_t is None:
+                error = "Заполните день недели и корректное время"
+            else:
                 db.add(TimeSlot(
-                    calendar_id=calendar.id, day_of_week=int(form.get("day_of_week")),
-                    start_time=datetime.strptime(form.get("start_time"), "%H:%M").time(),
-                    end_time=datetime.strptime(form.get("end_time"), "%H:%M").time(),
+                    calendar_id=calendar.id, day_of_week=day,
+                    start_time=start_t,
+                    end_time=end_t,
                 ))
                 db.commit()
                 success = "Временное окно добавлено!"
-            else:
-                error = "Заполните все поля"
         elif action == "delete_time_slot":
-            slot = db.query(TimeSlot).filter(TimeSlot.id == int(form.get("slot_id")), TimeSlot.calendar_id == calendar.id).first()
+            slot_id = _form_int(form, "slot_id")
+            slot = (
+                db.query(TimeSlot).filter(TimeSlot.id == slot_id, TimeSlot.calendar_id == calendar.id).first()
+                if slot_id is not None else None
+            )
             if slot:
-                db.delete(slot)
-                db.commit()
-                success = "Временное окно удалено"
+                ok, msg = delete_time_slot(db, slot)
+                success, error = (msg, None) if ok else (None, msg)
             else:
                 error = "Временное окно не найдено"
     time_slots_by_day = [
@@ -283,11 +349,11 @@ async def calendar_settings(request: Request, calendar_id: int, db: Session = De
         return RedirectResponse("/calendars/", status_code=302)
     if request.method == "POST":
         form = await request.form()
-        calendar.break_between_services_minutes = int(form.get("break_between_services_minutes", 0) or 0)
-        calendar.book_ahead_hours = int(form.get("book_ahead_hours", 24) or 24)
-        calendar.max_services_per_day = int(form.get("max_services_per_day", 0) or 0)
-        calendar.reminder_hours_first = int(form.get("reminder_hours_first", 24) or 24)
-        calendar.reminder_hours_second = int(form.get("reminder_hours_second", 1) or 1)
+        calendar.break_between_services_minutes = _form_int(form, "break_between_services_minutes", 0) or 0
+        calendar.book_ahead_hours = _form_int(form, "book_ahead_hours", 24) or 24
+        calendar.max_services_per_day = _form_int(form, "max_services_per_day", 0) or 0
+        calendar.reminder_hours_first = _form_int(form, "reminder_hours_first", 24) or 24
+        calendar.reminder_hours_second = _form_int(form, "reminder_hours_second", 1) or 1
         db.commit()
         return RedirectResponse(f"/calendars/{calendar.id}/", status_code=302)
     return templates.TemplateResponse("calendar_settings_edit.html", page_context(request, db, user, calendar=calendar))
@@ -310,7 +376,7 @@ async def services_page(request: Request, db: Session = Depends(get_db)):
                 db.add(Service(
                     consultant_id=consultant.id, name=name,
                     description=form.get("description", ""),
-                    duration_minutes=int(form.get("duration_minutes", 60) or 60),
+                    duration_minutes=_form_int(form, "duration_minutes", 60) or 60,
                     price=form.get("price") or None,
                 ))
                 db.commit()
@@ -318,17 +384,26 @@ async def services_page(request: Request, db: Session = Depends(get_db)):
             else:
                 error = "Укажите название услуги"
         elif action == "toggle_service":
-            svc = db.query(Service).filter(Service.id == int(form.get("service_id")), Service.consultant_id == consultant.id).first()
+            svc_id = _form_int(form, "service_id")
+            svc = (
+                db.query(Service).filter(Service.id == svc_id, Service.consultant_id == consultant.id).first()
+                if svc_id is not None else None
+            )
             if svc:
                 svc.is_active = not svc.is_active
                 db.commit()
                 success = "Статус услуги изменен"
         elif action == "delete_service":
-            svc = db.query(Service).filter(Service.id == int(form.get("service_id")), Service.consultant_id == consultant.id).first()
+            svc_id = _form_int(form, "service_id")
+            svc = (
+                db.query(Service).filter(Service.id == svc_id, Service.consultant_id == consultant.id).first()
+                if svc_id is not None else None
+            )
             if svc:
-                db.delete(svc)
-                db.commit()
-                success = "Услуга удалена"
+                ok, msg = delete_service(db, svc)
+                success, error = (msg, None) if ok else (None, msg)
+            else:
+                error = "Услуга не найдена"
     services = db.query(Service).filter(Service.consultant_id == consultant.id).order_by(Service.name).all()
     return templates.TemplateResponse("services.html", page_context(request, db, user, services=services, success=success, error=error))
 
@@ -348,6 +423,8 @@ async def public_booking(request: Request, calendar_id: int, db: Session = Depen
     if not calendar:
         raise HTTPException(status_code=404, detail="Календарь не найден")
     consultant = db.query(Consultant).filter(Consultant.id == calendar.consultant_id).first()
+    if not consultant:
+        raise HTTPException(status_code=404, detail="Специалист не найден")
     calendar.consultant = consultant
     services = db.query(Service).filter(Service.consultant_id == consultant.id, Service.is_active.is_(True)).all()
     user = _optional_user(request, db)
@@ -407,9 +484,20 @@ async def public_booking(request: Request, calendar_id: int, db: Session = Depen
             })
             return RedirectResponse(f"/book/{calendar_id}/", status_code=302)
 
+        service_id = _form_int(form, "service_id")
+        booking_date = _parse_date(form.get("booking_date"))
+        if service_id is None or booking_date is None or not form.get("booking_time") or not form.get("booking_end_time"):
+            return templates.TemplateResponse("public_booking.html", page_context(
+                request, db, user, calendar=calendar, services=services, show_booking_form=True,
+                booking_client_name=request.session.get("booking_client_name", ""),
+                booking_client_phone=request.session.get("booking_client_phone", ""),
+                booking_client_telegram=request.session.get("booking_client_telegram", ""),
+                booking_client_email=request.session.get("booking_client_email", ""),
+                error="Заполните услугу, дату и время записи",
+            ))
         booking, err = create_public_booking(
-            db, calendar, int(form.get("service_id")),
-            datetime.strptime(form.get("booking_date"), "%Y-%m-%d").date(),
+            db, calendar, service_id,
+            booking_date,
             form.get("booking_time"), form.get("booking_end_time"),
             request.session.get("booking_client_name", "").strip(),
             request.session.get("booking_client_phone", "").strip(),
@@ -450,14 +538,23 @@ async def public_booking(request: Request, calendar_id: int, db: Session = Depen
 
 
 @router.get("/book/{calendar_id}/slots/")
-async def available_slots(calendar_id: int, service_id: int, date: str, db: Session = Depends(get_db)):
+async def available_slots(
+    calendar_id: int,
+    service_id: int,
+    date: str,
+    exclude_booking_id: int | None = None,
+    db: Session = Depends(get_db),
+):
     calendar = db.query(Calendar).filter(Calendar.id == calendar_id, Calendar.is_active.is_(True)).first()
     if not calendar:
         return JSONResponse({"error": "Календарь не найден"}, status_code=404)
     service = db.query(Service).filter(Service.id == service_id, Service.consultant_id == calendar.consultant_id, Service.is_active.is_(True)).first()
     if not service:
         return JSONResponse({"error": "Услуга не найдена"}, status_code=404)
-    result = get_available_slots(db, calendar, service, datetime.strptime(date, "%Y-%m-%d").date())
+    booking_date = _parse_date(date)
+    if not booking_date:
+        return JSONResponse({"error": "Некорректная дата"}, status_code=400)
+    result = get_available_slots(db, calendar, service, booking_date, exclude_booking_id=exclude_booking_id)
     return result
 
 
@@ -471,17 +568,40 @@ async def specialist_bookings(request: Request, db: Session = Depends(get_db)):
     calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).all()
     mark_past_bookings_completed(db, calendars)
     status_filter = request.query_params.get("status", "all")
+    success = error = None
     if request.method == "POST":
         form = await request.form()
-        booking = db.query(Booking).filter(Booking.id == int(form.get("booking_id")), Booking.calendar_id.in_([c.id for c in calendars])).first()
+        booking_id = _form_int(form, "booking_id")
+        booking = (
+            db.query(Booking).filter(Booking.id == booking_id, Booking.calendar_id.in_([c.id for c in calendars])).first()
+            if booking_id is not None else None
+        )
         if booking:
             old_status = booking.status
-            if form.get("action") == "confirm":
+            action = form.get("action")
+            if action == "confirm":
                 booking.status = "confirmed"
-            elif form.get("action") == "cancel":
+                db.commit()
+                notify_booking_status_changed(db, booking, old_status)
+            elif action == "cancel":
                 booking.status = "cancelled"
-            db.commit()
-            notify_booking_status_changed(db, booking, old_status)
+                db.commit()
+                notify_booking_status_changed(db, booking, old_status)
+            elif action == "complete":
+                booking.status = "completed"
+                db.commit()
+                notify_booking_status_changed(db, booking, old_status)
+            elif action == "reschedule":
+                new_date = _parse_date(form.get("new_date"))
+                new_time = (form.get("new_time") or "").strip()
+                if not new_date or not new_time:
+                    error = "Укажите новую дату и время"
+                else:
+                    err = reschedule_booking(db, booking, new_date, new_time)
+                    if err:
+                        error = err
+                    else:
+                        success = "Запись перенесена"
         mark_past_bookings_completed(db, calendars)
     today = date.today()
     now = datetime.now().time()
@@ -500,7 +620,7 @@ async def specialist_bookings(request: Request, db: Session = Depends(get_db)):
             past = [b for b in past if b.status == status_filter]
     return templates.TemplateResponse("booking.html", page_context(
         request, db, user, upcoming_bookings=upcoming, past_bookings=past,
-        status_filter=status_filter, today=today,
+        status_filter=status_filter, today=today, success=success, error=error,
     ))
 
 
@@ -558,11 +678,19 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
             consultant.social_telegram = normalize_url(form.get("social_telegram"))
             consultant.social_youtube = normalize_url(form.get("social_youtube"))
             consultant.website = normalize_url(form.get("website"))
-            try:
-                db.commit()
-                success = "Профиль успешно обновлен!"
-            except Exception as e:
-                error = f"Ошибка при обновлении: {e}"
+            photo_err = _save_profile_photo(consultant, form.get("profile_photo"))
+            if photo_err:
+                error = photo_err
+            else:
+                try:
+                    db.commit()
+                    success = "Профиль успешно обновлен!"
+                except IntegrityError:
+                    db.rollback()
+                    error = "Ошибка при обновлении: email уже используется другим аккаунтом"
+                except Exception as e:
+                    db.rollback()
+                    error = f"Ошибка при обновлении: {e}"
     connected = {sa.provider for sa in db.query(SocialAccount).filter(SocialAccount.user_id == user.id).all()}
     primary = db.query(EmailAddress).filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True)).first()
     return templates.TemplateResponse("profile.html", page_context(
@@ -593,11 +721,16 @@ async def client_cards_list(request: Request, db: Session = Depends(get_db)):
             db.commit()
             success = "Карточка клиента создана."
         elif form.get("action") == "delete":
-            card = db.query(ClientCard).filter(ClientCard.id == int(form.get("card_id")), ClientCard.consultant_id == consultant.id).first()
+            card_id = _form_int(form, "card_id")
+            card = (
+                db.query(ClientCard).filter(ClientCard.id == card_id, ClientCard.consultant_id == consultant.id).first()
+                if card_id is not None else None
+            )
             if card:
-                db.delete(card)
-                db.commit()
-                success = "Карточка удалена."
+                ok, msg = delete_client_card(db, card)
+                success, error = (msg, None) if ok else (None, msg)
+            else:
+                error = "Карточка не найдена"
     cards = db.query(ClientCard).filter(ClientCard.consultant_id == consultant.id).order_by(ClientCard.updated_at.desc()).all()
     return templates.TemplateResponse("client_cards_list.html", page_context(
         request, db, user, consultant=consultant, cards=cards, success=success, error=error,
@@ -638,9 +771,10 @@ async def client_card_detail(request: Request, card_id: int, db: Session = Depen
             db.commit()
             success = "Изменения сохранены."
         elif form.get("action") == "delete":
-            db.delete(card)
-            db.commit()
-            return RedirectResponse("/clients/", status_code=302)
+            ok, msg = delete_client_card(db, card)
+            if ok:
+                return RedirectResponse("/clients/", status_code=302)
+            error = msg
     total = db.query(Booking).filter(Booking.calendar_id.in_(cal_ids), history_q).distinct().count()
     completed = db.query(Booking).filter(Booking.calendar_id.in_(cal_ids), history_q, Booking.status == "completed").distinct().count()
     return templates.TemplateResponse("client_card_detail.html", page_context(

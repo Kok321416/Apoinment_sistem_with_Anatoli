@@ -177,3 +177,70 @@ def mark_past_bookings_completed(db: Session, calendars: list[Calendar]) -> None
         if end_dt <= now:
             b.status = "completed"
     db.commit()
+
+
+def reschedule_booking(
+    db: Session,
+    booking: Booking,
+    new_date: date,
+    new_time_str: str,
+) -> str | None:
+    """Reschedule booking to new date/time. Returns error message or None on success."""
+    calendar = booking.calendar
+    service = booking.service
+    if not calendar or not service:
+        return "Запись или услуга не найдена"
+
+    try:
+        start_time_obj = datetime.strptime(new_time_str, "%H:%M").time()
+    except (TypeError, ValueError):
+        return "Некорректное время"
+
+    end_dt = datetime.combine(new_date, start_time_obj) + timedelta(minutes=service.duration_minutes)
+    end_time_obj = end_dt.time()
+
+    day_of_week = new_date.weekday()
+    time_slot = (
+        db.query(TimeSlot)
+        .filter(
+            TimeSlot.calendar_id == calendar.id,
+            TimeSlot.day_of_week == day_of_week,
+            TimeSlot.start_time <= start_time_obj,
+            TimeSlot.end_time >= end_time_obj,
+            TimeSlot.is_available.is_(True),
+        )
+        .first()
+    )
+    if not time_slot:
+        return "Выбранное время не входит в доступные окна приёма."
+
+    break_minutes = calendar.break_between_services_minutes or 0
+    break_delta = timedelta(minutes=break_minutes)
+    start_dt = datetime.combine(new_date, start_time_obj)
+
+    existing = (
+        db.query(Booking)
+        .filter(
+            Booking.calendar_id == calendar.id,
+            Booking.booking_date == new_date,
+            Booking.status.in_(["pending", "confirmed"]),
+            Booking.id != booking.id,
+        )
+        .all()
+    )
+    for other in existing:
+        if not other.booking_end_time:
+            continue
+        other_start = datetime.combine(new_date, other.booking_time)
+        other_end = datetime.combine(new_date, other.booking_end_time)
+        if not (end_dt + break_delta <= other_start or start_dt >= other_end + break_delta):
+            return "Это время уже занято."
+
+    booking.booking_date = new_date
+    booking.booking_time = start_time_obj
+    booking.booking_end_time = end_time_obj
+    booking.time_slot_id = time_slot.id
+    db.commit()
+    db.refresh(booking)
+    on_booking_updated(db, booking, created=False)
+    return None

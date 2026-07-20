@@ -519,6 +519,13 @@
             </div>
         </div>
 
+        {% if success %}
+        <div class="success-message">{{ success }}</div>
+        {% endif %}
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+
         <div class="filter-tabs">
             <a href="/booking/" class="filter-tab {% if not status_filter or status_filter == 'all' %}active{% endif %}">Все</a>
             <a href="/booking/?status=pending" class="filter-tab {% if status_filter == 'pending' %}active{% endif %}">Ожидают</a>

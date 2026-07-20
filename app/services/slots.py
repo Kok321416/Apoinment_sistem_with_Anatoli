@@ -5,7 +5,13 @@ from sqlalchemy.orm import Session
 from app.models import Booking, Calendar, Service, TimeSlot
 
 
-def get_available_slots(db: Session, calendar: Calendar, service: Service, booking_date: date) -> dict:
+def get_available_slots(
+    db: Session,
+    calendar: Calendar,
+    service: Service,
+    booking_date: date,
+    exclude_booking_id: int | None = None,
+) -> dict:
     day_of_week = booking_date.weekday()
     time_slots = (
         db.query(TimeSlot)
@@ -26,6 +32,8 @@ def get_available_slots(db: Session, calendar: Calendar, service: Service, booki
         )
         .all()
     )
+    if exclude_booking_id:
+        existing_bookings = [b for b in existing_bookings if b.id != exclude_booking_id]
 
     max_per_day = calendar.max_services_per_day or 0
     if max_per_day > 0 and len(existing_bookings) >= max_per_day:
