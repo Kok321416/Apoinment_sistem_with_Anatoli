@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# Запуск Telegram-бота всегда через venv проекта (чтобы был доступен PyMySQL и остальные зависимости).
-# Использование: из корня репозитория ./scripts/run_bot.sh
-# Или: APP_DIR=/path/to/app ./scripts/run_bot.sh
-# Если APP_DIR не задан — берём корень репозитория по пути скрипта (родитель каталога scripts/).
-
+# Запуск Telegram-бота (один экземпляр через flock).
 set -e
 SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_ABS/.." && pwd)"
@@ -16,5 +12,17 @@ cd "$ROOT"
 
 PYTHON="${ROOT}/venv/bin/python"
 [ ! -x "$PYTHON" ] && PYTHON="python"
+
+LOCKFILE="$ROOT/bot.lock"
+PIDFILE="$ROOT/bot.pid"
+
+exec 200>"$LOCKFILE"
+if ! flock -n 200; then
+  echo "Bot already running (bot.lock). Skip second start."
+  exit 0
+fi
+
+echo $$ > "$PIDFILE"
+trap 'rm -f "$PIDFILE"' EXIT
 
 exec "$PYTHON" -m bot.run "$@"

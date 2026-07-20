@@ -49,7 +49,7 @@ jobs:
             exit 1
           fi
           cd "$APP_DIR"
-          chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh 2>/dev/null || true
+          chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh scripts/stop_bot.sh 2>/dev/null || true
 
           # Код на сервер попадает через основной workflow (deploy.yml, SCP). git pull не делаем — без учётки даёт "could not read Username".
 
@@ -74,13 +74,8 @@ jobs:
 
           BOT_PIDFILE="$APP_DIR/bot.pid"
           BOT_LOG="$APP_DIR/bot.log"
-          if [ -f "$BOT_PIDFILE" ]; then
-            OLD_PID=$(cat "$BOT_PIDFILE")
-            kill -TERM "$OLD_PID" 2>/dev/null || true
-            rm -f "$BOT_PIDFILE"
-            sleep 2
-          fi
-          pkill -f '[m]bot.run' 2>/dev/null || true
+          ./scripts/stop_bot.sh || true
+          sleep 2
           nohup bash "$APP_DIR/scripts/run_bot.sh" >> "$BOT_LOG" 2>&1 &
           BOT_PID=$!
           echo $BOT_PID > "$BOT_PIDFILE"

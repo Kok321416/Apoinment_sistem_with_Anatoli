@@ -431,13 +431,28 @@ def verify_bot_identity() -> None:
         logger.warning("Could not verify bot identity: %s", exc)
 
 
+def _clear_webhook() -> None:
+    if not TELEGRAM_API_URL:
+        return
+    try:
+        r = _tg_session.post(f"{TELEGRAM_API_URL}/deleteWebhook", json={"drop_pending_updates": False}, timeout=(5, 10))
+        if r.ok:
+            logger.info("deleteWebhook OK (long polling mode)")
+        else:
+            logger.warning("deleteWebhook HTTP %s", r.status_code)
+    except Exception as exc:
+        logger.warning("deleteWebhook failed: %s", exc)
+
+
 def run_long_polling() -> None:
     if not settings.telegram_bot_token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN not set")
     verify_bot_identity()
+    _clear_webhook()
     url = f"{TELEGRAM_API_URL}/getUpdates"
     offset = 0
     error_count = 0
+    conflict_count = 0
     logger.info("Bot started. SITE_URL=%s SITE_INTERNAL_URL=%s", settings.site_url, settings.site_internal_url)
     while True:
         try:
@@ -446,6 +461,18 @@ def run_long_polling() -> None:
                 params={"offset": offset, "timeout": 20, "allowed_updates": ["message", "callback_query"]},
                 timeout=(5, 30),
             )
+            if response.status_code == 409:
+                conflict_count += 1
+                logger.error(
+                    "409 Conflict: another bot process is polling getUpdates (duplicate instance). "
+                    "Run: ./scripts/stop_bot.sh && ./scripts/run_bot.sh"
+                )
+                if conflict_count >= 6:
+                    logger.critical("Too many 409 errors — exiting so deploy can start a single instance")
+                    raise SystemExit(1)
+                time.sleep(15)
+                continue
+            conflict_count = 0
             response.raise_for_status()
             data = response.json()
             if not data.get("ok"):
@@ -458,6 +485,8 @@ def run_long_polling() -> None:
                 _update_pool.submit(handle_telegram_update, update)
         except KeyboardInterrupt:
             break
+        except SystemExit:
+            raise
         except requests.exceptions.RequestException as e:
             error_count += 1
             logger.error("Network error: %s", e)

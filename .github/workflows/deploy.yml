@@ -79,7 +79,7 @@ jobs:
           echo "📁 Using APP_DIR=$APP_DIR"
           echo "📌 Deploy commit: ${{ github.sha }}"
           cd "$APP_DIR"
-          chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh 2>/dev/null || true
+          chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh scripts/stop_bot.sh 2>/dev/null || true
 
           # .env создаётся из GitHub Secrets — обновлять на сервере вручную не нужно
           cat > .env << EOF
@@ -231,23 +231,27 @@ jobs:
 
           BOT_PIDFILE="$APP_DIR/bot.pid"
           BOT_LOG="$APP_DIR/bot.log"
-          if [ -f "$BOT_PIDFILE" ]; then
-            OLD_PID=$(cat "$BOT_PIDFILE")
-            kill -TERM "$OLD_PID" 2>/dev/null || true
-            rm -f "$BOT_PIDFILE"
-            sleep 2
-          fi
-          # [m] trick: pattern must not match pkill/ssh argv (plain "bot.run" kills the deploy shell)
-          pkill -f '[m]bot.run' 2>/dev/null || true
+          chmod +x scripts/stop_bot.sh scripts/run_bot.sh
+          ./scripts/stop_bot.sh || true
+          sleep 2
           : > "$BOT_LOG"
           cd "$APP_DIR" && nohup env APP_DIR="$APP_DIR" bash "$APP_DIR/scripts/run_bot.sh" >> "$BOT_LOG" 2>&1 &
           BOT_PID=$!
-          echo $BOT_PID > "$BOT_PIDFILE"
-          sleep 2
-          if kill -0 $BOT_PID 2>/dev/null; then
+          sleep 3
+          if [ -f "$BOT_PIDFILE" ] && kill -0 "$(cat "$BOT_PIDFILE")" 2>/dev/null; then
+            BOT_PID="$(cat "$BOT_PIDFILE")"
+            echo "✅ Telegram bot restarted, PID $BOT_PID"
+          elif kill -0 $BOT_PID 2>/dev/null; then
+            echo $BOT_PID > "$BOT_PIDFILE"
             echo "✅ Telegram bot restarted, PID $BOT_PID"
           else
             echo "⚠️ Bot may have exited. Check $BOT_LOG"
+            tail -20 "$BOT_LOG" 2>/dev/null || true
+          fi
+          RUNNING=$(pgrep -fc '[m]bot.run' 2>/dev/null || echo 0)
+          if [ "$RUNNING" -gt 1 ] 2>/dev/null; then
+            echo "❌ Multiple bot processes detected ($RUNNING). Run ./scripts/stop_bot.sh on server."
+            exit 1
           fi
 
           echo "✅ Deploy completed. Web: Passenger (passenger_wsgi.py), Bot: $BOT_LOG"
