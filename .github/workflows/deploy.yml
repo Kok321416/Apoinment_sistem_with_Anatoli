@@ -171,8 +171,17 @@ jobs:
           echo "🚀 Starting uvicorn (FastAPI)"
           nohup "$APP_DIR/venv/bin/uvicorn" app.main:app \
             --host 127.0.0.1 --port 8000 --workers 2 \
-            --pid "$PIDFILE" \
             > "$LOGFILE" 2>&1 &
+          UVICORN_PID=$!
+          echo $UVICORN_PID > "$PIDFILE"
+          sleep 2
+          if kill -0 $UVICORN_PID 2>/dev/null; then
+            echo "✅ Uvicorn started, PID $UVICORN_PID"
+          else
+            echo "❌ Uvicorn failed to start. Last 30 lines of log:"
+            tail -30 "$LOGFILE" 2>/dev/null || true
+            exit 1
+          fi
 
           BOT_PIDFILE="$APP_DIR/bot.pid"
           BOT_LOG="$APP_DIR/bot.log"
