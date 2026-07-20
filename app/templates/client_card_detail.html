@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Карточка: {{ card.name|default:"Клиент" }}</title>
+    <title>Карточка: {{ card.name|default('Клиент') }}</title>
     <link rel="stylesheet" href="/static/css/style.css?v=2">
     <style>
         .detail-panel {
@@ -49,7 +49,7 @@
 <body>
     <div class="container" style="max-width: 800px;">
         <div class="page-header">
-            <h1>{{ card.name|default:"Карточка клиента" }}</h1>
+            <h1>{{ card.name|default('Карточка клиента') }}</h1>
             <div>
                 <a href="/clients/" class="btn btn-secondary" style="padding: 8px 16px;">← К списку</a>
             </div>
@@ -65,23 +65,23 @@
                 <input type="hidden" name="action" value="update">
                 <div class="form-group">
                     <label>Имя</label>
-                    <input type="text" name="name" value="{{ card.name|default:'' }}" placeholder="Необязательно">
+                    <input type="text" name="name" value="{{ card.name|default('') }}" placeholder="Необязательно">
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" name="email" value="{{ card.email|default:'' }}" placeholder="Необязательно">
+                    <input type="email" name="email" value="{{ card.email|default('') }}" placeholder="Необязательно">
                 </div>
                 <div class="form-group">
                     <label>Телефон</label>
-                    <input type="text" name="phone" value="{{ card.phone|default:'' }}" placeholder="Необязательно">
+                    <input type="text" name="phone" value="{{ card.phone|default('') }}" placeholder="Необязательно">
                 </div>
                 <div class="form-group">
                     <label>Telegram (ник или ссылка)</label>
-                    <input type="text" name="telegram" value="{{ card.telegram|default:'' }}" placeholder="@username или t.me/...">
+                    <input type="text" name="telegram" value="{{ card.telegram|default('') }}" placeholder="@username или t.me/...">
                 </div>
                 <div class="form-group">
                     <label>Примечания</label>
-                    <textarea name="notes" rows="4" style="width:100%; padding:12px; border:1px solid var(--card-border,#ddd); border-radius:8px;">{{ card.notes|default:'' }}</textarea>
+                    <textarea name="notes" rows="4" style="width:100%; padding:12px; border:1px solid var(--card-border,#ddd); border-radius:8px;">{{ card.notes|default('') }}</textarea>
                 </div>
                 <button type="submit" class="btn">Сохранить</button>
             </form>
@@ -94,7 +94,7 @@
                     <a href="mailto:{{ card.email }}">📧 Написать на почту</a>
                 {% endif %}
                 {% if card.telegram %}
-                    <a href="https://t.me/{{ card.telegram|cut:'@' }}" target="_blank" rel="noopener">✈️ Открыть в Telegram</a>
+                    <a href="https://t.me/{{ card.telegram|cut('@') }}" target="_blank" rel="noopener">✈️ Открыть в Telegram</a>
                 {% endif %}
             </div>
             {% endif %}
@@ -103,15 +103,15 @@
         <div class="detail-panel">
             <h2>История консультаций</h2>
             <p style="margin: 0 0 16px 0; color: var(--text-muted); font-size: 14px;">
-                Записей всего: <strong>{{ total_bookings|default:0 }}</strong>
+                Записей всего: <strong>{{ total_bookings|default(0) }}</strong>
                 &nbsp;·&nbsp;
-                Посещено (завершено): <strong>{{ completed_count|default:0 }}</strong>
+                Посещено (завершено): <strong>{{ completed_count|default(0) }}</strong>
             </p>
             {% if history %}
                 <ul class="history-list">
                     {% for b in history %}
                     <li>
-                        <span class="date">{{ b.booking_date|date:"d.m.Y" }} {{ b.booking_time|time:"H:i" }}</span>
+                        <span class="date">{{ b.booking_date|date('d.m.Y') }} {{ b.booking_time|time('H:i') }}</span>
                         <span class="service"> — {{ b.service.name }}{% if b.calendar %} ({{ b.calendar.name }}){% endif %}</span>
                         <br>
                         <span class="status status-{{ b.status }}">{{ b.get_status_display }}</span>

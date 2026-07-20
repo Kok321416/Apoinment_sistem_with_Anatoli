@@ -1,3 +1,5 @@
+from datetime import date, datetime, time
+
 from fastapi.templating import Jinja2Templates
 
 from app.config import get_settings
@@ -24,7 +26,64 @@ URL_MAP = {
     "account_set_password": "/accounts/password/set/",
     "account_reset_password": "/accounts/password/reset/",
     "connect_telegram_app": "/integrations/telegram/connect-app/",
+    "account_email": "/profile/",
+    "socialaccount_connections": "/accounts/social/connections/",
 }
+
+
+def media_url(path: str | None) -> str:
+    if not path:
+        return ""
+    if path.startswith("http://") or path.startswith("https://") or path.startswith("/"):
+        return path
+    return f"/media/{path.lstrip('/')}"
+
+
+def cut_filter(value: str | None, chars: str) -> str:
+    return (value or "").replace(chars, "")
+
+
+def _format_value(value, fmt: str) -> str:
+    if value is None or value == "":
+        return ""
+    if isinstance(value, str):
+        for parser in (
+            lambda v: datetime.fromisoformat(v),
+            lambda v: datetime.strptime(v, "%H:%M:%S").time(),
+            lambda v: datetime.strptime(v, "%H:%M").time(),
+            lambda v: datetime.strptime(v, "%Y-%m-%d").date(),
+        ):
+            try:
+                value = parser(value)
+                break
+            except ValueError:
+                continue
+        else:
+            return value
+    if isinstance(value, datetime):
+        return value.strftime(fmt)
+    if isinstance(value, date):
+        return value.strftime(fmt)
+    if isinstance(value, time):
+        return value.strftime(fmt)
+    return str(value)
+
+
+def django_date(value, fmt: str = "d.m.Y") -> str:
+    mapping = {"d.m.Y": "%d.%m.%Y"}
+    return _format_value(value, mapping.get(fmt, fmt))
+
+
+def django_time(value, fmt: str = "H:i") -> str:
+    mapping = {"H:i": "%H:%M"}
+    return _format_value(value, mapping.get(fmt, fmt))
+
+
+def truncatewords(value: str | None, count: int = 12) -> str:
+    words = (value or "").split()
+    if len(words) <= count:
+        return value or ""
+    return " ".join(words[:count]) + "..."
 
 
 def url_for(name: str, *args, **kwargs) -> str:
@@ -44,6 +103,11 @@ def url_for(name: str, *args, **kwargs) -> str:
 
 
 templates = Jinja2Templates(directory=str(settings.templates_dir))
+templates.env.filters["cut"] = cut_filter
+templates.env.filters["media_url"] = media_url
+templates.env.filters["date"] = django_date
+templates.env.filters["time"] = django_time
+templates.env.filters["truncatewords"] = truncatewords
 
 
 def build_header_context(db, user) -> dict:

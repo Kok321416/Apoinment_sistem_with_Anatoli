@@ -51,19 +51,19 @@
             {% if calendars_with_links %}
             <div class="items-grid">
                 {% for item in calendars_with_links %}
-                {% with calendar=item.calendar %}
+                {% set calendar = item.calendar %}
                 <div class="item-card" style="border-left: 5px solid {{ calendar.color }};">
                     <div class="item-header">
                         <h3>{{ calendar.name }}</h3>
                         <span class="status-badge" style="background: {{ calendar.color }};">
-                            {{ calendar.time_slots.count }} временных окон
+                            {{ calendar.time_slots_count }} временных окон
                         </span>
                     </div>
                     
                     <div class="item-info">
                         <p><strong>Цвет:</strong> <span style="display: inline-block; width: 30px; height: 20px; background: {{ calendar.color }}; border-radius: 4px;"></span></p>
                         <p><strong>Статус:</strong> {% if calendar.is_active %}Активен{% else %}Неактивен{% endif %}</p>
-                        <p><strong>Создан:</strong> {{ calendar.created_at|date:"d.m.Y" }}</p>
+                        <p><strong>Создан:</strong> {{ calendar.created_at|date('d.m.Y') }}</p>
                         <p><strong>Ссылка:</strong> <small style="word-break: break-all; color: #666;">{{ item.booking_url }}</small></p>
                     </div>
                     
@@ -80,7 +80,6 @@
                         </form>
                     </div>
                 </div>
-                {% endwith %}
                 {% endfor %}
             </div>
             {% elif calendars %}
@@ -90,14 +89,14 @@
                     <div class="item-header">
                         <h3>{{ calendar.name }}</h3>
                         <span class="status-badge" style="background: {{ calendar.color }};">
-                            {{ calendar.time_slots.count }} временных окон
+                            {{ calendar.time_slots_count }} временных окон
                         </span>
                     </div>
                     
                     <div class="item-info">
                         <p><strong>Цвет:</strong> <span style="display: inline-block; width: 30px; height: 20px; background: {{ calendar.color }}; border-radius: 4px;"></span></p>
                         <p><strong>Статус:</strong> {% if calendar.is_active %}Активен{% else %}Неактивен{% endif %}</p>
-                        <p><strong>Создан:</strong> {{ calendar.created_at|date:"d.m.Y" }}</p>
+                        <p><strong>Создан:</strong> {{ calendar.created_at|date('d.m.Y') }}</p>
                     </div>
                     
                     <div class="item-actions">

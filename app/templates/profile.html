@@ -151,7 +151,7 @@
         </div>
         {% endif %}
 
-        {% if show_telegram_welcome or request.GET.telegram_connected %}
+        {% if show_telegram_welcome or request.query_params.get('telegram_connected') %}
         <div class="auth-success-block" role="alert">
             <span class="auth-success-icon">✅</span>
             <div>
@@ -170,7 +170,7 @@
 
                 <div class="profile-header">
                     {% if consultant.profile_photo %}
-                    <img src="{{ consultant.profile_photo.url }}" alt="Фото" class="profile-photo">
+                    <img src="{{ consultant.profile_photo|media_url }}" alt="Фото" class="profile-photo">
                     {% else %}
                     <div class="profile-photo" style="background: #ddd; display: flex; align-items: center; justify-content: center; color: #999;">
                         Нет фото
@@ -180,8 +180,8 @@
                     <div class="profile-info">
                         <h2>{{ consultant.first_name }} {{ consultant.last_name }}</h2>
                         <p><strong>Email:</strong> {{ consultant.email }}</p>
-                        <p><strong>Телефон:</strong> {{ consultant.phone|default:"Не указан" }}</p>
-                        <p><strong>Telegram:</strong> {{ consultant.telegram_nickname|default:"Не указан" }}</p>
+                        <p><strong>Телефон:</strong> {{ consultant.phone|default('Не указан') }}</p>
+                        <p><strong>Telegram:</strong> {{ consultant.telegram_nickname|default('Не указан') }}</p>
                     </div>
                 </div>
 
@@ -210,12 +210,12 @@
                                 <span class="auth-method-badge not-connected">Не добавлена</span>
                             {% endif %}
                             <div class="auth-method-actions">
-                                <a href="{% url 'account_email' %}" class="auth-connect-btn email">{% if primary_email %}Изменить почту{% else %}Добавить почту{% endif %}</a>
+                                <a href="/profile/" class="auth-connect-btn email">{% if primary_email %}Изменить почту{% else %}Добавить почту{% endif %}</a>
                             </div>
                         </div>
                     </div>
                     <div class="auth-manage-link">
-                        <a href="{% url 'socialaccount_connections' %}" class="btn btn-secondary">Отключить Telegram или Google — управление аккаунтами</a>
+                        <a href="/accounts/social/connections/" class="btn btn-secondary">Отключить Telegram или Google — управление аккаунтами</a>
                     </div>
                 </div>
 
@@ -310,7 +310,7 @@
                         <h3>Фото</h3>
                         <div class="photo-upload">
                             {% if consultant.profile_photo %}
-                            <p>Текущее фото: <a href="{{ consultant.profile_photo.url }}" target="_blank">Посмотреть</a></p>
+                            <p>Текущее фото: <a href="{{ consultant.profile_photo|media_url }}" target="_blank">Посмотреть</a></p>
                             {% endif %}
                             <input type="file" name="profile_photo" accept="image/*">
                             <small>Рекомендуемый размер: 400x400px или больше</small>

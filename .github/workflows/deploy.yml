@@ -81,6 +81,10 @@ jobs:
           cd "$APP_DIR"
           chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh scripts/stop_bot.sh 2>/dev/null || true
 
+          echo "🛑 Stop bot before recreating venv (old PIDs may hold deleted venv files)"
+          ./scripts/stop_bot.sh || true
+          sleep 2
+
           # .env создаётся из GitHub Secrets — обновлять на сервере вручную не нужно
           cat > .env << EOF
           DB_NAME=${{ secrets.DB_NAME }}
@@ -234,6 +238,10 @@ jobs:
           chmod +x scripts/stop_bot.sh scripts/run_bot.sh
           ./scripts/stop_bot.sh || true
           sleep 2
+          if ! "$APP_DIR/venv/bin/python" -c "import requests" 2>/dev/null; then
+            echo "❌ requests missing in venv after pip install"
+            exit 1
+          fi
           : > "$BOT_LOG"
           cd "$APP_DIR" && nohup env APP_DIR="$APP_DIR" bash "$APP_DIR/scripts/run_bot.sh" >> "$BOT_LOG" 2>&1 &
           BOT_PID=$!

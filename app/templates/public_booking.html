@@ -404,7 +404,7 @@
                 <div class="client-choice-card">
                     <h3>Вход через Telegram</h3>
                     <p class="client-choice-desc">После записи придёт сообщение в бота и напоминания перед консультацией</p>
-                    <a href="/accounts/telegram/login/?next={% url 'public_booking' calendar.id %}" class="btn-submit btn-telegram-inline" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;">
+                    <a href="/accounts/telegram/login/?next=/book/{{ calendar.id }}/" class="btn-submit btn-telegram-inline" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;">
                         Войти через Telegram
                     </a>
                 </div>
@@ -441,21 +441,21 @@
                 <input type="hidden" name="action" value="set_contact">
                 <div class="form-group">
                     <label for="client_name">Имя *</label>
-                    <input type="text" id="client_name" name="client_name" required placeholder="Как к вам обращаться" value="{{ contact_name|default:'' }}">
+                    <input type="text" id="client_name" name="client_name" required placeholder="Как к вам обращаться" value="{{ contact_name|default('') }}">
                 </div>
                 <div class="form-group">
                     <label for="client_phone">Телефон *</label>
-                    <input type="tel" id="client_phone" name="client_phone" required placeholder="+7 (999) 123-45-67" value="{{ contact_phone|default:'' }}">
+                    <input type="tel" id="client_phone" name="client_phone" required placeholder="+7 (999) 123-45-67" value="{{ contact_phone|default('') }}">
                     <small>Для связи и напоминаний</small>
                 </div>
                 <div class="form-group">
                     <label for="client_telegram">Telegram (ник)</label>
-                    <input type="text" id="client_telegram" name="client_telegram" placeholder="@username или t.me/username (необязательно)" value="{{ contact_telegram|default:'' }}">
+                    <input type="text" id="client_telegram" name="client_telegram" placeholder="@username или t.me/username (необязательно)" value="{{ contact_telegram|default('') }}">
                     <small>Можно указать сейчас или подтвердить в боте после записи — тогда будут приходить напоминания.</small>
                 </div>
                 <div class="form-group">
                     <label for="client_email">Email</label>
-                    <input type="email" id="client_email" name="client_email" placeholder="email@example.com" value="{{ contact_email|default:'' }}">
+                    <input type="email" id="client_email" name="client_email" placeholder="email@example.com" value="{{ contact_email|default('') }}">
                 </div>
                 <button type="submit" class="btn-submit">Продолжить к записи</button>
             </form>
@@ -464,7 +464,7 @@
         {% else %}
         <div class="book-card client-summary">
             <p class="client-summary-text">
-                <strong>Записывается:</strong> {{ booking_client_name|default:"—" }}, {{ booking_client_phone }}
+                <strong>Записывается:</strong> {{ booking_client_name|default('—') }}, {{ booking_client_phone }}
                 {% if booking_client_telegram %} · {{ booking_client_telegram }}{% endif %}
             </p>
             <a href="/book/{{ calendar.id }}/?change_contact=1" class="link-change-contact">Изменить контактные данные</a>
@@ -484,7 +484,7 @@
                 <label class="service-tile" data-service-id="{{ service.id }}" data-duration="{{ service.duration_minutes }}">
                     <div>
                         <strong>{{ service.name }}</strong>
-                        {% if service.description %}<p class="meta">{{ service.description|truncatewords:12 }}</p>{% endif %}
+                        {% if service.description %}<p class="meta">{{ service.description|truncatewords(12) }}</p>{% endif %}
                         <span class="meta">{{ service.duration_minutes }} мин. {% if service.price %} · {{ service.price }} ₽{% endif %}</span>
                     </div>
                 </label>

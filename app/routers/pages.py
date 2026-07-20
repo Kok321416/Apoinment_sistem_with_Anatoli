@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 from app.auth.passwords import hash_password, verify_password
@@ -210,6 +210,17 @@ async def calendars_page(request: Request, db: Session = Depends(get_db)):
             else:
                 error = "Календарь не найден"
     calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).order_by(Calendar.name).all()
+    slot_counts = {}
+    if calendars:
+        rows = (
+            db.query(TimeSlot.calendar_id, func.count(TimeSlot.id))
+            .filter(TimeSlot.calendar_id.in_([c.id for c in calendars]))
+            .group_by(TimeSlot.calendar_id)
+            .all()
+        )
+        slot_counts = {calendar_id: count for calendar_id, count in rows}
+    for calendar in calendars:
+        calendar.time_slots_count = slot_counts.get(calendar.id, 0)
     calendars_with_links = [{"calendar": c, "booking_url": f"{settings.site_url}/book/{c.id}/"} for c in calendars]
     return templates.TemplateResponse("calendars.html", page_context(
         request, db, user, calendars=calendars, calendars_with_links=calendars_with_links,
@@ -250,10 +261,10 @@ async def calendar_detail(request: Request, calendar_id: int, db: Session = Depe
                 success = "Временное окно удалено"
             else:
                 error = "Временное окно не найдено"
-    time_slots_by_day = {
-        d: db.query(TimeSlot).filter(TimeSlot.calendar_id == calendar.id, TimeSlot.day_of_week == d).order_by(TimeSlot.start_time).all()
+    time_slots_by_day = [
+        db.query(TimeSlot).filter(TimeSlot.calendar_id == calendar.id, TimeSlot.day_of_week == d).order_by(TimeSlot.start_time).all()
         for d in range(7)
-    }
+    ]
     return templates.TemplateResponse("calendar_detail.html", page_context(
         request, db, user, calendar=calendar, time_slots_by_day=time_slots_by_day,
         days_names=DAYS_NAMES, days_short=DAYS_SHORT, success=success, error=error,

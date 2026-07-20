@@ -545,10 +545,10 @@
                                 <h3>{{ booking.client_name }}</h3>
                                 <div class="booking-details">
                                     <p><strong>Услуга:</strong> {{ booking.service.name }}</p>
-                                    <p><strong>Дата:</strong> {{ booking.booking_date|date:"d.m.Y" }}</p>
+                                    <p><strong>Дата:</strong> {{ booking.booking_date|date('d.m.Y') }}</p>
                                     <p><strong>Время:</strong>
-                                        {{ booking.booking_time|time:"H:i" }}
-                                        {% if booking.booking_end_time %} – {{ booking.booking_end_time|time:"H:i" }}{% endif %}
+                                        {{ booking.booking_time|time('H:i') }}
+                                        {% if booking.booking_end_time %} – {{ booking.booking_end_time|time('H:i') }}{% endif %}
                                     </p>
                                     <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
                                     {% if booking.client_email %}<p><strong>Email:</strong> {{ booking.client_email }}</p>{% endif %}
@@ -600,10 +600,10 @@
                                 <h3>{{ booking.client_name }}</h3>
                                 <div class="booking-details">
                                     <p><strong>Услуга:</strong> {{ booking.service.name }}</p>
-                                    <p><strong>Дата:</strong> {{ booking.booking_date|date:"d.m.Y" }}</p>
+                                    <p><strong>Дата:</strong> {{ booking.booking_date|date('d.m.Y') }}</p>
                                     <p><strong>Время:</strong>
-                                        {{ booking.booking_time|time:"H:i" }}
-                                        {% if booking.booking_end_time %} – {{ booking.booking_end_time|time:"H:i" }}{% endif %}
+                                        {{ booking.booking_time|time('H:i') }}
+                                        {% if booking.booking_end_time %} – {{ booking.booking_end_time|time('H:i') }}{% endif %}
                                     </p>
                                     <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
                                     {% if booking.client_email %}<p><strong>Email:</strong> {{ booking.client_email }}</p>{% endif %}
@@ -647,7 +647,7 @@
             <div class="reschedule-modal">
                 <h3>Перенести консультацию</h3>
                 <form method="POST" id="rescheduleForm">
-                    {% csrf_token %}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="reschedule">
                     <input type="hidden" name="booking_id" id="rescheduleBookingId" value="">
                     <input type="hidden" name="new_date" id="rescheduleNewDate" value="">

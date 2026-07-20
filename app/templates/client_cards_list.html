@@ -83,7 +83,7 @@
             <div class="cards-grid">
                 {% for card in cards %}
                     <a href="/clients/{{ card.id }}/" class="card-tile">
-                        <h3>{{ card.name|default:"Без имени" }}</h3>
+                        <h3>{{ card.name|default('Без имени') }}</h3>
                         <div class="meta">
                             {% if card.phone %}<span>📞 Телефон: {{ card.phone }}</span>{% endif %}
                             {% if card.email %}<span>📧 {{ card.email }}</span>{% endif %}

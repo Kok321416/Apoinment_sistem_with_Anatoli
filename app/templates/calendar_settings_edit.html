@@ -22,23 +22,23 @@
         <form method="post" class="settings-form">
             
             <label>Перерыв между услугами (минуты)</label>
-            <input type="number" name="break_between_services_minutes" min="0" value="{{ calendar.break_between_services_minutes|default:0 }}">
+            <input type="number" name="break_between_services_minutes" min="0" value="{{ calendar.break_between_services_minutes|default(0) }}">
             <p class="hint">Минут между окончанием одной записи и началом следующей.</p>
 
             <label>Запись не позднее чем за (часов)</label>
-            <input type="number" name="book_ahead_hours" min="0" value="{{ calendar.book_ahead_hours|default:24 }}">
+            <input type="number" name="book_ahead_hours" min="0" value="{{ calendar.book_ahead_hours|default(24) }}">
             <p class="hint">Клиент может записаться только на слоты не раньше чем через N часов (24 = за сутки).</p>
 
             <label>Лимит записей в день (0 — без лимита)</label>
-            <input type="number" name="max_services_per_day" min="0" value="{{ calendar.max_services_per_day|default:0 }}">
+            <input type="number" name="max_services_per_day" min="0" value="{{ calendar.max_services_per_day|default(0) }}">
             <p class="hint">Максимум записей в один день по этому календарю.</p>
 
             <label>Первое напоминание в Telegram за (часов)</label>
-            <input type="number" name="reminder_hours_first" min="0" value="{{ calendar.reminder_hours_first|default:24 }}">
+            <input type="number" name="reminder_hours_first" min="0" value="{{ calendar.reminder_hours_first|default(24) }}">
             <p class="hint">За сколько часов до консультации отправлять первое уведомление (например 24 = за сутки).</p>
 
             <label>Второе напоминание в Telegram за (часов)</label>
-            <input type="number" name="reminder_hours_second" min="0" value="{{ calendar.reminder_hours_second|default:1 }}">
+            <input type="number" name="reminder_hours_second" min="0" value="{{ calendar.reminder_hours_second|default(1) }}">
             <p class="hint">За сколько часов до консультации отправлять второе уведомление (например 1 = за час).</p>
 
             <button type="submit" class="btn-save">Сохранить</button>

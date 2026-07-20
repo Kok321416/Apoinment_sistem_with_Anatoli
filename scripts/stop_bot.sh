@@ -8,8 +8,28 @@ cd "$ROOT"
 
 PIDFILE="$ROOT/bot.pid"
 LOCKFILE="$ROOT/bot.lock"
+VENV_PYTHON="$ROOT/venv/bin/python"
+BOT_PATTERN="${VENV_PYTHON} -m bot.run"
 
 echo "Stopping Telegram bot in $ROOT"
+
+_kill_pids() {
+  local sig="$1"
+  local pids=""
+  if [ -x "$VENV_PYTHON" ]; then
+    pids="$(pgrep -f "$BOT_PATTERN" 2>/dev/null || true)"
+  fi
+  if [ -z "$pids" ]; then
+    pids="$(pgrep -f "${ROOT}.*bot\.run" 2>/dev/null || true)"
+  fi
+  if [ -z "$pids" ]; then
+    pids="$(pgrep -f '[m]bot.run' 2>/dev/null || true)"
+  fi
+  if [ -n "$pids" ]; then
+    echo "Sending SIG${sig} to: $pids"
+    kill "-$sig" $pids 2>/dev/null || true
+  fi
+}
 
 if [ -f "$PIDFILE" ]; then
   OLD_PID="$(cat "$PIDFILE" 2>/dev/null || true)"
@@ -21,18 +41,15 @@ if [ -f "$PIDFILE" ]; then
   rm -f "$PIDFILE"
 fi
 
-# [m] trick avoids matching pkill/sh argv
-pkill -TERM -f '[m]bot.run' 2>/dev/null || true
-pkill -TERM -f '[m]bot/run.py' 2>/dev/null || true
+_kill_pids TERM
 sleep 2
-pkill -KILL -f '[m]bot.run' 2>/dev/null || true
-pkill -KILL -f '[m]bot/run.py' 2>/dev/null || true
-
+_kill_pids KILL
 rm -f "$LOCKFILE"
 
-if pgrep -af '[m]bot.run' >/dev/null 2>&1; then
+REMAINING="$(pgrep -af "${ROOT}.*bot\.run" 2>/dev/null || true)"
+if [ -n "$REMAINING" ]; then
   echo "WARNING: bot process still running:"
-  pgrep -af '[m]bot.run' || true
+  echo "$REMAINING"
   exit 1
 fi
 
