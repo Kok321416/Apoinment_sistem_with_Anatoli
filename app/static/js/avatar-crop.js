@@ -30,10 +30,10 @@
         modal.classList.add('is-open');
     }
 
-    function closeModal() {
+    function closeModal(clearInput) {
         modal.hidden = true;
         modal.classList.remove('is-open');
-        input.value = '';
+        if (clearInput) input.value = '';
     }
 
     function draw() {
@@ -63,7 +63,7 @@
     function loadFile(file) {
         var name = (file.name || '').toLowerCase();
         var okExt = name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png');
-        var okType = file.type === 'image/jpeg' || file.type === 'image/png';
+        var okType = !file.type || file.type === 'image/jpeg' || file.type === 'image/png';
         if (!okExt || !okType) {
             if (hint) hint.textContent = 'Допустимы только JPG и PNG';
             input.value = '';
@@ -113,9 +113,9 @@
     canvas.addEventListener('pointerup', function () { dragging = false; });
     canvas.addEventListener('pointercancel', function () { dragging = false; });
 
-    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', function () { closeModal(true); });
     modal.addEventListener('click', function (e) {
-        if (e.target === modal) closeModal();
+        if (e.target === modal) closeModal(true);
     });
 
     if (applyBtn) {
@@ -138,9 +138,9 @@
                 var dt = new DataTransfer();
                 dt.items.add(new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
                 input.files = dt.files;
-                closeModal();
+                closeModal(false);
                 input.dispatchEvent(new Event('cropped', { bubbles: true }));
-                if (hint) hint.textContent = 'Фото подготовлено для круглого аватара. Сохраните профиль.';
+                if (hint) hint.textContent = 'Фото подготовлено для круглого аватара. Нажмите «Сохранить изменения».';
             }, 'image/jpeg', 0.92);
         });
     }

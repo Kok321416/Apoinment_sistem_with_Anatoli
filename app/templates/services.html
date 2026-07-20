@@ -19,8 +19,22 @@
 
 <section class="app-section">
     <h2 class="app-section__title">Создать услугу</h2>
+    {% if not calendars %}
+    <div class="alert alert--warning">Сначала создайте календарь на странице «Календари», затем привяжите к нему услугу.</div>
+    {% else %}
     <form method="POST" action="/services/" class="stack">
         <input type="hidden" name="action" value="create_service">
+
+        <div class="form-field">
+            <label class="form-field__label" for="calendar_id">Календарь</label>
+            <select class="input" id="calendar_id" name="calendar_id" required>
+                <option value="">Выберите календарь</option>
+                {% for calendar in calendars %}
+                <option value="{{ calendar.id }}">{{ calendar.name }}</option>
+                {% endfor %}
+            </select>
+            <p class="form-field__hint">Услуга будет видна клиенту внутри выбранного календаря.</p>
+        </div>
 
         <div class="form-field">
             <label class="form-field__label" for="service_name">Название услуги</label>
@@ -45,6 +59,7 @@
 
         <button type="submit" class="btn btn--primary">Создать услугу</button>
     </form>
+    {% endif %}
 </section>
 
 <section class="app-section">
@@ -63,6 +78,7 @@
                 {% endif %}
             </div>
             <div class="app-list-card__meta">
+                <p><strong>Календарь:</strong> {% if service.calendar %}{{ service.calendar.name }}{% else %}<span class="text-muted">не привязан</span>{% endif %}</p>
                 {% if service.description %}
                 <p><strong>Описание:</strong> {{ service.description|truncatewords(20) }}</p>
                 {% endif %}
@@ -70,7 +86,6 @@
                 {% if service.price %}
                 <p><strong>Цена:</strong> {{ service.price }} ₽</p>
                 {% endif %}
-                <p><strong>Создана:</strong> {{ service.created_at|date('d.m.Y') }}</p>
             </div>
             <div class="app-list-card__actions">
                 <form method="POST" action="/services/">

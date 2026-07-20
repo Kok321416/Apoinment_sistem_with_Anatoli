@@ -1,0 +1,35 @@
+{% extends "layouts/booking.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Подтверждение почты — запись" %}
+{% set meta_description = "Введите код из письма" %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block booking_content %}
+<div class="auth-card card card--static" style="max-width: 480px; margin: 0 auto;">
+    <h1 class="text-h1 auth-card__title">Код из письма</h1>
+    <p class="text-body mb-2xl">Вам на почту отправлено письмо. Введите 6-значный код, чтобы получать уведомления о записях.</p>
+
+    {% if error %}<div class="alert alert--error mb-lg" role="alert">{{ error }}</div>{% endif %}
+    {% if success %}<div class="alert alert--success mb-lg" role="status">{{ success }}</div>{% endif %}
+
+    <form method="POST" action="/s/{{ consultant.public_slug }}/verify-email/?next={{ next_url|urlencode }}" class="stack">
+        <div class="form-field">
+            <label class="form-field__label" for="email">Почта</label>
+            <input class="input" id="email" name="email" type="email" value="{{ email or '' }}" required>
+        </div>
+        <div class="form-field">
+            <label class="form-field__label" for="code">Код</label>
+            <input class="input input--code" id="code" name="code" inputmode="numeric" maxlength="6" minlength="6" pattern="[0-9]{6}" required placeholder="000000" autocomplete="one-time-code">
+            <p class="form-field__hint">Код действует {{ email_verify_hours | default(24) }} ч.</p>
+        </div>
+        <button type="submit" class="btn btn--primary btn--block">Подтвердить</button>
+    </form>
+    <form method="POST" action="/s/{{ consultant.public_slug }}/verify-email/?next={{ next_url|urlencode }}" class="mt-lg">
+        <input type="hidden" name="action" value="resend">
+        <input type="hidden" name="email" value="{{ email or '' }}">
+        <button type="submit" class="btn btn--ghost btn--block">Отправить код ещё раз</button>
+    </form>
+</div>
+{% endblock %}

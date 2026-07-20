@@ -342,3 +342,67 @@
         padding: var(--space-2xl);
     }
 }
+
+.public-spec__hero {
+    display: flex;
+    gap: var(--space-3xl);
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.public-spec__photo {
+    width: 112px;
+    height: 112px;
+    border-radius: var(--radius-full);
+    object-fit: cover;
+    border: 2px solid var(--border-strong);
+    flex-shrink: 0;
+}
+
+.public-spec__photo--empty {
+    display: grid;
+    place-items: center;
+    background: var(--surface-300);
+    color: var(--text-muted);
+    font-size: var(--font-size-h1);
+}
+
+.app-list-card--link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition-transform);
+}
+
+.app-list-card--link:hover {
+    transform: translateY(-2px);
+}
+
+.slots-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.slots-grid .slot-btn {
+    border: 1px solid var(--border-default);
+    background: var(--surface-200);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm) var(--space-lg);
+    cursor: pointer;
+}
+
+.slots-grid .slot-btn.is-selected,
+.slots-grid .slot-btn:hover {
+    border-color: var(--accent-secondary);
+    background: var(--glass-medium);
+}
+
+.is-hidden {
+    display: none !important;
+}
+
+.auth-provider-card input[type="radio"] {
+    margin-right: var(--space-sm);
+}

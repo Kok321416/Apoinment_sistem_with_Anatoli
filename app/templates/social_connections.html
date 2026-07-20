@@ -10,18 +10,42 @@
 {% block app_content %}
 {{ app_page_head("Способы входа", '/profile/', '← Профиль') }}
 
+{% if error %}
+<div class="alert alert--error" role="alert">{{ error }}</div>
+{% endif %}
+{% if success %}
+<div class="alert alert--success mt-lg" role="status">{{ success }}</div>
+{% endif %}
+
 <section class="app-section">
-    {% if social_accounts %}
-    <ul class="history-list">
-        {% for acc in social_accounts %}
-        <li class="history-list__item">
-            <strong>{{ acc.provider|auth_provider }}</strong>
-            <span class="text-muted"> (идентификатор: {{ acc.uid }})</span>
-        </li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p class="text-muted">Подключённых социальных аккаунтов пока нет.</p>
-    {% endif %}
+    <div class="auth-methods-grid">
+        <div class="auth-provider-card {% if has_telegram %}is-connected{% endif %}">
+            <div class="text-h3">Телеграм</div>
+            {% if has_telegram %}
+            <span class="badge badge--success mt-sm">Привязан</span>
+            <form method="POST" action="/accounts/social/connections/" class="mt-lg" onsubmit="return confirm('Отвязать Телеграм?');">
+                <input type="hidden" name="action" value="disconnect_telegram">
+                <button type="submit" class="btn btn--ghost btn--sm">Отвязать</button>
+            </form>
+            {% else %}
+            <span class="badge badge--ghost mt-sm">Не привязан</span>
+            <a href="/accounts/telegram/login/?process=connect&next=/accounts/social/connections/" class="btn btn--primary btn--sm mt-lg">Привязать Телеграм</a>
+            {% endif %}
+        </div>
+        <div class="auth-provider-card {% if email_verified %}is-connected{% endif %}">
+            <div class="text-h3">Почта</div>
+            {% if email_address %}<p class="text-body-sm text-muted mt-sm">{{ email_address }}</p>{% endif %}
+            {% if email_verified %}
+            <span class="badge badge--success mt-sm">Привязана</span>
+            <form method="POST" action="/accounts/social/connections/" class="mt-lg" onsubmit="return confirm('Отвязать почту?');">
+                <input type="hidden" name="action" value="disconnect_email">
+                <button type="submit" class="btn btn--ghost btn--sm">Отвязать</button>
+            </form>
+            {% else %}
+            <span class="badge badge--warning mt-sm">Не подтверждена</span>
+            <a href="/integrations/" class="btn btn--primary btn--sm mt-lg">Привязать почту</a>
+            {% endif %}
+        </div>
+    </div>
 </section>
 {% endblock %}

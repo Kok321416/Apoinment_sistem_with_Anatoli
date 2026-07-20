@@ -19,7 +19,70 @@
 
 <section class="app-section">
     <div class="integration-card__head">
-        <h2 class="app-section__title app-section__title--plain">Телеграм</h2>
+        <h2 class="app-section__title app-section__title--plain">Вход по почте</h2>
+        {% if email_verified %}
+        <span class="badge badge--success">Подтверждена</span>
+        {% else %}
+        <span class="badge badge--warning">Нужно подтверждение</span>
+        {% endif %}
+    </div>
+    <p class="text-muted mt-lg mb-lg">
+        Подтвердите почту 6-значным кодом из письма. После этого можно входить в кабинет по почте и паролю.
+    </p>
+    {% if email_verified %}
+    <div class="auth-provider-card is-connected">
+        <p class="mb-0">Почта подтверждена: <strong>{{ email_address }}</strong></p>
+    </div>
+    <form method="POST" action="/integrations/" class="mt-lg" onsubmit="return confirm('Отвязать почту?');">
+        <input type="hidden" name="action" value="disconnect_email_login">
+        <button type="submit" class="btn btn--ghost">Отвязать почту</button>
+    </form>
+    {% else %}
+    <form method="POST" action="/integrations/" class="stack">
+        <input type="hidden" name="action" value="send_email_code">
+        <div class="form-field">
+            <label class="form-field__label" for="email_login">Почта</label>
+            <input class="input" type="email" id="email_login" name="email" value="{{ email_pending or email_address }}" required autocomplete="email">
+        </div>
+        <button type="submit" class="btn btn--primary">Привязать почту - отправить код</button>
+    </form>
+    {% if email_pending %}
+    <form method="POST" action="/integrations/" class="stack mt-3xl">
+        <input type="hidden" name="action" value="confirm_email_code">
+        <input type="hidden" name="email" value="{{ email_pending }}">
+        <div class="form-field">
+            <label class="form-field__label" for="email_code">Код из письма</label>
+            <input class="input input--code" type="text" id="email_code" name="code" inputmode="numeric" maxlength="6" minlength="6" pattern="[0-9]{6}" required autocomplete="one-time-code" placeholder="000000">
+        </div>
+        <button type="submit" class="btn btn--secondary">Подтвердить почту</button>
+    </form>
+    {% endif %}
+    {% endif %}
+</section>
+
+<section class="app-section">
+    <div class="integration-card__head">
+        <h2 class="app-section__title app-section__title--plain">Телеграм для входа</h2>
+        {% if telegram_login_connected %}
+        <span class="badge badge--success">Привязан</span>
+        {% else %}
+        <span class="badge badge--ghost">Не привязан</span>
+        {% endif %}
+    </div>
+    <p class="text-muted mt-lg mb-lg">Вход в кабинет через бота Телеграм. Можно отвязать и привязать другой аккаунт.</p>
+    {% if telegram_login_connected %}
+    <form method="POST" action="/integrations/" onsubmit="return confirm('Отвязать Телеграм для входа?');">
+        <input type="hidden" name="action" value="disconnect_telegram_login">
+        <button type="submit" class="btn btn--ghost">Отвязать Телеграм</button>
+    </form>
+    {% else %}
+    <a href="/accounts/telegram/login/?process=connect&next=/integrations/" class="btn btn--primary">Привязать Телеграм</a>
+    {% endif %}
+</section>
+
+<section class="app-section">
+    <div class="integration-card__head">
+        <h2 class="app-section__title app-section__title--plain">Уведомления в Телеграм</h2>
         {% if integration.telegram_connected %}
         <span class="badge badge--success">Подключено</span>
         {% elif integration.telegram_enabled %}
@@ -30,8 +93,7 @@
     </div>
 
     <p class="text-muted mt-lg mb-lg">
-        Получайте уведомления о новых записях в Телеграм. Создайте бота через @BotFather
-        и подключите его к системе для автоматических уведомлений.
+        Получайте уведомления о новых записях в Телеграм.
     </p>
 
     {% if integration.telegram_connected %}
@@ -43,12 +105,12 @@
     </div>
     <form method="POST" action="/integrations/" class="mt-lg">
         <input type="hidden" name="action" value="disconnect_telegram">
-        <button type="submit" class="btn btn--secondary">Отключить Телеграм</button>
+        <button type="submit" class="btn btn--ghost">Отвязать уведомления</button>
     </form>
     {% else %}
         {% if integration.telegram_enabled %}
         <p class="mb-lg">Подключите Телеграм - уведомления о новых записях и напоминания о консультациях будут приходить в приложение.</p>
-        <a href="/integrations/telegram/connect-app/" class="btn btn--primary">Подключить через бота Телеграм</a>
+        <a href="/integrations/telegram/connect-app/" class="btn btn--primary">Привязать через бота Телеграм</a>
         <p class="form-field__hint mt-lg">Откроется бот - нажмите «Подтвердить подключение» в чате.</p>
 
         <hr class="divider">
@@ -59,12 +121,10 @@
             <div class="form-field">
                 <label class="form-field__label" for="bot_token">Токен бота</label>
                 <input class="input" type="text" id="bot_token" name="bot_token" placeholder="123456:ABC-DEF..." autocomplete="off">
-                <p class="form-field__hint">Опционально. Получите токен у @BotFather, если используете своего бота</p>
             </div>
             <div class="form-field">
                 <label class="form-field__label" for="chat_id">Идентификатор чата</label>
                 <input class="input" type="text" id="chat_id" name="chat_id" placeholder="123456789" required autocomplete="off">
-                <p class="form-field__hint">ID чата для отправки уведомлений</p>
             </div>
             <button type="submit" class="btn btn--secondary">Подключить вручную</button>
         </form>

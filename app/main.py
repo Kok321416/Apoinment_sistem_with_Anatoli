@@ -7,7 +7,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
 from app.database import Base, engine
-from app.routers import api, oauth, pages
+from app.routers import api, oauth, pages, public_specialist
 
 settings = get_settings()
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
@@ -31,6 +31,7 @@ app.mount("/static", StaticFiles(directory=str(settings.static_dir)), name="stat
 app.mount("/media", StaticFiles(directory=str(settings.media_root)), name="media")
 
 app.include_router(pages.router)
+app.include_router(public_specialist.router)
 app.include_router(api.router)
 app.include_router(oauth.router)
 
@@ -42,16 +43,16 @@ async def health():
 
 @app.on_event("startup")
 def startup():
-    from app.db_schema import ensure_telegram_login_schema
+    from app.db_schema import ensure_all_schema
 
     try:
         Base.metadata.create_all(bind=engine)
     except Exception:
         logger.exception("create_all failed on startup")
     try:
-        ensure_telegram_login_schema()
+        ensure_all_schema()
     except Exception:
-        logger.exception("ensure_telegram_login_schema failed on startup")
+        logger.exception("ensure_all_schema failed on startup")
     if not settings.debug:
         if settings.secret_key in ("", "change-me-in-production"):
             logger.critical("SECRET_KEY is weak or default — set a long random value in production")

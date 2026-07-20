@@ -42,6 +42,7 @@ class Consultant(Base):
     profile_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     profile_photo: Mapped[str | None] = mapped_column(String(500), nullable=True)
     video_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    public_slug: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
     social_instagram: Mapped[str | None] = mapped_column(String(500), nullable=True)
     social_facebook: Mapped[str | None] = mapped_column(String(500), nullable=True)
     social_vk: Mapped[str | None] = mapped_column(String(500), nullable=True)

@@ -74,6 +74,9 @@
         <p class="text-body-sm text-success" id="telegramSuccessNote" hidden>Готово! Проверьте Телеграм.</p>
     </div>
     {% endif %}
+    {% if back_url %}
+    <p class="mt-3xl text-center"><a class="btn btn--ghost" href="{{ back_url }}">К профилю специалиста</a></p>
+    {% endif %}
 </section>
 {% endblock %}
 

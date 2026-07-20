@@ -1,0 +1,50 @@
+{% extends "layouts/booking.html" %}
+
+{% block meta_tags %}
+{% set page_title = (consultant.first_name ~ " " ~ consultant.last_name ~ " — запись") %}
+{% set meta_description = consultant.profile_description or ("Онлайн-запись к специалисту " ~ consultant.first_name) %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block booking_content %}
+<div class="public-spec">
+    <div class="public-spec__hero">
+        {% if consultant.profile_photo %}
+        <img class="public-spec__photo" src="{{ consultant.profile_photo|media_url }}" alt="">
+        {% else %}
+        <div class="public-spec__photo public-spec__photo--empty">{{ (consultant.first_name or "?")[:1] }}</div>
+        {% endif %}
+        <div>
+            <p class="text-caption text-muted mb-sm">Специалист</p>
+            <h1 class="text-h1">{{ consultant.first_name }} {{ consultant.last_name }}</h1>
+            {% if consultant.profile_description %}
+            <p class="text-body text-muted mt-lg text-pre-wrap">{{ consultant.profile_description }}</p>
+            {% endif %}
+            <p class="text-body-sm text-muted mt-lg">Вы вошли как {{ client_name }}{% if client_email %} · {{ client_email }}{% endif %}{% if client_telegram %} · @{{ client_telegram }}{% endif %}
+                · <a class="link-accent" href="/s/{{ consultant.public_slug }}/logout-client/">Сменить данные</a>
+            </p>
+        </div>
+    </div>
+
+    <section class="app-section mt-4xl">
+        <h2 class="app-section__title">Календари</h2>
+        <p class="text-body-sm text-muted mb-xl">Выберите календарь, затем услугу и время.</p>
+        {% if calendars_data %}
+        <div class="app-list-grid">
+            {% for item in calendars_data %}
+            {% set calendar = item.calendar %}
+            <a class="app-list-card app-list-card--link" style="--cal-color: {{ calendar.color }};" href="/s/{{ consultant.public_slug }}/c/{{ calendar.id }}/">
+                <div class="app-list-card__head">
+                    <h3 class="app-list-card__title">{{ calendar.name }}</h3>
+                    <span class="badge badge--secondary">{{ item.services_count }} услуг</span>
+                </div>
+                <p class="text-body-sm text-muted mb-0">Открыть услуги и запись →</p>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="booking-empty">У специалиста пока нет активных календарей.</div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "layouts/booking.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Регистрация для записи — " ~ consultant.first_name %}
+{% set meta_description = "Укажите контакты, чтобы получать уведомления о записях" %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block booking_content %}
+<div class="auth-card card card--static" style="max-width: 520px; margin: 0 auto;">
+    <h1 class="text-h1 auth-card__title">Перед записью</h1>
+    <p class="text-body text-muted mb-2xl">
+        Вы переходите к специалисту <strong>{{ consultant.first_name }} {{ consultant.last_name }}</strong>.
+        Укажите имя и способ связи - почту или Телеграм, чтобы получать уведомления о регистрации и записях.
+    </p>
+
+    {% if error %}
+    <div class="alert alert--error mb-lg" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/s/{{ consultant.public_slug }}/welcome/?next={{ next_url|urlencode }}" class="stack" id="clientWelcomeForm">
+        <div class="form-field">
+            <label class="form-field__label" for="client_name">Имя</label>
+            <input class="input" id="client_name" name="name" required autocomplete="name" placeholder="Как к вам обращаться">
+        </div>
+        <div class="form-field">
+            <label class="form-field__label" for="client_phone">Телефон</label>
+            <input class="input" id="client_phone" name="phone" type="tel" autocomplete="tel" placeholder="+7...">
+        </div>
+
+        <fieldset class="stack">
+            <legend class="form-field__label">Как получать уведомления</legend>
+            <label class="auth-provider-card">
+                <input type="radio" name="channel" value="email" checked>
+                <span>Почта - придёт код подтверждения</span>
+            </label>
+            <label class="auth-provider-card">
+                <input type="radio" name="channel" value="telegram">
+                <span>Телеграм - ник для уведомлений</span>
+            </label>
+        </fieldset>
+
+        <div class="form-field" id="emailBlock">
+            <label class="form-field__label" for="client_email">Почта</label>
+            <input class="input" id="client_email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
+        </div>
+        <div class="form-field is-hidden" id="telegramBlock">
+            <label class="form-field__label" for="client_telegram">Ник в Телеграм</label>
+            <input class="input" id="client_telegram" name="telegram" placeholder="@username">
+            {% if bot_username %}
+            <p class="form-field__hint">После записи можно подтвердить чат с ботом @{{ bot_username }}</p>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--block">Продолжить</button>
+    </form>
+</div>
+<script>
+(function () {
+    var form = document.getElementById('clientWelcomeForm');
+    if (!form) return;
+    var emailBlock = document.getElementById('emailBlock');
+    var tgBlock = document.getElementById('telegramBlock');
+    form.querySelectorAll('input[name="channel"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            var isEmail = form.channel.value === 'email';
+            emailBlock.classList.toggle('is-hidden', !isEmail);
+            tgBlock.classList.toggle('is-hidden', isEmail);
+        });
+    });
+})();
+</script>
+{% endblock %}

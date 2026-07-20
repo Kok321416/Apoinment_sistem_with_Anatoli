@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.auth.session import get_current_user, login_user
 from app.config import get_settings
 from app.database import get_db
-from app.models import SocialAccount, User
+from app.models import EmailAddress, SocialAccount, User
 from app.security.csrf import validate_csrf_token
 from app.services.email_verification import resend_verification_email, verify_email_code
 from app.services.telegram_auth import consume_completed_login, create_login_request, get_completed_login
@@ -186,9 +186,53 @@ async def set_password_page(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/social/connections/")
+@router.post("/social/connections/")
 async def social_connections(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse("/login/", status_code=302)
+    success = error = None
+    if request.method == "POST":
+        form = await request.form()
+        action = form.get("action")
+        if action == "disconnect_telegram":
+            tg_accounts = db.query(SocialAccount).filter(
+                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+            ).all()
+            email_ok = db.query(EmailAddress).filter(
+                EmailAddress.user_id == user.id, EmailAddress.verified.is_(True)
+            ).first()
+            if not tg_accounts:
+                error = "Телеграм не привязан."
+            elif not user.has_usable_password and not email_ok:
+                error = "Нельзя отвязать Телеграм: сначала подтвердите почту или задайте пароль."
+            else:
+                for acc in tg_accounts:
+                    db.delete(acc)
+                db.commit()
+                success = "Телеграм отвязан."
+        elif action == "disconnect_email":
+            rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
+            has_tg = db.query(SocialAccount).filter(
+                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+            ).first()
+            if not rows or not any(r.verified for r in rows):
+                error = "Подтверждённая почта не привязана."
+            elif not user.has_usable_password and not has_tg:
+                error = "Нельзя отвязать почту: сначала привяжите Телеграм или задайте пароль."
+            else:
+                for row in rows:
+                    row.verified = False
+                db.commit()
+                success = "Почта отвязана."
     accounts = db.query(SocialAccount).filter(SocialAccount.user_id == user.id).all()
-    return templates.TemplateResponse("social_connections.html", page_context(request, db, user, social_accounts=accounts))
+    primary = db.query(EmailAddress).filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True)).first()
+    return templates.TemplateResponse("social_connections.html", page_context(
+        request, db, user,
+        social_accounts=accounts,
+        has_telegram=any(a.provider == "telegram" for a in accounts),
+        email_address=primary.email if primary else (user.email or ""),
+        email_verified=bool(primary and primary.verified),
+        success=success,
+        error=error,
+    ))

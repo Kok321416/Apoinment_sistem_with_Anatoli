@@ -403,10 +403,14 @@ async def calendars_page(request: Request, db: Session = Depends(get_db)):
         slot_counts = {calendar_id: count for calendar_id, count in rows}
     for calendar in calendars:
         calendar.time_slots_count = slot_counts.get(calendar.id, 0)
-    calendars_with_links = [{"calendar": c, "booking_url": f"{settings.site_url}/book/{c.id}/"} for c in calendars]
+    from app.services.public_client import ensure_public_slug, specialist_public_url
+
+    slug = ensure_public_slug(db, consultant)
+    public_url = specialist_public_url(settings.site_url, slug)
+    calendars_with_links = [{"calendar": c, "booking_url": f"{public_url}c/{c.id}/"} for c in calendars]
     return templates.TemplateResponse("calendars.html", page_context(
         request, db, user, calendars=calendars, calendars_with_links=calendars_with_links,
-        success=success, error=error,
+        public_booking_url=public_url, success=success, error=error,
     ))
 
 
@@ -494,17 +498,26 @@ async def services_page(request: Request, db: Session = Depends(get_db)):
         action = form.get("action")
         if action == "create_service":
             name = form.get("name")
-            if name:
+            calendar_id = _form_int(form, "calendar_id")
+            calendar = (
+                db.query(Calendar).filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id).first()
+                if calendar_id is not None else None
+            )
+            if not name:
+                error = "Укажите название услуги"
+            elif not calendar:
+                error = "Выберите календарь для услуги"
+            else:
                 db.add(Service(
-                    consultant_id=consultant.id, name=name,
+                    consultant_id=consultant.id,
+                    calendar_id=calendar.id,
+                    name=name,
                     description=form.get("description", ""),
                     duration_minutes=_form_int(form, "duration_minutes", 60) or 60,
                     price=form.get("price") or None,
                 ))
                 db.commit()
                 success = "Услуга создана успешно!"
-            else:
-                error = "Укажите название услуги"
         elif action == "toggle_service":
             svc_id = _form_int(form, "service_id")
             svc = (
@@ -527,136 +540,40 @@ async def services_page(request: Request, db: Session = Depends(get_db)):
             else:
                 error = "Услуга не найдена"
     services = db.query(Service).filter(Service.consultant_id == consultant.id).order_by(Service.name).all()
-    return templates.TemplateResponse("services.html", page_context(request, db, user, services=services, success=success, error=error))
-
+    calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).order_by(Calendar.name).all()
+    return templates.TemplateResponse(
+        "services.html",
+        page_context(request, db, user, services=services, calendars=calendars, success=success, error=error),
+    )
 
 @router.get("/book/")
 async def book_redirect(db: Session = Depends(get_db)):
     calendar = db.query(Calendar).filter(Calendar.is_active.is_(True)).order_by(Calendar.id).first()
     if not calendar:
         raise HTTPException(status_code=404, detail="Нет доступных календарей")
-    return RedirectResponse(f"/book/{calendar.id}/", status_code=302)
+    consultant = db.query(Consultant).filter(Consultant.id == calendar.consultant_id).first()
+    if not consultant:
+        raise HTTPException(status_code=404, detail="Специалист не найден")
+    from app.services.public_client import ensure_public_slug
+
+    slug = ensure_public_slug(db, consultant)
+    return RedirectResponse(f"/s/{slug}/", status_code=302)
 
 
 @router.get("/book/{calendar_id}/")
 @router.post("/book/{calendar_id}/")
 async def public_booking(request: Request, calendar_id: int, db: Session = Depends(get_db)):
+    """Legacy calendar URL → specialist public flow."""
     calendar = db.query(Calendar).filter(Calendar.id == calendar_id, Calendar.is_active.is_(True)).first()
     if not calendar:
         raise HTTPException(status_code=404, detail="Календарь не найден")
     consultant = db.query(Consultant).filter(Consultant.id == calendar.consultant_id).first()
     if not consultant:
         raise HTTPException(status_code=404, detail="Специалист не найден")
-    calendar.consultant = consultant
-    services = db.query(Service).filter(Service.consultant_id == consultant.id, Service.is_active.is_(True)).all()
-    user = _optional_user(request, db)
+    from app.services.public_client import ensure_public_slug
 
-    if request.method == "GET" and request.query_params.get("change_contact"):
-        for key in ("booking_contact_done", "booking_client_name", "booking_client_phone", "booking_client_telegram", "booking_client_email"):
-            request.session.pop(key, None)
-        return RedirectResponse(f"/book/{calendar_id}/", status_code=302)
-
-    if request.method == "POST":
-        form = await request.form()
-        if form.get("action") == "client_login":
-            login_phone = (form.get("client_phone") or "").strip()
-            login_email = (form.get("client_email") or "").strip()
-            if not login_phone:
-                return templates.TemplateResponse("public_booking.html", page_context(
-                    request, db, user, calendar=calendar, services=services,
-                    show_client_choice=True, show_contact_form=False, show_booking_form=False,
-                    error="Введите номер телефона для входа",
-                ))
-            conditions = [ClientCard.phone == login_phone]
-            if login_email:
-                conditions.append(ClientCard.email == login_email)
-            card = db.query(ClientCard).filter(ClientCard.consultant_id == consultant.id, or_(*conditions)).first()
-            if card:
-                request.session.update({
-                    "booking_contact_done": True,
-                    "booking_client_name": (card.name or "").strip(),
-                    "booking_client_phone": (card.phone or login_phone).strip(),
-                    "booking_client_telegram": (card.telegram or "").strip(),
-                    "booking_client_email": (card.email or login_email).strip(),
-                })
-                return RedirectResponse(f"/book/{calendar_id}/", status_code=302)
-            return templates.TemplateResponse("public_booking.html", page_context(
-                request, db, user, calendar=calendar, services=services,
-                show_client_choice=False, show_contact_form=True, show_booking_form=False,
-                error="Клиент с таким телефоном не найден.",
-                contact_phone=login_phone, contact_email=login_email,
-            ))
-        if form.get("action") == "set_contact":
-            client_name = (form.get("client_name") or "").strip()
-            client_phone = (form.get("client_phone") or "").strip()
-            client_email = (form.get("client_email") or "").strip()
-            client_telegram = (form.get("client_telegram") or "").strip().replace(" ", "")
-            if not client_phone:
-                return templates.TemplateResponse("public_booking.html", page_context(
-                    request, db, user, calendar=calendar, services=services,
-                    show_booking_form=False, show_client_choice=False, show_contact_form=True,
-                    error="Укажите телефон для связи",
-                    contact_name=client_name, contact_phone=client_phone,
-                    contact_telegram=client_telegram, contact_email=client_email,
-                ))
-            request.session.update({
-                "booking_contact_done": True, "booking_client_name": client_name,
-                "booking_client_phone": client_phone, "booking_client_telegram": client_telegram,
-                "booking_client_email": client_email,
-            })
-            return RedirectResponse(f"/book/{calendar_id}/", status_code=302)
-
-        service_id = _form_int(form, "service_id")
-        booking_date = _parse_date(form.get("booking_date"))
-        if service_id is None or booking_date is None or not form.get("booking_time") or not form.get("booking_end_time"):
-            return templates.TemplateResponse("public_booking.html", page_context(
-                request, db, user, calendar=calendar, services=services, show_booking_form=True,
-                booking_client_name=request.session.get("booking_client_name", ""),
-                booking_client_phone=request.session.get("booking_client_phone", ""),
-                booking_client_telegram=request.session.get("booking_client_telegram", ""),
-                booking_client_email=request.session.get("booking_client_email", ""),
-                error="Заполните услугу, дату и время записи",
-            ))
-        booking, err = create_public_booking(
-            db, calendar, service_id,
-            booking_date,
-            form.get("booking_time"), form.get("booking_end_time"),
-            request.session.get("booking_client_name", "").strip(),
-            request.session.get("booking_client_phone", "").strip(),
-            request.session.get("booking_client_email", "").strip(),
-            (request.session.get("booking_client_telegram") or "").strip().replace(" ", ""),
-        )
-        if err:
-            return templates.TemplateResponse("public_booking.html", page_context(
-                request, db, user, calendar=calendar, services=services, show_booking_form=True,
-                booking_client_name=request.session.get("booking_client_name", ""),
-                booking_client_phone=request.session.get("booking_client_phone", ""),
-                booking_client_telegram=request.session.get("booking_client_telegram", ""),
-                booking_client_email=request.session.get("booking_client_email", ""),
-                error=err,
-            ))
-        for key in ("booking_contact_done", "booking_client_name", "booking_client_phone", "booking_client_telegram", "booking_client_email"):
-            request.session.pop(key, None)
-        return templates.TemplateResponse("booking_success.html", page_context(
-            request, db, user, booking=booking, service=booking.service,
-        ))
-
-    show_booking_form = request.session.get("booking_contact_done") and request.session.get("booking_client_phone")
-    step_register = request.query_params.get("step") == "register"
-    ctx = {
-        "calendar": calendar, "services": services,
-        "show_booking_form": bool(show_booking_form),
-        "show_client_choice": not show_booking_form and not step_register,
-        "show_contact_form": not show_booking_form and step_register,
-    }
-    if show_booking_form:
-        ctx.update({
-            "booking_client_name": request.session.get("booking_client_name", ""),
-            "booking_client_phone": request.session.get("booking_client_phone", ""),
-            "booking_client_telegram": request.session.get("booking_client_telegram", ""),
-            "booking_client_email": request.session.get("booking_client_email", ""),
-        })
-    return templates.TemplateResponse("public_booking.html", page_context(request, db, user, **ctx))
+    slug = ensure_public_slug(db, consultant)
+    return RedirectResponse(f"/s/{slug}/c/{calendar.id}/", status_code=302)
 
 
 @router.get("/book/{calendar_id}/slots/")
@@ -785,7 +702,38 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
     success = error = None
     if request.method == "POST":
         form = await request.form()
-        if form.get("action") == "update_profile":
+        action = form.get("action")
+        if action == "disconnect_telegram_login":
+            tg_accounts = db.query(SocialAccount).filter(
+                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+            ).all()
+            email_ok = db.query(EmailAddress).filter(
+                EmailAddress.user_id == user.id, EmailAddress.verified.is_(True)
+            ).first()
+            if not tg_accounts:
+                error = "Телеграм для входа не привязан."
+            elif not user.has_usable_password and not email_ok:
+                error = "Нельзя отвязать Телеграм: сначала подтвердите почту или задайте пароль, иначе вход будет недоступен."
+            else:
+                for acc in tg_accounts:
+                    db.delete(acc)
+                db.commit()
+                success = "Телеграм отвязан. Можно привязать другой аккаунт."
+        elif action == "disconnect_email_login":
+            rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
+            has_tg = db.query(SocialAccount).filter(
+                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+            ).first()
+            if not rows or not any(r.verified for r in rows):
+                error = "Подтверждённая почта не привязана."
+            elif not user.has_usable_password and not has_tg:
+                error = "Нельзя отвязать почту: сначала привяжите Телеграм или задайте пароль."
+            else:
+                for row in rows:
+                    row.verified = False
+                db.commit()
+                success = "Почта отвязана. Можно подтвердить ту же или другую почту заново."
+        elif action == "update_profile":
             consultant.first_name = form.get("first_name", "")
             consultant.last_name = form.get("last_name", "")
             consultant.middle_name = form.get("middle_name", "")
@@ -805,6 +753,9 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
                 error = photo_err
             else:
                 try:
+                    from app.services.public_client import ensure_public_slug
+
+                    ensure_public_slug(db, consultant)
                     db.commit()
                     success = "Профиль успешно обновлен!"
                 except IntegrityError:
@@ -813,11 +764,18 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
                 except Exception as e:
                     db.rollback()
                     error = f"Ошибка при обновлении: {e}"
+    from app.services.public_client import ensure_public_slug, specialist_public_url
+
+    slug = ensure_public_slug(db, consultant)
     connected = {sa.provider for sa in db.query(SocialAccount).filter(SocialAccount.user_id == user.id).all()}
     primary = db.query(EmailAddress).filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True)).first()
     return templates.TemplateResponse("profile.html", page_context(
         request, db, user, consultant=consultant, success=success, error=error,
-        connected_providers=connected, primary_email=primary.email if primary else None,
+        connected_providers=connected,
+        primary_email=primary.email if primary else consultant.email,
+        primary_email_verified=bool(primary and primary.verified),
+        public_booking_url=specialist_public_url(settings.site_url, slug),
+        has_usable_password=user.has_usable_password,
     ))
 
 
@@ -920,6 +878,7 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
         db.refresh(integration)
     success = request.session.pop("integrations_success", None)
     error = request.session.pop("integrations_error", None)
+    email_pending = request.session.get("integrations_email_pending") or ""
     if request.method == "POST":
         form = await request.form()
         action = form.get("action")
@@ -947,8 +906,96 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
             integration.telegram_link_token_created_at = None
             db.commit()
             success = "Телеграм отключён."
+        elif action == "send_email_code":
+            from app.services.email import send_verification_email
+            from app.services.email_verification import ensure_email_address
+            from app.services.public_client import make_email_code
+
+            email = (form.get("email") or consultant.email or user.email or "").strip().lower()
+            if not email or "@" not in email:
+                error = "Укажите корректную почту."
+            else:
+                code = make_email_code()
+                request.session["integrations_email_code"] = code
+                request.session["integrations_email_pending"] = email
+                email_pending = email
+                ensure_email_address(db, user, email, verified=False)
+                consultant.email = email
+                user.email = email
+                user.username = email
+                db.commit()
+                if send_verification_email(email, code):
+                    success = "Код отправлен на почту. Введите его ниже."
+                else:
+                    error = "Не удалось отправить письмо. Проверьте SMTP на сервере."
+        elif action == "confirm_email_code":
+            from app.services.email_verification import ensure_email_address
+
+            email = (form.get("email") or request.session.get("integrations_email_pending") or "").strip().lower()
+            code = (form.get("code") or "").strip()
+            expected = (request.session.get("integrations_email_code") or "").strip()
+            pending = (request.session.get("integrations_email_pending") or "").strip().lower()
+            if not expected or email != pending:
+                error = "Сначала запросите код на почту."
+            elif code != expected:
+                error = "Неверный код."
+            else:
+                ensure_email_address(db, user, email, verified=True)
+                consultant.email = email
+                user.email = email
+                user.username = email
+                user.is_active = True
+                db.commit()
+                request.session.pop("integrations_email_code", None)
+                request.session.pop("integrations_email_pending", None)
+                email_pending = ""
+                success = "Почта подтверждена. Можно входить по почте и паролю."
+        elif action == "disconnect_email_login":
+            rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
+            has_tg = db.query(SocialAccount).filter(
+                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+            ).first()
+            if not rows or not any(r.verified for r in rows):
+                error = "Подтверждённая почта не привязана."
+            elif not user.has_usable_password and not has_tg:
+                error = "Нельзя отвязать почту: сначала привяжите Телеграм или задайте пароль."
+            else:
+                for row in rows:
+                    row.verified = False
+                db.commit()
+                request.session.pop("integrations_email_code", None)
+                request.session.pop("integrations_email_pending", None)
+                email_pending = ""
+                success = "Почта отвязана. Можно привязать заново."
+        elif action == "disconnect_telegram_login":
+            tg_accounts = db.query(SocialAccount).filter(
+                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+            ).all()
+            email_ok = db.query(EmailAddress).filter(
+                EmailAddress.user_id == user.id, EmailAddress.verified.is_(True)
+            ).first()
+            if not tg_accounts:
+                error = "Телеграм для входа не привязан."
+            elif not user.has_usable_password and not email_ok:
+                error = "Нельзя отвязать Телеграм: сначала подтвердите почту или задайте пароль."
+            else:
+                for acc in tg_accounts:
+                    db.delete(acc)
+                db.commit()
+                success = "Телеграм для входа отвязан. Можно привязать другой аккаунт."
+
+    primary = db.query(EmailAddress).filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True)).first()
+    telegram_login_connected = bool(
+        db.query(SocialAccount).filter(
+            SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+        ).first()
+    )
     return templates.TemplateResponse("integrations.html", page_context(
         request, db, user, integration=integration, success=success, error=error,
+        email_address=primary.email if primary else (consultant.email or user.email or ""),
+        email_verified=bool(primary and primary.verified),
+        email_pending=email_pending,
+        telegram_login_connected=telegram_login_connected,
     ))
 
 

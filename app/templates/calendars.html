@@ -17,6 +17,15 @@
 <div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
 {% endif %}
 
+{% if public_booking_url %}
+<section class="app-section">
+    <h2 class="app-section__title">Ссылка для клиентов</h2>
+    <p class="text-body-sm text-muted mb-lg">Одна ссылка на ваш профиль специалиста. Клиент сначала укажет контакты, затем увидит календари и услуги.</p>
+    <p class="break-all mb-lg"><strong>{{ public_booking_url }}</strong></p>
+    <button type="button" class="btn btn--primary btn--sm" data-link="{{ public_booking_url }}" onclick="copyBookingLink(this)">Скопировать ссылку</button>
+</section>
+{% endif %}
+
 <section class="app-section">
     <h2 class="app-section__title">Создать календарь</h2>
     <form method="POST" action="/calendars/" class="stack">
@@ -51,10 +60,10 @@
                 <p><strong>Цвет:</strong> <span class="app-color-swatch" aria-hidden="true"></span></p>
                 <p><strong>Статус:</strong> {% if calendar.is_active %}<span class="badge badge--success">Активен</span>{% else %}<span class="badge badge--ghost">Неактивен</span>{% endif %}</p>
                 <p><strong>Создан:</strong> {{ calendar.created_at|date('d.m.Y') }}</p>
-                <p><strong>Ссылка:</strong><br><span class="break-all">{{ item.booking_url }}</span></p>
+                <p><strong>Прямая ссылка на календарь:</strong><br><span class="break-all">{{ item.booking_url }}</span></p>
             </div>
             <div class="app-list-card__actions">
-                <button type="button" class="btn btn--secondary btn--sm" data-link="{{ item.booking_url }}" onclick="copyBookingLink(this)">Скопировать ссылку</button>
+                <button type="button" class="btn btn--secondary btn--sm" data-link="{{ item.booking_url }}" onclick="copyBookingLink(this)">Скопировать</button>
                 <a href="/calendars/{{ calendar.id }}/" class="btn btn--ghost btn--sm">Управление</a>
                 <form method="POST" action="/calendars/" onsubmit="return confirm('Удалить календарь?');">
                     <input type="hidden" name="action" value="delete_calendar">

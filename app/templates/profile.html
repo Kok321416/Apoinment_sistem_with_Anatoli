@@ -20,183 +20,155 @@
 {% if show_telegram_welcome or request.query_params.get('telegram_connected') %}
 <div class="alert alert--success mt-lg" role="alert">
     <strong>Телеграм успешно подключён.</strong>
-    Вход через бота и уведомления доступны.
 </div>
 {% endif %}
 
-<div id="profileView">
-    <div class="app-actions-row app-actions-row--end">
-        <button type="button" class="btn btn--primary btn--sm" onclick="toggleProfileEdit(true)">Редактировать</button>
-    </div>
+<form method="POST" action="/profile/" enctype="multipart/form-data" class="profile-layout" id="profileForm">
+    <input type="hidden" name="action" value="update_profile">
 
-    <div class="profile-head">
-        {% if consultant.profile_photo %}
-        <img src="{{ consultant.profile_photo|media_url }}" alt="Фото профиля" class="profile-photo">
+    <section class="app-section profile-share">
+        <h2 class="app-section__title">Ссылка для клиентов</h2>
+        <p class="text-body-sm text-muted mb-lg">Её можно пересылать: клиент увидит ваш профиль, календари и услуги.</p>
+        {% if public_booking_url %}
+        <p class="break-all mb-lg"><strong>{{ public_booking_url }}</strong></p>
+        <button type="button" class="btn btn--secondary btn--sm" data-link="{{ public_booking_url }}" onclick="copyBookingLink(this)">Скопировать</button>
         {% else %}
-        <div class="profile-photo profile-photo--empty">Нет фото</div>
+        <p class="text-muted">Ссылка появится после сохранения профиля.</p>
         {% endif %}
-        <div class="profile-info">
-            <h2 class="text-h2">{{ consultant.first_name }} {{ consultant.last_name }}</h2>
-            <p><strong class="text-primary">Почта:</strong> {{ consultant.email }}</p>
-            <p><strong class="text-primary">Телефон:</strong> {{ consultant.phone|default('Не указан') }}</p>
-            <p><strong class="text-primary">Телеграм:</strong> {{ consultant.telegram_nickname|default('Не указан') }}</p>
-        </div>
-    </div>
-
-    <section class="app-section">
-        <h3 class="app-section__title">Способы входа</h3>
-        <p class="text-body-sm text-muted mb-lg">Подключите Телеграм для входа через бота и уведомлений.</p>
-        <div class="auth-methods-grid">
-            <div class="auth-provider-card {% if 'telegram' in connected_providers %}is-connected{% endif %}">
-                <div class="text-h3">Телеграм</div>
-                {% if 'telegram' in connected_providers %}
-                <span class="badge badge--success mt-sm">Подключено</span>
-                {% else %}
-                <span class="badge badge--danger mt-sm">Не подключено</span>
-                <a href="/accounts/telegram/login/?process=connect&next=/profile/" class="btn btn--primary btn--sm mt-lg">Подключить</a>
-                {% endif %}
-            </div>
-            <div class="auth-provider-card {% if primary_email %}is-connected{% endif %}">
-                <div class="text-h3">Почта</div>
-                {% if primary_email %}
-                <span class="badge badge--success mt-sm">Добавлена</span>
-                <p class="text-body-sm text-muted mt-sm">{{ primary_email }}</p>
-                {% else %}
-                <span class="badge badge--danger mt-sm">Не добавлена</span>
-                {% endif %}
-            </div>
-        </div>
-        <a href="/accounts/social/connections/" class="btn btn--ghost btn--sm mt-3xl">Управление аккаунтами</a>
     </section>
 
-    {% if consultant.profile_description %}
-    <section class="app-section">
-        <h3 class="app-section__title">О специалисте</h3>
-        <p class="text-body text-pre-wrap">{{ consultant.profile_description }}</p>
-    </section>
-    {% endif %}
-
-    {% if consultant.video_link %}
-    <section class="app-section">
-        <h3 class="app-section__title">Видео</h3>
-        <a href="{{ consultant.video_link }}" target="_blank" rel="noopener" class="btn btn--secondary">Посмотреть видео</a>
-    </section>
-    {% endif %}
-
-    {% if consultant.social_instagram or consultant.social_facebook or consultant.social_vk or consultant.social_telegram or consultant.social_youtube or consultant.website %}
-    <section class="app-section">
-        <h3 class="app-section__title">Социальные сети</h3>
-        <div class="social-links-row">
-            {% if consultant.social_instagram %}<a href="{{ consultant.social_instagram }}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">Instagram</a>{% endif %}
-            {% if consultant.social_facebook %}<a href="{{ consultant.social_facebook }}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">Facebook</a>{% endif %}
-            {% if consultant.social_vk %}<a href="{{ consultant.social_vk }}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">VK</a>{% endif %}
-            {% if consultant.social_telegram %}<a href="{{ consultant.social_telegram }}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">Telegram</a>{% endif %}
-            {% if consultant.social_youtube %}<a href="{{ consultant.social_youtube }}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">YouTube</a>{% endif %}
-            {% if consultant.website %}<a href="{{ consultant.website }}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">Сайт</a>{% endif %}
-        </div>
-    </section>
-    {% endif %}
-</div>
-
-<div id="profileEdit" class="is-hidden">
-    <div class="app-actions-row app-actions-row--end">
-        <button type="button" class="btn btn--secondary btn--sm" onclick="toggleProfileEdit(false)">Отменить</button>
-    </div>
-
-    <form method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="action" value="update_profile">
-
-        <section class="app-section">
-            <h3 class="app-section__title">Основная информация</h3>
-            <div class="app-form-grid">
-                <div class="form-field">
-                    <label class="form-field__label">Имя</label>
-                    <input class="input" type="text" name="first_name" value="{{ consultant.first_name }}" required>
-                </div>
-                <div class="form-field">
-                    <label class="form-field__label">Фамилия</label>
-                    <input class="input" type="text" name="last_name" value="{{ consultant.last_name }}" required>
-                </div>
-                <div class="form-field">
-                    <label class="form-field__label">Отчество</label>
-                    <input class="input" type="text" name="middle_name" value="{{ consultant.middle_name }}">
-                </div>
-                <div class="form-field">
-                    <label class="form-field__label">Почта</label>
-                    <input class="input" type="email" name="email" value="{{ consultant.email }}" required>
-                </div>
-                <div class="form-field">
-                    <label class="form-field__label">Телефон</label>
-                    <input class="input" type="tel" name="phone" value="{{ consultant.phone }}" required>
-                </div>
-                <div class="form-field">
-                    <label class="form-field__label">Ник в Телеграм</label>
-                    <input class="input" type="text" name="telegram_nickname" value="{{ consultant.telegram_nickname }}" placeholder="@ник">
-                </div>
-            </div>
-        </section>
-
-        <section class="app-section">
-            <h3 class="app-section__title">Фото</h3>
+    <section class="app-section profile-avatar-block">
+        <h2 class="app-section__title">Фото</h2>
+        <div class="profile-avatar-row">
             {% if consultant.profile_photo %}
-            <p class="text-body-sm text-muted mb-lg"><a href="{{ consultant.profile_photo|media_url }}" target="_blank" class="link-accent">Текущее фото</a></p>
+            <img src="{{ consultant.profile_photo|media_url }}" alt="Фото профиля" class="profile-photo" id="profilePhotoPreview">
+            {% else %}
+            <div class="profile-photo profile-photo--empty" id="profilePhotoPreview">Нет фото</div>
             {% endif %}
-            <div class="avatar-upload">
+            <div class="stack">
                 <input class="input" type="file" id="profilePhotoInput" name="profile_photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
-                <p class="form-field__hint" id="avatarCropHint">Только JPG или PNG. После выбора откроется редактор для круглого аватара.</p>
+                <p class="form-field__hint" id="avatarCropHint">Только JPG или PNG. После выбора откроется редактор под круглое окошко - нажмите «Применить», затем «Сохранить профиль».</p>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section class="app-section">
-            <h3 class="app-section__title">Описание</h3>
-            <textarea class="textarea" name="profile_description" rows="6" placeholder="Расскажите о себе и услугах">{{ consultant.profile_description }}</textarea>
-        </section>
-
-        <section class="app-section">
-            <h3 class="app-section__title">Видео</h3>
-            <input class="input" type="text" name="video_link" value="{{ consultant.video_link }}" placeholder="https://youtube.com/...">
-        </section>
-
-        <section class="app-section">
-            <h3 class="app-section__title">Социальные сети</h3>
-            <div class="app-form-grid">
-                <div class="form-field">
-                    <label class="form-field__label">Instagram</label>
-                    <input class="input" type="text" name="social_instagram" value="{{ consultant.social_instagram }}">
-                </div>
-                <div class="form-field">
-                    <label class="form-field__label">Facebook</label>
-                    <input class="input" type="text" name="social_facebook" value="{{ consultant.social_facebook }}">
-                </div>
-                <div class="form-field">
-                    <label class="form-field__label">VK</label>
-                    <input class="input" type="text" name="social_vk" value="{{ consultant.social_vk }}">
-                </div>
-                <div class="form-field">
-                    <label class="form-field__label">Telegram</label>
-                    <input class="input" type="text" name="social_telegram" value="{{ consultant.social_telegram }}">
-                </div>
-                <div class="form-field">
-                    <label class="form-field__label">YouTube</label>
-                    <input class="input" type="text" name="social_youtube" value="{{ consultant.social_youtube }}">
-                </div>
-                <div class="form-field">
-                    <label class="form-field__label">Сайт</label>
-                    <input class="input" type="text" name="website" value="{{ consultant.website }}">
-                </div>
+    <section class="app-section">
+        <h2 class="app-section__title">Основные данные</h2>
+        <div class="app-form-grid">
+            <div class="form-field">
+                <label class="form-field__label" for="first_name">Имя</label>
+                <input class="input" id="first_name" type="text" name="first_name" value="{{ consultant.first_name }}" required>
             </div>
-        </section>
+            <div class="form-field">
+                <label class="form-field__label" for="last_name">Фамилия</label>
+                <input class="input" id="last_name" type="text" name="last_name" value="{{ consultant.last_name }}" required>
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="middle_name">Отчество</label>
+                <input class="input" id="middle_name" type="text" name="middle_name" value="{{ consultant.middle_name }}">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="email">Почта</label>
+                <input class="input" id="email" type="email" name="email" value="{{ consultant.email }}" required>
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="phone">Телефон</label>
+                <input class="input" id="phone" type="tel" name="phone" value="{{ consultant.phone }}" required>
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="telegram_nickname">Ник в Телеграм</label>
+                <input class="input" id="telegram_nickname" type="text" name="telegram_nickname" value="{{ consultant.telegram_nickname }}" placeholder="@ник">
+            </div>
+        </div>
+    </section>
 
-        <button type="submit" class="btn btn--primary btn--block">Сохранить изменения</button>
-    </form>
-</div>
+    <section class="app-section">
+        <h2 class="app-section__title">О себе</h2>
+        <textarea class="textarea" name="profile_description" rows="5" placeholder="Расскажите о себе и услугах">{{ consultant.profile_description or '' }}</textarea>
+        <div class="form-field mt-lg">
+            <label class="form-field__label" for="video_link">Видео</label>
+            <input class="input" id="video_link" type="text" name="video_link" value="{{ consultant.video_link or '' }}" placeholder="https://youtube.com/...">
+        </div>
+    </section>
+
+    <section class="app-section">
+        <h2 class="app-section__title">Соцсети</h2>
+        <div class="app-form-grid">
+            <div class="form-field">
+                <label class="form-field__label">Instagram</label>
+                <input class="input" type="text" name="social_instagram" value="{{ consultant.social_instagram or '' }}">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label">Facebook</label>
+                <input class="input" type="text" name="social_facebook" value="{{ consultant.social_facebook or '' }}">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label">VK</label>
+                <input class="input" type="text" name="social_vk" value="{{ consultant.social_vk or '' }}">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label">Telegram</label>
+                <input class="input" type="text" name="social_telegram" value="{{ consultant.social_telegram or '' }}">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label">YouTube</label>
+                <input class="input" type="text" name="social_youtube" value="{{ consultant.social_youtube or '' }}">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label">Сайт</label>
+                <input class="input" type="text" name="website" value="{{ consultant.website or '' }}">
+            </div>
+        </div>
+    </section>
+
+    <button type="submit" class="btn btn--primary btn--block">Сохранить профиль</button>
+</form>
+
+<section class="app-section">
+    <h2 class="app-section__title">Вход в кабинет</h2>
+    <p class="text-body-sm text-muted mb-xl">Можно отвязать способ входа и привязать заново. Оставьте хотя бы один рабочий способ (почта с паролем или Телеграм).</p>
+    <div class="auth-methods-grid">
+        <div class="auth-provider-card {% if 'telegram' in connected_providers %}is-connected{% endif %}">
+            <div class="text-h3">Телеграм</div>
+            {% if 'telegram' in connected_providers %}
+            <span class="badge badge--success mt-sm">Привязан</span>
+            <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('Отвязать Телеграм? После этого можно привязать другой аккаунт.');">
+                <input type="hidden" name="action" value="disconnect_telegram_login">
+                <button type="submit" class="btn btn--ghost btn--sm">Отвязать</button>
+            </form>
+            {% else %}
+            <span class="badge badge--ghost mt-sm">Не привязан</span>
+            <a href="/accounts/telegram/login/?process=connect&next=/profile/" class="btn btn--primary btn--sm mt-lg">Привязать Телеграм</a>
+            {% endif %}
+        </div>
+        <div class="auth-provider-card {% if primary_email_verified %}is-connected{% endif %}">
+            <div class="text-h3">Почта</div>
+            {% if primary_email %}
+            <p class="text-body-sm text-muted mt-sm">{{ primary_email }}</p>
+            {% endif %}
+            {% if primary_email_verified %}
+            <span class="badge badge--success mt-sm">Привязана и подтверждена</span>
+            <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('Отвязать почту? Потребуется подтвердить код из письма заново.');">
+                <input type="hidden" name="action" value="disconnect_email_login">
+                <button type="submit" class="btn btn--ghost btn--sm">Отвязать</button>
+            </form>
+            {% else %}
+            <span class="badge badge--warning mt-sm">Не подтверждена</span>
+            <a href="/integrations/" class="btn btn--primary btn--sm mt-lg">Привязать почту</a>
+            {% endif %}
+        </div>
+    </div>
+    {% if not has_usable_password %}
+    <p class="form-field__hint mt-xl"><a href="/accounts/password/set/" class="link-accent">Задать пароль</a> - чтобы можно было входить по почте без Телеграм.</p>
+    {% endif %}
+</section>
 {% endblock %}
 
 {% block scripts %}
 <div id="avatarCropModal" class="avatar-crop-modal" hidden>
     <div class="avatar-crop-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="avatarCropTitle">
         <h2 id="avatarCropTitle" class="text-h3">Подгонка фото</h2>
-        <p class="text-body-sm text-muted">Перетащите и масштабируйте фото под круглое окошко профиля.</p>
+        <p class="text-body-sm text-muted">Перетащите и масштабируйте фото под круглое окошко.</p>
         <div class="avatar-crop-modal__stage">
             <canvas id="avatarCropCanvas" width="320" height="320" aria-label="Область кадрирования"></canvas>
             <div id="avatarCropPreview" class="avatar-crop-modal__preview" aria-hidden="true"></div>
@@ -209,11 +181,6 @@
         </div>
     </div>
 </div>
-<script>
-function toggleProfileEdit(edit) {
-    document.getElementById('profileView').classList.toggle('is-hidden', edit);
-    document.getElementById('profileEdit').classList.toggle('is-hidden', !edit);
-}
-</script>
-<script src="/static/js/avatar-crop.js?v=1" defer></script>
+<script src="/static/js/copy-link.js?v=1" defer></script>
+<script src="/static/js/avatar-crop.js?v=2" defer></script>
 {% endblock %}

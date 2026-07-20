@@ -1,4 +1,4 @@
-"""Ensure auth tables exist (telegram login flow)."""
+"""Ensure DB schema patches that create_all may miss on existing DBs."""
 import logging
 
 from sqlalchemy import inspect, text
@@ -36,6 +36,39 @@ def ensure_telegram_login_schema() -> None:
             logger.exception("Could not add %s to telegram_login_requests", name)
 
 
-if __name__ == "__main__":
+def ensure_app_schema() -> None:
+    inspector = inspect(engine)
+    if inspector.has_table("consultants"):
+        columns = {col["name"] for col in inspector.get_columns("consultants")}
+        if "public_slug" not in columns:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE consultants ADD COLUMN public_slug VARCHAR(64) NULL"))
+                logger.info("Added column consultants.public_slug")
+            except Exception:
+                logger.exception("Could not add consultants.public_slug")
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text("CREATE UNIQUE INDEX ix_consultants_public_slug ON consultants (public_slug)"))
+            except Exception:
+                logger.exception("Could not index consultants.public_slug")
+
+    if inspector.has_table("services"):
+        columns = {col["name"] for col in inspector.get_columns("services")}
+        if "calendar_id" not in columns:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE services ADD COLUMN calendar_id INTEGER NULL"))
+                logger.info("Added column services.calendar_id")
+            except Exception:
+                logger.exception("Could not add services.calendar_id")
+
+
+def ensure_all_schema() -> None:
     ensure_telegram_login_schema()
-    print("telegram_login_requests schema OK")
+    ensure_app_schema()
+
+
+if __name__ == "__main__":
+    ensure_all_schema()
+    print("schema OK")

@@ -91,6 +91,8 @@ def create_public_booking(
     )
     if not service:
         return None, "Услуга не найдена"
+    if service.calendar_id and service.calendar_id != calendar.id:
+        return None, "Услуга не относится к этому календарю."
 
     start_time_obj = datetime.strptime(booking_time_str, "%H:%M").time()
     end_time_obj = datetime.strptime(booking_end_time_str, "%H:%M").time()
