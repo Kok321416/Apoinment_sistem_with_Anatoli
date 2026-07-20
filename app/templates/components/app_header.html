@@ -5,8 +5,8 @@
         <div class="app-header__actions">
             {% if user and user.is_authenticated %}
             <div class="app-header__user">
-                <div class="app-header__name">{{ header_consultant_name }}</div>
                 <div class="app-header__account">{{ header_account_display }}</div>
+                <div class="app-header__name">{{ header_consultant_name }}</div>
             </div>
             <nav class="app-header__nav" aria-label="Действия кабинета">
                 <a href="/" class="btn btn--ghost btn--sm">На главную страницу</a>
