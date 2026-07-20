@@ -145,9 +145,10 @@ def build_header_context(db, user) -> dict:
             name = " ".join(p for p in parts if p).strip()
         if not name:
             db_user = db.get(User, user.id)
-            name = (db_user.get_full_name() if db_user else "") or ""
-        if not name:
-            name = (user.get_full_name() if hasattr(user, "get_full_name") else "") or ""
+            if db_user:
+                name = f"{db_user.first_name or ''} {db_user.last_name or ''}".strip()
+        if not name and hasattr(user, "get_full_name"):
+            name = (user.get_full_name() or "").strip()
 
         account = ""
         primary = (
@@ -164,7 +165,6 @@ def build_header_context(db, user) -> dict:
         if not account and consultant and consultant.email:
             account = consultant.email
 
-        # Top line: account (email). Bottom line: person name (never duplicate email).
         top = account or user.username or ""
         bottom = name
         if bottom and bottom.lower() == top.lower():
@@ -179,7 +179,7 @@ def build_header_context(db, user) -> dict:
     except Exception:
         return {
             "header_consultant_name": "Специалист",
-            "header_account_display": user.username or "",
+            "header_account_display": getattr(user, "username", "") or "",
         }
 
 

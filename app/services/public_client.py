@@ -1,13 +1,17 @@
 """Public specialist booking slug helpers and client gate session."""
 from __future__ import annotations
 
+import logging
 import re
 import secrets
 import unicodedata
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.models import Consultant
+
+logger = logging.getLogger(__name__)
 
 
 def _slugify(value: str) -> str:
@@ -17,33 +21,86 @@ def _slugify(value: str) -> str:
     return value[:40] or "spec"
 
 
-def ensure_public_slug(db: Session, consultant: Consultant) -> str:
-    from app.db_schema import ensure_schema_before_query
+def specialist_slug_for(consultant: Consultant) -> str:
+    """Stable public path segment. Prefer optional DB slug, else id-{id}."""
+    return f"id-{consultant.id}"
 
-    ensure_schema_before_query()
+
+def ensure_public_slug(db: Session, consultant: Consultant) -> str:
+    """
+    Return a public URL slug without requiring a mapped ORM column.
+    Tries optional consultants.public_slug if the column exists; otherwise id-{id}.
+    """
+    stable = specialist_slug_for(consultant)
     try:
-        current = consultant.public_slug
+        row = db.execute(
+            text("SELECT public_slug FROM consultants WHERE id = :id"),
+            {"id": consultant.id},
+        ).first()
     except Exception:
-        db.expire(consultant)
-        db.refresh(consultant)
-        current = consultant.public_slug
-    if current:
-        return current
+        db.rollback()
+        return stable
+
+    if row and row[0]:
+        return str(row[0])
+
     base = _slugify(f"{consultant.first_name}-{consultant.last_name}") or f"spec-{consultant.id}"
     candidate = base
     n = 0
-    while db.query(Consultant).filter(Consultant.public_slug == candidate).first():
+    while True:
+        try:
+            exists = db.execute(
+                text("SELECT id FROM consultants WHERE public_slug = :slug LIMIT 1"),
+                {"slug": candidate},
+            ).first()
+        except Exception:
+            db.rollback()
+            return stable
+        if not exists:
+            break
         n += 1
         candidate = f"{base}-{n}"
-    consultant.public_slug = candidate
-    db.add(consultant)
-    db.commit()
-    db.refresh(consultant)
-    return consultant.public_slug
+
+    try:
+        db.execute(
+            text("UPDATE consultants SET public_slug = :slug WHERE id = :id"),
+            {"slug": candidate, "id": consultant.id},
+        )
+        db.commit()
+        return candidate
+    except Exception:
+        db.rollback()
+        logger.info("public_slug column unavailable; using %s", stable)
+        return stable
 
 
 def specialist_public_url(site_url: str, slug: str) -> str:
     return f"{site_url.rstrip('/')}/s/{slug}/"
+
+
+def resolve_consultant_by_slug(db: Session, slug: str) -> Consultant | None:
+    slug = (slug or "").strip()
+    if not slug:
+        return None
+    if slug.startswith("id-"):
+        try:
+            cid = int(slug.replace("id-", "", 1))
+        except ValueError:
+            cid = None
+        if cid:
+            found = db.query(Consultant).filter(Consultant.id == cid).first()
+            if found:
+                return found
+    try:
+        row = db.execute(
+            text("SELECT id FROM consultants WHERE public_slug = :slug LIMIT 1"),
+            {"slug": slug},
+        ).first()
+        if row:
+            return db.query(Consultant).filter(Consultant.id == row[0]).first()
+    except Exception:
+        db.rollback()
+    return None
 
 
 def client_gate_ok(session: dict, consultant_id: int) -> bool:

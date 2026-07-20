@@ -41,7 +41,7 @@ def _add_column(table: str, column: str, ddl: str) -> None:
             logger.info("Column %s.%s already present", table, column)
             return
         logger.exception("Could not add %s.%s", table, column)
-        raise
+        # Do not raise: production may lack ALTER privileges; app must keep working.
 
 
 def _add_unique_index(table: str, index_name: str, column: str) -> None:
@@ -71,7 +71,7 @@ def ensure_telegram_login_schema() -> None:
 
 
 def ensure_app_schema() -> None:
-    """Idempotent patches required by the current app code."""
+    """Idempotent patches required by the current app code. Never raises."""
     try:
         _add_column("consultants", "public_slug", "VARCHAR(64) NULL")
         _add_unique_index("consultants", "ix_consultants_public_slug", "public_slug")
@@ -86,7 +86,10 @@ def ensure_app_schema() -> None:
 
 def ensure_all_schema() -> None:
     global _schema_ready
-    ensure_telegram_login_schema()
+    try:
+        ensure_telegram_login_schema()
+    except Exception:
+        logger.exception("telegram login schema ensure failed")
     ensure_app_schema()
     _schema_ready = True
 
@@ -94,13 +97,14 @@ def ensure_all_schema() -> None:
 def ensure_schema_before_query() -> None:
     """Best-effort runtime recovery if startup patch did not run."""
     global _schema_ready
-    if _schema_ready and _column_exists("consultants", "public_slug"):
+    if _schema_ready:
         return
     try:
         ensure_app_schema()
         _schema_ready = True
     except Exception:
         logger.exception("Runtime schema ensure failed")
+        _schema_ready = True  # do not retry forever on every request
 
 
 if __name__ == "__main__":

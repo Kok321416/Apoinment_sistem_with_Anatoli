@@ -26,21 +26,9 @@ settings = get_settings()
 
 
 def _get_consultant_by_slug(db: Session, slug: str) -> Consultant:
-    from app.db_schema import ensure_schema_before_query
+    from app.services.public_client import resolve_consultant_by_slug
 
-    ensure_schema_before_query()
-    consultant = db.query(Consultant).filter(Consultant.public_slug == slug).first()
-    if not consultant and slug.startswith("id-"):
-        try:
-            cid = int(slug.replace("id-", "", 1))
-        except ValueError:
-            cid = None
-        if cid:
-            consultant = db.query(Consultant).filter(Consultant.id == cid).first()
-            if consultant:
-                from app.services.public_client import ensure_public_slug
-
-                ensure_public_slug(db, consultant)
+    consultant = resolve_consultant_by_slug(db, slug)
     if not consultant:
         raise HTTPException(status_code=404, detail="Специалист не найден")
     return consultant
