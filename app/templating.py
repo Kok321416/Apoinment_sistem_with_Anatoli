@@ -18,7 +18,7 @@ from app.content.landing_copy import (
     footer_with_context,
 )
 from app.security.csrf import ensure_csrf_token
-from app.models import Consultant, EmailAddress, SocialAccount, User
+from app.models import Consultant, EmailAddress, User
 
 settings = get_settings()
 
