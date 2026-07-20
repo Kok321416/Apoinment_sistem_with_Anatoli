@@ -3,11 +3,9 @@
 
 name: Deploy Telegram Bot
 
-# Деплой бота только при push в main (после мержа) или вручную. develop убран — иначе при каждом PR 2 экшена
+# Бот перезапускается в основном workflow "Deploy to VPS".
+# Этот workflow — только ручной перезапуск бота без полного деплоя.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -76,14 +74,13 @@ jobs:
 
           BOT_PIDFILE="$APP_DIR/bot.pid"
           BOT_LOG="$APP_DIR/bot.log"
-          pkill -f "python -m bot.run" 2>/dev/null || true
-          pkill -f "python.*bot.run" 2>/dev/null || true
           if [ -f "$BOT_PIDFILE" ]; then
             OLD_PID=$(cat "$BOT_PIDFILE")
             kill -TERM "$OLD_PID" 2>/dev/null || true
             rm -f "$BOT_PIDFILE"
             sleep 2
           fi
+          pkill -f '[m]bot.run' 2>/dev/null || true
           nohup bash "$APP_DIR/scripts/run_bot.sh" >> "$BOT_LOG" 2>&1 &
           BOT_PID=$!
           echo $BOT_PID > "$BOT_PIDFILE"
