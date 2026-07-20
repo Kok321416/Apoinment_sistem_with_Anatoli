@@ -180,69 +180,48 @@ jobs:
 
           mkdir -p tmp logs media
 
-          PIDFILE="$APP_DIR/uvicorn.pid"
-          LOGFILE="$APP_DIR/uvicorn.log"
-          GUNICORN_PIDFILE="$APP_DIR/gunicorn.pid"
+          echo "🧪 Checking Passenger WSGI entrypoint"
+          python -c "import passenger_wsgi; print('passenger_wsgi OK')"
 
-          stop_pid() {
-            local pidfile="$1"
-            if [ -f "$pidfile" ]; then
-              kill -TERM "$(cat "$pidfile")" 2>/dev/null || true
-              rm -f "$pidfile"
-            fi
-          }
-
-          free_port() {
-            local port="$1"
-            if command -v fuser >/dev/null 2>&1; then
-              fuser -k "${port}/tcp" 2>/dev/null || true
-            fi
-            if command -v lsof >/dev/null 2>&1; then
-              lsof -ti:"${port}" | xargs -r kill -TERM 2>/dev/null || true
-            fi
-            if command -v ss >/dev/null 2>&1; then
-              ss -lptn "sport = :${port}" 2>/dev/null | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' | sort -u | while read -r pid; do
-                [ -n "$pid" ] && kill -TERM "$pid" 2>/dev/null || true
-              done
-            elif command -v netstat >/dev/null 2>&1; then
-              netstat -tlnp 2>/dev/null | awk -v p=":${port}" '$4 ~ p {print $7}' | cut -d/ -f1 | sort -u | while read -r pid; do
-                [ -n "$pid" ] && kill -TERM "$pid" 2>/dev/null || true
-              done
-            fi
-          }
-
-          echo "🛑 Stopping old web processes"
-          stop_pid "$PIDFILE"
-          stop_pid "$GUNICORN_PIDFILE"
-          pkill -f "gunicorn.*appoinment_sistem" 2>/dev/null || true
-          pkill -f "uvicorn app.main:app" 2>/dev/null || true
-          pkill -f "gunicorn.*wsgi" 2>/dev/null || true
-          free_port 8000
-          sleep 2
-          free_port 8000
-          sleep 1
-          python scripts/free_port.py 8000
-
-          echo "🚀 Starting uvicorn (FastAPI)"
-          nohup "$APP_DIR/venv/bin/uvicorn" app.main:app \
-            --host 127.0.0.1 --port 8000 --workers 1 \
-            > "$LOGFILE" 2>&1 &
-          UVICORN_PID=$!
-          echo $UVICORN_PID > "$PIDFILE"
-          sleep 3
-          if kill -0 $UVICORN_PID 2>/dev/null; then
-            echo "✅ Uvicorn started, PID $UVICORN_PID"
-          else
-            echo "❌ Uvicorn failed to start. Last 30 lines of log:"
-            tail -30 "$LOGFILE" 2>/dev/null || true
-            echo "Listeners on :8000:"
-            ss -lptn 'sport = :8000' 2>/dev/null || true
-            exit 1
+          echo "🛑 Stopping orphan manual web processes (if any)"
+          if [ -f "$APP_DIR/uvicorn.pid" ]; then
+            kill -TERM "$(cat "$APP_DIR/uvicorn.pid")" 2>/dev/null || true
+            rm -f "$APP_DIR/uvicorn.pid"
           fi
+          if [ -f "$APP_DIR/gunicorn.pid" ]; then
+            kill -TERM "$(cat "$APP_DIR/gunicorn.pid")" 2>/dev/null || true
+            rm -f "$APP_DIR/gunicorn.pid"
+          fi
+          pkill -f "uvicorn app.main:app" 2>/dev/null || true
+          pkill -f "gunicorn.*appoinment_sistem" 2>/dev/null || true
 
-          # Legacy hosting restart hooks (reg.ru/Passenger) — only after uvicorn is up
+          echo "🔄 Restarting web app via Passenger (reg.ru)"
           touch tmp/restart.txt
           touch .restart-app
+
+          echo "⏳ Waiting for Passenger to reload..."
+          sleep 8
+          HTTP_CODE="000"
+          for attempt in 1 2 3 4 5 6; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://127.0.0.1:8000/ 2>/dev/null || echo "000")
+            case "$HTTP_CODE" in
+              000) sleep 3 ;;
+              *) break ;;
+            esac
+          done
+          echo "HTTP check http://127.0.0.1:8000/ => $HTTP_CODE"
+          case "$HTTP_CODE" in
+            5*)
+              echo "❌ Web app returned HTTP $HTTP_CODE after Passenger restart"
+              exit 1
+              ;;
+            000)
+              echo "⚠️ localhost:8000 not reachable from SSH (Passenger may proxy only via domain)"
+              ;;
+            *)
+              echo "✅ Web app responds (HTTP $HTTP_CODE)"
+              ;;
+          esac
 
           BOT_PIDFILE="$APP_DIR/bot.pid"
           BOT_LOG="$APP_DIR/bot.log"
@@ -263,4 +242,4 @@ jobs:
             echo "⚠️ Bot may have exited. Check $BOT_LOG"
           fi
 
-          echo "✅ Deploy completed. Uvicorn: $LOGFILE, Bot: $BOT_LOG"
+          echo "✅ Deploy completed. Web: Passenger (passenger_wsgi.py), Bot: $BOT_LOG"

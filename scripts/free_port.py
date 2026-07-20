@@ -21,16 +21,18 @@ def pids_on_port(port: int) -> set[int]:
     return found
 
 
-def port_is_bindable(port: int) -> bool:
+def port_is_bindable(port: int) -> tuple[bool, str | None]:
+    import errno
     import socket
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("127.0.0.1", port))
-        return True
-    except OSError:
-        return False
+        return True, None
+    except OSError as exc:
+        hint = errno.errorcode.get(exc.errno, str(exc.errno))
+        return False, f"{exc} ({hint})"
     finally:
         sock.close()
 
@@ -44,10 +46,11 @@ def main() -> int:
     for attempt in range(3):
         pids = pids_on_port(port)
         if not pids:
-            if port_is_bindable(port):
+            ok, err = port_is_bindable(port)
+            if ok:
                 print(f"Port {port} is free")
                 return 0
-            print(f"Port {port} looks free in ss but is not bindable (attempt {attempt + 1})")
+            print(f"Port {port} looks free in ss but is not bindable (attempt {attempt + 1}): {err}")
             time.sleep(2)
             continue
         print(f"Port {port} busy, killing PIDs: {sorted(pids)} (attempt {attempt + 1})")
@@ -69,8 +72,9 @@ def main() -> int:
     if remaining:
         print(f"ERROR: port {port} still in use by PIDs: {sorted(remaining)}", file=sys.stderr)
         return 1
-    if not port_is_bindable(port):
-        print(f"ERROR: port {port} is not bindable on 127.0.0.1", file=sys.stderr)
+    ok, err = port_is_bindable(port)
+    if not ok:
+        print(f"ERROR: port {port} is not bindable on 127.0.0.1: {err}", file=sys.stderr)
         return 1
     print(f"Port {port} is free")
     return 0
