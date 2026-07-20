@@ -108,7 +108,8 @@ jobs:
           SMTP_USER=${{ secrets.SMTP_USER }}
           SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
           SMTP_FROM=${{ secrets.SMTP_FROM }}
-          SMTP_FROM_NAME=${{ secrets.SMTP_FROM_NAME || 'allyourclients' }}
+          SMTP_FROM_NAME=${{ secrets.SMTP_FROM_NAME || 'Все клиенты здесь' }}
+          SITE_BRAND_NAME=${{ secrets.SITE_BRAND_NAME || 'Все клиенты здесь' }}
           SMTP_USE_SSL=${{ secrets.SMTP_USE_SSL || 'true' }}
           EOF
 

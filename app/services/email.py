@@ -3,6 +3,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+from app.branding import DEFAULT_SITE_BRAND_NAME
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ def send_email(to_email: str, subject: str, html_body: str, text_body: str | Non
         return False
 
     from_addr = settings.smtp_from or settings.smtp_user
-    from_name = settings.smtp_from_name or "allyourclients"
+    from_name = settings.smtp_from_name or DEFAULT_SITE_BRAND_NAME
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -59,17 +60,18 @@ def _html_to_plain(html: str) -> str:
 
 
 def send_verification_email(to_email: str, confirm_url: str) -> bool:
-    subject = "Подтвердите регистрацию — allyourclients"
+    brand = settings.site_brand_name
+    subject = f"Подтвердите регистрацию — {brand}"
     html = f"""
     <div style="font-family: Arial, sans-serif; font-size: 14px; color: #111;">
-        <h2 style="font-size: 18px;">Подтверждение email</h2>
+        <h2 style="font-size: 18px;">Подтверждение почты</h2>
         <p>Здравствуйте!</p>
-        <p>Вы зарегистрировались в системе записи <b>allyourclients</b>.</p>
+        <p>Вы зарегистрировались в системе записи <b>{brand}</b>.</p>
         <p>Чтобы активировать аккаунт, нажмите кнопку:</p>
         <p style="margin: 24px 0;">
             <a href="{confirm_url}"
                style="background:#667eea;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;">
-                Подтвердить email
+                Подтвердить почту
             </a>
         </p>
         <p>Или скопируйте ссылку в браузер:</p>
@@ -79,7 +81,7 @@ def send_verification_email(to_email: str, confirm_url: str) -> bool:
     </div>
     """
     plain = (
-        f"Подтвердите регистрацию на allyourclients.\n\n"
+        f"Подтвердите регистрацию в сервисе {brand}.\n\n"
         f"Перейдите по ссылке:\n{confirm_url}\n\n"
         f"Ссылка действует {settings.email_verify_hours} ч."
     )

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Главная страница - Система записи</title>
+    <title>Главная — {{ site_brand_name }}</title>
     <meta name='description' content='Описание' />
     <meta name='keywords' content='Ключевые слова' />
     <link rel="stylesheet" href="/static/css/style.css?v=2">
@@ -13,9 +13,9 @@
     <div class="container">
         <div class="nav-header">
             <h1 class="brand-title">
-                <a href="/" class="brand-link" aria-label="allyourclients — на главную">
-                    <span class="brand-badge" aria-hidden="true">a</span>
-                    <span class="brand-name">allyourclients</span>
+                <a href="/" class="brand-link" aria-label="{{ site_brand_name }} — на главную">
+                    <span class="brand-badge" aria-hidden="true">В</span>
+                    <span class="brand-name">{{ site_brand_name }}</span>
                 </a>
             </h1>
             <div class="user-info">
@@ -39,7 +39,7 @@
 
         {% if show_telegram_welcome %}
         <div class="telegram-welcome" role="alert">
-            <strong>✅ Вы успешно подключились через Telegram.</strong><br>
+            <strong>✅ Вы успешно подключились через Телеграм.</strong><br>
             Добро пожаловать! Теперь вы можете пользоваться всеми возможностями системы записи.
         </div>
         {% endif %}
@@ -47,8 +47,8 @@
         {% if show_telegram_reminder_after_register %}
         <div class="telegram-reminder-after-register" role="alert">
             <p class="telegram-reminder-title">📬 Хотите получать уведомления и статус консультации?</p>
-            <p class="telegram-reminder-text">Подключите Telegram-бота — и вы будете получать напоминания о записях и изменения статуса.</p>
-            <a href="/integrations/" class="btn btn-telegram-reminder">Подключить Telegram-бота →</a>
+            <p class="telegram-reminder-text">Подключите бота Телеграм — и вы будете получать напоминания о записях и изменения статуса.</p>
+            <a href="/integrations/" class="btn btn-telegram-reminder">Подключить Телеграм-бота →</a>
         </div>
         {% endif %}
 

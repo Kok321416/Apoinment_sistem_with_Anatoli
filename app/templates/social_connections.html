@@ -2,5 +2,5 @@
 <html lang="ru"><head><meta charset="UTF-8"><title>Управление аккаунтами</title>
 <link rel="stylesheet" href="/static/css/style.css?v=2"></head><body>
 <div class="container"><h1>Способы входа</h1>
-<ul>{% for acc in social_accounts %}<li>{{ acc.provider }} (uid: {{ acc.uid }})</li>{% endfor %}</ul>
+<ul>{% for acc in social_accounts %}<li>{{ acc.provider|auth_provider }} (идентификатор: {{ acc.uid }})</li>{% endfor %}</ul>
 <p><a href="/profile/">Назад в профиль</a></p></div></body></html>

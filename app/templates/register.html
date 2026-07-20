@@ -26,7 +26,7 @@
 <body>
     <div class="container" style="max-width: 520px;">
         <h1>Регистрация</h1>
-        <p class="hint">Укажите ФИО и телефон, затем выберите способ входа. Telegram для рассылки можно подключить позже в разделе «Интеграции».</p>
+        <p class="hint">Укажите ФИО и телефон, затем выберите способ входа. Телеграм для рассылки можно подключить позже в разделе «Интеграции».</p>
 
         {% if error %}
         <div class="error-message">{{ error }}</div>
@@ -51,7 +51,7 @@
                 <div class="auth-methods">
                     <label class="auth-method telegram-btn" data-method="telegram">
                         <input type="radio" name="auth_radio" value="telegram">
-                        <span class="auth-method-label">Telegram</span>
+                        <span class="auth-method-label">Телеграм</span>
                     </label>
                     <label class="auth-method yandex-btn" data-method="yandex" title="Скоро">
                         <input type="radio" name="auth_radio" value="yandex" disabled>
@@ -66,7 +66,7 @@
 
             <div class="auth-email-block show" id="email-block">
                 <div class="form-group">
-                    <label for="email">Email:</label>
+                    <label for="email">Почта:</label>
                     <input type="email" id="email" name="email" placeholder="your@email.com" value="{{ email|default('') }}">
                 </div>
                 <div class="form-group">
@@ -80,7 +80,7 @@
             </div>
 
             <button type="submit" class="btn" id="submit-btn">Зарегистрироваться</button>
-            <p class="hint" id="telegram-hint" style="display: none; margin-top: 8px;">Нажатие кнопки откроет бота Telegram для подтверждения регистрации.</p>
+            <p class="hint" id="telegram-hint" style="display: none; margin-top: 8px;">Нажатие кнопки откроет бота Телеграм для подтверждения регистрации.</p>
         </form>
 
         <div class="links">
@@ -124,7 +124,7 @@
                     if (form) form.setAttribute('novalidate', 'novalidate');
                     var btn = document.getElementById('submit-btn');
                     var hint = document.getElementById('telegram-hint');
-                    if (method === 'telegram') btn.textContent = 'Перейти к входу через Telegram';
+                    if (method === 'telegram') btn.textContent = 'Перейти к входу через Телеграм';
                     else if (btn) btn.textContent = 'Зарегистрироваться';
                     if (hint) hint.style.display = (method === 'telegram') ? 'block' : 'none';
                 }

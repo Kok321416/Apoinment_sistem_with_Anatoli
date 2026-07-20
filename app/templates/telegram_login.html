@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Вход через Telegram</title>
+    <title>Вход через Телеграм</title>
     <link rel="stylesheet" href="/static/css/style.css?v=2">
     <style>
         .tg-login-box { max-width: 480px; margin: 24px auto; padding: 24px; background: #f8fafc; border-radius: 12px; }
@@ -16,7 +16,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>Вход через Telegram</h1>
+    <h1>Вход через Телеграм</h1>
 
     {% if error %}
     <div class="error-message">{{ error }}</div>
@@ -25,7 +25,7 @@
         <p><strong>Шаг 1.</strong> Откройте бота и нажмите «Подтвердить вход».</p>
         <p><strong>Шаг 2.</strong> Вернитесь сюда - вход завершится автоматически, или откройте ссылку из бота.</p>
         <div class="tg-actions">
-            <a id="btnOpenBot" href="{{ bot_url }}" class="btn-telegram" data-tg="{{ tg_app_url }}">Открыть бота в Telegram</a>
+            <a id="btnOpenBot" href="{{ bot_url }}" class="btn-telegram" data-tg="{{ tg_app_url }}">Открыть бота в Телеграм</a>
         </div>
         <div class="status" id="loginStatus">Ожидаем подтверждение в боте...</div>
     </div>

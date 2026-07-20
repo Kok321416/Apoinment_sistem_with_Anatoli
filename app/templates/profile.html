@@ -124,9 +124,9 @@
     <div class="container">
         <div class="nav-header">
             <h1 class="brand-title">
-                <a href="/" class="brand-link" aria-label="allyourclients — на главную">
-                    <span class="brand-badge" aria-hidden="true">a</span>
-                    <span class="brand-name">allyourclients</span>
+                <a href="/" class="brand-link" aria-label="{{ site_brand_name }} — на главную">
+                    <span class="brand-badge" aria-hidden="true">В</span>
+                    <span class="brand-name">{{ site_brand_name }}</span>
                 </a>
                 <span class="brand-page">/ Мой профиль</span>
             </h1>
@@ -155,8 +155,8 @@
         <div class="auth-success-block" role="alert">
             <span class="auth-success-icon">✅</span>
             <div>
-                <strong>Telegram успешно подключён</strong>
-                <p>Теперь вы можете входить через Telegram и получать уведомления. Ниже в блоке «Способы входа» статус обновлён.</p>
+                <strong>Телеграм успешно подключён</strong>
+                <p>Теперь вы можете входить через Телеграм и получать уведомления. Ниже в блоке «Способы входа» статус обновлён.</p>
             </div>
         </div>
         {% endif %}
@@ -179,21 +179,21 @@
 
                     <div class="profile-info">
                         <h2>{{ consultant.first_name }} {{ consultant.last_name }}</h2>
-                        <p><strong>Email:</strong> {{ consultant.email }}</p>
+                        <p><strong>Почта:</strong> {{ consultant.email }}</p>
                         <p><strong>Телефон:</strong> {{ consultant.phone|default('Не указан') }}</p>
-                        <p><strong>Telegram:</strong> {{ consultant.telegram_nickname|default('Не указан') }}</p>
+                        <p><strong>Телеграм:</strong> {{ consultant.telegram_nickname|default('Не указан') }}</p>
                     </div>
                 </div>
 
                 <div class="profile-section">
                     <h3>Способы входа</h3>
-                    <p class="auth-section-desc">Подключите Telegram - тогда вы сможете входить через бота и получать уведомления.</p>
+                    <p class="auth-section-desc">Подключите Телеграм - тогда вы сможете входить через бота и получать уведомления.</p>
                     <div class="auth-methods">
                         <div class="auth-method {% if 'telegram' in connected_providers %}connected{% endif %}">
-                            <span class="auth-method-name">Telegram</span>
+                            <span class="auth-method-name">Телеграм</span>
                             {% if 'telegram' in connected_providers %}
                                 <span class="auth-method-badge connected">Подключено</span>
-                                <div class="auth-method-detail">Вход через Telegram доступен</div>
+                                <div class="auth-method-detail">Вход через Телеграм доступен</div>
                             {% else %}
                                 <span class="auth-method-badge not-connected">Не подключено</span>
                                 <div class="auth-method-actions">
@@ -215,7 +215,7 @@
                         </div>
                     </div>
                     <div class="auth-manage-link">
-                        <a href="/accounts/social/connections/" class="btn btn-secondary">Отключить Telegram или Google — управление аккаунтами</a>
+                        <a href="/accounts/social/connections/" class="btn btn-secondary">Отключить Телеграм или Гугл — управление аккаунтами</a>
                     </div>
                 </div>
 
@@ -240,19 +240,19 @@
                     <h3>Социальные сети и контакты</h3>
                     <div style="display: flex; flex-wrap: wrap; gap: 15px;">
                         {% if consultant.social_instagram %}
-                        <a href="{{ consultant.social_instagram }}" target="_blank" class="btn btn-secondary">📷 Instagram</a>
+                        <a href="{{ consultant.social_instagram }}" target="_blank" class="btn btn-secondary">📷 Инстаграм</a>
                         {% endif %}
                         {% if consultant.social_facebook %}
-                        <a href="{{ consultant.social_facebook }}" target="_blank" class="btn btn-secondary">📘 Facebook</a>
+                        <a href="{{ consultant.social_facebook }}" target="_blank" class="btn btn-secondary">📘 Фейсбук</a>
                         {% endif %}
                         {% if consultant.social_vk %}
-                        <a href="{{ consultant.social_vk }}" target="_blank" class="btn btn-secondary">🔵 VK</a>
+                        <a href="{{ consultant.social_vk }}" target="_blank" class="btn btn-secondary">🔵 ВКонтакте</a>
                         {% endif %}
                         {% if consultant.social_telegram %}
-                        <a href="{{ consultant.social_telegram }}" target="_blank" class="btn btn-secondary">✈️ Telegram</a>
+                        <a href="{{ consultant.social_telegram }}" target="_blank" class="btn btn-secondary">✈️ Телеграм</a>
                         {% endif %}
                         {% if consultant.social_youtube %}
-                        <a href="{{ consultant.social_youtube }}" target="_blank" class="btn btn-secondary">📺 YouTube</a>
+                        <a href="{{ consultant.social_youtube }}" target="_blank" class="btn btn-secondary">📺 Ютуб</a>
                         {% endif %}
                         {% if consultant.website %}
                         <a href="{{ consultant.website }}" target="_blank" class="btn btn-secondary">🌐 Веб-сайт</a>
@@ -290,7 +290,7 @@
                                 <input type="text" name="middle_name" value="{{ consultant.middle_name }}">
                             </div>
                             <div class="form-group">
-                                <label>Email *</label>
+                                <label>Почта *</label>
                                 <input type="email" name="email" value="{{ consultant.email }}" required>
                             </div>
                         </div>
@@ -300,8 +300,8 @@
                                 <input type="tel" name="phone" value="{{ consultant.phone }}" required>
                             </div>
                             <div class="form-group">
-                                <label>Telegram username</label>
-                                <input type="text" name="telegram_nickname" value="{{ consultant.telegram_nickname }}" placeholder="@username">
+                                <label>Ник в Телеграм</label>
+                                <input type="text" name="telegram_nickname" value="{{ consultant.telegram_nickname }}" placeholder="@ник">
                             </div>
                         </div>
                     </div>
@@ -328,7 +328,7 @@
                         <h3>Видео</h3>
                         <div class="form-group">
                             <input type="text" name="video_link" value="{{ consultant.video_link }}" placeholder="https://youtube.com/watch?v=...">
-                            <small>Ссылка на YouTube или другое видео</small>
+                            <small>Ссылка на Ютуб или другое видео</small>
                         </div>
                     </div>
 
@@ -336,23 +336,23 @@
                         <h3>Социальные сети</h3>
                         <div class="social-links">
                             <div class="form-group">
-                                <label>Instagram</label>
+                                <label>Инстаграм</label>
                                 <input type="text" name="social_instagram" value="{{ consultant.social_instagram }}" placeholder="https://instagram.com/...">
                             </div>
                             <div class="form-group">
-                                <label>Facebook</label>
+                                <label>Фейсбук</label>
                                 <input type="text" name="social_facebook" value="{{ consultant.social_facebook }}" placeholder="https://facebook.com/...">
                             </div>
                             <div class="form-group">
-                                <label>VK</label>
+                                <label>ВКонтакте</label>
                                 <input type="text" name="social_vk" value="{{ consultant.social_vk }}" placeholder="https://vk.com/...">
                             </div>
                             <div class="form-group">
-                                <label>Telegram</label>
+                                <label>Телеграм</label>
                                 <input type="text" name="social_telegram" value="{{ consultant.social_telegram }}" placeholder="https://t.me/...">
                             </div>
                             <div class="form-group">
-                                <label>YouTube</label>
+                                <label>Ютуб</label>
                                 <input type="text" name="social_youtube" value="{{ consultant.social_youtube }}" placeholder="https://youtube.com/...">
                             </div>
                             <div class="form-group">

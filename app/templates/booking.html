@@ -558,11 +558,11 @@
                                         {% if booking.booking_end_time %} – {{ booking.booking_end_time|time('H:i') }}{% endif %}
                                     </p>
                                     <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
-                                    {% if booking.client_email %}<p><strong>Email:</strong> {{ booking.client_email }}</p>{% endif %}
+                                    {% if booking.client_email %}<p><strong>Почта:</strong> {{ booking.client_email }}</p>{% endif %}
                                     <p><strong>Календарь:</strong> {{ booking.calendar.name }}</p>
                                 </div>
                                 {% if booking.notes %}<p style="margin-top: 10px;"><strong>Примечания:</strong> {{ booking.notes }}</p>{% endif %}
-                                <span class="status-badge status-{{ booking.status }}">{{ booking.get_status_display }}</span>
+                                <span class="status-badge status-{{ booking.status }}">{{ booking.status|booking_status }}</span>
                             </div>
                             <div class="booking-actions">
                                 {% if booking.status == 'pending' %}
@@ -613,11 +613,11 @@
                                         {% if booking.booking_end_time %} – {{ booking.booking_end_time|time('H:i') }}{% endif %}
                                     </p>
                                     <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
-                                    {% if booking.client_email %}<p><strong>Email:</strong> {{ booking.client_email }}</p>{% endif %}
+                                    {% if booking.client_email %}<p><strong>Почта:</strong> {{ booking.client_email }}</p>{% endif %}
                                     <p><strong>Календарь:</strong> {{ booking.calendar.name }}</p>
                                 </div>
                                 {% if booking.notes %}<p style="margin-top: 10px;"><strong>Примечания:</strong> {{ booking.notes }}</p>{% endif %}
-                                <span class="status-badge status-{{ booking.status }}">{{ booking.get_status_display }}</span>
+                                <span class="status-badge status-{{ booking.status }}">{{ booking.status|booking_status }}</span>
                             </div>
                         </div>
                         {% endfor %}
@@ -792,8 +792,8 @@
             if (time) parts.push('<p class="time">🕐 ' + time + '</p>');
             if (service) parts.push('<p>Услуга: ' + service + '</p>');
             if (phone) parts.push('<p>Телефон: ' + phone + '</p>');
-            if (email) parts.push('<p>Email: ' + email + '</p>');
-            if (telegram) parts.push('<p>Telegram: ' + telegram + '</p>');
+            if (email) parts.push('<p>Почта: ' + email + '</p>');
+            if (telegram) parts.push('<p>Телеграм: ' + telegram + '</p>');
             var actionUrl = window.location.pathname + (window.location.search || '');
             var csrf = (document.getElementById('csrfToken') && document.getElementById('csrfToken').value) || '';
             var actionsHtml = [];

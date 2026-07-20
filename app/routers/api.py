@@ -80,7 +80,7 @@ async def api_login(request: Request, db: Session = Depends(get_db)):
     if not user or not verify_password(password, user.password):
         return JSONResponse({"error": "Неверный логин/пароль"}, status_code=401)
     if not user.is_active:
-        return JSONResponse({"error": "Подтвердите email. Проверьте почту."}, status_code=403)
+        return JSONResponse({"error": "Подтвердите почту. Проверьте письмо."}, status_code=403)
     login_user(request, user)
     return {"message": "OK", "email": user.email}
 
@@ -141,7 +141,7 @@ async def confirm_booking_telegram(request: Request, db: Session = Depends(get_d
         send_telegram_to_client(booking.telegram_id, format_client_booked_message(booking))
     except Exception:
         pass
-    return {"success": True, "message": "Telegram привязан к записи"}
+    return {"success": True, "message": "Телеграм привязан к записи"}
 
 
 @router.post("/specialist/connect-telegram")
@@ -170,7 +170,7 @@ async def confirm_specialist_telegram(request: Request, db: Session = Depends(ge
     integration.telegram_link_token = None
     integration.telegram_link_token_created_at = None
     db.commit()
-    return {"success": True, "message": "Telegram подключен"}
+    return {"success": True, "message": "Телеграм подключен"}
 
 
 @router.post("/telegram/client-bookings")
@@ -282,4 +282,4 @@ async def confirm_booking_telegram_browser_api(request: Request, db: Session = D
         send_telegram_to_client(booking.telegram_id, format_client_booked_message(booking))
     except Exception:
         pass
-    return {"success": True, "message": "Telegram привязан, сообщение отправлено"}
+    return {"success": True, "message": "Телеграм привязан, сообщение отправлено"}

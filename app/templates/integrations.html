@@ -89,9 +89,9 @@
     <div class="container">
         <div class="nav-header">
             <h1 class="brand-title">
-                <a href="/" class="brand-link" aria-label="allyourclients — на главную">
-                    <span class="brand-badge" aria-hidden="true">a</span>
-                    <span class="brand-name">allyourclients</span>
+                <a href="/" class="brand-link" aria-label="{{ site_brand_name }} — на главную">
+                    <span class="brand-badge" aria-hidden="true">В</span>
+                    <span class="brand-name">{{ site_brand_name }}</span>
                 </a>
                 <span class="brand-page">/ Интеграции</span>
             </h1>
@@ -122,7 +122,7 @@
                 <div class="integration-header">
                     <h3>
                         <span class="integration-icon">✈️</span>
-                        Telegram
+                        Телеграм
                     </h3>
                     {% if integration.telegram_connected %}
                     <span class="status-badge status-connected">Подключено</span>
@@ -134,42 +134,42 @@
                 </div>
 
                 <div class="integration-description">
-                    <p>Получайте уведомления о новых записях в Telegram. Создайте бота через @BotFather 
+                    <p>Получайте уведомления о новых записях в Телеграм. Создайте бота через @BotFather 
                     и подключите его к системе для автоматических уведомлений.</p>
                 </div>
 
                 {% if integration.telegram_connected %}
                 <div>
-                    <p style="margin: 0 0 10px 0; color: #0c5460;">Бот Telegram подключён.</p>
+                    <p style="margin: 0 0 10px 0; color: #0c5460;">Бот Телеграм подключён.</p>
                     {% if integration.telegram_chat_id %}
-                    <p style="margin-top: 10px; color: #666;">Chat ID: {{ integration.telegram_chat_id }}</p>
+                    <p style="margin-top: 10px; color: #666;">Идентификатор чата: {{ integration.telegram_chat_id }}</p>
                     {% endif %}
                     <form method="POST" action="/integrations/" style="margin-top: 15px;">
                         
                         <input type="hidden" name="action" value="disconnect_telegram">
-                        <button type="submit" class="btn btn-secondary">Отключить Telegram</button>
+                        <button type="submit" class="btn btn-secondary">Отключить Телеграм</button>
                     </form>
                 </div>
                 {% else %}
                 <div>
                     {% if integration.telegram_enabled %}
-                    <p style="margin-bottom: 16px;">Подключите Telegram - уведомления о новых записях и напоминания о консультациях будут приходить в приложение.</p>
+                    <p style="margin-bottom: 16px;">Подключите Телеграм - уведомления о новых записях и напоминания о консультациях будут приходить в приложение.</p>
                     <p style="margin-bottom: 8px;">
-                        <a href="/integrations/telegram/connect-app/" class="btn" style="display: inline-block;">📱 Подключить через бота Telegram</a>
+                        <a href="/integrations/telegram/connect-app/" class="btn" style="display: inline-block;">📱 Подключить через бота Телеграм</a>
                     </p>
                     <p style="font-size: 14px; color: #666;">Откроется бот - нажмите «Подтвердить подключение» в чате.</p>
                     <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
-                    <p style="font-size: 14px; color: #666; margin-bottom: 12px;">Или вручную (токен и Chat ID):</p>
+                    <p style="font-size: 14px; color: #666; margin-bottom: 12px;">Или вручную (токен и идентификатор чата):</p>
                     <form method="POST" class="connect-form">
                         
                         <input type="hidden" name="action" value="connect_telegram">
                         <div class="form-group">
                             <label>Токен бота:</label>
                             <input type="text" name="bot_token" placeholder="123456:ABC-DEF..." value="">
-                            <small>Получите токен у @BotFather в Telegram</small>
+                            <small>Получите токен у @BotFather в Телеграм</small>
                         </div>
                         <div class="form-group">
-                            <label>Chat ID:</label>
+                            <label>Идентификатор чата:</label>
                             <input type="text" name="chat_id" placeholder="123456789" value="">
                             <small>ID чата для отправки уведомлений</small>
                         </div>

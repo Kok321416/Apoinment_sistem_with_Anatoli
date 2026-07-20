@@ -68,7 +68,7 @@
                     <input type="text" name="name" value="{{ card.name|default('') }}" placeholder="Необязательно">
                 </div>
                 <div class="form-group">
-                    <label>Email</label>
+                    <label>Почта</label>
                     <input type="email" name="email" value="{{ card.email|default('') }}" placeholder="Необязательно">
                 </div>
                 <div class="form-group">
@@ -76,8 +76,8 @@
                     <input type="text" name="phone" value="{{ card.phone|default('') }}" placeholder="Необязательно">
                 </div>
                 <div class="form-group">
-                    <label>Telegram (ник или ссылка)</label>
-                    <input type="text" name="telegram" value="{{ card.telegram|default('') }}" placeholder="@username или t.me/...">
+                    <label>Телеграм (ник или ссылка)</label>
+                    <input type="text" name="telegram" value="{{ card.telegram|default('') }}" placeholder="@ник или t.me/...">
                 </div>
                 <div class="form-group">
                     <label>Примечания</label>
@@ -94,7 +94,7 @@
                     <a href="mailto:{{ card.email }}">📧 Написать на почту</a>
                 {% endif %}
                 {% if card.telegram %}
-                    <a href="https://t.me/{{ card.telegram|cut('@') }}" target="_blank" rel="noopener">✈️ Открыть в Telegram</a>
+                    <a href="https://t.me/{{ card.telegram|cut('@') }}" target="_blank" rel="noopener">✈️ Открыть в Телеграм</a>
                 {% endif %}
             </div>
             {% endif %}
@@ -114,13 +114,13 @@
                         <span class="date">{{ b.booking_date|date('d.m.Y') }} {{ b.booking_time|time('H:i') }}</span>
                         <span class="service"> — {{ b.service.name }}{% if b.calendar %} ({{ b.calendar.name }}){% endif %}</span>
                         <br>
-                        <span class="status status-{{ b.status }}">{{ b.get_status_display }}</span>
+                        <span class="status status-{{ b.status }}">{{ b.status|booking_status }}</span>
                         {% if b.notes %}<br><small>{{ b.notes }}</small>{% endif %}
                     </li>
                     {% endfor %}
                 </ul>
             {% else %}
-                <p style="color: var(--text-muted);">Пока нет записей по этой карточке. История строится по карточке, телефону, email и Telegram.</p>
+                <p style="color: var(--text-muted);">Пока нет записей по этой карточке. История строится по карточке, телефону, email и Телеграм.</p>
             {% endif %}
         </div>
 

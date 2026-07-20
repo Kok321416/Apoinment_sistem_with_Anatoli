@@ -29,11 +29,11 @@
             <label>Быстрый вход:</label>
             {% if telegram_bot_username %}
             <div class="auth-methods">
-                <a href="/accounts/telegram/login/" class="auth-method">Telegram</a>
+                <a href="/accounts/telegram/login/" class="auth-method">Телеграм</a>
             </div>
             <p class="hint">Откроется бот - подтвердите вход кнопкой в чате.</p>
             {% else %}
-            <p class="hint">Telegram-вход временно недоступен (не настроен бот).</p>
+            <p class="hint">Вход через Телеграм временно недоступен (не настроен бот).</p>
             {% endif %}
         </div>
 
@@ -41,7 +41,7 @@
             <form method="POST" action="/login/">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <div class="form-group">
-                    <label for="email">Email:</label>
+                    <label for="email">Почта:</label>
                     <input type="email" id="email" name="email" required placeholder="your@email.com" value="{{ resend_email|default('') }}">
                 </div>
                 <div class="form-group">

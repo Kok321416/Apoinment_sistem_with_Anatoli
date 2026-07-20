@@ -108,15 +108,15 @@
                     <tr><td class="summary-label">Имя</td><td class="summary-value">{{ booking.client_name }}</td></tr>
                     <tr><td class="summary-label">Телефон</td><td class="summary-value">{{ booking.client_phone|default('—') }}</td></tr>
                     {% if booking.client_email %}
-                    <tr><td class="summary-label">Email</td><td class="summary-value">{{ booking.client_email }}</td></tr>
+                    <tr><td class="summary-label">Почта</td><td class="summary-value">{{ booking.client_email }}</td></tr>
                     {% endif %}
-                    <tr><td class="summary-label">Статус</td><td class="summary-value"><strong>{{ booking.get_status_display }}</strong></td></tr>
+                    <tr><td class="summary-label">Статус</td><td class="summary-value"><strong>{{ booking.status|booking_status }}</strong></td></tr>
                 </tbody>
             </table>
             {% if booking.telegram_id %}
-            <p class="summary-done">✓ Сообщение о записи отправлено вам в Telegram.</p>
+            <p class="summary-done">✓ Сообщение о записи отправлено вам в Телеграм.</p>
             {% else %}
-            <p class="summary-done summary-done-muted">Подтвердите Telegram по кнопке ниже — и придёт сообщение о записи и напоминания.</p>
+            <p class="summary-done summary-done-muted">Подтвердите Телеграм по кнопке ниже — и придёт сообщение о записи и напоминания.</p>
             {% endif %}
         </div>
 
@@ -133,24 +133,24 @@
             </p>
             <p><strong>Имя:</strong> {{ booking.client_name }}</p>
             <p><strong>Телефон:</strong> {{ booking.client_phone|default('—') }}</p>
-            {% if booking.client_email %}<p><strong>Email:</strong> {{ booking.client_email }}</p>{% endif %}
-            <p style="margin-top: 16px; color: #6b7280;">Статус: <strong>{{ booking.get_status_display }}</strong></p>
+            {% if booking.client_email %}<p><strong>Почта:</strong> {{ booking.client_email }}</p>{% endif %}
+            <p style="margin-top: 16px; color: #6b7280;">Статус: <strong>{{ booking.status|booking_status }}</strong></p>
 
             {% if booking.link_token and telegram_bot_username %}
             <div class="telegram-block">
-                <h3>Получать уведомления в Telegram?</h3>
-                <p>Подтвердите Telegram — и вам сразу придёт сообщение о записи в бота, а перед консультацией — напоминания за 24 часа и за 1 час.</p>
+                <h3>Получать уведомления в Телеграм?</h3>
+                <p>Подтвердите Телеграм — и вам сразу придёт сообщение о записи в бота, а перед консультацией — напоминания за 24 часа и за 1 час.</p>
                 <p style="margin-bottom: 16px;"><strong>Выберите способ:</strong></p>
                 <p style="margin-bottom: 10px;">
                     <a id="btnOpenTelegram" href="https://t.me/{{ telegram_bot_username }}?start=link_{{ booking.link_token }}" class="btn-telegram" target="_blank" rel="noopener" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=link_{{ booking.link_token }}">
-                        Подтвердить в приложении Telegram
+                        Подтвердить в приложении Телеграм
                     </a>
                 </p>
                 <p style="margin: 8px 0 0 0;">
                     <a href="/book/confirm-telegram/{{ booking.link_token }}/" class="btn-telegram btn-telegram-secondary">Подтвердить в браузере</a>
                 </p>
                 <p class="telegram-success-note" style="margin: 16px 0 0 0; font-size: 13px; color: #059669; display: none;">
-                    ✓ Готово! Проверьте Telegram — сообщение о записи уже должно прийти.
+                    ✓ Готово! Проверьте Телеграм — сообщение о записи уже должно прийти.
                 </p>
                 <p style="margin: 12px 0 0 0; font-size: 13px; color: #6366f1;">Необязательно — запись уже сохранена.</p>
             </div>

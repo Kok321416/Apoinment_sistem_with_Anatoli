@@ -154,11 +154,11 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
             password = form.get("password", "")
             password_confirm = form.get("password_confirm", "")
             if not email or not password:
-                error = "Укажите email и пароль"
+                error = "Укажите почту и пароль"
             elif password != password_confirm:
                 error = "Пароли не совпадают"
             elif db.query(User).filter(User.username == email).first():
-                error = "Пользователь с таким email уже зарегистрирован"
+                error = "Пользователь с такой почтой уже зарегистрирован"
             else:
                 first_name, last_name, middle_name = parse_fio(fio)
                 new_user = User(
@@ -180,7 +180,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                 ensure_email_address(db, new_user, email, verified=False)
                 if not send_user_verification_email(db, new_user):
                     db.rollback()
-                    error = "Не удалось отправить письмо. Проверьте email или обратитесь к администратору."
+                    error = "Не удалось отправить письмо. Проверьте почту или обратитесь к администратору."
                 else:
                     return templates.TemplateResponse("email_verification_sent.html", page_context(
                         request, db, user, email=email,
@@ -196,9 +196,9 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/", status_code=302)
     error = success = None
     if request.query_params.get("verified") == "1":
-        success = "Email подтверждён. Теперь можно войти."
+        success = "Почта подтверждена. Теперь можно войти."
     if request.query_params.get("error") == "telegram_expired":
-        error = "Ссылка входа через Telegram истекла. Попробуйте снова."
+        error = "Ссылка входа через Телеграм истекла. Попробуйте снова."
     if request.method == "POST":
         form = await request.form()
         if not _form_csrf_ok(request, form):
@@ -218,9 +218,9 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
             else:
                 db_user = db.query(User).filter(User.username == email).first()
                 if not db_user or not verify_password(password, db_user.password):
-                    error = "Неверный email или пароль"
+                    error = "Неверная почта или пароль"
                 elif not db_user.is_active:
-                    error = "Подтвердите email. Проверьте почту или отправьте письмо повторно ниже."
+                    error = "Подтвердите почту. Проверьте письмо или отправьте его повторно ниже."
                 else:
                     login_user(request, db_user)
                     return RedirectResponse("/", status_code=302)
@@ -687,7 +687,7 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
                     success = "Профиль успешно обновлен!"
                 except IntegrityError:
                     db.rollback()
-                    error = "Ошибка при обновлении: email уже используется другим аккаунтом"
+                    error = "Ошибка при обновлении: почта уже используется другим аккаунтом"
                 except Exception as e:
                     db.rollback()
                     error = f"Ошибка при обновлении: {e}"
@@ -804,7 +804,7 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
         if action == "toggle_telegram":
             integration.telegram_enabled = not integration.telegram_enabled
             db.commit()
-            success = "Telegram уведомления включены" if integration.telegram_enabled else "Telegram уведомления отключены"
+            success = "Уведомления Телеграм включены" if integration.telegram_enabled else "Уведомления Телеграм отключены"
         elif action == "disconnect_telegram":
             integration.telegram_connected = False
             integration.telegram_bot_token = None
@@ -812,7 +812,7 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
             integration.telegram_link_token = None
             integration.telegram_link_token_created_at = None
             db.commit()
-            success = "Telegram отключён."
+            success = "Телеграм отключён."
     return templates.TemplateResponse("integrations.html", page_context(
         request, db, user, integration=integration, success=success, error=error,
     ))

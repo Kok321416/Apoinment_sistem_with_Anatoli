@@ -2,6 +2,7 @@ from datetime import date, datetime, time
 
 from fastapi.templating import Jinja2Templates
 
+from app.branding import auth_provider_label, booking_status_label
 from app.config import get_settings
 from app.security.csrf import ensure_csrf_token
 from app.models import Consultant, EmailAddress, SocialAccount, User
@@ -108,6 +109,8 @@ templates.env.filters["media_url"] = media_url
 templates.env.filters["date"] = django_date
 templates.env.filters["time"] = django_time
 templates.env.filters["truncatewords"] = truncatewords
+templates.env.filters["booking_status"] = booking_status_label
+templates.env.filters["auth_provider"] = auth_provider_label
 
 
 def build_header_context(db, user) -> dict:
@@ -159,6 +162,7 @@ def page_context(request, db, user=None, **extra):
         "telegram_bot_username": settings.telegram_bot_username,
         "show_telegram_welcome": _session_pop(request, "show_telegram_welcome", False),
         "url_for": url_for,
+        "site_brand_name": settings.site_brand_name,
         **build_header_context(db, user),
         **extra,
     }

@@ -399,13 +399,13 @@
         {% if show_client_choice %}
         <div class="book-card">
             <h2>Вход или регистрация</h2>
-            <p class="contact-intro">Войдите через Telegram — после записи вам сразу придёт сообщение в бота и напоминания. Или войдите по телефону / укажите данные для записи.</p>
+            <p class="contact-intro">Войдите через Телеграм — после записи вам сразу придёт сообщение в бота и напоминания. Или войдите по телефону / укажите данные для записи.</p>
             <div class="client-choice-grid">
                 <div class="client-choice-card">
-                    <h3>Вход через Telegram</h3>
+                    <h3>Вход через Телеграм</h3>
                     <p class="client-choice-desc">После записи придёт сообщение в бота и напоминания перед консультацией</p>
                     <a href="/accounts/telegram/login/?next=/book/{{ calendar.id }}/" class="btn-submit btn-telegram-inline" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;">
-                        Войти через Telegram
+                        Войти через Телеграм
                     </a>
                 </div>
                 <div class="client-choice-card">
@@ -419,7 +419,7 @@
                             <input type="tel" id="login_phone" name="client_phone" required placeholder="+7 (999) 123-45-67">
                         </div>
                         <div class="form-group">
-                            <label for="login_email">Email (необязательно)</label>
+                            <label for="login_email">Почта (необязательно)</label>
                             <input type="email" id="login_email" name="client_email" placeholder="email@example.com">
                         </div>
                         <button type="submit" class="btn-submit">Войти</button>
@@ -435,7 +435,7 @@
         {% elif show_contact_form %}
         <div class="book-card">
             <h2>Ваши контактные данные</h2>
-            <p class="contact-intro">Укажите данные для записи. Они сохранятся в карточке клиента и понадобятся для связи и напоминаний в Telegram.</p>
+            <p class="contact-intro">Укажите данные для записи. Они сохранятся в карточке клиента и понадобятся для связи и напоминаний в Телеграм.</p>
             <form method="POST" id="contactForm">
                 
                 <input type="hidden" name="action" value="set_contact">
@@ -449,12 +449,12 @@
                     <small>Для связи и напоминаний</small>
                 </div>
                 <div class="form-group">
-                    <label for="client_telegram">Telegram (ник)</label>
-                    <input type="text" id="client_telegram" name="client_telegram" placeholder="@username или t.me/username (необязательно)" value="{{ contact_telegram|default('') }}">
+                    <label for="client_telegram">Телеграм (ник)</label>
+                    <input type="text" id="client_telegram" name="client_telegram" placeholder="@ник или t.me/ник (необязательно)" value="{{ contact_telegram|default('') }}">
                     <small>Можно указать сейчас или подтвердить в боте после записи — тогда будут приходить напоминания.</small>
                 </div>
                 <div class="form-group">
-                    <label for="client_email">Email</label>
+                    <label for="client_email">Почта</label>
                     <input type="email" id="client_email" name="client_email" placeholder="email@example.com" value="{{ contact_email|default('') }}">
                 </div>
                 <button type="submit" class="btn-submit">Продолжить к записи</button>
