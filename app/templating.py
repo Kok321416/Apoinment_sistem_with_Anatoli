@@ -1,6 +1,7 @@
 from fastapi.templating import Jinja2Templates
 
 from app.config import get_settings
+from app.security.csrf import ensure_csrf_token
 from app.models import Consultant, EmailAddress, SocialAccount, User
 
 settings = get_settings()
@@ -82,6 +83,7 @@ def page_context(request, db, user=None, **extra):
     ctx = {
         "request": request,
         "user": user,
+        "csrf_token": ensure_csrf_token(request),
         "telegram_bot_username": settings.telegram_bot_username,
         "show_telegram_welcome": request.session.pop("show_telegram_welcome", False),
         "url_for": url_for,

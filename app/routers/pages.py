@@ -27,6 +27,7 @@ from app.models import (
     TimeSlot,
     User,
 )
+from app.security.csrf import validate_csrf_token
 from app.services.bookings import create_public_booking, mark_past_bookings_completed, parse_fio
 from app.services.email_verification import ensure_email_address, resend_verification_email, send_user_verification_email
 from app.services.slots import get_available_slots
@@ -37,6 +38,11 @@ router = APIRouter(tags=["pages"])
 settings = get_settings()
 DAYS_NAMES = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 DAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+
+
+def _form_csrf_ok(request: Request, form) -> bool:
+    token = form.get("csrf_token") or form.get("csrfmiddlewaretoken")
+    return validate_csrf_token(request, token)
 
 
 def _optional_user(request: Request, db: Session):
@@ -76,7 +82,9 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         fio = (form.get("fio") or "").strip()
         phone = (form.get("phone") or "").strip()
         auth_method = form.get("auth_method", "email")
-        if not fio or not phone:
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
+        elif not fio or not phone:
             error = "Укажите ФИО и номер телефона"
         elif auth_method == "yandex":
             error = "Вход через Яндекс будет доступен позже."
@@ -136,7 +144,9 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
         error = "Ссылка входа через Telegram истекла. Попробуйте снова."
     if request.method == "POST":
         form = await request.form()
-        if form.get("action") == "resend_verification":
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
+        elif form.get("action") == "resend_verification":
             email_resend = form.get("email", "")
             ok, msg = resend_verification_email(db, email_resend)
             if ok:
@@ -165,7 +175,9 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/logout/")
 async def logout_page(request: Request):
-    logout_user(request)
+    form = await request.form()
+    if _form_csrf_ok(request, form):
+        logout_user(request)
     return RedirectResponse("/", status_code=302)
 
 

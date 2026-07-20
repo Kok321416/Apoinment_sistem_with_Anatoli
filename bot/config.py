@@ -15,6 +15,7 @@ if _site and not _site.startswith("http"):
 class BotSettings:
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_bot_username: str = os.getenv("TELEGRAM_BOT_USERNAME", "")
+    bot_api_secret: str = os.getenv("BOT_API_SECRET", "")
     admin_telegram_username: str = os.getenv("ADMIN_TELEGRAM_USERNAME", "andrievskypsy")
     site_url: str = _site
 

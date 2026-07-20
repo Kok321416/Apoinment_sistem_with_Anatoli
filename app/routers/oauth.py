@@ -9,7 +9,7 @@ from app.auth.session import get_current_user, login_user
 from app.config import get_settings
 from app.database import get_db
 from app.models import SocialAccount
-from app.services.telegram_auth import create_login_request, get_completed_login
+from app.services.telegram_auth import consume_completed_login, create_login_request, get_completed_login
 from app.templating import page_context, templates
 
 router = APIRouter(prefix="/accounts", tags=["oauth"])
@@ -96,6 +96,7 @@ async def telegram_complete_login(complete_token: str, request: Request, db: Ses
         return RedirectResponse("/login/", status_code=302)
     login_user(request, user)
     request.session["show_telegram_welcome"] = True
+    consume_completed_login(db, req)
     return RedirectResponse(req.next_url or "/", status_code=302)
 
 

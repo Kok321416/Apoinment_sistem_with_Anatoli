@@ -205,7 +205,14 @@ def get_completed_login(db: Session, complete_token: str) -> TelegramLoginReques
     req = db.query(TelegramLoginRequest).filter(
         TelegramLoginRequest.complete_token == complete_token,
         TelegramLoginRequest.completed.is_(True),
+        TelegramLoginRequest.consumed_at.is_(None),
     ).first()
     if not req or req.expires_at < datetime.utcnow():
         return None
     return req
+
+
+def consume_completed_login(db: Session, req: TelegramLoginRequest) -> None:
+    req.consumed_at = datetime.utcnow()
+    req.complete_token = None
+    db.commit()

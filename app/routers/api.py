@@ -1,20 +1,18 @@
 import hashlib
 import hmac
 import json
-import uuid
 from datetime import datetime
-from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.auth.passwords import hash_password, verify_password
-from app.auth.session import AuthUser, get_current_user, login_user, logout_user
+from app.auth.session import get_current_user, login_user, logout_user
 from app.config import get_settings
 from app.database import get_db
-from app.deps import get_consultant
 from app.models import Booking, Calendar, Category, Consultant, Integration, User
+from app.security.bot_api import verify_bot_request
 from app.services.bookings import parse_fio
 from app.services.email_verification import ensure_email_address, send_user_verification_email
 from app.services.telegram import format_client_booked_message, send_telegram_to_client
@@ -23,11 +21,11 @@ router = APIRouter(prefix="/api", tags=["api"])
 settings = get_settings()
 
 
-def _check_bot_token(request: Request) -> bool:
-    token = settings.telegram_bot_token
-    if not token:
-        return False
-    return request.headers.get("X-Bot-Token", "").strip() == token
+async def _require_bot(request: Request) -> bytes:
+    body = await request.body()
+    if not verify_bot_request(request, body):
+        raise JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
+    return body
 
 
 @router.post("/auth/register")
@@ -95,9 +93,10 @@ async def api_logout(request: Request):
 
 @router.post("/telegram/confirm-login")
 async def confirm_telegram_login(request: Request, db: Session = Depends(get_db)):
-    if not _check_bot_token(request):
+    body = await request.body()
+    if not verify_bot_request(request, body):
         return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
-    data = await request.json()
+    data = json.loads(body)
     token = (data.get("token") or "").strip()
     telegram_id = data.get("telegram_id")
     if not token or telegram_id is None:
@@ -123,7 +122,10 @@ async def confirm_telegram_login(request: Request, db: Session = Depends(get_db)
 
 @router.post("/booking/confirm-telegram")
 async def confirm_booking_telegram(request: Request, db: Session = Depends(get_db)):
-    data = await request.json()
+    body = await request.body()
+    if not verify_bot_request(request, body):
+        return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
+    data = json.loads(body)
     link_token = (data.get("link_token") or "").strip()
     telegram_id = data.get("telegram_id")
     if not link_token or telegram_id is None:
@@ -144,7 +146,10 @@ async def confirm_booking_telegram(request: Request, db: Session = Depends(get_d
 
 @router.post("/specialist/connect-telegram")
 async def confirm_specialist_telegram(request: Request, db: Session = Depends(get_db)):
-    data = await request.json()
+    body = await request.body()
+    if not verify_bot_request(request, body):
+        return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
+    data = json.loads(body)
     link_token = (data.get("link_token") or "").strip()
     telegram_id = data.get("telegram_id")
     if not link_token or telegram_id is None:
@@ -170,9 +175,10 @@ async def confirm_specialist_telegram(request: Request, db: Session = Depends(ge
 
 @router.post("/telegram/client-bookings")
 async def api_telegram_client_bookings(request: Request, db: Session = Depends(get_db)):
-    if not _check_bot_token(request):
+    body = await request.body()
+    if not verify_bot_request(request, body):
         return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
-    data = await request.json()
+    data = json.loads(body)
     telegram_id = data.get("telegram_id")
     if telegram_id is None:
         return JSONResponse({"success": False, "error": "telegram_id required"}, status_code=400)
@@ -205,9 +211,10 @@ async def api_telegram_client_bookings(request: Request, db: Session = Depends(g
 
 @router.post("/telegram/specialist-bookings")
 async def api_telegram_specialist_bookings(request: Request, db: Session = Depends(get_db)):
-    if not _check_bot_token(request):
+    body = await request.body()
+    if not verify_bot_request(request, body):
         return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
-    data = await request.json()
+    data = json.loads(body)
     raw = data.get("telegram_chat_id")
     if raw is None:
         return JSONResponse({"success": False, "error": "telegram_chat_id required"}, status_code=400)

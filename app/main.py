@@ -21,6 +21,7 @@ app.add_middleware(
     session_cookie=settings.session_cookie,
     max_age=settings.session_max_age,
     https_only=settings.site_url.startswith("https://"),
+    same_site=settings.session_same_site,
 )
 
 settings.media_root.mkdir(parents=True, exist_ok=True)
@@ -35,7 +36,24 @@ app.include_router(oauth.router)
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
+    if not settings.debug:
+        if settings.secret_key in ("", "change-me-in-production"):
+            logger.critical("SECRET_KEY is weak or default — set a long random value in production")
+        if not settings.bot_api_secret:
+            logger.warning("BOT_API_SECRET is not set — bot API uses TELEGRAM_BOT_TOKEN header only")
     logger.info("FastAPI app started. SITE_URL=%s", settings.site_url)
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    if settings.site_url.startswith("https://"):
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
 
 
 @app.middleware("http")

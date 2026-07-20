@@ -44,6 +44,8 @@ class Settings:
 
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_bot_username: str = os.getenv("TELEGRAM_BOT_USERNAME", "")
+    # Separate secret for bot -> API calls (recommended; do not reuse TELEGRAM_BOT_TOKEN in new setups)
+    bot_api_secret: str = os.getenv("BOT_API_SECRET", "")
     admin_telegram_username: str = os.getenv("ADMIN_TELEGRAM_USERNAME", "andrievskypsy")
 
     # SMTP для писем подтверждения email
@@ -63,6 +65,7 @@ class Settings:
 
     session_cookie: str = "session"
     session_max_age: int = 60 * 60 * 24 * 14
+    session_same_site: str = os.getenv("SESSION_SAME_SITE", "lax")
 
     @property
     def database_url(self) -> str:

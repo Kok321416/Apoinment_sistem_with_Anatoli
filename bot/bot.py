@@ -6,6 +6,7 @@ from collections import Counter
 
 import requests
 
+from bot.api_client import post_site_api
 from bot.config import get_bot_settings
 
 logger = logging.getLogger(__name__)
@@ -18,20 +19,10 @@ def get_site_url() -> str:
 
 
 def _fetch_site_api(path: str, json_data: dict) -> tuple[bool, dict | None]:
-    site_url = get_site_url().rstrip("/")
-    token = settings.telegram_bot_token
-    if not token or not site_url.startswith("http"):
+    status, data = post_site_api(path, json_data)
+    if status != 200 or not data:
         return False, None
-    url = f"{site_url}{path}"
-    try:
-        r = requests.post(url, json=json_data, timeout=10, headers={"X-Bot-Token": token})
-        if r.status_code != 200:
-            return False, None
-        data = r.json()
-        return data.get("success") is True, data
-    except Exception as e:
-        logger.debug("Site API %s: %s", path, e)
-        return False, None
+    return data.get("success") is True, data
 
 
 def send_telegram_message(chat_id, text, reply_markup=None) -> bool:
@@ -207,21 +198,17 @@ def handle_login_token(chat_id, user_id, username, first_name, token_str):
 
 
 def handle_login_confirm_callback(chat_id, user_id, callback_query_id, token_str, username, first_name):
-    api_url = f"{get_site_url().rstrip('/')}/api/telegram/confirm-login"
+    status, data = post_site_api(
+        "/api/telegram/confirm-login",
+        {
+            "token": token_str,
+            "telegram_id": user_id,
+            "username": username or "",
+            "first_name": first_name or "",
+        },
+    )
     try:
-        r = requests.post(
-            api_url,
-            json={
-                "token": token_str,
-                "telegram_id": user_id,
-                "username": username or "",
-                "first_name": first_name or "",
-            },
-            timeout=15,
-            headers={"X-Bot-Token": settings.telegram_bot_token or ""},
-        )
-        data = r.json() if r.text else {}
-        if r.status_code == 200 and data.get("success"):
+        if status == 200 and data and data.get("success"):
             answer_callback_query(callback_query_id, "Готово!")
             complete_url = data.get("complete_url", "")
             keyboard = {"inline_keyboard": [[{"text": "🌐 Открыть сайт", "url": complete_url}]]} if complete_url else None
@@ -232,7 +219,7 @@ def handle_login_confirm_callback(chat_id, user_id, callback_query_id, token_str
                 keyboard,
             )
         else:
-            msg = data.get("error", "Ссылка недействительна или истекла.")
+            msg = (data or {}).get("error", "Ссылка недействительна или истекла.")
             answer_callback_query(callback_query_id, msg[:200])
             send_telegram_message(chat_id, f"❌ {msg}")
     except Exception as e:
@@ -253,15 +240,16 @@ def handle_specialist_connect_telegram(chat_id, user_id, token_str):
 
 
 def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query_id, token_str):
-    api_url = f"{get_site_url().rstrip('/')}/api/specialist/connect-telegram/"
+    status, data = post_site_api(
+        "/api/specialist/connect-telegram",
+        {"link_token": token_str, "telegram_id": user_id},
+    )
     try:
-        r = requests.post(api_url, json={"link_token": token_str, "telegram_id": user_id}, timeout=15)
-        data = r.json() if r.text else {}
-        if r.status_code == 200 and data.get("success"):
+        if status == 200 and data and data.get("success"):
             answer_callback_query(callback_query_id, "Готово!")
             send_telegram_message(chat_id, "✅ <b>Telegram успешно подключён.</b>")
         else:
-            msg = data.get("error", "Ссылка недействительна.")
+            msg = (data or {}).get("error", "Ссылка недействительна.")
             answer_callback_query(callback_query_id, msg[:200])
             send_telegram_message(chat_id, f"❌ Не удалось подключить: {msg}")
     except Exception as e:
@@ -277,11 +265,13 @@ def handle_booking_link_confirm(chat_id, user_id, token_str):
 
 
 def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str):
-    api_url = f"{get_site_url().rstrip('/')}/api/booking/confirm-telegram/"
+    status, data = post_site_api(
+        "/api/booking/confirm-telegram",
+        {"link_token": token_str, "telegram_id": user_id},
+        timeout=10,
+    )
     try:
-        r = requests.post(api_url, json={"link_token": token_str, "telegram_id": user_id}, timeout=10)
-        data = r.json() if r.text else {}
-        if r.status_code == 200 and data.get("success"):
+        if status == 200 and data and data.get("success"):
             answer_callback_query(callback_query_id, "Готово!")
             send_telegram_message(chat_id, "✅ Ваш Telegram привязан к записи.")
         else:

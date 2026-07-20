@@ -33,7 +33,7 @@
         {% endif %}
 
         <form method="POST" action="/register/" id="register-form">
-            
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="auth_method" id="auth_method" value="email">
 
             <div class="form-group">

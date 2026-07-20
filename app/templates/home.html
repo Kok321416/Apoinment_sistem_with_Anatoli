@@ -26,7 +26,7 @@
                     </div>
                     <a href="/integrations/" class="btn btn-secondary" style="padding: 6px 12px; font-size: 14px; margin-right: 5px;">🔗 Интеграции</a>
                     <form method="POST" action="/logout/" style="display: inline;">
-                        
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn btn-secondary" style="padding: 8px 16px;">Выход</button>
                     </form>
                 {% else %}
