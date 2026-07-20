@@ -1,8 +1,7 @@
 name: Deploy to VPS
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
       - main
   workflow_dispatch:
@@ -13,16 +12,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
-    # Запускаем только при слиянии PR из develop в main
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event.pull_request.merged == true &&
-        github.event.pull_request.base.ref == 'main' &&
-        github.event.pull_request.head.ref == 'develop'
-      )
-    
+
     steps:
     - uses: actions/checkout@v4
 
@@ -41,13 +31,6 @@ jobs:
         fi
         echo "Required deploy secrets are set."
 
-    - name: Debug PR information
-      run: |
-        echo "PR Base Ref: ${{ github.event.pull_request.base.ref }}"
-        echo "PR Head Ref: ${{ github.event.pull_request.head.ref }}"
-        echo "PR Merged: ${{ github.event.pull_request.merged }}"
-        echo "PR State: ${{ github.event.pull_request.state }}"
-
     - name: Ensure app directory exists
       uses: appleboy/ssh-action@master
       with:
@@ -57,8 +40,6 @@ jobs:
         script: |
           set -e
           APP_DIR="${{ secrets.APP_DIR }}"
-          FULL_RESET_ONCE="${{ secrets.FULL_RESET_ONCE }}"
-          RESET_MARKER_FILE="$APP_DIR/.deploy_reset_done"
           if [ -z "$APP_DIR" ]; then
             echo "❌ Secret APP_DIR is required (example: /home/<user>/appointment-system)"
             exit 1
