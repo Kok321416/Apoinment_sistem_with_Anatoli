@@ -9,12 +9,19 @@ from app.auth.session import get_current_user, login_user
 from app.config import get_settings
 from app.database import get_db
 from app.models import SocialAccount, User
+from app.security.csrf import validate_csrf_token
+from app.services.email_verification import resend_verification_email, verify_email_code
 from app.services.telegram_auth import consume_completed_login, create_login_request, get_completed_login
 from app.templating import page_context, templates
 from app.utils.safe_redirect import safe_next_url
 
 router = APIRouter(prefix="/accounts", tags=["oauth"])
 settings = get_settings()
+
+
+def _form_csrf_ok(request: Request, form) -> bool:
+    token = form.get("csrf_token") or form.get("csrfmiddlewaretoken")
+    return validate_csrf_token(request, token)
 
 
 @router.get("/telegram/login/")
@@ -111,6 +118,42 @@ async def confirm_email(request: Request, token: str, db: Session = Depends(get_
         return RedirectResponse("/login/?verified=1&email=" + (db_user.email or ""), status_code=302)
     return templates.TemplateResponse("email_confirm_result.html", page_context(
         request, db, user, error=err, success=False,
+    ))
+
+
+@router.get("/verify-email/")
+@router.post("/verify-email/")
+async def verify_email_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if user and user.is_active:
+        return RedirectResponse("/dashboard/", status_code=302)
+    email = (request.query_params.get("email") or "").strip()
+    error = success = None
+    if request.method == "POST":
+        form = await request.form()
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
+            email = (form.get("email") or email or "").strip()
+        elif form.get("action") == "resend":
+            email = (form.get("email") or "").strip()
+            ok, msg = resend_verification_email(db, email)
+            if ok:
+                success = msg
+            else:
+                error = msg
+        else:
+            email = (form.get("email") or "").strip()
+            code = (form.get("code") or "").strip()
+            db_user, err = verify_email_code(db, email, code)
+            if db_user:
+                return RedirectResponse("/login/?verified=1&email=" + (db_user.email or email), status_code=302)
+            error = err
+    return templates.TemplateResponse("email_verification_sent.html", page_context(
+        request, db, user,
+        email=email,
+        error=error,
+        success=success,
+        email_verify_hours=settings.email_verify_hours,
     ))
 
 

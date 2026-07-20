@@ -9,7 +9,7 @@
                 <div class="app-header__account">{{ header_account_display }}</div>
             </div>
             <nav class="app-header__nav" aria-label="Действия кабинета">
-                <a href="/" class="btn btn--ghost btn--sm">На сайт</a>
+                <a href="/" class="btn btn--ghost btn--sm">На главную страницу</a>
                 <a href="/integrations/" class="btn btn--secondary btn--sm">Интеграции</a>
                 <form method="POST" action="/logout/">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

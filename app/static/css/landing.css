@@ -100,10 +100,12 @@
     font-weight: var(--font-weight-bold);
 }
 
-.hero__stat-label {
-    color: var(--text-secondary);
-    font-size: var(--font-size-body-sm);
+.stat-card__value--text {
+    font-size: var(--font-size-h3);
+    line-height: 1.3;
+    margin-bottom: var(--space-sm);
 }
+
 
 .hero__preview {
     padding: var(--space-3xl);
@@ -340,4 +342,15 @@
     margin: 0 0 var(--space-lg);
     color: var(--text-secondary);
     line-height: var(--line-height-body-lg);
+}
+
+.legal-list {
+    margin: 0 0 var(--space-xl);
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+    line-height: var(--line-height-body-lg);
+}
+
+.legal-list li {
+    margin-bottom: var(--space-sm);
 }

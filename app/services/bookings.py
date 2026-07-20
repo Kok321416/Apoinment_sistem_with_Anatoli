@@ -115,9 +115,7 @@ def create_public_booking(
     if not time_slot:
         return None, "Выбранное время не входит в доступные окна приёма."
 
-    break_minutes = calendar.break_between_services_minutes or 0
-    break_delta = timedelta(minutes=break_minutes)
-
+    max_per_day = calendar.max_services_per_day or 0
     existing_bookings = (
         db.query(Booking)
         .filter(
@@ -128,6 +126,22 @@ def create_public_booking(
         .with_for_update()
         .all()
     )
+    if max_per_day > 0 and len(existing_bookings) >= max_per_day:
+        return None, "Достигнут лимит записей на этот день."
+
+    from zoneinfo import ZoneInfo
+
+    from app.config import get_settings
+
+    tz = ZoneInfo(get_settings().timezone)
+    book_ahead_hours = calendar.book_ahead_hours or 24
+    min_start = datetime.now(tz) + timedelta(hours=book_ahead_hours)
+    start_aware = datetime.combine(booking_date, start_time_obj, tzinfo=tz)
+    if start_aware < min_start:
+        return None, f"Запись доступна минимум за {book_ahead_hours} ч. до начала."
+
+    break_minutes = calendar.break_between_services_minutes or 0
+    break_delta = timedelta(minutes=break_minutes)
 
     for booking in existing_bookings:
         if not booking.booking_end_time:

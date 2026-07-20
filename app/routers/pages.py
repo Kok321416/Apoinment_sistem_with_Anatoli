@@ -1,5 +1,4 @@
 import os
-import shutil
 import uuid
 from datetime import date, datetime
 from pathlib import Path
@@ -48,7 +47,8 @@ router = APIRouter(tags=["pages"])
 settings = get_settings()
 DAYS_NAMES = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 DAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-ALLOWED_PHOTO_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+ALLOWED_PHOTO_EXT = {".jpg", ".jpeg", ".png"}
+MAX_PHOTO_BYTES = 5 * 1024 * 1024
 
 
 def _form_csrf_ok(request: Request, form) -> bool:
@@ -87,19 +87,42 @@ def _parse_time(raw: str | None):
 def _save_profile_photo(consultant: Consultant, upload) -> str | None:
     if not upload or not getattr(upload, "filename", None):
         return None
+    from io import BytesIO
+
+    from PIL import Image, UnidentifiedImageError
+
     ext = Path(upload.filename).suffix.lower()
     if ext not in ALLOWED_PHOTO_EXT:
-        return "Допустимы только JPG, PNG, WebP или GIF"
+        return "Допустимы только JPG и PNG"
+    raw = upload.file.read(MAX_PHOTO_BYTES + 1)
+    if not raw:
+        return "Пустой файл изображения"
+    if len(raw) > MAX_PHOTO_BYTES:
+        return "Файл слишком большой (макс. 5 МБ)"
+    try:
+        image = Image.open(BytesIO(raw))
+        image.load()
+    except UnidentifiedImageError:
+        return "Файл не является изображением JPG или PNG"
+    if image.format not in ("JPEG", "PNG"):
+        return "Допустимы только JPG и PNG"
+    image = image.convert("RGB")
+    w, h = image.size
+    side = min(w, h)
+    left = (w - side) // 2
+    top = (h - side) // 2
+    image = image.crop((left, top, left + side, top + side))
+    image = image.resize((512, 512), Image.Resampling.LANCZOS)
+
     dest_dir = settings.media_root / "consultants" / str(consultant.id)
     dest_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"photo{ext}"
+    filename = "photo.jpg"
     dest_path = dest_dir / filename
     if consultant.profile_photo:
         old = settings.media_root / consultant.profile_photo.lstrip("/")
         if old.is_file():
             old.unlink(missing_ok=True)
-    with dest_path.open("wb") as out:
-        shutil.copyfileobj(upload.file, out)
+    image.save(dest_path, format="JPEG", quality=90, optimize=True)
     consultant.profile_photo = f"consultants/{consultant.id}/{filename}"
     return None
 
@@ -187,9 +210,39 @@ async def legacy_home_redirect():
 @router.get("/privacy/")
 @router.get("/terms/")
 async def legal_pages(request: Request, db: Session = Depends(get_db)):
+    from app.content.legal_copy import (
+        PRIVACY_INTRO,
+        PRIVACY_SECTIONS,
+        TERMS_INTRO,
+        TERMS_SECTIONS,
+        format_legal_sections,
+    )
+
     user = _optional_user(request, db)
     template = "privacy.html" if request.url.path.startswith("/privacy") else "terms.html"
-    return templates.TemplateResponse(template, page_context(request, db, user))
+    brand = settings.site_brand_name
+    site = settings.site_url.rstrip("/")
+    support = settings.support_email
+    telegram = (settings.admin_telegram_username or "").lstrip("@")
+    ctx = {
+        "brand": brand,
+        "site_url": site,
+        "support_email": support,
+        "telegram": telegram,
+    }
+    return templates.TemplateResponse(
+        template,
+        landing_context(
+            request,
+            db,
+            user,
+            legal_updated="20.07.2026",
+            privacy_intro=PRIVACY_INTRO.format(**ctx),
+            privacy_sections=format_legal_sections(PRIVACY_SECTIONS, **ctx),
+            terms_intro=TERMS_INTRO.format(**ctx),
+            terms_sections=format_legal_sections(TERMS_SECTIONS, **ctx),
+        ),
+    )
 
 
 @router.get("/register/")
@@ -247,9 +300,10 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                     db.rollback()
                     error = "Не удалось отправить письмо. Проверьте почту или обратитесь к администратору."
                 else:
-                    return templates.TemplateResponse("email_verification_sent.html", page_context(
-                        request, db, user, email=email,
-                    ))
+                    return RedirectResponse(
+                        f"/accounts/verify-email/?{urlencode({'email': email})}",
+                        status_code=302,
+                    )
     return templates.TemplateResponse("register.html", page_context(request, db, user, error=error, fio=fio, phone=phone, email=email))
 
 

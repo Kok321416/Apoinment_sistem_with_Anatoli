@@ -141,8 +141,10 @@
             {% if consultant.profile_photo %}
             <p class="text-body-sm text-muted mb-lg"><a href="{{ consultant.profile_photo|media_url }}" target="_blank" class="link-accent">Текущее фото</a></p>
             {% endif %}
-            <input class="input" type="file" name="profile_photo" accept="image/*">
-            <span class="form-field__hint">Рекомендуемый размер: от 400×400 px</span>
+            <div class="avatar-upload">
+                <input class="input" type="file" id="profilePhotoInput" name="profile_photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+                <p class="form-field__hint" id="avatarCropHint">Только JPG или PNG. После выбора откроется редактор для круглого аватара.</p>
+            </div>
         </section>
 
         <section class="app-section">
@@ -191,10 +193,27 @@
 {% endblock %}
 
 {% block scripts %}
+<div id="avatarCropModal" class="avatar-crop-modal" hidden>
+    <div class="avatar-crop-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="avatarCropTitle">
+        <h2 id="avatarCropTitle" class="text-h3">Подгонка фото</h2>
+        <p class="text-body-sm text-muted">Перетащите и масштабируйте фото под круглое окошко профиля.</p>
+        <div class="avatar-crop-modal__stage">
+            <canvas id="avatarCropCanvas" width="320" height="320" aria-label="Область кадрирования"></canvas>
+            <div id="avatarCropPreview" class="avatar-crop-modal__preview" aria-hidden="true"></div>
+        </div>
+        <label class="form-field__label" for="avatarCropZoom">Масштаб</label>
+        <input id="avatarCropZoom" class="input" type="range" min="1" max="3" step="0.01" value="1">
+        <div class="cluster mt-lg">
+            <button type="button" class="btn btn--primary" id="avatarCropApply">Применить</button>
+            <button type="button" class="btn btn--ghost" id="avatarCropCancel">Отмена</button>
+        </div>
+    </div>
+</div>
 <script>
 function toggleProfileEdit(edit) {
     document.getElementById('profileView').classList.toggle('is-hidden', edit);
     document.getElementById('profileEdit').classList.toggle('is-hidden', !edit);
 }
 </script>
+<script src="/static/js/avatar-crop.js?v=1" defer></script>
 {% endblock %}

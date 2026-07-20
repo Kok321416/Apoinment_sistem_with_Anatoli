@@ -252,6 +252,61 @@
     font-size: var(--font-size-body-sm);
 }
 
+.avatar-crop-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: grid;
+    place-items: center;
+    padding: var(--space-xl);
+    background: rgba(8, 12, 24, 0.72);
+}
+
+.avatar-crop-modal[hidden] {
+    display: none !important;
+}
+
+.avatar-crop-modal__dialog {
+    width: min(100%, 420px);
+    padding: var(--space-3xl);
+    border-radius: var(--radius-xl);
+    background: var(--surface-200);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-lg);
+}
+
+.avatar-crop-modal__stage {
+    display: grid;
+    gap: var(--space-lg);
+    justify-items: center;
+    margin: var(--space-xl) 0;
+}
+
+#avatarCropCanvas {
+    width: min(100%, 320px);
+    height: auto;
+    border-radius: var(--radius-full);
+    touch-action: none;
+    cursor: grab;
+    background: var(--surface-300);
+}
+
+.avatar-crop-modal__preview {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-full);
+    background-size: cover;
+    background-position: center;
+    border: 2px solid var(--border-strong);
+}
+
+.input--code {
+    letter-spacing: 0.35em;
+    font-family: ui-monospace, Consolas, monospace;
+    text-align: center;
+    font-size: var(--font-size-h3);
+}
+
 .profile-info h2 {
     margin: 0 0 var(--space-md);
 }

@@ -14,6 +14,10 @@ def _expire_at() -> datetime:
     return datetime.utcnow() + timedelta(hours=settings.email_verify_hours)
 
 
+def _generate_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
 def create_verification_token(db: Session, user: User) -> EmailVerificationToken:
     db.query(EmailVerificationToken).filter(
         EmailVerificationToken.user_id == user.id,
@@ -21,7 +25,7 @@ def create_verification_token(db: Session, user: User) -> EmailVerificationToken
     ).update({"used": True})
     token = EmailVerificationToken(
         user_id=user.id,
-        token=secrets.token_urlsafe(32),
+        token=_generate_code(),
         expires_at=_expire_at(),
         used=False,
     )
@@ -41,17 +45,55 @@ def ensure_email_address(db: Session, user: User, email: str, verified: bool = F
 
 def send_user_verification_email(db: Session, user: User) -> bool:
     token_row = create_verification_token(db, user)
+    ok = send_verification_email(user.email, token_row.token)
+    if ok:
+        db.commit()
+    return ok
+
+
+def verify_email_code(db: Session, email: str, code: str) -> tuple[User | None, str | None]:
+    email = (email or "").strip().lower()
+    code = (code or "").strip().replace(" ", "")
+    if not email or not code:
+        return None, "Укажите почту и 6-значный код из письма."
+    if not code.isdigit() or len(code) != 6:
+        return None, "Код должен состоять из 6 цифр."
+    user = db.query(User).filter(User.username == email).first()
+    if not user:
+        return None, "Пользователь с такой почтой не найден."
+    if user.is_active:
+        return user, None
+    row = (
+        db.query(EmailVerificationToken)
+        .filter(
+            EmailVerificationToken.user_id == user.id,
+            EmailVerificationToken.token == code,
+            EmailVerificationToken.used.is_(False),
+        )
+        .order_by(EmailVerificationToken.created_at.desc())
+        .first()
+    )
+    if not row:
+        return None, "Неверный код. Проверьте письмо или запросите новый код."
+    if row.expires_at < datetime.utcnow():
+        return None, "Код истёк. Запросите новое письмо."
+    user.is_active = True
+    row.used = True
+    ensure_email_address(db, user, user.email, verified=True)
     db.commit()
-    confirm_url = f"{settings.site_url.rstrip('/')}/accounts/confirm-email/{token_row.token}/"
-    return send_verification_email(user.email, confirm_url)
+    return user, None
 
 
 def verify_email_token(db: Session, token: str) -> tuple[User | None, str | None]:
+    """Legacy link support: long tokens still work if present."""
+    token = (token or "").strip()
+    if token.isdigit() and len(token) == 6:
+        return None, "Введите код на странице подтверждения почты."
     row = db.query(EmailVerificationToken).filter(EmailVerificationToken.token == token).first()
     if not row or row.used:
         return None, "Ссылка недействительна или уже использована."
     if row.expires_at < datetime.utcnow():
-        return None, "Ссылка истекла. Запросите новое письмо на странице входа."
+        return None, "Ссылка истекла. Запросите новый код на странице входа."
     user = db.get(User, row.user_id)
     if not user:
         return None, "Пользователь не найден."
@@ -81,4 +123,4 @@ def resend_verification_email(db: Session, email: str) -> tuple[bool, str]:
         return False, f"Подождите {settings.email_resend_minutes} мин. перед повторной отправкой."
     if not send_user_verification_email(db, user):
         return False, "Не удалось отправить письмо. Проверьте настройки SMTP на сервере."
-    return True, "Письмо отправлено. Проверьте почту (и папку «Спам»)."
+    return True, "Письмо с кодом отправлено. Проверьте почту (и папку «Спам»)."

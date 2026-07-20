@@ -1,4 +1,5 @@
 import logging
+import re
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -52,37 +53,62 @@ def send_email(to_email: str, subject: str, html_body: str, text_body: str | Non
 
 
 def _html_to_plain(html: str) -> str:
-    import re
     text = re.sub(r"<br\s*/?>", "\n", html, flags=re.I)
     text = re.sub(r"</p>", "\n\n", text, flags=re.I)
     text = re.sub(r"<[^>]+>", "", text)
     return text.strip()
 
 
-def send_verification_email(to_email: str, confirm_url: str) -> bool:
+def send_verification_email(to_email: str, code: str) -> bool:
     brand = settings.site_brand_name
-    subject = f"Подтвердите регистрацию — {brand}"
+    hours = settings.email_verify_hours
+    site = settings.site_url.rstrip("/")
+    subject = f"Код подтверждения — {brand}"
+    spaced = f"{code[:3]} {code[3:]}" if len(code) == 6 else code
     html = f"""
-    <div style="font-family: Arial, sans-serif; font-size: 14px; color: #111;">
-        <h2 style="font-size: 18px;">Подтверждение почты</h2>
-        <p>Здравствуйте!</p>
-        <p>Вы зарегистрировались в системе записи <b>{brand}</b>.</p>
-        <p>Чтобы активировать аккаунт, нажмите кнопку:</p>
-        <p style="margin: 24px 0;">
-            <a href="{confirm_url}"
-               style="background:#667eea;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;">
-                Подтвердить почту
-            </a>
-        </p>
-        <p>Или скопируйте ссылку в браузер:</p>
-        <p style="word-break:break-all;color:#555;">{confirm_url}</p>
-        <p style="color:#666;font-size:12px;">Ссылка действует {settings.email_verify_hours} ч.
-        Если вы не регистрировались, проигнорируйте это письмо.</p>
+    <div style="margin:0;padding:0;background:#0b1020;font-family:Inter,Segoe UI,Arial,sans-serif;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b1020;padding:32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="100%" style="max-width:520px;background:#121826;border:1px solid #2a3348;border-radius:16px;overflow:hidden;">
+              <tr>
+                <td style="padding:28px 28px 8px;text-align:center;">
+                  <div style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#49d1ff;margin-bottom:12px;">{brand}</div>
+                  <h1 style="margin:0;font-size:24px;line-height:1.3;color:#f4f7ff;">Подтвердите почту</h1>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 28px 8px;color:#b7c0d9;font-size:15px;line-height:1.6;text-align:center;">
+                  Вам на почту пришёл код подтверждения. Введите его на сайте, чтобы активировать аккаунт.
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:20px 28px;text-align:center;">
+                  <div style="display:inline-block;background:linear-gradient(135deg,#7d5cff,#49d1ff);padding:2px;border-radius:14px;">
+                    <div style="background:#0b1020;border-radius:12px;padding:18px 28px;">
+                      <div style="font-size:12px;color:#8b95b0;margin-bottom:8px;">Ваш код</div>
+                      <div style="font-size:36px;letter-spacing:0.28em;font-weight:700;color:#ffffff;font-family:ui-monospace,Consolas,monospace;">{spaced}</div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 28px 28px;color:#8b95b0;font-size:13px;line-height:1.5;text-align:center;">
+                  Код действует {hours} ч. Если вы не регистрировались в {brand}, просто проигнорируйте письмо.<br>
+                  <a href="{site}/accounts/verify-email/?email={to_email}" style="color:#49d1ff;text-decoration:none;">Открыть страницу ввода кода</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </div>
     """
     plain = (
-        f"Подтвердите регистрацию в сервисе {brand}.\n\n"
-        f"Перейдите по ссылке:\n{confirm_url}\n\n"
-        f"Ссылка действует {settings.email_verify_hours} ч."
+        f"Подтверждение регистрации в сервисе {brand}.\n\n"
+        f"Ваш код: {code}\n\n"
+        f"Введите его на странице подтверждения почты.\n"
+        f"Код действует {hours} ч.\n"
+        f"{site}/accounts/verify-email/?email={to_email}\n"
     )
     return send_email(to_email, subject, html, plain)

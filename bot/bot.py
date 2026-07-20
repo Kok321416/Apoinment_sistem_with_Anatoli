@@ -10,7 +10,13 @@ import requests
 
 from bot.api_client import post_site_api
 from bot.config import get_bot_settings
-
+from bot.copy import (
+    CONNECT_SITE,
+    HELP_TEXT,
+    LOGIN_OPEN_SITE,
+    WELCOME_CLIENT,
+    WELCOME_SPECIALIST,
+)
 logger = logging.getLogger(__name__)
 settings = get_bot_settings()
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.telegram_bot_token}" if settings.telegram_bot_token else None
@@ -218,7 +224,7 @@ def handle_login_confirm_callback(chat_id, user_id, callback_query_id, token_str
     try:
         if status == 200 and data and data.get("success"):
             complete_url = data.get("complete_url", "")
-            keyboard = {"inline_keyboard": [[{"text": "🌐 Открыть сайт", "url": complete_url}]]} if complete_url else None
+            keyboard = {"inline_keyboard": [[{"text": LOGIN_OPEN_SITE, "url": complete_url}]]} if complete_url else None
             send_telegram_message(
                 chat_id,
                 "✅ <b>Вход подтверждён.</b>\n\n"
@@ -237,7 +243,7 @@ def handle_login_confirm_callback(chat_id, user_id, callback_query_id, token_str
 
 def handle_connect_via_bot(chat_id):
     connect_url = f"{get_site_url().rstrip('/')}/accounts/telegram/login/?process=connect&next=/profile/"
-    keyboard = {"inline_keyboard": [[{"text": "🔗 Подключить аккаунт на сайте", "url": connect_url}]]}
+    keyboard = {"inline_keyboard": [[{"text": CONNECT_SITE, "url": connect_url}]]}
     send_telegram_message(chat_id, "👋 <b>Подключение Телеграм к аккаунту</b>", keyboard)
 
 
@@ -292,6 +298,7 @@ def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
 def handle_start_command(chat_id, user_id, username, first_name):
     admin_username = settings.admin_telegram_username.lstrip("@")
     booking_url = _get_booking_url()
+    name = first_name or "друг"
     keyboard = {
         "inline_keyboard": [
             [{"text": "📱 Записаться на консультацию", "url": booking_url}],
@@ -299,7 +306,7 @@ def handle_start_command(chat_id, user_id, username, first_name):
             [{"text": "📞 Связаться с администрацией", "url": f"https://t.me/{admin_username}"}, {"text": "❓ Помощь", "callback_data": "help"}],
         ]
     }
-    send_telegram_message(chat_id, f"👋 Добро пожаловать, {first_name}!", keyboard)
+    send_telegram_message(chat_id, WELCOME_CLIENT.format(name=name), keyboard)
     send_telegram_message(chat_id, "Используйте кнопки ниже.", get_client_reply_keyboard())
 
     def _maybe_specialist_menu() -> None:
@@ -313,7 +320,7 @@ def handle_start_command(chat_id, user_id, username, first_name):
         }
         send_telegram_message(
             chat_id,
-            f"👋 {first_name}, вы вошли как <b>специалист</b>.",
+            WELCOME_SPECIALIST.format(name=name),
             spec_keyboard,
         )
         send_telegram_message(chat_id, "Кнопки специалиста внизу экрана.", get_specialist_reply_keyboard())
@@ -390,7 +397,7 @@ def handle_help_command(chat_id):
             [{"text": "📝 Регистрация", "url": f"{site}/register/"}, {"text": "📞 Связаться", "url": f"https://t.me/{admin}"}],
         ]
     }
-    send_telegram_message(chat_id, "📖 <b>Справка:</b>\n/start, /register, /appointments, /history, /help", keyboard)
+    send_telegram_message(chat_id, HELP_TEXT.format(site_url=site), keyboard)
 
 
 def handle_specialist_next_appointments(chat_id, user_id):

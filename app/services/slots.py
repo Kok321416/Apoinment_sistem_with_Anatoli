@@ -41,7 +41,12 @@ def get_available_slots(
 
     break_minutes = calendar.break_between_services_minutes or 0
     break_delta = timedelta(minutes=break_minutes)
-    now = datetime.now()
+    from zoneinfo import ZoneInfo
+
+    from app.config import get_settings
+
+    tz = ZoneInfo(get_settings().timezone)
+    now = datetime.now(tz)
     book_ahead_hours = calendar.book_ahead_hours or 24
     min_start = now + timedelta(hours=book_ahead_hours)
     step_minutes = 15
@@ -50,8 +55,8 @@ def get_available_slots(
     available_times = []
 
     for time_slot in time_slots:
-        slot_start = datetime.combine(booking_date, time_slot.start_time)
-        slot_end = datetime.combine(booking_date, time_slot.end_time)
+        slot_start = datetime.combine(booking_date, time_slot.start_time, tzinfo=tz)
+        slot_end = datetime.combine(booking_date, time_slot.end_time, tzinfo=tz)
         slot_duration = (slot_end - slot_start).total_seconds() / 60
         if service.duration_minutes > slot_duration:
             continue
@@ -72,8 +77,8 @@ def get_available_slots(
             for booking in existing_bookings:
                 if not booking.booking_end_time:
                     continue
-                booking_start = datetime.combine(booking_date, booking.booking_time)
-                booking_end = datetime.combine(booking_date, booking.booking_end_time)
+                booking_start = datetime.combine(booking_date, booking.booking_time, tzinfo=tz)
+                booking_end = datetime.combine(booking_date, booking.booking_end_time, tzinfo=tz)
                 if not (
                     current_time + service_duration + break_delta <= booking_start
                     or current_time >= booking_end + break_delta

@@ -11,27 +11,34 @@
 
 <main id="main" class="section" tabindex="-1">
     <div class="container container--narrow legal-page">
-        <p class="text-caption"><a href="/" class="link-accent">← На главную</a></p>
+        <p class="text-caption"><a href="/" class="link-accent">← На главную страницу</a></p>
         <h1 class="text-h1">Политика конфиденциальности</h1>
-        <p>Сервис «{{ site_brand_name }}» (далее — «Сервис») предназначен для организации онлайн-записи на консультации.</p>
+        <p class="text-body-sm text-muted">Дата публикации: {{ legal_updated }}</p>
+        <p>{{ privacy_intro }}</p>
 
-        <h2 class="text-h3">1. Какие данные мы обрабатываем</h2>
-        <p>При регистрации и использовании Сервиса мы можем обрабатывать: адрес электронной почты, имя и контактные данные (телефон, Телеграм).</p>
+        {% for section in privacy_sections %}
+        <h2 class="text-h3">{{ section.title }}</h2>
+        {% for p in section.paragraphs %}
+        <p>{{ p }}</p>
+        {% endfor %}
+        {% if section.bullets %}
+        <ul class="legal-list">
+            {% for item in section.bullets %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% for p in section.after %}
+        <p>{{ p }}</p>
+        {% endfor %}
+        {% endfor %}
 
-        <h2 class="text-h3">2. Цели обработки</h2>
-        <p>Данные используются для работы Сервиса: запись на консультации, напоминания, интеграция с календарём и мессенджерами по вашему выбору.</p>
-
-        <h2 class="text-h3">3. Передача данных</h2>
-        <p>Мы не передаём ваши персональные данные третьим лицам в маркетинговых целях. Данные могут передаваться только в объёме, необходимом для работы интеграций (например, Телеграм), в соответствии с их политиками.</p>
-
-        <h2 class="text-h3">4. Безопасность и хранение</h2>
-        <p>Мы принимаем разумные меры для защиты данных. Хранение осуществляется в соответствии с применимым законодательством.</p>
-
-        <h2 class="text-h3">5. Ваши права</h2>
-        <p>Вы можете запросить доступ к своим данным, их исправление или удаление, обратившись к нам по контактам, указанным на сайте.</p>
-
-        <h2 class="text-h3">6. Изменения</h2>
-        <p>Актуальная версия политики публикуется на этой странице. Продолжение использования Сервиса после изменений означает принятие обновлённой политики.</p>
+        <p class="text-body-sm text-muted mt-4xl">
+            Контакты: <a class="link-accent" href="mailto:{{ support_email }}">{{ support_email }}</a>
+            {% if admin_telegram_username %}
+            · <a class="link-accent" href="https://t.me/{{ admin_telegram_username }}">@{{ admin_telegram_username }}</a>
+            {% endif %}
+        </p>
     </div>
 </main>
 

@@ -62,12 +62,14 @@ async def api_register(request: Request, db: Session = Depends(get_db)):
     db.add(consultant)
     ensure_email_address(db, user, email, verified=False)
     if not send_user_verification_email(db, user):
-        return JSONResponse({"error": "Не удалось отправить письмо подтверждения"}, status_code=500)
+        db.rollback()
+        return JSONResponse({"error": "Не удалось отправить письмо с кодом подтверждения"}, status_code=500)
     return JSONResponse({
-        "message": "Письмо с подтверждением отправлено",
+        "message": "Вам на почту отправлено письмо. Введите 6-значный код на странице подтверждения.",
         "user_id": user.id,
         "consultant_id": consultant.id,
         "email": email,
+        "verify_url": f"/accounts/verify-email/?email={email}",
     }, status_code=201)
 
 

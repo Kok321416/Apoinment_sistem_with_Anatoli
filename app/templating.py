@@ -13,13 +13,12 @@ from app.content.landing_copy import (
     HERO,
     HOW_IT_WORKS,
     LANDING_META,
-    STATS_LABELS,
+    VALUE_POINTS,
     faq_with_support,
     footer_with_context,
 )
 from app.security.csrf import ensure_csrf_token
 from app.models import Consultant, EmailAddress, SocialAccount, User
-from app.services.landing_stats import landing_stats
 
 settings = get_settings()
 
@@ -128,6 +127,7 @@ templates.env.filters["time"] = django_time
 templates.env.filters["truncatewords"] = truncatewords
 templates.env.filters["urlencode"] = lambda value: quote(str(value or ""), safe="/")
 templates.env.filters["auth_provider"] = auth_provider_label
+templates.env.filters["booking_status"] = booking_status_label
 
 
 def build_header_context(db, user) -> dict:
@@ -198,8 +198,7 @@ def landing_context(request, db, user=None, **extra):
         {
             "landing_meta": LANDING_META,
             "hero": HERO,
-            "stats_labels": STATS_LABELS,
-            "stats": landing_stats(db),
+            "value_points": VALUE_POINTS,
             "features": FEATURES,
             "how_it_works": HOW_IT_WORKS,
             "cta_block": CTA_BLOCK,

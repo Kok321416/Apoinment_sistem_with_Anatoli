@@ -27,20 +27,6 @@
                     <a href="{{ hero.cta_primary_href }}" class="btn btn--primary focus-ring">{{ hero.cta_primary_label }}</a>
                     <a href="{{ hero.cta_secondary_href }}" class="btn btn--secondary focus-ring">{{ hero.cta_secondary_label }}</a>
                 </div>
-                <div class="hero__stats" aria-label="Статистика платформы">
-                    <div>
-                        <div class="hero__stat-value">{{ stats.bookings }}+</div>
-                        <div class="hero__stat-label">{{ stats_labels.bookings }}</div>
-                    </div>
-                    <div>
-                        <div class="hero__stat-value">{{ stats.specialists }}+</div>
-                        <div class="hero__stat-label">{{ stats_labels.specialists }}</div>
-                    </div>
-                    <div>
-                        <div class="hero__stat-value">{{ stats.calendars }}+</div>
-                        <div class="hero__stat-label">{{ stats_labels.calendars }}</div>
-                    </div>
-                </div>
             </div>
             <div class="hero__preview card card--static animate-fade-in-up animate-delay-3" aria-hidden="true">
                 <div class="preview-card animate-soft-float">
@@ -59,21 +45,15 @@
         </div>
     </section>
 
-    <section class="section-sm section--defer" id="stats">
+    <section class="section-sm section--defer" id="value">
         <div class="container">
             <div class="stats-grid reveal-stagger">
+                {% for point in value_points %}
                 <article class="stat-card card card--static">
-                    <div class="stat-card__value">{{ stats.bookings }}+</div>
-                    <p class="text-body-sm text-muted">{{ stats_labels.bookings }}</p>
+                    <div class="stat-card__value stat-card__value--text">{{ point.title }}</div>
+                    <p class="text-body-sm text-muted">{{ point.text }}</p>
                 </article>
-                <article class="stat-card card card--static">
-                    <div class="stat-card__value">{{ stats.specialists }}+</div>
-                    <p class="text-body-sm text-muted">{{ stats_labels.specialists }}</p>
-                </article>
-                <article class="stat-card card card--static">
-                    <div class="stat-card__value">{{ stats.calendars }}+</div>
-                    <p class="text-body-sm text-muted">{{ stats_labels.calendars }}</p>
-                </article>
+                {% endfor %}
             </div>
         </div>
     </section>
