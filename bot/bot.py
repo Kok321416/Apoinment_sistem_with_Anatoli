@@ -115,6 +115,12 @@ def handle_telegram_update(update_data: dict) -> None:
                     handle_booking_link_confirm(chat_id, user_id, token_str)
                 else:
                     handle_start_command(chat_id, user_id, username, first_name)
+            elif text.startswith("/start login_"):
+                token_str = text.replace("/start login_", "", 1).strip()
+                if token_str:
+                    handle_login_token(chat_id, user_id, username, first_name, token_str)
+                else:
+                    handle_login_via_bot(chat_id)
             elif text.startswith("/start login"):
                 handle_login_via_bot(chat_id)
             elif text.startswith("/start connect_spec_"):
@@ -152,12 +158,19 @@ def handle_telegram_update(update_data: dict) -> None:
             chat_id = callback_query["message"]["chat"]["id"]
             data = callback_query.get("data", "")
             user_id = callback_query.get("from", {}).get("id")
-            if not data.startswith("booklink_") and not data.startswith("spec_confirm_"):
+            if not data.startswith(("booklink_", "spec_confirm_", "login_confirm_")):
                 answer_callback_query(callback_query_id)
             if data == "my_appointments":
                 handle_appointments_command(chat_id, user_id)
             elif data == "history":
                 handle_history_command(chat_id, user_id)
+            elif data.startswith("login_confirm_"):
+                handle_login_confirm_callback(
+                    chat_id, user_id, callback_query_id,
+                    data.replace("login_confirm_", "", 1),
+                    callback_query.get("from", {}).get("username", ""),
+                    callback_query.get("from", {}).get("first_name", ""),
+                )
             elif data.startswith("booklink_"):
                 handle_booking_link_callback(chat_id, user_id, callback_query_id, data.replace("booklink_", "", 1))
             elif data.startswith("spec_confirm_"):
@@ -167,9 +180,65 @@ def handle_telegram_update(update_data: dict) -> None:
 
 
 def handle_login_via_bot(chat_id):
-    login_url = f"{get_site_url().rstrip('/')}/accounts/telegram/login/"
-    keyboard = {"inline_keyboard": [[{"text": "🔐 Войти на сайт", "url": login_url}]]}
-    send_telegram_message(chat_id, "👋 <b>Вход на сайт через Telegram</b>\n\nНажмите кнопку ниже.", keyboard)
+    site = get_site_url().rstrip("/")
+    keyboard = {"inline_keyboard": [[{"text": "🔐 Войти на сайт", "url": f"{site}/login/"}]]}
+    send_telegram_message(
+        chat_id,
+        "👋 <b>Вход на сайт через Telegram</b>\n\n"
+        "Откройте страницу входа на сайте и нажмите «Telegram» — "
+        "бот отправит ссылку для подтверждения.",
+        keyboard,
+    )
+
+
+def handle_login_token(chat_id, user_id, username, first_name, token_str):
+    keyboard = {
+        "inline_keyboard": [[{
+            "text": "✅ Подтвердить вход",
+            "callback_data": f"login_confirm_{token_str}",
+        }]]
+    }
+    send_telegram_message(
+        chat_id,
+        "🔐 <b>Вход на сайт</b>\n\n"
+        "Нажмите кнопку ниже, чтобы подтвердить вход через Telegram.",
+        keyboard,
+    )
+
+
+def handle_login_confirm_callback(chat_id, user_id, callback_query_id, token_str, username, first_name):
+    api_url = f"{get_site_url().rstrip('/')}/api/telegram/confirm-login"
+    try:
+        r = requests.post(
+            api_url,
+            json={
+                "token": token_str,
+                "telegram_id": user_id,
+                "username": username or "",
+                "first_name": first_name or "",
+            },
+            timeout=15,
+            headers={"X-Bot-Token": settings.telegram_bot_token or ""},
+        )
+        data = r.json() if r.text else {}
+        if r.status_code == 200 and data.get("success"):
+            answer_callback_query(callback_query_id, "Готово!")
+            complete_url = data.get("complete_url", "")
+            keyboard = {"inline_keyboard": [[{"text": "🌐 Открыть сайт", "url": complete_url}]]} if complete_url else None
+            send_telegram_message(
+                chat_id,
+                "✅ <b>Вход подтверждён.</b>\n\n"
+                "Нажмите кнопку ниже, чтобы завершить вход в браузере.",
+                keyboard,
+            )
+        else:
+            msg = data.get("error", "Ссылка недействительна или истекла.")
+            answer_callback_query(callback_query_id, msg[:200])
+            send_telegram_message(chat_id, f"❌ {msg}")
+    except Exception as e:
+        logger.warning("Login confirm error: %s", e)
+        answer_callback_query(callback_query_id, "Ошибка.")
+        send_telegram_message(chat_id, "❌ Ошибка связи с сервером.")
 
 
 def handle_connect_via_bot(chat_id):

@@ -93,6 +93,34 @@ async def api_logout(request: Request):
     return {"message": "OK"}
 
 
+@router.post("/telegram/confirm-login")
+async def confirm_telegram_login(request: Request, db: Session = Depends(get_db)):
+    if not _check_bot_token(request):
+        return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
+    data = await request.json()
+    token = (data.get("token") or "").strip()
+    telegram_id = data.get("telegram_id")
+    if not token or telegram_id is None:
+        return JSONResponse({"success": False, "error": "token and telegram_id required"}, status_code=400)
+    from app.services.telegram_auth import confirm_login_via_bot
+
+    ok, msg, req = confirm_login_via_bot(
+        db,
+        token,
+        telegram_id,
+        username=(data.get("username") or "").strip(),
+        first_name=(data.get("first_name") or "").strip(),
+    )
+    if not ok or not req:
+        return JSONResponse({"success": False, "error": msg}, status_code=400)
+    site = settings.site_url.rstrip("/")
+    return {
+        "success": True,
+        "complete_url": f"{site}/accounts/telegram/complete/{req.complete_token}/",
+        "next_url": req.next_url,
+    }
+
+
 @router.post("/booking/confirm-telegram")
 async def confirm_booking_telegram(request: Request, db: Session = Depends(get_db)):
     data = await request.json()

@@ -84,10 +84,6 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
             request.session["register_fio"] = fio
             request.session["register_phone"] = phone
             return RedirectResponse(f"/accounts/telegram/login/?{urlencode({'process': 'signup', 'next': '/'})}", status_code=302)
-        elif auth_method == "google":
-            request.session["register_fio"] = fio
-            request.session["register_phone"] = phone
-            return RedirectResponse(f"/accounts/google/login/?{urlencode({'process': 'signup', 'next': '/'})}", status_code=302)
         else:
             email = (form.get("email") or "").strip()
             password = form.get("password", "")
@@ -136,6 +132,8 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
     error = success = None
     if request.query_params.get("verified") == "1":
         success = "Email подтверждён. Теперь можно войти."
+    if request.query_params.get("error") == "telegram_expired":
+        error = "Ссылка входа через Telegram истекла. Попробуйте снова."
     if request.method == "POST":
         form = await request.form()
         if form.get("action") == "resend_verification":
@@ -646,19 +644,7 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
     if request.method == "POST":
         form = await request.form()
         action = form.get("action")
-        if action == "toggle_google":
-            integration.google_calendar_enabled = not integration.google_calendar_enabled
-            db.commit()
-            success = "Google Calendar включен" if integration.google_calendar_enabled else "Google Calendar отключен"
-        elif action == "connect_google":
-            return RedirectResponse("/integrations/google/connect/", status_code=302)
-        elif action == "disconnect_google":
-            integration.google_calendar_connected = False
-            integration.google_calendar_id = None
-            integration.google_refresh_token = None
-            db.commit()
-            success = "Google Calendar отключён."
-        elif action == "toggle_telegram":
+        if action == "toggle_telegram":
             integration.telegram_enabled = not integration.telegram_enabled
             db.commit()
             success = "Telegram уведомления включены" if integration.telegram_enabled else "Telegram уведомления отключены"

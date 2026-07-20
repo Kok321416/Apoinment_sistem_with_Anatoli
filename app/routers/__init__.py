@@ -1,3 +1,3 @@
-from app.routers import api, integrations_oauth, oauth, pages
+from app.routers import api, oauth, pages
 
-__all__ = ["api", "oauth", "pages", "integrations_oauth"]
+__all__ = ["api", "oauth", "pages"]

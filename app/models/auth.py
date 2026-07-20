@@ -58,3 +58,21 @@ class EmailVerificationToken(Base):
     used: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user = relationship("User", backref="verification_tokens")
+
+
+class TelegramLoginRequest(Base):
+    __tablename__ = "telegram_login_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    complete_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
+    next_url: Mapped[str] = mapped_column(String(500), default="/")
+    process: Mapped[str] = mapped_column(String(20), default="login")
+    register_fio: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    register_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    connect_user_id: Mapped[int | None] = mapped_column(ForeignKey("auth_user.id"), nullable=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("auth_user.id"), nullable=True)
+    telegram_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    completed: Mapped[bool] = mapped_column(Boolean, default=False)

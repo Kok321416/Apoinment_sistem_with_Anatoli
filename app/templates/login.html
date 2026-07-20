@@ -6,13 +6,12 @@
     <title>Вход</title>
     <link rel="stylesheet" href="/static/css/style.css?v=2">
     <style>
-        .auth-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 24px; }
-        .auth-method { display: flex; align-items: center; justify-content: center; padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 12px; text-decoration: none; color: inherit; font-weight: 600; font-size: 15px; }
-        .auth-method.telegram-btn { border-color: #0088cc; color: #0088cc; }
-        .auth-method.google-btn { border-color: #4285f4; color: #4285f4; }
+        .auth-methods { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 16px 0 24px; }
+        .auth-method { display: flex; align-items: center; justify-content: center; padding: 14px 16px; border: 2px solid #0088cc; border-radius: 12px; text-decoration: none; color: #0088cc; font-weight: 600; font-size: 15px; }
         .login-email-block { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
         .success-message { background: #ecfdf5; color: #065f46; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
         .resend-block { margin-top: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; }
+        .hint { font-size: 13px; color: #666; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -28,12 +27,14 @@
 
         <div class="form-group">
             <label>Быстрый вход:</label>
+            {% if telegram_bot_username %}
             <div class="auth-methods">
-                {% if telegram_bot_username %}
-                <a href="/accounts/telegram/login/" class="auth-method telegram-btn">Telegram</a>
-                {% endif %}
-                <a href="/accounts/google/login/" class="auth-method google-btn">Google</a>
+                <a href="/accounts/telegram/login/" class="auth-method">Telegram</a>
             </div>
+            <p class="hint">Откроется бот - подтвердите вход кнопкой в чате.</p>
+            {% else %}
+            <p class="hint">Telegram-вход временно недоступен (не настроен бот).</p>
+            {% endif %}
         </div>
 
         <div class="login-email-block">

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Мой профиль - Система записи</title>
-    {% load socialaccount %}
     <link rel="stylesheet" href="/static/css/style.css?v=2">
     <style>
         .profile-container {
@@ -96,7 +95,6 @@
         .auth-connect-btn { padding: 10px 18px; font-size: 14px; border-radius: 10px; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.2s ease, box-shadow 0.2s ease; border: none; cursor: pointer; min-height: 44px; box-sizing: border-box; }
         .auth-connect-btn:hover { transform: translateY(-1px); opacity: 0.95; }
         .auth-connect-btn.telegram { background: #0088cc; color: #fff; }
-        .auth-connect-btn.google { background: #4285f4; color: #fff; }
         .auth-connect-btn.email { background: var(--accent); color: #fff; }
         .auth-connect-btn.browser-link { font-size: 13px; padding: 8px 14px; min-height: 36px; background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--card-border); }
         .auth-manage-link { margin-top: 20px; }
@@ -189,7 +187,7 @@
 
                 <div class="profile-section">
                     <h3>Способы входа</h3>
-                    <p class="auth-section-desc">Подключите дополнительные способы входа: тогда вы сможете входить через Telegram, Google или почту.</p>
+                    <p class="auth-section-desc">Подключите Telegram - тогда вы сможете входить через бота и получать уведомления.</p>
                     <div class="auth-methods">
                         <div class="auth-method {% if 'telegram' in connected_providers %}connected{% endif %}">
                             <span class="auth-method-name">Telegram</span>
@@ -199,24 +197,7 @@
                             {% else %}
                                 <span class="auth-method-badge not-connected">Не подключено</span>
                                 <div class="auth-method-actions">
-                                    {% if telegram_bot_username %}
-                                    <a id="profileBtnTelegramApp" href="https://t.me/{{ telegram_bot_username }}?start=connect" class="auth-connect-btn telegram" data-tg="tg://resolve?domain={{ telegram_bot_username }}&start=connect">В приложении Telegram</a>
-                                    <a href="{% provider_login_url 'telegram' process='connect' next=request.path %}" class="auth-connect-btn browser-link">В браузере</a>
-                                    {% else %}
-                                    <a href="{% provider_login_url 'telegram' process='connect' next=request.path %}" class="auth-connect-btn telegram">Подключить Telegram</a>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div class="auth-method {% if 'google' in connected_providers %}connected{% endif %}">
-                            <span class="auth-method-name">Google</span>
-                            {% if 'google' in connected_providers %}
-                                <span class="auth-method-badge connected">Подключено</span>
-                                <div class="auth-method-detail">Вход через Google доступен</div>
-                            {% else %}
-                                <span class="auth-method-badge not-connected">Не подключено</span>
-                                <div class="auth-method-actions">
-                                    <a href="{% provider_login_url 'google' process='connect' next=request.path %}" class="auth-connect-btn google">Подключить Google</a>
+                                    <a href="/accounts/telegram/login/?process=connect&next=/profile/" class="auth-connect-btn telegram">Подключить через бота</a>
                                 </div>
                             {% endif %}
                         </div>

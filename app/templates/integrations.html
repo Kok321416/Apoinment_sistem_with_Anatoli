@@ -117,60 +117,6 @@
         {% endif %}
 
         <div class="integrations-container">
-            {% load socialaccount %}
-            <!-- Google Calendar: статус и кнопки по реальному состоянию -->
-            <div class="integration-card">
-                <div class="integration-header">
-                    <h3>
-                        <span class="integration-icon">📅</span>
-                        Google Calendar
-                    </h3>
-                    {% if integration.google_calendar_connected %}
-                    <span class="status-badge status-connected">Подключено</span>
-                    {% elif integration.google_calendar_enabled %}
-                    <span class="status-badge status-enabled">Включено, аккаунт не подключён</span>
-                    {% else %}
-                    <span class="status-badge status-disabled">Отключено</span>
-                    {% endif %}
-                </div>
-
-                <div class="integration-description">
-                    <p>Синхронизируйте свои записи с Google Calendar. Подключите аккаунт Google — новые записи 
-                    будут автоматически добавляться в ваш календарь (primary).</p>
-                </div>
-
-                {% if integration.google_calendar_connected %}
-                <div>
-                    <p style="margin: 0 0 10px 0; color: #0c5460;">Аккаунт Google подключён.</p>
-                    {% if integration.google_calendar_id %}
-                    <p style="margin-top: 10px; color: #666;">Календарь: {{ integration.google_calendar_id }}</p>
-                    {% endif %}
-                    <form method="POST" action="/integrations/" style="margin-top: 15px;">
-                        
-                        <input type="hidden" name="action" value="disconnect_google">
-                        <button type="submit" class="btn btn-secondary">Отключить Google Calendar</button>
-                    </form>
-                </div>
-                {% else %}
-                <div>
-                    {% if integration.google_calendar_enabled %}
-                    <p style="color: #666; font-size: 14px; margin-bottom: 10px;">Нажмите кнопку ниже и войдите в Google, чтобы подключить календарь.</p>
-                    <form method="POST" style="margin-top: 10px;">
-                        
-                        <input type="hidden" name="action" value="connect_google">
-                        <button type="submit" class="btn">🔗 Подключить через Google</button>
-                    </form>
-                    {% else %}
-                    <form method="POST">
-                        
-                        <input type="hidden" name="action" value="toggle_google">
-                        <button type="submit" class="btn">Включить интеграцию</button>
-                    </form>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
-
             <!-- Telegram: статус и кнопки по реальному состоянию -->
             <div class="integration-card">
                 <div class="integration-header">
@@ -207,15 +153,11 @@
                 {% else %}
                 <div>
                     {% if integration.telegram_enabled %}
-                    <p style="margin-bottom: 16px;">Подключите Telegram — уведомления о новых записях и напоминания о консультациях будут приходить в приложение.</p>
+                    <p style="margin-bottom: 16px;">Подключите Telegram - уведомления о новых записях и напоминания о консультациях будут приходить в приложение.</p>
                     <p style="margin-bottom: 8px;">
-                        <a href="/integrations/telegram/connect-app/" class="btn" style="display: inline-block;">📱 Подключить через приложение Telegram</a>
+                        <a href="/integrations/telegram/connect-app/" class="btn" style="display: inline-block;">📱 Подключить через бота Telegram</a>
                     </p>
-                    <p style="margin-bottom: 12px;">
-                        <a href="{% provider_login_url 'telegram' process='connect' next='/integrations/' %}" class="btn btn-secondary" style="display: inline-block;">🌐 Подключить через браузер (OAuth)</a>
-                    </p>
-                    <p style="font-size: 14px; color: #666;">Приложение: откроется Telegram, нажмите «Подтвердить подключение» в боте. Браузер: откроется окно входа Telegram.</p>
-                    <p style="margin-top: 12px; padding: 10px 12px; background: #f0f9ff; border-radius: 8px; font-size: 13px; color: #0c5460;"><strong>Через приложение:</strong> откройте ссылку в приложении Telegram, нажмите «Подтвердить» в боте. На сервере, где запущен бот, в .env укажите <strong>SITE_URL</strong>=<code>https://allyourclients.ru</code> (или ваш домен).<br><strong>Через браузер:</strong> нажмите «Подключить через браузер», затем «Продолжить». В BotFather у бота должен быть указан домен сайта для «Telegram Login Widget» (например <code>allyourclients.ru</code>).</p>
+                    <p style="font-size: 14px; color: #666;">Откроется бот - нажмите «Подтвердить подключение» в чате.</p>
                     <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
                     <p style="font-size: 14px; color: #666; margin-bottom: 12px;">Или вручную (токен и Chat ID):</p>
                     <form method="POST" class="connect-form">

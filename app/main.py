@@ -7,7 +7,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
 from app.database import Base, engine
-from app.routers import api, integrations_oauth, oauth, pages
+from app.routers import api, oauth, pages
 
 settings = get_settings()
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
@@ -30,7 +30,6 @@ app.mount("/media", StaticFiles(directory=str(settings.media_root)), name="media
 app.include_router(pages.router)
 app.include_router(api.router)
 app.include_router(oauth.router)
-app.include_router(integrations_oauth.router)
 
 
 @app.on_event("startup")
@@ -48,7 +47,6 @@ async def password_required_middleware(request: Request, call_next):
         "/accounts/password/set",
         "/accounts/logout",
         "/accounts/confirm-email/",
-        "/accounts/google/",
         "/accounts/telegram/",
         "/static/",
         "/media/",

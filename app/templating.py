@@ -22,8 +22,6 @@ URL_MAP = {
     "account_login": "/accounts/login/",
     "account_set_password": "/accounts/password/set/",
     "account_reset_password": "/accounts/password/reset/",
-    "google_calendar_connect": "/integrations/google/connect/",
-    "google_calendar_callback": "/integrations/google/callback/",
     "connect_telegram_app": "/integrations/telegram/connect-app/",
 }
 
@@ -74,9 +72,7 @@ def build_header_context(db, user) -> dict:
 
     social = db.query(SocialAccount).filter(SocialAccount.user_id == user.id).first()
     if social:
-        if social.provider == "google" and user.email:
-            account = account or user.email
-        elif social.provider == "telegram":
+        if social.provider == "telegram":
             account = account or user.username
 
     return {"header_consultant_name": name, "header_account_display": account or user.username}
