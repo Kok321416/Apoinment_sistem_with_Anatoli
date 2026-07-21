@@ -1,5 +1,6 @@
 {% extends "layouts/app.html" %}
 {% from "components/app_page_head.html" import app_page_head %}
+{% from "components/verification_code_input.html" import verification_code_input, verification_code_scripts %}
 
 {% block meta_tags %}
 {% set page_title = "Интеграции — " ~ site_brand_name %}
@@ -32,6 +33,7 @@
     {% if email_verified %}
     <div class="auth-provider-card is-connected">
         <p class="mb-0">Почта подтверждена: <strong>{{ email_address }}</strong></p>
+        <p class="text-body-sm text-muted mt-lg mb-0">Спасибо, что привязали почту. Теперь вы можете авторизовываться через почту и пароль.</p>
     </div>
     <form method="POST" action="/integrations/" class="mt-lg" onsubmit="return confirm('Отвязать почту?');">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -53,10 +55,8 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="confirm_email_code">
         <input type="hidden" name="email" value="{{ email_pending }}">
-        <div class="form-field">
-            <label class="form-field__label" for="email_code">Код из письма</label>
-            <input class="input input--code" type="text" id="email_code" name="code" inputmode="numeric" maxlength="6" minlength="6" pattern="[0-9]{6}" required autocomplete="one-time-code" placeholder="000000">
-        </div>
+        <p class="text-body-sm text-muted mb-lg">Код отправлен на <strong>{{ email_pending }}</strong>. Введите 6 цифр из письма.</p>
+        {{ verification_code_input("email_code", hint="Можно вставить код целиком из буфера обмена.") }}
         <button type="submit" class="btn btn--secondary">Подтвердить почту</button>
     </form>
     {% endif %}
@@ -176,4 +176,8 @@
         Синхронизация записей с Google Календарём готовится. Пока подключение из кабинета недоступно.
     </p>
 </section>
+{% endblock %}
+
+{% block scripts %}
+{{ verification_code_scripts() }}
 {% endblock %}

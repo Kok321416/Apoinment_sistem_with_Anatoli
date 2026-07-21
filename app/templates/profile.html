@@ -88,7 +88,7 @@
         <textarea class="textarea" name="profile_description" rows="5" placeholder="Расскажите о себе и услугах">{{ consultant.profile_description or '' }}</textarea>
         <div class="form-field mt-lg">
             <label class="form-field__label" for="video_link">Видео</label>
-            <input class="input" id="video_link" type="text" name="video_link" value="{{ consultant.video_link or '' }}" placeholder="https://youtube.com/...">
+            <input class="input" id="video_link" type="text" name="video_link" value="{{ consultant.video_link|blank_field }}" placeholder="Ссылка на видео: YouTube, VK Видео или Rutube">
         </div>
     </section>
 
@@ -96,28 +96,28 @@
         <h2 class="app-section__title">Соцсети</h2>
         <div class="app-form-grid">
             <div class="form-field">
-                <label class="form-field__label">Instagram</label>
-                <input class="input" type="text" name="social_instagram" value="{{ consultant.social_instagram or '' }}">
+                <label class="form-field__label" for="social_instagram">Instagram</label>
+                <input class="input" id="social_instagram" type="text" name="social_instagram" value="{{ consultant.social_instagram|blank_field }}" placeholder="instagram.com/username - из профиля: Поделиться → Копировать ссылку">
             </div>
             <div class="form-field">
-                <label class="form-field__label">Facebook</label>
-                <input class="input" type="text" name="social_facebook" value="{{ consultant.social_facebook or '' }}">
+                <label class="form-field__label" for="social_facebook">Facebook</label>
+                <input class="input" id="social_facebook" type="text" name="social_facebook" value="{{ consultant.social_facebook|blank_field }}" placeholder="facebook.com/username - из раздела «О себе» в профиле">
             </div>
             <div class="form-field">
-                <label class="form-field__label">VK</label>
-                <input class="input" type="text" name="social_vk" value="{{ consultant.social_vk or '' }}">
+                <label class="form-field__label" for="social_vk">VK</label>
+                <input class="input" id="social_vk" type="text" name="social_vk" value="{{ consultant.social_vk|blank_field }}" placeholder="vk.com/username - из адресной строки на странице профиля">
             </div>
             <div class="form-field">
-                <label class="form-field__label">Telegram</label>
-                <input class="input" type="text" name="social_telegram" value="{{ consultant.social_telegram or '' }}">
+                <label class="form-field__label" for="social_telegram">Telegram</label>
+                <input class="input" id="social_telegram" type="text" name="social_telegram" value="{{ consultant.social_telegram|blank_field }}" placeholder="t.me/username - из Настройки → Имя пользователя">
             </div>
             <div class="form-field">
-                <label class="form-field__label">YouTube</label>
-                <input class="input" type="text" name="social_youtube" value="{{ consultant.social_youtube or '' }}">
+                <label class="form-field__label" for="social_youtube">YouTube</label>
+                <input class="input" id="social_youtube" type="text" name="social_youtube" value="{{ consultant.social_youtube|blank_field }}" placeholder="youtube.com/@канал - из «Настроить канал» → Основные сведения">
             </div>
             <div class="form-field">
-                <label class="form-field__label">Сайт</label>
-                <input class="input" type="text" name="website" value="{{ consultant.website or '' }}">
+                <label class="form-field__label" for="website">Сайт</label>
+                <input class="input" id="website" type="text" name="website" value="{{ consultant.website|blank_field }}" placeholder="https://ваш-сайт.ru - адрес вашего сайта или лендинга">
             </div>
         </div>
     </section>

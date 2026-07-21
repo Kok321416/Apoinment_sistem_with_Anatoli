@@ -35,11 +35,21 @@ def create_verification_token(db: Session, user: User) -> EmailVerificationToken
 
 
 def ensure_email_address(db: Session, user: User, email: str, verified: bool = False) -> None:
+    email = (email or "").strip().lower()
+    if not email:
+        return
     row = db.query(EmailAddress).filter(EmailAddress.user_id == user.id, EmailAddress.email == email).first()
     if row:
         if verified:
             row.verified = True
+            row.primary = True
+            db.query(EmailAddress).filter(
+                EmailAddress.user_id == user.id,
+                EmailAddress.id != row.id,
+            ).update({"primary": False})
         return
+    if verified:
+        db.query(EmailAddress).filter(EmailAddress.user_id == user.id).update({"primary": False})
     db.add(EmailAddress(email=email, verified=verified, primary=True, user_id=user.id))
 
 

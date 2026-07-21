@@ -112,3 +112,53 @@ def send_verification_email(to_email: str, code: str) -> bool:
         f"{site}/accounts/verify-email/?email={to_email}\n"
     )
     return send_email(to_email, subject, html, plain)
+
+
+def send_email_link_success_email(to_email: str, *, needs_password: bool = False) -> bool:
+    brand = settings.site_brand_name
+    site = settings.site_url.rstrip("/")
+    subject = f"Почта привязана — {brand}"
+    password_hint = (
+        "<br><br>Если пароль ещё не задан, создайте его в кабинете: "
+        f'<a href="{site}/accounts/password/set/" style="color:#49d1ff;text-decoration:none;">Задать пароль</a>.'
+        if needs_password
+        else ""
+    )
+    password_plain = (
+        f"\n\nЕсли пароль ещё не задан, создайте его: {site}/accounts/password/set/\n"
+        if needs_password
+        else ""
+    )
+    html = f"""
+    <div style="margin:0;padding:0;background:#0b1020;font-family:Inter,Segoe UI,Arial,sans-serif;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b1020;padding:32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="100%" style="max-width:520px;background:#121826;border:1px solid #2a3348;border-radius:16px;overflow:hidden;">
+              <tr>
+                <td style="padding:28px 28px 8px;text-align:center;">
+                  <div style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#49d1ff;margin-bottom:12px;">{brand}</div>
+                  <h1 style="margin:0;font-size:24px;line-height:1.3;color:#f4f7ff;">Почта привязана</h1>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 28px 28px;color:#b7c0d9;font-size:15px;line-height:1.6;text-align:center;">
+                  Спасибо, что привязали почту. Теперь вы можете авторизовываться через почту и пароль.
+                  {password_hint}
+                  <br><br>
+                  <a href="{site}/login/" style="color:#49d1ff;text-decoration:none;">Перейти ко входу</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </div>
+    """
+    plain = (
+        f"Спасибо, что привязали почту в сервисе {brand}.\n\n"
+        "Теперь вы можете авторизовываться через почту и пароль.\n"
+        f"{site}/login/\n"
+        f"{password_plain}"
+    )
+    return send_email(to_email, subject, html, plain)

@@ -30,11 +30,19 @@ def get_consultant(db: Session, user: AuthUser) -> Consultant:
 
 def normalize_url(value: str | None) -> str | None:
     value = (value or "").strip()
-    if not value:
+    if not value or value.lower() in ("none", "null"):
         return None
     if value.startswith(("http://", "https://")):
         return value
     return f"https://{value.lstrip('/')}"
+
+
+def blank_field(value: str | None) -> str:
+    """Hide empty DB values and literal 'None' strings in form fields."""
+    text = (value or "").strip()
+    if not text or text.lower() in ("none", "null"):
+        return ""
+    return text
 
 
 def normalize_phone(phone: str | None) -> str:

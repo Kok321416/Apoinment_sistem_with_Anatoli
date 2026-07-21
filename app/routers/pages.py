@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from datetime import date, datetime
@@ -47,6 +48,7 @@ from app.utils.safe_redirect import login_url_with_next, safe_next_url
 
 router = APIRouter(tags=["pages"])
 settings = get_settings()
+logger = logging.getLogger(__name__)
 DAYS_NAMES = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 DAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 ALLOWED_PHOTO_EXT = {".jpg", ".jpeg", ".png", ".webp"}
@@ -1083,24 +1085,37 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
             if not email or "@" not in email:
                 error = "Укажите корректную почту."
             else:
-                code = make_email_code()
-                request.session["integrations_email_code"] = code
-                request.session["integrations_email_pending"] = email
-                email_pending = email
-                ensure_email_address(db, user, email, verified=False)
-                consultant.email = email
-                user.email = email
-                user.username = email
-                db.commit()
-                if send_verification_email(email, code):
-                    success = "Код отправлен на почту. Введите его ниже."
+                existing = db.query(User).filter(User.username == email, User.id != user.id).first()
+                if existing:
+                    error = "Эта почта уже используется другим аккаунтом."
                 else:
-                    error = "Не удалось отправить письмо. Проверьте SMTP на сервере."
+                    code = make_email_code()
+                    request.session["integrations_email_code"] = code
+                    request.session["integrations_email_pending"] = email
+                    ensure_email_address(db, user, email, verified=False)
+                    consultant.email = email
+                    db_user = db.get(User, user.id)
+                    if db_user:
+                        db_user.email = email
+                        db_user.username = email
+                    try:
+                        db.commit()
+                    except IntegrityError:
+                        db.rollback()
+                        error = "Эта почта уже используется другим аккаунтом."
+                    else:
+                        if send_verification_email(email, code):
+                            request.session["integrations_success"] = (
+                                f"Код отправлен на {email}. Введите его ниже, чтобы завершить привязку."
+                            )
+                            return RedirectResponse("/integrations/", status_code=302)
+                        error = "Не удалось отправить письмо. Проверьте SMTP на сервере."
         elif action == "confirm_email_code":
+            from app.services.email import send_email_link_success_email
             from app.services.email_verification import ensure_email_address
 
             email = (form.get("email") or request.session.get("integrations_email_pending") or "").strip().lower()
-            code = (form.get("code") or "").strip()
+            code = (form.get("code") or "").strip().replace(" ", "")
             expected = (request.session.get("integrations_email_code") or "").strip()
             pending = (request.session.get("integrations_email_pending") or "").strip().lower()
             if not expected or email != pending:
@@ -1110,14 +1125,26 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
             else:
                 ensure_email_address(db, user, email, verified=True)
                 consultant.email = email
-                user.email = email
-                user.username = email
-                user.is_active = True
-                db.commit()
-                request.session.pop("integrations_email_code", None)
-                request.session.pop("integrations_email_pending", None)
-                email_pending = ""
-                success = "Почта подтверждена. Можно входить по почте и паролю."
+                db_user = db.get(User, user.id)
+                if db_user:
+                    db_user.email = email
+                    db_user.username = email
+                    db_user.is_active = True
+                try:
+                    db.commit()
+                except IntegrityError:
+                    db.rollback()
+                    error = "Эта почта уже используется другим аккаунтом."
+                else:
+                    request.session.pop("integrations_email_code", None)
+                    request.session.pop("integrations_email_pending", None)
+                    needs_password = not user.has_usable_password
+                    if not send_email_link_success_email(email, needs_password=needs_password):
+                        logger.warning("Failed to send email link success message to %s", email)
+                    request.session["integrations_success"] = (
+                        "Спасибо, что привязали почту. Теперь вы можете авторизовываться через почту."
+                    )
+                    return RedirectResponse("/integrations/", status_code=302)
         elif action == "disconnect_email_login":
             rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
             has_social = db.query(SocialAccount).filter(

@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.branding import auth_provider_label, booking_status_label
 from app.config import get_settings
+from app.deps import blank_field
 from app.services.yandex_auth import yandex_oauth_configured
 from app.content.landing_copy import (
     CTA_BLOCK,
@@ -149,6 +150,7 @@ def url_for(name: str, *args, **kwargs) -> str:
 
 templates = Jinja2Templates(directory=str(settings.templates_dir))
 templates.env.filters["cut"] = cut_filter
+templates.env.filters["blank_field"] = blank_field
 templates.env.filters["media_url"] = media_url
 templates.env.filters["profile_photo_src"] = profile_photo_src
 templates.env.filters["date"] = django_date

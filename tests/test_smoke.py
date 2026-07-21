@@ -162,6 +162,15 @@ def test_yandex_signup_creates_consultant():
     db.close()
 
 
+def test_blank_field_hides_none_string():
+    from app.deps import blank_field
+
+    assert blank_field(None) == ""
+    assert blank_field("None") == ""
+    assert blank_field("  null  ") == ""
+    assert blank_field("https://vk.com/user") == "https://vk.com/user"
+
+
 def test_yandex_login_redirects_to_register_without_signup_data(monkeypatch):
     from app.main import app
     from app.routers import oauth as oauth_router
