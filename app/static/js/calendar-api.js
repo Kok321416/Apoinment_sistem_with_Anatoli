@@ -13,12 +13,15 @@
         }
 
         async request(url, options) {
-            const response = await fetch(url, options);
+            const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, options || {}));
             let data = null;
-            try {
-                data = await response.json();
-            } catch (e) {
-                data = null;
+            const raw = await response.text();
+            if (raw) {
+                try {
+                    data = JSON.parse(raw);
+                } catch (e) {
+                    data = null;
+                }
             }
             if (!response.ok) {
                 let detail = data && (data.detail || data.error || data.message);
@@ -27,7 +30,13 @@
                         return typeof item === 'string' ? item : (item.msg || JSON.stringify(item));
                     }).join(', ');
                 }
-                throw new Error(detail || 'Ошибка запроса');
+                if (!detail && response.status === 403) {
+                    detail = 'Ошибка безопасности. Обновите страницу.';
+                }
+                if (!detail && response.status === 401) {
+                    detail = 'Сессия истекла. Войдите снова.';
+                }
+                throw new Error(detail || ('Ошибка запроса (' + response.status + ')'));
             }
             return data;
         }

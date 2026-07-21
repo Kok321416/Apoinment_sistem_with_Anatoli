@@ -53,10 +53,16 @@ def delete_client_card(db: Session, card: ClientCard) -> tuple[bool, str]:
         return False, "Не удалось удалить карточку."
 
 
-def delete_time_slot(db: Session, slot: TimeSlot) -> tuple[bool, str]:
-    db.query(Booking).filter(Booking.time_slot_id == slot.id).update(
+def detach_bookings_from_slots(db: Session, slot_ids: list[int]) -> None:
+    if not slot_ids:
+        return
+    db.query(Booking).filter(Booking.time_slot_id.in_(slot_ids)).update(
         {Booking.time_slot_id: None}, synchronize_session=False
     )
+
+
+def delete_time_slot(db: Session, slot: TimeSlot) -> tuple[bool, str]:
+    detach_bookings_from_slots(db, [slot.id])
     db.delete(slot)
     try:
         db.commit()

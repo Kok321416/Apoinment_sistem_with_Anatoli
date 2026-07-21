@@ -6,6 +6,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.session import get_current_user
@@ -73,6 +74,18 @@ def _require_slot(db: Session, calendar: Calendar, slot_id: int) -> TimeSlot:
 def _schedule_response(calendar: Calendar, db: Session) -> dict:
     grouped = slots_by_day(db, calendar.id)
     return build_schedule_payload(calendar, grouped)
+
+
+def _commit_db(db: Session) -> None:
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        logger.exception("calendar schedule commit failed")
+        raise HTTPException(
+            status_code=400,
+            detail="Не удалось сохранить расписание. Возможно, окно используется в записях.",
+        ) from exc
 
 
 class TimeSlotCreate(BaseModel):
@@ -156,7 +169,7 @@ async def create_time_slot(body: TimeSlotCreate, request: Request, db: Session =
         is_available=True,
     )
     db.add(slot)
-    db.commit()
+    _commit_db(db)
     db.refresh(slot)
     from app.services.calendar_schedule import serialize_slot
 
@@ -186,7 +199,7 @@ async def update_time_slot(slot_id: int, body: TimeSlotUpdate, request: Request,
         raise HTTPException(status_code=400, detail=err)
     slot.start_time = start_t
     slot.end_time = end_t
-    db.commit()
+    _commit_db(db)
     from app.services.calendar_schedule import serialize_slot
 
     return JSONResponse({
@@ -222,7 +235,7 @@ async def copy_day(calendar_id: int, body: CopyDayBody, request: Request, db: Se
     if body.source_day < 0 or body.source_day > 6:
         raise HTTPException(status_code=400, detail="Некорректный исходный день")
     created = copy_day_slots(db, calendar, body.source_day, body.target_days, replace=True)
-    db.commit()
+    _commit_db(db)
     return JSONResponse({
         "created": created,
         "schedule": _schedule_response(calendar, db),
@@ -243,7 +256,7 @@ async def preset_workweek_endpoint(
         raise HTTPException(status_code=403, detail="CSRF")
     _, calendar = _require_calendar(request, db, calendar_id)
     created = preset_workweek(db, calendar, body.source_day)
-    db.commit()
+    _commit_db(db)
     return JSONResponse({
         "created": created,
         "schedule": _schedule_response(calendar, db),
@@ -259,7 +272,7 @@ async def preset_fulltime_endpoint(
         raise HTTPException(status_code=403, detail="CSRF")
     _, calendar = _require_calendar(request, db, calendar_id)
     created = preset_fulltime(db, calendar, body.days)
-    db.commit()
+    _commit_db(db)
     return JSONResponse({
         "created": created,
         "schedule": _schedule_response(calendar, db),
@@ -276,7 +289,7 @@ async def delete_day_slots(calendar_id: int, weekday: int, request: Request, db:
         raise HTTPException(status_code=400, detail="Некорректный день недели")
     _, calendar = _require_calendar(request, db, calendar_id)
     removed = clear_day_slots(db, calendar.id, weekday)
-    db.commit()
+    _commit_db(db)
     return JSONResponse({
         "removed": removed,
         "schedule": _schedule_response(calendar, db),
@@ -294,7 +307,7 @@ async def patch_day_working(
         raise HTTPException(status_code=400, detail="Некорректный день недели")
     _, calendar = _require_calendar(request, db, calendar_id)
     set_day_working(calendar, weekday, body.is_working)
-    db.commit()
+    _commit_db(db)
     grouped = slots_by_day(db, calendar.id)
     return JSONResponse({
         "day": build_day_payload(calendar, grouped, weekday),

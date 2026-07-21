@@ -4,9 +4,11 @@ from __future__ import annotations
 from datetime import datetime, time
 from typing import Iterable
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import Calendar, TimeSlot
+from app.services.entity_delete import detach_bookings_from_slots
 
 DAYS_NAMES = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 DAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
@@ -182,6 +184,9 @@ def clear_day_slots(db: Session, calendar_id: int, weekday: int) -> int:
         .filter(TimeSlot.calendar_id == calendar_id, TimeSlot.day_of_week == weekday)
         .all()
     )
+    if not slots:
+        return 0
+    detach_bookings_from_slots(db, [slot.id for slot in slots])
     for slot in slots:
         db.delete(slot)
     return len(slots)

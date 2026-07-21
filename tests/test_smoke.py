@@ -188,6 +188,63 @@ def test_yandex_login_redirects_to_register_without_signup_data(monkeypatch):
     assert r.headers["location"] == "/register/?error=yandex_signup"
 
 
+def test_clear_day_slots_detaches_bookings():
+    from datetime import date, time
+
+    from app.models import Booking, Calendar, Service, TimeSlot
+    from app.services.calendar_schedule import clear_day_slots, copy_day_slots, preset_fulltime
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    db = sessionmaker(bind=engine)()
+    cal = Calendar(consultant_id=1, name="C", color="#7d5cff")
+    db.add(cal)
+    db.flush()
+    slot = TimeSlot(
+        calendar_id=cal.id,
+        day_of_week=0,
+        start_time=time(9, 0),
+        end_time=time(17, 0),
+    )
+    db.add(slot)
+    db.flush()
+    svc = Service(consultant_id=1, calendar_id=cal.id, name="S", duration_minutes=60)
+    db.add(svc)
+    db.flush()
+    booking = Booking(
+        service_id=svc.id,
+        time_slot_id=slot.id,
+        calendar_id=cal.id,
+        client_name="Клиент",
+        client_phone="79991234567",
+        booking_date=date(2026, 8, 1),
+        booking_time=time(10, 0),
+        status="confirmed",
+    )
+    db.add(booking)
+    db.commit()
+
+    assert clear_day_slots(db, cal.id, 0) == 1
+    db.commit()
+    db.refresh(booking)
+    assert booking.time_slot_id is None
+    assert db.query(TimeSlot).filter(TimeSlot.calendar_id == cal.id).count() == 0
+
+    slot2 = TimeSlot(
+        calendar_id=cal.id,
+        day_of_week=1,
+        start_time=time(10, 0),
+        end_time=time(12, 0),
+    )
+    db.add(slot2)
+    db.commit()
+    assert copy_day_slots(db, cal, 1, [2], replace=True) == 1
+    db.commit()
+    assert preset_fulltime(db, cal, [3]) == 1
+    db.commit()
+    db.close()
+
+
 def test_new_api_routes_require_auth():
     from app.main import app
 
