@@ -90,6 +90,20 @@ def _refresh_schema_health() -> None:
     _schema_degraded = bool(issues)
 
 
+def ensure_email_auth_schema() -> None:
+    """Email verification tables may be missing on older production DBs."""
+    try:
+        Base.metadata.create_all(
+            bind=engine,
+            tables=[
+                auth_models.EmailAddress.__table__,
+                auth_models.EmailVerificationToken.__table__,
+            ],
+        )
+    except Exception:
+        logger.exception("email auth schema ensure failed")
+
+
 def ensure_app_schema() -> None:
     """Idempotent patches required by the current app code. Never raises."""
     try:
@@ -112,6 +126,10 @@ def ensure_all_schema() -> None:
         ensure_telegram_login_schema()
     except Exception:
         logger.exception("telegram login schema ensure failed")
+    try:
+        ensure_email_auth_schema()
+    except Exception:
+        logger.exception("email auth schema ensure failed")
     ensure_app_schema()
     _schema_ready = True
 

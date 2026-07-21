@@ -54,7 +54,10 @@ def ensure_email_address(db: Session, user: User, email: str, verified: bool = F
 
 
 def send_user_verification_email(db: Session, user: User) -> bool:
-    token_row = create_verification_token(db, user)
+    try:
+        token_row = create_verification_token(db, user)
+    except Exception:
+        return False
     ok = send_verification_email(user.email, token_row.token)
     if ok:
         db.commit()

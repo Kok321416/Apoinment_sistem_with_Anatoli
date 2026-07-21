@@ -300,7 +300,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
             request.session["register_phone"] = phone
             return RedirectResponse(f"/accounts/telegram/login/?{urlencode({'process': 'signup', 'next': '/dashboard/'})}", status_code=302)
         else:
-            email = (form.get("email") or "").strip()
+            email = (form.get("email") or "").strip().lower()
             password = form.get("password", "")
             password_confirm = form.get("password_confirm", "")
             if not email or not password:
@@ -309,33 +309,43 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                 error = "Пароли не совпадают"
             elif db.query(User).filter(User.username == email).first():
                 error = "Пользователь с такой почтой уже зарегистрирован"
+            elif db.query(Consultant).filter(Consultant.email == email).first():
+                error = "Эта почта уже используется другим специалистом"
             else:
-                first_name, last_name, middle_name = parse_fio(fio)
-                new_user = User(
-                    username=email, email=email, password=hash_password(password),
-                    is_active=False, date_joined=datetime.utcnow(),
-                )
-                db.add(new_user)
-                db.flush()
-                category = db.query(Category).filter(Category.name_category == "Общая").first()
-                if not category:
-                    category = Category(name_category="Общая")
-                    db.add(category)
-                    db.flush()
-                db.add(Consultant(
-                    user_id=new_user.id, first_name=first_name, last_name=last_name,
-                    middle_name=middle_name, email=email, phone=phone,
-                    telegram_nickname="", category_of_specialist_id=category.id,
-                ))
-                ensure_email_address(db, new_user, email, verified=False)
-                if not send_user_verification_email(db, new_user):
-                    db.rollback()
-                    error = "Не удалось отправить письмо. Проверьте почту или обратитесь к администратору."
-                else:
-                    return RedirectResponse(
-                        f"/accounts/verify-email/?{urlencode({'email': email})}",
-                        status_code=302,
+                try:
+                    first_name, last_name, middle_name = parse_fio(fio)
+                    new_user = User(
+                        username=email, email=email, password=hash_password(password),
+                        is_active=False, date_joined=datetime.utcnow(),
                     )
+                    db.add(new_user)
+                    db.flush()
+                    category = db.query(Category).filter(Category.name_category == "Общая").first()
+                    if not category:
+                        category = Category(name_category="Общая")
+                        db.add(category)
+                        db.flush()
+                    db.add(Consultant(
+                        user_id=new_user.id, first_name=first_name, last_name=last_name,
+                        middle_name=middle_name, email=email, phone=phone,
+                        telegram_nickname="", category_of_specialist_id=category.id,
+                    ))
+                    ensure_email_address(db, new_user, email, verified=False)
+                    if not send_user_verification_email(db, new_user):
+                        db.rollback()
+                        error = "Не удалось отправить письмо. Проверьте почту или обратитесь к администратору."
+                    else:
+                        return RedirectResponse(
+                            f"/accounts/verify-email/?{urlencode({'email': email})}",
+                            status_code=302,
+                        )
+                except IntegrityError:
+                    db.rollback()
+                    error = "Пользователь с такой почтой уже зарегистрирован"
+                except Exception:
+                    logger.exception("Email registration failed for %s", email)
+                    db.rollback()
+                    error = "Не удалось завершить регистрацию. Попробуйте позже или выберите другой способ входа."
     return templates.TemplateResponse("register.html", page_context(
         request, db, user,
         error=error,
