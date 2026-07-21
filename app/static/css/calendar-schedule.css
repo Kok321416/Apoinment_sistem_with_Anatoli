@@ -62,8 +62,45 @@
 
 .week-grid-panel,
 .day-editor-panel,
+.calendar-settings-panel,
 .calendar-settings-footer {
     padding: var(--space-2xl);
+}
+
+.calendar-settings-panel {
+    margin-bottom: var(--space-2xl);
+}
+
+.calendar-settings-summary {
+    margin-top: var(--space-2xl);
+    padding: var(--space-xl) var(--space-2xl);
+}
+
+.calendar-settings-summary__title {
+    margin: 0 0 var(--space-md);
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+
+.calendar-settings-panel__head,
+.calendar-settings-footer__head {
+    margin-bottom: var(--space-xl);
+}
+
+.calendar-settings-panel__title,
+.calendar-settings-footer__title {
+    margin: 0 0 var(--space-xs);
+    font-size: var(--font-size-h2);
+}
+
+.calendar-settings-panel__lead,
+.calendar-settings-footer__lead {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-body-sm);
 }
 
 .week-grid-panel__toolbar {
@@ -401,21 +438,6 @@
 .quick-action__desc {
     font-size: 0.75rem;
     color: var(--text-muted);
-}
-
-.calendar-settings-footer__head {
-    margin-bottom: var(--space-xl);
-}
-
-.calendar-settings-footer__title {
-    margin: 0 0 var(--space-xs);
-    font-size: var(--font-size-h2);
-}
-
-.calendar-settings-footer__lead {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: var(--font-size-body-sm);
 }
 
 .calendar-settings-form__grid {

@@ -9,7 +9,7 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=23">
-<link rel="stylesheet" href="/static/css/calendar-schedule.css?v=1">
+<link rel="stylesheet" href="/static/css/calendar-schedule.css?v=2">
 {% endblock %}
 
 {% block app_content %}
@@ -34,7 +34,6 @@
                 <a href="{{ booking_url }}" class="btn btn--ghost btn--sm" target="_blank" rel="noopener">Предпросмотр записи</a>
             </div>
         </div>
-        <div class="calendar-page__badges" id="calendar-badges" aria-live="polite"></div>
     </header>
 
     {% if success %}
@@ -44,28 +43,10 @@
     <div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
     {% endif %}
 
-    <div class="calendar-layout" id="calendar-layout">
-        <section class="week-grid-panel card" aria-label="Недельная сетка">
-            <div class="week-grid-panel__toolbar">
-                <h2 class="week-grid-panel__title">Расписание недели</h2>
-                <p class="week-grid-panel__hint">Кликните по дню или окну, чтобы открыть редактор справа</p>
-            </div>
-            <div class="week-grid-wrap" id="week-grid-wrap">
-                <div class="week-grid-loading" id="week-grid-loading">Загрузка расписания…</div>
-                <div class="week-grid" id="week-grid" hidden></div>
-            </div>
-        </section>
-
-        <section class="day-editor-panel card" aria-label="Редактор дня" id="day-editor-panel">
-            <div class="day-editor-loading" id="day-editor-loading">Выберите день в сетке</div>
-            <div id="day-editor" hidden></div>
-        </section>
-    </div>
-
-    <footer class="calendar-settings-footer card" id="calendar-settings-footer">
-        <div class="calendar-settings-footer__head">
-            <h2 class="calendar-settings-footer__title">Дополнительные настройки календаря</h2>
-            <p class="calendar-settings-footer__lead">Перерывы, лимиты записи и напоминания клиентам</p>
+    <section class="calendar-settings-panel card" id="calendar-settings-panel">
+        <div class="calendar-settings-panel__head">
+            <h2 class="calendar-settings-panel__title">Дополнительные настройки календаря</h2>
+            <p class="calendar-settings-panel__lead">Перерывы, лимиты записи и напоминания клиентам</p>
         </div>
         <form class="calendar-settings-form" id="calendar-settings-form">
             <div class="calendar-settings-form__grid">
@@ -108,6 +89,29 @@
             </div>
             <button type="submit" class="btn btn--primary btn--lg calendar-settings-form__save" id="settings-save-btn">Сохранить изменения</button>
         </form>
+    </section>
+
+    <div class="calendar-layout" id="calendar-layout">
+        <section class="week-grid-panel card" aria-label="Недельная сетка">
+            <div class="week-grid-panel__toolbar">
+                <h2 class="week-grid-panel__title">Расписание недели</h2>
+                <p class="week-grid-panel__hint">Кликните по дню или окну, чтобы открыть редактор справа</p>
+            </div>
+            <div class="week-grid-wrap" id="week-grid-wrap">
+                <div class="week-grid-loading" id="week-grid-loading">Загрузка расписания…</div>
+                <div class="week-grid" id="week-grid" hidden></div>
+            </div>
+        </section>
+
+        <section class="day-editor-panel card" aria-label="Редактор дня" id="day-editor-panel">
+            <div class="day-editor-loading" id="day-editor-loading">Выберите день в сетке</div>
+            <div id="day-editor" hidden></div>
+        </section>
+    </div>
+
+    <footer class="calendar-settings-summary card" id="calendar-settings-summary">
+        <h2 class="calendar-settings-summary__title">Текущие параметры</h2>
+        <div class="calendar-page__badges" id="calendar-badges" aria-live="polite"></div>
     </footer>
 </div>
 

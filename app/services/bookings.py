@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import date, datetime, timedelta
 
@@ -6,6 +7,17 @@ from sqlalchemy.orm import Session
 
 from app.models import Booking, Calendar, ClientCard, Consultant, Service, TimeSlot
 from app.services.telegram import on_booking_created, on_booking_updated
+
+
+def normalize_client_phone(raw: str) -> tuple[str, str | None]:
+    if not (raw or "").strip():
+        return "", None
+    digits = re.sub(r"\D", "", raw)
+    if not digits:
+        return "", "Телефон должен содержать только цифры"
+    if len(digits) < 10:
+        return "", "Телефон должен содержать не менее 10 цифр"
+    return digits, None
 
 
 def parse_fio(fio_str: str) -> tuple[str, str, str]:
@@ -94,6 +106,12 @@ def create_public_booking(
     if service.calendar_id and service.calendar_id != calendar.id:
         return None, "Услуга не относится к этому календарю."
 
+    client_phone, phone_err = normalize_client_phone(client_phone)
+    if phone_err:
+        return None, phone_err
+
+    db.query(Calendar).filter(Calendar.id == calendar.id).with_for_update().one()
+
     start_time_obj = datetime.strptime(booking_time_str, "%H:%M").time()
     end_time_obj = datetime.strptime(booking_end_time_str, "%H:%M").time()
     start_dt = datetime.combine(booking_date, start_time_obj)
@@ -116,6 +134,20 @@ def create_public_booking(
     )
     if not time_slot:
         return None, "Выбранное время не входит в доступные окна приёма."
+
+    slot_taken = (
+        db.query(Booking)
+        .filter(
+            Booking.calendar_id == calendar.id,
+            Booking.booking_date == booking_date,
+            Booking.booking_time == start_time_obj,
+            Booking.status.in_(["pending", "confirmed"]),
+        )
+        .with_for_update()
+        .first()
+    )
+    if slot_taken:
+        return None, "Это время уже занято. Выберите другой слот."
 
     max_per_day = calendar.max_services_per_day or 0
     existing_bookings = (

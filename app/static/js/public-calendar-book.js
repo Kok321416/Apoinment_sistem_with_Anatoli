@@ -180,5 +180,23 @@
         renderCalendar();
     });
     serviceEl.addEventListener("change", loadSlots);
+
+    var submitting = false;
+    form.addEventListener("submit", function (event) {
+        if (submitting) {
+            event.preventDefault();
+            return;
+        }
+        if (!timeEl.value || !dateEl.value || !serviceEl.value) {
+            event.preventDefault();
+            slotsHint.textContent = "Выберите услугу, дату и время перед записью.";
+            return;
+        }
+        submitting = true;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Записываем…";
+        submitBtn.setAttribute("aria-busy", "true");
+    });
+
     renderCalendar();
 })();

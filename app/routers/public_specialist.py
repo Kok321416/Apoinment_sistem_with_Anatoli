@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.database import get_db
 from app.models import Calendar, Consultant, Service, TimeSlot
-from app.services.bookings import create_public_booking
+from app.services.bookings import create_public_booking, normalize_client_phone
 from app.services.email import send_verification_email
 from app.services.public_client import (
     clear_client_gate,
@@ -104,7 +104,10 @@ async def specialist_welcome(request: Request, slug: str, db: Session = Depends(
         email = (form.get("email") or "").strip().lower()
         phone = (form.get("phone") or "").strip()
         telegram = (form.get("telegram") or "").strip().lstrip("@")
-        if not name:
+        phone_norm, phone_err = normalize_client_phone(phone)
+        if phone_err:
+            error = phone_err
+        elif not name:
             error = "Укажите имя"
         elif channel == "email":
             if not email or "@" not in email:
@@ -116,7 +119,7 @@ async def specialist_welcome(request: Request, slug: str, db: Session = Depends(
                     consultant_id=consultant.id,
                     name=name,
                     email=email,
-                    phone=phone,
+                    phone=phone_norm,
                     telegram=telegram,
                     verified=False,
                 )
@@ -128,7 +131,7 @@ async def specialist_welcome(request: Request, slug: str, db: Session = Depends(
                     q = urlencode({"next": next_url, "email": email})
                     return RedirectResponse(f"/s/{slug}/verify-email/?{q}", status_code=302)
         elif channel == "telegram":
-            if not telegram and not phone:
+            if not telegram and not phone_norm:
                 error = "Укажите ник в Телеграм или телефон"
             else:
                 set_client_gate(
@@ -136,8 +139,8 @@ async def specialist_welcome(request: Request, slug: str, db: Session = Depends(
                     consultant_id=consultant.id,
                     name=name,
                     email=email,
-                    phone=phone,
-                    telegram=telegram or phone,
+                    phone=phone_norm,
+                    telegram=telegram or phone_norm,
                     verified=True,
                 )
                 _sync_booking_session(request)

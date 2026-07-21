@@ -8,7 +8,7 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=23">
-<link rel="stylesheet" href="/static/css/calendars-hub.css?v=1">
+<link rel="stylesheet" href="/static/css/calendars-hub.css?v=2">
 {% endblock %}
 
 {% block app_content %}
@@ -188,22 +188,40 @@
                         </div>
 
                         <div class="cal-card__actions">
-                            <a href="{{ cal.manage_url }}" class="btn btn--primary btn--sm">⚙ Управление</a>
-                            <a href="{{ cal.settings_url }}" class="btn btn--ghost btn--sm">✏ Настройки</a>
-                            <button type="button" class="btn btn--secondary btn--sm" data-link="{{ cal.booking_url }}" onclick="copyBookingLink(this)">📋 Копировать</button>
-                            <button type="button" class="btn btn--ghost btn--sm" data-stub-stats>📊 Статистика</button>
-                            <form method="POST" action="/calendars/" class="cal-card__toggle-form">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                <input type="hidden" name="action" value="toggle_calendar">
-                                <input type="hidden" name="calendar_id" value="{{ cal.id }}">
-                                <button type="submit" class="btn btn--secondary btn--sm">{% if cal.is_active %}⏸ Выключить{% else %}▶ Включить{% endif %}</button>
-                            </form>
-                            <form method="POST" action="/calendars/" class="cal-card__delete-form" onsubmit="return confirm('Удалить календарь?');">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                <input type="hidden" name="action" value="delete_calendar">
-                                <input type="hidden" name="calendar_id" value="{{ cal.id }}">
-                                <button type="submit" class="btn btn--danger btn--sm">🗑 Удалить</button>
-                            </form>
+                            <div class="cal-card__action-item">
+                                <a href="{{ cal.manage_url }}" class="btn btn--primary btn--sm" title="Расписание и окна записи">⚙</a>
+                                <span class="cal-card__action-label">Управление</span>
+                            </div>
+                            <div class="cal-card__action-item">
+                                <a href="{{ cal.settings_url }}" class="btn btn--ghost btn--sm" title="Перерывы и напоминания">✏</a>
+                                <span class="cal-card__action-label">Настройки</span>
+                            </div>
+                            <div class="cal-card__action-item">
+                                <button type="button" class="btn btn--secondary btn--sm" data-link="{{ cal.booking_url }}" onclick="copyBookingLink(this)" title="Ссылка для клиентов">📋</button>
+                                <span class="cal-card__action-label">Копировать</span>
+                            </div>
+                            <div class="cal-card__action-item">
+                                <button type="button" class="btn btn--ghost btn--sm" data-stub-stats title="Скоро">📊</button>
+                                <span class="cal-card__action-label">Статистика</span>
+                            </div>
+                            <div class="cal-card__action-item">
+                                <form method="POST" action="/calendars/" class="cal-card__toggle-form">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="action" value="toggle_calendar">
+                                    <input type="hidden" name="calendar_id" value="{{ cal.id }}">
+                                    <button type="submit" class="btn btn--secondary btn--sm" title="{% if cal.is_active %}Скрыть от клиентов{% else %}Показать клиентам{% endif %}">{% if cal.is_active %}⏸{% else %}▶{% endif %}</button>
+                                </form>
+                                <span class="cal-card__action-label">{% if cal.is_active %}Выключить{% else %}Включить{% endif %}</span>
+                            </div>
+                            <div class="cal-card__action-item">
+                                <form method="POST" action="/calendars/" class="cal-card__delete-form" onsubmit="return confirm('Удалить календарь?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="action" value="delete_calendar">
+                                    <input type="hidden" name="calendar_id" value="{{ cal.id }}">
+                                    <button type="submit" class="btn btn--danger btn--sm" title="Удалить навсегда">🗑</button>
+                                </form>
+                                <span class="cal-card__action-label">Удалить</span>
+                            </div>
                         </div>
                     </article>
                     {% endfor %}

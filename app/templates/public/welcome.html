@@ -25,7 +25,8 @@
         </div>
         <div class="form-field">
             <label class="form-field__label" for="client_phone">Телефон</label>
-            <input class="input" id="client_phone" name="phone" type="tel" autocomplete="tel" placeholder="+7...">
+            <input class="input" id="client_phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="79991234567" pattern="[0-9]*">
+            <p class="form-field__hint">Только цифры, без пробелов и букв</p>
         </div>
 
         <fieldset class="stack">
@@ -55,19 +56,8 @@
         <button type="submit" class="btn btn--primary btn--block">Продолжить</button>
     </form>
 </div>
-<script>
-(function () {
-    var form = document.getElementById('clientWelcomeForm');
-    if (!form) return;
-    var emailBlock = document.getElementById('emailBlock');
-    var tgBlock = document.getElementById('telegramBlock');
-    form.querySelectorAll('input[name="channel"]').forEach(function (radio) {
-        radio.addEventListener('change', function () {
-            var isEmail = form.channel.value === 'email';
-            emailBlock.classList.toggle('is-hidden', !isEmail);
-            tgBlock.classList.toggle('is-hidden', isEmail);
-        });
-    });
-})();
-</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/public-welcome.js?v=1" defer></script>
 {% endblock %}
