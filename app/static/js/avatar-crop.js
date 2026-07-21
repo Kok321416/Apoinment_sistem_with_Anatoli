@@ -1,6 +1,6 @@
 /**
  * Circular avatar crop editor for profile photo upload.
- * Accepts JPG/PNG only; outputs a square JPEG for the circular preview.
+ * Accepts common image formats; outputs a square JPEG for the circular preview.
  */
 (function () {
     var input = document.getElementById('profilePhotoInput');
@@ -11,8 +11,10 @@
     var cancelBtn = document.getElementById('avatarCropCancel');
     var zoom = document.getElementById('avatarCropZoom');
     var hint = document.getElementById('avatarCropHint');
+    var form = document.getElementById('profileForm');
     if (!input || !modal || !canvas) return;
 
+    var profilePreview = document.getElementById('profilePhotoPreview');
     var ctx = canvas.getContext('2d');
     var img = new Image();
     var scale = 1;
@@ -21,9 +23,18 @@
     var dragging = false;
     var lastX = 0;
     var lastY = 0;
+    var pendingBlob = null;
+    var previewObjectUrl = null;
     var SIZE = 320;
     canvas.width = SIZE;
     canvas.height = SIZE;
+
+    function revokePreviewUrl() {
+        if (previewObjectUrl) {
+            URL.revokeObjectURL(previewObjectUrl);
+            previewObjectUrl = null;
+        }
+    }
 
     function openModal() {
         modal.hidden = false;
@@ -33,7 +44,46 @@
     function closeModal(clearInput) {
         modal.hidden = true;
         modal.classList.remove('is-open');
-        if (clearInput) input.value = '';
+        if (clearInput) {
+            input.value = '';
+            pendingBlob = null;
+        }
+    }
+
+    function isAllowedImage(file) {
+        var name = (file.name || '').toLowerCase();
+        var okExt = /\.(jpe?g|png|webp)$/i.test(name) || !name.includes('.');
+        var okType = !file.type || file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
+        return okExt && okType;
+    }
+
+    function updateProfilePreview(blob) {
+        if (!profilePreview || !blob) return;
+        revokePreviewUrl();
+        previewObjectUrl = URL.createObjectURL(blob);
+        if (profilePreview.tagName === 'IMG') {
+            profilePreview.src = previewObjectUrl;
+        } else {
+            var image = document.createElement('img');
+            image.src = previewObjectUrl;
+            image.alt = 'Фото профиля';
+            image.className = 'profile-photo';
+            image.id = 'profilePhotoPreview';
+            profilePreview.replaceWith(image);
+            profilePreview = image;
+        }
+    }
+
+    function assignFileToInput(blob) {
+        var file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+        try {
+            var dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+            return !!(input.files && input.files.length);
+        } catch (err) {
+            return false;
+        }
     }
 
     function draw() {
@@ -61,11 +111,8 @@
     }
 
     function loadFile(file) {
-        var name = (file.name || '').toLowerCase();
-        var okExt = name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png');
-        var okType = !file.type || file.type === 'image/jpeg' || file.type === 'image/png';
-        if (!okExt || !okType) {
-            if (hint) hint.textContent = 'Допустимы только JPG и PNG';
+        if (!isAllowedImage(file)) {
+            if (hint) hint.textContent = 'Допустимы только JPG, PNG или WEBP';
             input.value = '';
             return;
         }
@@ -79,13 +126,40 @@
                 openModal();
                 draw();
             };
+            img.onerror = function () {
+                if (hint) hint.textContent = 'Не удалось открыть изображение. Попробуйте JPG или PNG.';
+                input.value = '';
+            };
             img.src = reader.result;
         };
         reader.readAsDataURL(file);
     }
 
+    function submitWithBlob(blob) {
+        if (!form) return;
+        var file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+        var fd = new FormData(form);
+        fd.delete('profile_photo');
+        fd.append('profile_photo', file, 'photo.jpg');
+        fetch(form.action, {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin',
+        }).then(function (response) {
+            if (response.ok) {
+                window.location.reload();
+                return;
+            }
+            window.location.reload();
+        }).catch(function () {
+            assignFileToInput(blob);
+            form.submit();
+        });
+    }
+
     input.addEventListener('change', function () {
         if (!input.files || !input.files[0]) return;
+        pendingBlob = null;
         loadFile(input.files[0]);
     });
 
@@ -135,13 +209,28 @@
             octx.drawImage(img, x, y, w, h);
             out.toBlob(function (blob) {
                 if (!blob) return;
-                var dt = new DataTransfer();
-                dt.items.add(new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
-                input.files = dt.files;
+                pendingBlob = blob;
+                updateProfilePreview(blob);
+                assignFileToInput(blob);
                 closeModal(false);
-                input.dispatchEvent(new Event('cropped', { bubbles: true }));
-                if (hint) hint.textContent = 'Фото подготовлено для круглого аватара. Нажмите «Сохранить изменения».';
+                if (hint) hint.textContent = 'Фото готово. Нажмите «Сохранить профиль».';
             }, 'image/jpeg', 0.92);
+        });
+    }
+
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            if (!pendingBlob) return;
+            if (!input.files || !input.files.length) {
+                e.preventDefault();
+                submitWithBlob(pendingBlob);
+                return;
+            }
+            assignFileToInput(pendingBlob);
+            if (!input.files || !input.files.length) {
+                e.preventDefault();
+                submitWithBlob(pendingBlob);
+            }
         });
     }
 })();

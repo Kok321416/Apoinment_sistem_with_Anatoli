@@ -10,7 +10,7 @@
 <div class="public-spec">
     <div class="public-spec__hero">
         {% if consultant.profile_photo %}
-        <img class="public-spec__photo" src="{{ consultant.profile_photo|media_url }}" alt="">
+        <img class="public-spec__photo" src="{{ consultant.profile_photo|profile_photo_src }}" alt="">
         {% else %}
         <div class="public-spec__photo public-spec__photo--empty">{{ (consultant.first_name or "?")[:1] }}</div>
         {% endif %}

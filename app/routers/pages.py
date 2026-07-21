@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse,
 from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from starlette.datastructures import UploadFile
 
 from app.auth.passwords import hash_password, verify_password
 from app.auth.session import get_current_user, login_user, logout_user
@@ -41,14 +42,14 @@ from app.services.email_verification import ensure_email_address, resend_verific
 from app.services.entity_delete import delete_calendar, delete_client_card, delete_service, delete_time_slot
 from app.services.slots import get_available_slots
 from app.services.telegram import notify_booking_status_changed
-from app.templating import guide_context, landing_context, page_context, templates
+from app.templating import guide_context, landing_context, media_relative_path, page_context, templates
 from app.utils.safe_redirect import login_url_with_next, safe_next_url
 
 router = APIRouter(tags=["pages"])
 settings = get_settings()
 DAYS_NAMES = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 DAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-ALLOWED_PHOTO_EXT = {".jpg", ".jpeg", ".png"}
+ALLOWED_PHOTO_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
 
 
@@ -85,17 +86,30 @@ def _parse_time(raw: str | None):
         return None
 
 
-def _save_profile_photo(consultant: Consultant, upload) -> str | None:
-    if not upload or not getattr(upload, "filename", None):
+async def _read_upload_bytes(upload: UploadFile, limit: int) -> bytes:
+    data = await upload.read(limit + 1)
+    if data:
+        return data
+    if upload.file:
+        upload.file.seek(0)
+        return upload.file.read(limit + 1)
+    return b""
+
+
+async def _save_profile_photo(consultant: Consultant, upload) -> str | None:
+    if not upload or not isinstance(upload, UploadFile):
+        return None
+    filename = (upload.filename or "").strip()
+    if not filename:
         return None
     from io import BytesIO
 
     from PIL import Image, UnidentifiedImageError
 
-    ext = Path(upload.filename).suffix.lower()
+    ext = Path(filename).suffix.lower()
     if ext not in ALLOWED_PHOTO_EXT:
         return "Допустимы только JPG и PNG"
-    raw = upload.file.read(MAX_PHOTO_BYTES + 1)
+    raw = await _read_upload_bytes(upload, MAX_PHOTO_BYTES)
     if not raw:
         return "Пустой файл изображения"
     if len(raw) > MAX_PHOTO_BYTES:
@@ -105,8 +119,8 @@ def _save_profile_photo(consultant: Consultant, upload) -> str | None:
         image.load()
     except UnidentifiedImageError:
         return "Файл не является изображением JPG или PNG"
-    if image.format not in ("JPEG", "PNG"):
-        return "Допустимы только JPG и PNG"
+    if image.format not in ("JPEG", "PNG", "WEBP"):
+        return "Допустимы только JPG, PNG и WEBP"
     image = image.convert("RGB")
     w, h = image.size
     side = min(w, h)
@@ -120,7 +134,7 @@ def _save_profile_photo(consultant: Consultant, upload) -> str | None:
     filename = "photo.jpg"
     dest_path = dest_dir / filename
     if consultant.profile_photo:
-        old = settings.media_root / consultant.profile_photo.lstrip("/")
+        old = settings.media_root / media_relative_path(consultant.profile_photo)
         if old.is_file():
             old.unlink(missing_ok=True)
     image.save(dest_path, format="JPEG", quality=90, optimize=True)
@@ -894,7 +908,7 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
                 consultant.social_telegram = normalize_url(form.get("social_telegram"))
                 consultant.social_youtube = normalize_url(form.get("social_youtube"))
                 consultant.website = normalize_url(form.get("website"))
-                photo_err = _save_profile_photo(consultant, form.get("profile_photo"))
+                photo_err = await _save_profile_photo(consultant, form.get("profile_photo"))
                 if photo_err:
                     error = photo_err
                 else:

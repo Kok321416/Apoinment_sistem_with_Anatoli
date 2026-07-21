@@ -42,12 +42,12 @@
         <h2 class="app-section__title">Фото</h2>
         <div class="profile-avatar-row">
             {% if consultant.profile_photo %}
-            <img src="{{ consultant.profile_photo|media_url }}" alt="Фото профиля" class="profile-photo" id="profilePhotoPreview">
+            <img src="{{ consultant.profile_photo|profile_photo_src }}" alt="Фото профиля" class="profile-photo" id="profilePhotoPreview">
             {% else %}
             <div class="profile-photo profile-photo--empty" id="profilePhotoPreview">Нет фото</div>
             {% endif %}
             <div class="stack">
-                <input class="input" type="file" id="profilePhotoInput" name="profile_photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+                <input class="input" type="file" id="profilePhotoInput" name="profile_photo" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
                 <p class="form-field__hint" id="avatarCropHint">Только JPG или PNG. После выбора откроется редактор под круглое окошко - нажмите «Применить», затем «Сохранить профиль».</p>
             </div>
         </div>
@@ -201,5 +201,5 @@
     </div>
 </div>
 <script src="/static/js/copy-link.js?v=1" defer></script>
-<script src="/static/js/avatar-crop.js?v=2" defer></script>
+<script src="/static/js/avatar-crop.js?v=3" defer></script>
 {% endblock %}

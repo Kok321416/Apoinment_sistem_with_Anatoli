@@ -57,6 +57,33 @@ def media_url(path: str | None) -> str:
     return f"/media/{path.lstrip('/')}"
 
 
+def media_relative_path(stored: str | None) -> str:
+    if not stored:
+        return ""
+    path = stored.lstrip("/")
+    if path.startswith("media/"):
+        path = path[6:]
+    return path
+
+
+def media_file_version(stored: str | None) -> int:
+    rel = media_relative_path(stored)
+    if not rel:
+        return 0
+    path = settings.media_root / rel
+    if path.is_file():
+        return int(path.stat().st_mtime)
+    return 0
+
+
+def profile_photo_src(path: str | None) -> str:
+    url = media_url(path)
+    if not url:
+        return ""
+    version = media_file_version(path)
+    return f"{url}?v={version}" if version else url
+
+
 def cut_filter(value: str | None, chars: str) -> str:
     return (value or "").replace(chars, "")
 
@@ -123,6 +150,7 @@ def url_for(name: str, *args, **kwargs) -> str:
 templates = Jinja2Templates(directory=str(settings.templates_dir))
 templates.env.filters["cut"] = cut_filter
 templates.env.filters["media_url"] = media_url
+templates.env.filters["profile_photo_src"] = profile_photo_src
 templates.env.filters["date"] = django_date
 templates.env.filters["time"] = django_time
 templates.env.filters["truncatewords"] = truncatewords
