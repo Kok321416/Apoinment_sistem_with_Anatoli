@@ -299,6 +299,8 @@ def test_schema_patch_adds_disabled_weekdays():
     cols = {c["name"] for c in insp.get_columns("calendars")}
     assert "disabled_weekdays" in cols
 
+
+def test_services_catalog_dashboard():
     from app.models import Calendar, Category, Consultant, Service
     from app.services.services_catalog import build_catalog_payload
 
@@ -328,6 +330,26 @@ def test_schema_patch_adds_disabled_weekdays():
     assert len(payload["services"]) == 1
     assert payload["dashboard"]["calendars_total"] == 1
     db.close()
+
+
+def test_clients_crm_completeness():
+    from datetime import datetime
+
+    from app.models import ClientCard
+    from app.services.clients_crm import card_completeness
+
+    card = ClientCard(
+        consultant_id=1,
+        name="Марина",
+        phone="+7999",
+        email="m@test.com",
+    )
+    card.id = 1
+    card.created_at = datetime.utcnow()
+    card.updated_at = datetime.utcnow()
+    result = card_completeness(card)
+    assert result["percent"] >= 70
+    assert any(not c["done"] for c in result["checks"])
 
 
 def test_disabled_weekday_blocks_slots():

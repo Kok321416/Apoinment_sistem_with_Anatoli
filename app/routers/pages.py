@@ -1013,8 +1013,15 @@ async def client_cards_list(request: Request, db: Session = Depends(get_db)):
             else:
                 error = "Карточка не найдена"
     cards = db.query(ClientCard).filter(ClientCard.consultant_id == consultant.id).order_by(ClientCard.updated_at.desc()).all()
+    from app.services.clients_crm import build_crm_payload
+
+    crm_payload = build_crm_payload(db, consultant.id, cards)
     return templates.TemplateResponse("client_cards_list.html", page_context(
         request, db, user, consultant=consultant, cards=cards, success=success, error=error,
+        crm_dashboard=crm_payload["dashboard"],
+        crm_clients=crm_payload["clients"],
+        crm_activity=crm_payload["activity"],
+        crm_payload=crm_payload,
     ))
 
 

@@ -17,6 +17,7 @@ _TELEGRAM_LOGIN_COLUMNS = {
 _schema_ready = False
 _schema_degraded = False
 _schema_issues: list[str] = []
+_schema_migration_attempted = False
 
 
 def get_schema_health() -> dict:
@@ -147,7 +148,10 @@ def ensure_app_schema() -> None:
 
 
 def ensure_all_schema() -> None:
-    global _schema_ready
+    global _schema_ready, _schema_migration_attempted
+    if _schema_migration_attempted:
+        return
+    _schema_migration_attempted = True
     try:
         ensure_telegram_login_schema()
     except Exception:
@@ -158,28 +162,14 @@ def ensure_all_schema() -> None:
         logger.exception("email auth schema ensure failed")
     ensure_app_schema()
     _refresh_schema_health()
-    _schema_ready = not _schema_degraded
-
-
-def _schema_needs_patch() -> bool:
-    return (
-        not _column_exists("calendars", "disabled_weekdays")
-        or not _column_exists("services", "calendar_id")
-        or not _column_exists("services", "sort_order")
-    )
+    _schema_ready = True
 
 
 def ensure_schema_before_query() -> None:
-    """Best-effort runtime recovery if startup patch did not run."""
-    global _schema_ready
-    if _schema_ready and not _schema_needs_patch():
+    """One-time fallback if startup migration did not run."""
+    if _schema_migration_attempted:
         return
-    try:
-        ensure_app_schema()
-        _refresh_schema_health()
-        _schema_ready = not _schema_degraded
-    except Exception:
-        logger.exception("Runtime schema ensure failed")
+    ensure_all_schema()
 
 
 if __name__ == "__main__":
