@@ -11,6 +11,7 @@ BOOKING_STATUS_LABELS = {
 
 AUTH_PROVIDER_LABELS = {
     "telegram": "Телеграм",
+    "yandex": "Яндекс",
     "google": "Гугл",
     "email": "Почта",
 }

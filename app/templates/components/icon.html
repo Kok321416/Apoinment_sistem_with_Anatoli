@@ -10,6 +10,10 @@
 </span>
 {%- endmacro %}
 
+{% macro auth_provider_icon(name, size=20) -%}
+<img class="auth-method__icon" src="/static/svg/icons/{{ name }}.svg" alt="" width="{{ size }}" height="{{ size }}" decoding="async">
+{%- endmacro %}
+
 {% macro loader(size='') -%}
 <span class="loader{% if size %} loader--{{ size }}{% endif %}" role="status" aria-label="Загрузка">
     <img class="loader__svg" src="/static/svg/loader.svg" alt="" width="48" height="48">

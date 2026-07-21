@@ -54,6 +54,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: var(--space-sm);
     min-height: var(--btn-height-sm);
     padding: var(--space-md) var(--space-lg);
     border: 1px solid var(--border-strong);
@@ -80,8 +81,20 @@
 }
 
 .auth-method--telegram {
-    border-color: rgba(73, 209, 255, 0.45);
+    border-color: rgba(42, 171, 238, 0.45);
     color: var(--accent-secondary);
+}
+
+.auth-method--yandex {
+    border-color: rgba(252, 63, 29, 0.4);
+    color: #ff6b52;
+}
+
+.auth-method__icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    display: block;
 }
 
 .auth-method--disabled {

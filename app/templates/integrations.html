@@ -86,6 +86,29 @@
 
 <section class="app-section">
     <div class="integration-card__head">
+        <h2 class="app-section__title app-section__title--plain">Яндекс для входа</h2>
+        {% if yandex_login_connected %}
+        <span class="badge badge--success">Привязан</span>
+        {% else %}
+        <span class="badge badge--ghost">Не привязан</span>
+        {% endif %}
+    </div>
+    <p class="text-muted mt-lg mb-lg">Вход в кабинет через Яндекс ID. Можно отвязать и привязать другой аккаунт.</p>
+    {% if yandex_login_connected %}
+    <form method="POST" action="/integrations/" onsubmit="return confirm('Отвязать Яндекс для входа?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="disconnect_yandex_login">
+        <button type="submit" class="btn btn--ghost">Отвязать Яндекс</button>
+    </form>
+    {% elif yandex_oauth_enabled %}
+    <a href="/accounts/yandex/login/?process=connect&next=/integrations/" class="btn btn--primary">Привязать Яндекс</a>
+    {% else %}
+    <p class="text-muted mb-0">Вход через Яндекс не настроен на сервере (YANDEX_OAUTH_CLIENT_ID / SECRET).</p>
+    {% endif %}
+</section>
+
+<section class="app-section">
+    <div class="integration-card__head">
         <h2 class="app-section__title app-section__title--plain">Уведомления в Телеграм</h2>
         {% if integration.telegram_connected %}
         <span class="badge badge--success">Подключено</span>

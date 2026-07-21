@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.branding import auth_provider_label, booking_status_label
 from app.config import get_settings
+from app.services.yandex_auth import yandex_oauth_configured
 from app.content.landing_copy import (
     CTA_BLOCK,
     FEATURES,
@@ -202,6 +203,7 @@ def page_context(request, db, user=None, **extra):
         "canonical_url": str(request.url).split("?")[0],
         "support_email": settings.support_email,
         "yandex_metrika_id": settings.yandex_metrika_id,
+        "yandex_oauth_enabled": yandex_oauth_configured(),
         "admin_telegram_username": settings.admin_telegram_username,
         **build_header_context(db, user),
         **extra,

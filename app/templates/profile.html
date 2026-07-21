@@ -127,7 +127,7 @@
 
 <section class="app-section">
     <h2 class="app-section__title">Вход в кабинет</h2>
-    <p class="text-body-sm text-muted mb-xl">Можно отвязать способ входа и привязать заново. Оставьте хотя бы один рабочий способ (почта с паролем или Телеграм).</p>
+    <p class="text-body-sm text-muted mb-xl">Можно отвязать способ входа и привязать заново. Оставьте хотя бы один рабочий способ (почта, пароль, Телеграм или Яндекс).</p>
     <div class="auth-methods-grid">
         <div class="auth-provider-card {% if 'telegram' in connected_providers %}is-connected{% endif %}">
             <div class="text-h3">Телеграм</div>
@@ -141,6 +141,22 @@
             {% else %}
             <span class="badge badge--ghost mt-sm">Не привязан</span>
             <a href="/accounts/telegram/login/?process=connect&next=/profile/" class="btn btn--primary btn--sm mt-lg">Привязать Телеграм</a>
+            {% endif %}
+        </div>
+        <div class="auth-provider-card {% if 'yandex' in connected_providers %}is-connected{% endif %}">
+            <div class="text-h3">Яндекс</div>
+            {% if 'yandex' in connected_providers %}
+            <span class="badge badge--success mt-sm">Привязан</span>
+            <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('Отвязать Яндекс?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="disconnect_yandex_login">
+                <button type="submit" class="btn btn--ghost btn--sm">Отвязать</button>
+            </form>
+            {% elif yandex_oauth_enabled %}
+            <span class="badge badge--ghost mt-sm">Не привязан</span>
+            <a href="/accounts/yandex/login/?process=connect&next=/profile/" class="btn btn--primary btn--sm mt-lg">Привязать Яндекс</a>
+            {% else %}
+            <span class="badge badge--ghost mt-sm">Не настроено</span>
             {% endif %}
         </div>
         <div class="auth-provider-card {% if primary_email_verified %}is-connected{% endif %}">

@@ -36,6 +36,7 @@ from app.services.bookings import (
     parse_fio,
     reschedule_booking,
 )
+from app.services.login_methods import can_disconnect_social
 from app.services.email_verification import ensure_email_address, resend_verification_email, send_user_verification_email
 from app.services.entity_delete import delete_calendar, delete_client_card, delete_service, delete_time_slot
 from app.services.slots import get_available_slots
@@ -252,6 +253,12 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
     if user:
         return RedirectResponse("/dashboard/", status_code=302)
     error = fio = phone = email = None
+    register_errors = {
+        "yandex_signup": "Сначала укажите ФИО и телефон, затем выберите Яндекс.",
+        "yandex_failed": "Не удалось завершить регистрацию через Яндекс. Попробуйте снова или выберите другой способ входа.",
+    }
+    if request.query_params.get("error") in register_errors:
+        error = register_errors[request.query_params.get("error")]
     if request.method == "POST":
         form = await request.form()
         fio = (form.get("fio") or "").strip()
@@ -262,7 +269,16 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         elif not fio or not phone:
             error = "Укажите ФИО и номер телефона"
         elif auth_method == "yandex":
-            error = "Вход через Яндекс будет доступен позже."
+            from app.services.yandex_auth import yandex_oauth_configured
+            if not yandex_oauth_configured():
+                error = "Вход через Яндекс не настроен на сервере."
+            else:
+                request.session["register_fio"] = fio
+                request.session["register_phone"] = phone
+                return RedirectResponse(
+                    f"/accounts/yandex/login/?{urlencode({'process': 'signup', 'next': '/dashboard/'})}",
+                    status_code=302,
+                )
         elif auth_method == "telegram":
             request.session["register_fio"] = fio
             request.session["register_phone"] = phone
@@ -319,6 +335,16 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
         success = "Почта подтверждена. Теперь можно войти."
     if request.query_params.get("error") == "telegram_expired":
         error = "Ссылка входа через Телеграм истекла. Попробуйте снова."
+    yandex_errors = {
+        "yandex_denied": "Вход через Яндекс отменён.",
+        "yandex_config": "Вход через Яндекс не настроен на сервере.",
+        "yandex_state": "Ошибка безопасности при входе через Яндекс. Попробуйте снова.",
+        "yandex_token": "Не удалось получить токен Яндекса. Попробуйте снова.",
+        "yandex_profile": "Не удалось получить профиль Яндекса.",
+        "yandex_failed": "Не удалось войти через Яндекс. Зарегистрируйтесь или используйте другой способ входа.",
+    }
+    if request.query_params.get("error") in yandex_errors:
+        error = yandex_errors[request.query_params.get("error")]
     if request.method == "POST":
         form = await request.form()
         if not _form_csrf_ok(request, form):
@@ -811,30 +837,37 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
         else:
             action = form.get("action")
             if action == "disconnect_telegram_login":
-                tg_accounts = db.query(SocialAccount).filter(
-                    SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
-                ).all()
-                email_ok = db.query(EmailAddress).filter(
-                    EmailAddress.user_id == user.id, EmailAddress.verified.is_(True)
-                ).first()
-                if not tg_accounts:
-                    error = "Телеграм для входа не привязан."
-                elif not user.has_usable_password and not email_ok:
-                    error = "Нельзя отвязать Телеграм: сначала подтвердите почту или задайте пароль, иначе вход будет недоступен."
+                ok, msg = can_disconnect_social(db, user, "telegram")
+                if not ok:
+                    error = msg
                 else:
-                    for acc in tg_accounts:
+                    for acc in db.query(SocialAccount).filter(
+                        SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+                    ).all():
                         db.delete(acc)
                     db.commit()
                     success = "Телеграм отвязан. Можно привязать другой аккаунт."
+            elif action == "disconnect_yandex_login":
+                ok, msg = can_disconnect_social(db, user, "yandex")
+                if not ok:
+                    error = msg
+                else:
+                    for acc in db.query(SocialAccount).filter(
+                        SocialAccount.user_id == user.id, SocialAccount.provider == "yandex"
+                    ).all():
+                        db.delete(acc)
+                    db.commit()
+                    success = "Яндекс отвязан. Можно привязать другой аккаунт."
             elif action == "disconnect_email_login":
                 rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
-                has_tg = db.query(SocialAccount).filter(
-                    SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+                has_social = db.query(SocialAccount).filter(
+                    SocialAccount.user_id == user.id,
+                    SocialAccount.provider.in_(("telegram", "yandex")),
                 ).first()
                 if not rows or not any(r.verified for r in rows):
                     error = "Подтверждённая почта не привязана."
-                elif not user.has_usable_password and not has_tg:
-                    error = "Нельзя отвязать почту: сначала привяжите Телеграм или задайте пароль."
+                elif not user.has_usable_password and not has_social:
+                    error = "Нельзя отвязать почту: сначала привяжите Телеграм, Яндекс или задайте пароль."
                 else:
                     for row in rows:
                         row.verified = False
@@ -1067,13 +1100,14 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
                 success = "Почта подтверждена. Можно входить по почте и паролю."
         elif action == "disconnect_email_login":
             rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
-            has_tg = db.query(SocialAccount).filter(
-                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+            has_social = db.query(SocialAccount).filter(
+                SocialAccount.user_id == user.id,
+                SocialAccount.provider.in_(("telegram", "yandex")),
             ).first()
             if not rows or not any(r.verified for r in rows):
                 error = "Подтверждённая почта не привязана."
-            elif not user.has_usable_password and not has_tg:
-                error = "Нельзя отвязать почту: сначала привяжите Телеграм или задайте пароль."
+            elif not user.has_usable_password and not has_social:
+                error = "Нельзя отвязать почту: сначала привяжите Телеграм, Яндекс или задайте пароль."
             else:
                 for row in rows:
                     row.verified = False
@@ -1083,21 +1117,27 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
                 email_pending = ""
                 success = "Почта отвязана. Можно привязать заново."
         elif action == "disconnect_telegram_login":
-            tg_accounts = db.query(SocialAccount).filter(
-                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
-            ).all()
-            email_ok = db.query(EmailAddress).filter(
-                EmailAddress.user_id == user.id, EmailAddress.verified.is_(True)
-            ).first()
-            if not tg_accounts:
-                error = "Телеграм для входа не привязан."
-            elif not user.has_usable_password and not email_ok:
-                error = "Нельзя отвязать Телеграм: сначала подтвердите почту или задайте пароль."
+            ok, msg = can_disconnect_social(db, user, "telegram")
+            if not ok:
+                error = msg
             else:
-                for acc in tg_accounts:
+                for acc in db.query(SocialAccount).filter(
+                    SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+                ).all():
                     db.delete(acc)
                 db.commit()
                 success = "Телеграм для входа отвязан. Можно привязать другой аккаунт."
+        elif action == "disconnect_yandex_login":
+            ok, msg = can_disconnect_social(db, user, "yandex")
+            if not ok:
+                error = msg
+            else:
+                for acc in db.query(SocialAccount).filter(
+                    SocialAccount.user_id == user.id, SocialAccount.provider == "yandex"
+                ).all():
+                    db.delete(acc)
+                db.commit()
+                success = "Яндекс для входа отвязан. Можно привязать другой аккаунт."
 
     primary = db.query(EmailAddress).filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True)).first()
     telegram_login_connected = bool(
@@ -1105,12 +1145,20 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
             SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
         ).first()
     )
+    yandex_login_connected = bool(
+        db.query(SocialAccount).filter(
+            SocialAccount.user_id == user.id, SocialAccount.provider == "yandex"
+        ).first()
+    )
+    from app.services.yandex_auth import yandex_oauth_configured
     return templates.TemplateResponse("integrations.html", page_context(
         request, db, user, integration=integration, success=success, error=error,
         email_address=primary.email if primary else (consultant.email or user.email or ""),
         email_verified=bool(primary and primary.verified),
         email_pending=email_pending,
         telegram_login_connected=telegram_login_connected,
+        yandex_login_connected=yandex_login_connected,
+        yandex_oauth_enabled=yandex_oauth_configured(),
     ))
 
 

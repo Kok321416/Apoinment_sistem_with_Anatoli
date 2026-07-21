@@ -1,5 +1,7 @@
 import json
+import secrets
 from datetime import datetime
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -11,7 +13,15 @@ from app.database import get_db
 from app.models import EmailAddress, SocialAccount, User
 from app.security.csrf import validate_csrf_token
 from app.services.email_verification import resend_verification_email, verify_email_code
+from app.services.login_methods import can_disconnect_social
 from app.services.telegram_auth import consume_completed_login, create_login_request, get_completed_login
+from app.services.yandex_auth import (
+    build_authorize_url,
+    complete_yandex_oauth,
+    exchange_code_for_token,
+    fetch_yandex_profile,
+    yandex_oauth_configured,
+)
 from app.templating import page_context, templates
 from app.utils.safe_redirect import safe_next_url
 
@@ -108,6 +118,83 @@ async def telegram_complete_login(complete_token: str, request: Request, db: Ses
     return RedirectResponse(safe_next_url(req.next_url), status_code=302)
 
 
+@router.get("/yandex/login/")
+async def yandex_login(request: Request, db: Session = Depends(get_db)):
+    if not yandex_oauth_configured():
+        return RedirectResponse("/login/?error=yandex_config", status_code=302)
+
+    user = get_current_user(request, db)
+    process = request.query_params.get("process", "login")
+    next_url = safe_next_url(request.query_params.get("next"))
+
+    if process == "connect":
+        if not user:
+            return RedirectResponse(f"/login/?next={quote(next_url, safe='')}", status_code=302)
+        request.session["yandex_connect_user_id"] = user.id
+    else:
+        if user:
+            return RedirectResponse(next_url, status_code=302)
+        if process == "signup":
+            register_fio = (request.session.get("register_fio") or "").strip()
+            register_phone = (request.session.get("register_phone") or "").strip()
+            if not register_fio or not register_phone:
+                return RedirectResponse("/register/?error=yandex_signup", status_code=302)
+
+    state = secrets.token_urlsafe(32)
+    request.session["yandex_oauth_state"] = state
+    request.session["yandex_oauth_process"] = process
+    request.session["yandex_oauth_next"] = next_url
+    return RedirectResponse(build_authorize_url(state), status_code=302)
+
+
+@router.get("/yandex/callback/")
+async def yandex_callback(request: Request, db: Session = Depends(get_db)):
+    if request.query_params.get("error"):
+        return RedirectResponse("/login/?error=yandex_denied", status_code=302)
+
+    code = request.query_params.get("code")
+    state = request.query_params.get("state")
+    expected_state = request.session.pop("yandex_oauth_state", None)
+    process = request.session.pop("yandex_oauth_process", "login")
+    next_url = safe_next_url(request.session.pop("yandex_oauth_next", "/"))
+    connect_user_id = request.session.pop("yandex_connect_user_id", None)
+
+    if not code or not state or not expected_state or not secrets.compare_digest(state, expected_state):
+        return RedirectResponse("/login/?error=yandex_state", status_code=302)
+
+    token_data = exchange_code_for_token(code)
+    access_token = (token_data or {}).get("access_token")
+    if not access_token:
+        return RedirectResponse("/login/?error=yandex_token", status_code=302)
+
+    profile = fetch_yandex_profile(access_token)
+    if not profile:
+        return RedirectResponse("/login/?error=yandex_profile", status_code=302)
+
+    register_fio = register_phone = None
+    if process == "signup":
+        register_fio = (request.session.pop("register_fio", None) or "").strip() or None
+        register_phone = (request.session.pop("register_phone", None) or "").strip() or None
+
+    user, err = complete_yandex_oauth(
+        db,
+        process=process,
+        profile=profile,
+        register_fio=register_fio,
+        register_phone=register_phone,
+        connect_user_id=connect_user_id,
+    )
+    if err or not user:
+        if process == "signup":
+            return RedirectResponse("/register/?error=yandex_failed", status_code=302)
+        return RedirectResponse("/login/?error=yandex_failed", status_code=302)
+
+    login_user(request, user)
+    if process == "connect":
+        request.session["integrations_success"] = "Яндекс привязан."
+    return RedirectResponse(next_url, status_code=302)
+
+
 @router.get("/confirm-email/{token}/")
 async def confirm_email(request: Request, token: str, db: Session = Depends(get_db)):
     from app.services.email_verification import verify_email_token
@@ -196,30 +283,37 @@ async def social_connections(request: Request, db: Session = Depends(get_db)):
         form = await request.form()
         action = form.get("action")
         if action == "disconnect_telegram":
-            tg_accounts = db.query(SocialAccount).filter(
-                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
-            ).all()
-            email_ok = db.query(EmailAddress).filter(
-                EmailAddress.user_id == user.id, EmailAddress.verified.is_(True)
-            ).first()
-            if not tg_accounts:
-                error = "Телеграм не привязан."
-            elif not user.has_usable_password and not email_ok:
-                error = "Нельзя отвязать Телеграм: сначала подтвердите почту или задайте пароль."
+            ok, msg = can_disconnect_social(db, user, "telegram")
+            if not ok:
+                error = msg
             else:
-                for acc in tg_accounts:
+                for acc in db.query(SocialAccount).filter(
+                    SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+                ).all():
                     db.delete(acc)
                 db.commit()
                 success = "Телеграм отвязан."
+        elif action == "disconnect_yandex":
+            ok, msg = can_disconnect_social(db, user, "yandex")
+            if not ok:
+                error = msg
+            else:
+                for acc in db.query(SocialAccount).filter(
+                    SocialAccount.user_id == user.id, SocialAccount.provider == "yandex"
+                ).all():
+                    db.delete(acc)
+                db.commit()
+                success = "Яндекс отвязан."
         elif action == "disconnect_email":
             rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
-            has_tg = db.query(SocialAccount).filter(
-                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+            has_social = db.query(SocialAccount).filter(
+                SocialAccount.user_id == user.id,
+                SocialAccount.provider.in_(("telegram", "yandex")),
             ).first()
             if not rows or not any(r.verified for r in rows):
                 error = "Подтверждённая почта не привязана."
-            elif not user.has_usable_password and not has_tg:
-                error = "Нельзя отвязать почту: сначала привяжите Телеграм или задайте пароль."
+            elif not user.has_usable_password and not has_social:
+                error = "Нельзя отвязать почту: сначала привяжите Телеграм, Яндекс или задайте пароль."
             else:
                 for row in rows:
                     row.verified = False
@@ -231,6 +325,8 @@ async def social_connections(request: Request, db: Session = Depends(get_db)):
         request, db, user,
         social_accounts=accounts,
         has_telegram=any(a.provider == "telegram" for a in accounts),
+        has_yandex=any(a.provider == "yandex" for a in accounts),
+        yandex_oauth_enabled=yandex_oauth_configured(),
         email_address=primary.email if primary else (user.email or ""),
         email_verified=bool(primary and primary.verified),
         success=success,

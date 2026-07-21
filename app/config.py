@@ -43,6 +43,9 @@ class Settings:
     google_oauth_client_secret: str = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
     google_calendar_scopes: list[str] = ["https://www.googleapis.com/auth/calendar.events"]
 
+    yandex_oauth_client_id: str = (os.getenv("YANDEX_OAUTH_CLIENT_ID", "") or "").strip()
+    yandex_oauth_client_secret: str = (os.getenv("YANDEX_OAUTH_CLIENT_SECRET", "") or "").strip()
+
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_bot_username: str = os.getenv("TELEGRAM_BOT_USERNAME", "")
     # Separate secret for bot -> API calls (recommended; do not reuse TELEGRAM_BOT_TOKEN in new setups)

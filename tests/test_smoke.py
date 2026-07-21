@@ -90,3 +90,39 @@ def test_health_endpoint():
     body = r.json()
     assert body["status"] in ("ok", "degraded")
     assert "schema" in body
+
+
+def test_yandex_redirect_uri(monkeypatch):
+    from app.services import yandex_auth
+
+    class S:
+        site_url = "https://example.com"
+
+    monkeypatch.setattr(yandex_auth, "settings", S())
+    assert yandex_auth.yandex_redirect_uri() == "https://example.com/accounts/yandex/callback/"
+
+
+def test_yandex_authorize_url_contains_client_id(monkeypatch):
+    from app.services import yandex_auth
+
+    class S:
+        yandex_oauth_client_id = "test-client-id"
+        yandex_oauth_client_secret = "secret"
+        site_url = "https://example.com"
+
+    monkeypatch.setattr(yandex_auth, "settings", S())
+    url = yandex_auth.build_authorize_url("state-token")
+    assert "client_id=test-client-id" in url
+    assert "state=state-token" in url
+    assert "oauth.yandex.ru/authorize" in url
+
+
+def test_yandex_login_redirects_to_register_without_signup_data(monkeypatch):
+    from app.main import app
+    from app.routers import oauth as oauth_router
+
+    monkeypatch.setattr(oauth_router, "yandex_oauth_configured", lambda: True)
+    client = TestClient(app)
+    r = client.get("/accounts/yandex/login/?process=signup", follow_redirects=False)
+    assert r.status_code == 302
+    assert r.headers["location"] == "/register/?error=yandex_signup"

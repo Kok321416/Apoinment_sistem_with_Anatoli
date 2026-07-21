@@ -1,4 +1,5 @@
 {% extends "layouts/auth.html" %}
+{% from "components/icon.html" import auth_provider_icon %}
 
 {% block meta_tags %}
 {% set page_title = "Регистрация — " ~ site_brand_name %}
@@ -24,12 +25,32 @@
         <div class="stack">
             <div class="form-field">
                 <label class="form-field__label" for="fio">ФИО</label>
-                <input class="input" type="text" id="fio" name="fio" required placeholder="Иванов Иван Иванович" value="{{ fio|default('') }}" autocomplete="name">
-            </div>
+                <input
+                class="input"
+                type="text"
+                id="fio"
+                name="fio"
+                required
+                autocomplete="name"
+                placeholder="Иванов Иван Иванович"
+                minlength="5"
+                value="{{ fio or '' }}"
+            >          
+        </div>
 
             <div class="form-field">
                 <label class="form-field__label" for="phone">Номер телефона</label>
-                <input class="input" type="tel" id="phone" name="phone" required placeholder="+7 (999) 123-45-67" value="{{ phone|default('') }}" autocomplete="tel">
+                <input
+                    class="input"
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    required
+                    inputmode="numeric"
+                    autocomplete="tel"
+                    placeholder="+7 (___) ___-__-__"
+                    value="{{ phone|default('') }}"
+                >
             </div>
 
             <div class="form-field">
@@ -37,12 +58,22 @@
                 <div class="auth-methods auth-methods--grid" role="radiogroup" aria-labelledby="authMethodLabel">
                     <label class="auth-method auth-method--telegram" data-method="telegram">
                         <input type="radio" name="auth_radio" value="telegram">
+                        {{ auth_provider_icon('telegram') }}
                         <span>Телеграм</span>
                     </label>
-                    <label class="auth-method auth-method--disabled" data-method="yandex" title="Скоро">
-                        <input type="radio" name="auth_radio" value="yandex" disabled>
-                        <span>Яндекс (скоро)</span>
+                    {% if yandex_oauth_enabled %}
+                    <label class="auth-method auth-method--yandex" data-method="yandex">
+                        <input type="radio" name="auth_radio" value="yandex">
+                        {{ auth_provider_icon('yandex') }}
+                        <span>Яндекс</span>
                     </label>
+                    {% else %}
+                    <label class="auth-method auth-method--disabled auth-method--yandex" data-method="yandex" title="Не настроено на сервере">
+                        <input type="radio" name="auth_radio" value="yandex" disabled>
+                        {{ auth_provider_icon('yandex') }}
+                        <span>Яндекс</span>
+                    </label>
+                    {% endif %}
                     <label class="auth-method is-selected" data-method="email">
                         <input type="radio" name="auth_radio" value="email" checked>
                         <span>Почта и пароль</span>
@@ -69,6 +100,7 @@
 
             <button type="submit" class="btn btn--primary" id="submit-btn">Зарегистрироваться</button>
             <p class="form-field__hint" id="telegram-hint" hidden>Нажатие кнопки откроет бота Телеграм для подтверждения регистрации.</p>
+            <p class="form-field__hint" id="yandex-hint" hidden>Нажатие кнопки откроет страницу входа через Яндекс ID.</p>
         </div>
     </form>
 
@@ -80,6 +112,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://unpkg.com/imask"></script>
 <script>
 (function() {
     var form = document.getElementById('register-form');
@@ -88,6 +121,39 @@
     var emailInput = document.getElementById('email');
     var passwordInput = document.getElementById('password');
     var passwordConfirm = document.getElementById('password_confirm');
+    var phoneEl = document.getElementById('phone');
+    var fioEl = document.getElementById('fio');
+    var phoneMask = null;
+    if (phoneEl && window.IMask) {
+    phoneMask = IMask(phoneEl, {
+        mask: '+{7} (000) 000-00-00',
+        lazy: false
+    });
+    }
+    function normalizeSpaces(s) {
+    return (s || '').replace(/\s+/g, ' ').trim();
+}
+
+function isValidFio(value) {
+    value = normalizeSpaces(value);
+    var parts = value.split(' ').filter(Boolean);
+    if (parts.length < 2) return false;
+    return /^[A-Za-zА-Яа-яЁё\- ]+$/.test(value);
+}
+
+function isValidEmail(value) {
+    value = (value || '').trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
+}
+
+if (fioEl) {
+    fioEl.addEventListener('input', function () {
+        fioEl.value = fioEl.value.replace(/[^A-Za-zА-Яа-яЁё\- ]+/g, '');
+    });
+    fioEl.addEventListener('blur', function () {
+        fioEl.value = normalizeSpaces(fioEl.value);
+    });
+}
     var labels = document.querySelectorAll('.auth-method:not(.auth-method--disabled)');
 
     function setMethod(method) {
@@ -100,16 +166,22 @@
         emailInput.required = isEmail;
         passwordInput.required = isEmail;
         passwordConfirm.required = isEmail;
-        form.toggleAttribute('novalidate', !isEmail);
-        document.getElementById('submit-btn').textContent =
-            method === 'telegram' ? 'Перейти к входу через Телеграм' : 'Зарегистрироваться';
+        form.toggleAttribute('novalidate', method !== 'email');
+        var submitBtn = document.getElementById('submit-btn');
+        if (method === 'telegram') {
+            submitBtn.textContent = 'Перейти к входу через Телеграм';
+        } else if (method === 'yandex') {
+            submitBtn.textContent = 'Перейти к входу через Яндекс';
+        } else {
+            submitBtn.textContent = 'Зарегистрироваться';
+        }
         document.getElementById('telegram-hint').hidden = method !== 'telegram';
+        document.getElementById('yandex-hint').hidden = method !== 'yandex';
     }
 
     labels.forEach(function(label) {
         label.addEventListener('click', function() {
             var method = label.getAttribute('data-method');
-            if (method === 'yandex') return;
             var radio = label.querySelector('input[type="radio"]');
             if (radio && !radio.disabled) {
                 radio.checked = true;
@@ -119,11 +191,34 @@
     });
 
     form.addEventListener('submit', function(e) {
+        if (phoneMask && !phoneMask.masked.isComplete) {
+            e.preventDefault();
+            alert('Укажите полный номер телефона');
+            return;
+        }
+
+        if (!isValidFio(fioEl && fioEl.value)) {
+            e.preventDefault();
+            alert('Укажите ФИО: фамилия и имя, например «Иванов Иван»');
+            return;
+        }
+        if (fioEl) fioEl.value = normalizeSpaces(fioEl.value);
+
         if (authMethod.value === 'telegram') return;
-        if (authMethod.value === 'email' && passwordInput.value !== passwordConfirm.value) {
+        if (authMethod.value === 'yandex') return;
+
+        if (!isValidEmail(emailInput.value)) {
+            e.preventDefault();
+            alert('Укажите корректную почту, например name@example.com');
+            return;
+        }
+        emailInput.value = emailInput.value.trim().toLowerCase();
+
+        if (passwordInput.value !== passwordConfirm.value) {
             e.preventDefault();
             passwordConfirm.closest('.form-field').classList.add('is-error');
             alert('Пароли не совпадают');
+            return;
         }
     });
 })();

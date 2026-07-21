@@ -1,4 +1,5 @@
 {% extends "layouts/auth.html" %}
+{% from "components/icon.html" import auth_provider_icon %}
 
 {% block meta_tags %}
 {% set page_title = "Вход — " ~ site_brand_name %}
@@ -18,19 +19,36 @@
     <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}
 
+    {% if telegram_bot_username or yandex_oauth_enabled %}
     <div class="form-field">
         <span class="form-field__label">Быстрый вход</span>
-        {% if telegram_bot_username %}
         <div class="auth-methods">
-            <a href="/accounts/telegram/login/?next={{ next_url | urlencode }}" class="auth-method auth-method--telegram">Телеграм</a>
+            {% if telegram_bot_username %}
+            <a href="/accounts/telegram/login/?next={{ next_url | urlencode }}" class="auth-method auth-method--telegram">
+                {{ auth_provider_icon('telegram') }}
+                <span>Телеграм</span>
+            </a>
+            {% endif %}
+            {% if yandex_oauth_enabled %}
+            <a href="/accounts/yandex/login/?next={{ next_url | urlencode }}" class="auth-method auth-method--yandex">
+                {{ auth_provider_icon('yandex') }}
+                <span>Яндекс</span>
+            </a>
+            {% endif %}
         </div>
-        <p class="form-field__hint">Откроется бот — подтвердите вход кнопкой в чате.</p>
-        {% else %}
-        <p class="form-field__hint">Вход через Телеграм временно недоступен (не настроен бот).</p>
-        {% endif %}
+        <p class="form-field__hint">
+            {% if telegram_bot_username and yandex_oauth_enabled %}
+            Телеграм откроет бота, Яндекс — страницу входа Яндекс ID.
+            {% elif telegram_bot_username %}
+            Откроется бот — подтвердите вход кнопкой в чате.
+            {% else %}
+            Откроется страница входа через Яндекс ID.
+            {% endif %}
+        </p>
     </div>
 
     <hr class="auth-divider">
+    {% endif %}
 
     <form method="POST" action="/login/{% if next_url %}?next={{ next_url | urlencode }}{% endif %}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

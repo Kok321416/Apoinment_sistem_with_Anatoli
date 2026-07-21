@@ -61,6 +61,10 @@ def logout_user(request: Request) -> None:
     request.session.pop("register_fio", None)
     request.session.pop("register_phone", None)
     request.session.pop("google_calendar_oauth_state", None)
+    request.session.pop("yandex_oauth_state", None)
+    request.session.pop("yandex_oauth_process", None)
+    request.session.pop("yandex_oauth_next", None)
+    request.session.pop("yandex_connect_user_id", None)
     request.session.pop("integrations_success", None)
     request.session.pop("integrations_error", None)
 
