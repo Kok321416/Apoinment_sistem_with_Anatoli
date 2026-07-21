@@ -1,4 +1,5 @@
 {% extends "layouts/auth.html" %}
+{% from "components/verification_code_input.html" import verification_code_input, verification_code_scripts %}
 
 {% block meta_tags %}
 {% set page_title = "Подтверждение почты — " ~ site_brand_name %}
@@ -29,11 +30,10 @@
             <label class="form-field__label" for="verify_email">Почта</label>
             <input class="input" type="email" id="verify_email" name="email" value="{{ email or '' }}" required autocomplete="email">
         </div>
-        <div class="form-field">
-            <label class="form-field__label" for="verify_code">Код из письма</label>
-            <input class="input input--code" type="text" id="verify_code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" minlength="6" required autocomplete="one-time-code" placeholder="000000">
-            <p class="form-field__hint">6 цифр из письма. Код действует {{ email_verify_hours | default(24) }} ч.</p>
-        </div>
+        {{ verification_code_input(
+            "verify_code",
+            hint="6 цифр из письма. Можно вставить код целиком из буфера обмена. Код действует " ~ (email_verify_hours | default(24)) ~ " ч."
+        ) }}
         <button type="submit" class="btn btn--primary btn--block">Подтвердить</button>
     </form>
 
@@ -49,4 +49,8 @@
         <p><a href="/">На главную страницу</a></p>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ verification_code_scripts() }}
 {% endblock %}

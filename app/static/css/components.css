@@ -761,8 +761,27 @@
     flex-shrink: 0;
 }
 
-.icon-tile img {
-    width: var(--icon-size-sm);
-    height: var(--icon-size-sm);
-    display: block;
+.verification-code__boxes {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: var(--space-sm);
+}
+
+.verification-code__digit {
+    min-height: var(--input-height);
+    padding: 0;
+    text-align: center;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: var(--font-size-h3);
+    font-weight: 600;
+}
+
+@media (max-width: 480px) {
+    .verification-code__boxes {
+        gap: var(--space-xs);
+    }
+
+    .verification-code__digit {
+        font-size: var(--font-size-body-lg);
+    }
 }
