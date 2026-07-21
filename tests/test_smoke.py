@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 import app.models  # noqa: F401
 from app.database import Base, get_db
@@ -272,6 +273,7 @@ def test_calendars_query_after_schema_patch():
         ))
 
     schema_mod.engine = engine
+    schema_mod._SCHEMA_PATCHES_ATTEMPTED = False
     ensure_app_schema()
     db = sessionmaker(bind=engine)()
     calendars = db.query(Calendar).all()
@@ -293,6 +295,7 @@ def test_schema_patch_adds_disabled_weekdays():
         conn.execute(text("ALTER TABLE calendars DROP COLUMN disabled_weekdays"))
 
     schema_mod.engine = engine
+    schema_mod._SCHEMA_PATCHES_ATTEMPTED = False
     ensure_app_schema()
 
     insp = inspect(engine)
@@ -369,3 +372,133 @@ def test_disabled_weekday_blocks_slots():
     result = get_available_slots(db, cal, svc, date.today())
     assert result["available_slots"] == []
     db.close()
+
+
+def test_services_schema_patch_legacy_table():
+    from sqlalchemy import text
+
+    from app.db_schema import _add_column, _column_exists
+    import app.db_schema as schema_mod
+
+    engine = create_engine("sqlite:///:memory:")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE services ("
+                "id INTEGER PRIMARY KEY, consultant_id INTEGER, name VARCHAR(255), "
+                "description TEXT, duration_minutes INTEGER DEFAULT 60, "
+                "price NUMERIC(10,2), is_active BOOLEAN DEFAULT 1)"
+            )
+        )
+
+    schema_mod.engine = engine
+    for column, ddl in (
+        ("calendar_id", "INTEGER NULL"),
+        ("color", "VARCHAR(7) NOT NULL DEFAULT '#7d5cff'"),
+        ("icon", "VARCHAR(50) NULL"),
+        ("sort_order", "INTEGER NOT NULL DEFAULT 0"),
+        ("created_at", "DATETIME NULL"),
+        ("updated_at", "DATETIME NULL"),
+    ):
+        _add_column("services", column, ddl)
+        assert _column_exists("services", column)
+
+
+def test_services_page_renders_without_db_catalog_query(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.auth.session import AuthUser
+    from app.main import app
+    from app.routers import pages as pages_router
+
+    client = TestClient(app)
+    user = AuthUser(
+        id=1,
+        username="u@test.com",
+        email="u@test.com",
+        first_name="A",
+        last_name="B",
+        is_active=True,
+        password_hash="hash",
+    )
+    consultant = SimpleNamespace(id=10)
+
+    monkeypatch.setattr(pages_router, "_require_user", lambda request, db: user)
+    monkeypatch.setattr(pages_router, "get_consultant", lambda db, u: consultant)
+
+    response = client.get("/services/")
+    assert response.status_code == 200
+    assert "services-page" in response.text
+
+
+def test_booking_page_renders_with_empty_calendars(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.auth.session import AuthUser
+    from app.database import Base, get_db
+    from app.main import app
+    from app.models import Category, Consultant, User
+    from app.auth.passwords import hash_password
+    from app.routers import pages as pages_router
+
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    def override_get_db():
+        db = TestingSession()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    db = TestingSession()
+    cat = Category(name_category="T")
+    db.add(cat)
+    db.flush()
+    user_model = User(
+        username="u@test.com",
+        email="u@test.com",
+        password=hash_password("pass"),
+        is_active=True,
+    )
+    db.add(user_model)
+    db.flush()
+    consultant = Consultant(
+        first_name="A",
+        last_name="B",
+        email="u@test.com",
+        phone="+7",
+        category_of_specialist_id=cat.id,
+        user_id=user_model.id,
+    )
+    db.add(consultant)
+    db.commit()
+    consultant_id = consultant.id
+    user_id = user_model.id
+    db.close()
+
+    auth_user = AuthUser(
+        id=user_id,
+        username="u@test.com",
+        email="u@test.com",
+        first_name="A",
+        last_name="B",
+        is_active=True,
+        password_hash="hash",
+    )
+    monkeypatch.setattr(pages_router, "_require_user", lambda request, db: auth_user)
+    monkeypatch.setattr(
+        pages_router,
+        "get_consultant",
+        lambda db, u: SimpleNamespace(id=consultant_id),
+    )
+
+    app.dependency_overrides[get_db] = override_get_db
+    client = TestClient(app)
+    try:
+        response = client.get("/booking/")
+        assert response.status_code == 200
+        assert "bookingPageContainer" in response.text
+    finally:
+        app.dependency_overrides.clear()

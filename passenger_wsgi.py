@@ -18,6 +18,6 @@ if VENV_SITE_PACKAGES.exists():
     sys.path.insert(1, str(VENV_SITE_PACKAGES))
 
 from a2wsgi import ASGIMiddleware  # noqa: E402
-from app.main import app  # noqa: E402
+from app.main import app  # noqa: E402 - bootstrap_on_import runs inside app.main
 
 application = ASGIMiddleware(app)

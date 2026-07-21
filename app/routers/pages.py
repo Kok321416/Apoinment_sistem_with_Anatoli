@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse,
 
 from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from starlette.datastructures import UploadFile
 
 from app.auth.passwords import hash_password, verify_password
@@ -685,11 +685,9 @@ async def services_page(request: Request, db: Session = Depends(get_db)):
                     success, error = (msg, None) if ok else (None, msg)
                 else:
                     error = "Услуга не найдена"
-    services = db.query(Service).filter(Service.consultant_id == consultant.id).order_by(Service.sort_order, Service.name).all()
-    calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).order_by(Calendar.name).all()
     return templates.TemplateResponse(
         "services.html",
-        page_context(request, db, user, services=services, calendars=calendars, success=success, error=error),
+        page_context(request, db, user, success=success, error=error),
     )
 
 @router.get("/book/")
@@ -758,7 +756,9 @@ async def specialist_bookings(request: Request, db: Session = Depends(get_db)):
         return _login_redirect(request)
     consultant = get_consultant(db, user)
     calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).all()
-    mark_past_bookings_completed(db, calendars)
+    cal_ids = [c.id for c in calendars]
+    if cal_ids:
+        mark_past_bookings_completed(db, calendars)
     status_filter = request.query_params.get("status", "all")
     success = error = None
     if request.method == "POST":
@@ -797,19 +797,45 @@ async def specialist_bookings(request: Request, db: Session = Depends(get_db)):
                             error = err
                         else:
                             success = "Запись перенесена"
-        mark_past_bookings_completed(db, calendars)
+        if cal_ids:
+            mark_past_bookings_completed(db, calendars)
     today = date.today()
     now = datetime.now().time()
-    cal_ids = [c.id for c in calendars]
-    if status_filter == "cancelled":
-        upcoming = db.query(Booking).filter(Booking.calendar_id.in_(cal_ids), Booking.status == "cancelled").order_by(Booking.booking_date.desc()).all()
+    booking_load = (joinedload(Booking.service), joinedload(Booking.calendar))
+    if not cal_ids:
+        upcoming = []
+        past = []
+    elif status_filter == "cancelled":
+        upcoming = (
+            db.query(Booking)
+            .options(*booking_load)
+            .filter(Booking.calendar_id.in_(cal_ids), Booking.status == "cancelled")
+            .order_by(Booking.booking_date.desc())
+            .all()
+        )
         past = []
     else:
-        upcoming = db.query(Booking).filter(Booking.calendar_id.in_(cal_ids), Booking.booking_date >= today, Booking.status != "cancelled").order_by(Booking.booking_date, Booking.booking_time).all()
-        past = db.query(Booking).filter(
-            Booking.calendar_id.in_(cal_ids),
-            or_(Booking.booking_date < today, (Booking.booking_date == today) & (Booking.booking_time < now)),
-        ).order_by(Booking.booking_date.desc()).all()
+        upcoming = (
+            db.query(Booking)
+            .options(*booking_load)
+            .filter(
+                Booking.calendar_id.in_(cal_ids),
+                Booking.booking_date >= today,
+                Booking.status != "cancelled",
+            )
+            .order_by(Booking.booking_date, Booking.booking_time)
+            .all()
+        )
+        past = (
+            db.query(Booking)
+            .options(*booking_load)
+            .filter(
+                Booking.calendar_id.in_(cal_ids),
+                or_(Booking.booking_date < today, (Booking.booking_date == today) & (Booking.booking_time < now)),
+            )
+            .order_by(Booking.booking_date.desc())
+            .all()
+        )
         if status_filter != "all":
             upcoming = [b for b in upcoming if b.status == status_filter]
             past = [b for b in past if b.status == status_filter]

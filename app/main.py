@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
-from app.database import Base, engine
+from app.database import engine
 from app.routers import api, calendar_schedule, oauth, pages, profile_api, public_specialist, services_api
 
 settings = get_settings()
@@ -44,22 +44,14 @@ async def health():
     from app.db_schema import get_schema_health
 
     schema = get_schema_health()
-    if schema.get("degraded"):
-        return {
-            "status": "degraded",
-            "schema": schema,
-        }
-    return {"status": "ok", "schema": {"ready": schema.get("ready", False), "degraded": False}}
+    status = "degraded" if schema.get("degraded") else "ok"
+    return {"status": status, "schema": schema}
 
 
 @app.on_event("startup")
 def startup():
     from app.db_schema import ensure_all_schema
 
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception:
-        logger.exception("create_all failed on startup")
     try:
         ensure_all_schema()
     except Exception:
@@ -70,6 +62,11 @@ def startup():
         if not settings.bot_api_secret:
             logger.warning("BOT_API_SECRET is not set — bot API uses TELEGRAM_BOT_TOKEN header only")
     logger.info("FastAPI app started. SITE_URL=%s", settings.site_url)
+
+
+from app.db_schema import bootstrap_on_import
+
+bootstrap_on_import()
 
 
 @app.middleware("http")

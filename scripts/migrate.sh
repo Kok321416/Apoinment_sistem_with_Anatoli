@@ -20,4 +20,11 @@ print('Database connection OK')
 
 "$PYTHON" -c "from app.db_schema import ensure_telegram_login_schema; ensure_telegram_login_schema(); print('Auth schema OK')"
 
-"$PYTHON" -c "from app.db_schema import ensure_all_schema, get_schema_health; ensure_all_schema(); print('App schema OK', get_schema_health())"
+"$PYTHON" -c "
+from app.db_schema import ensure_all_schema, get_schema_health
+ensure_all_schema()
+health = get_schema_health()
+print('App schema OK', health)
+if health.get('degraded'):
+    raise SystemExit('Schema degraded: ' + ', '.join(health.get('issues') or []))
+"
