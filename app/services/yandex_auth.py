@@ -23,6 +23,7 @@ YANDEX_USER_INFO_URL = "https://login.yandex.ru/info"
 
 
 def yandex_oauth_configured() -> bool:
+    settings = get_settings()
     return bool(settings.yandex_oauth_client_id and settings.yandex_oauth_client_secret)
 
 

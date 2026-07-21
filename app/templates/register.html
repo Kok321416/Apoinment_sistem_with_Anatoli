@@ -49,7 +49,7 @@
                     inputmode="numeric"
                     autocomplete="tel"
                     placeholder="+7 (___) ___-__-__"
-                    value="{{ phone|default('') }}"
+                    value="{{ phone or '' }}"
                 >
             </div>
 
@@ -61,19 +61,11 @@
                         {{ auth_provider_icon('telegram') }}
                         <span>Телеграм</span>
                     </label>
-                    {% if yandex_oauth_enabled %}
                     <label class="auth-method auth-method--yandex" data-method="yandex">
                         <input type="radio" name="auth_radio" value="yandex">
                         {{ auth_provider_icon('yandex') }}
                         <span>Яндекс</span>
                     </label>
-                    {% else %}
-                    <label class="auth-method auth-method--disabled auth-method--yandex" data-method="yandex" title="Не настроено на сервере">
-                        <input type="radio" name="auth_radio" value="yandex" disabled>
-                        {{ auth_provider_icon('yandex') }}
-                        <span>Яндекс</span>
-                    </label>
-                    {% endif %}
                     <label class="auth-method is-selected" data-method="email">
                         <input type="radio" name="auth_radio" value="email" checked>
                         <span>Почта и пароль</span>
@@ -85,7 +77,7 @@
                 <div class="stack">
                     <div class="form-field">
                         <label class="form-field__label" for="email">Почта</label>
-                        <input class="input" type="email" id="email" name="email" placeholder="your@email.com" value="{{ email|default('') }}" autocomplete="email">
+                        <input class="input" type="email" id="email" name="email" placeholder="name@example.com" value="{{ email or '' }}" autocomplete="email">
                     </div>
                     <div class="form-field">
                         <label class="form-field__label" for="password">Пароль</label>

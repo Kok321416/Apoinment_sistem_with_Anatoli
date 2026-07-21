@@ -320,7 +320,13 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                         f"/accounts/verify-email/?{urlencode({'email': email})}",
                         status_code=302,
                     )
-    return templates.TemplateResponse("register.html", page_context(request, db, user, error=error, fio=fio, phone=phone, email=email))
+    return templates.TemplateResponse("register.html", page_context(
+        request, db, user,
+        error=error,
+        fio=fio or "",
+        phone=phone or "",
+        email=email or "",
+    ))
 
 
 @router.get("/login/")

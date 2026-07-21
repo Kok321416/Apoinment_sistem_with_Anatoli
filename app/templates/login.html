@@ -19,7 +19,6 @@
     <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}
 
-    {% if telegram_bot_username or yandex_oauth_enabled %}
     <div class="form-field">
         <span class="form-field__label">Быстрый вход</span>
         <div class="auth-methods">
@@ -29,18 +28,14 @@
                 <span>Телеграм</span>
             </a>
             {% endif %}
-            {% if yandex_oauth_enabled %}
             <a href="/accounts/yandex/login/?next={{ next_url | urlencode }}" class="auth-method auth-method--yandex">
                 {{ auth_provider_icon('yandex') }}
                 <span>Яндекс</span>
             </a>
-            {% endif %}
         </div>
         <p class="form-field__hint">
-            {% if telegram_bot_username and yandex_oauth_enabled %}
+            {% if telegram_bot_username %}
             Телеграм откроет бота, Яндекс — страницу входа Яндекс ID.
-            {% elif telegram_bot_username %}
-            Откроется бот — подтвердите вход кнопкой в чате.
             {% else %}
             Откроется страница входа через Яндекс ID.
             {% endif %}
@@ -48,7 +43,6 @@
     </div>
 
     <hr class="auth-divider">
-    {% endif %}
 
     <form method="POST" action="/login/{% if next_url %}?next={{ next_url | urlencode }}{% endif %}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -57,7 +51,7 @@
         <div class="stack">
             <div class="form-field">
                 <label class="form-field__label" for="email">Почта</label>
-                <input class="input" type="email" id="email" name="email" required placeholder="your@email.com" value="{{ resend_email|default('') }}" autocomplete="username">
+                <input class="input" type="email" id="email" name="email" required placeholder="name@example.com" value="{{ resend_email or '' }}" autocomplete="username">
             </div>
             <div class="form-field">
                 <label class="form-field__label" for="password">Пароль</label>
@@ -74,7 +68,7 @@
             <input type="hidden" name="action" value="resend_verification">
             <div class="form-field">
                 <label class="form-field__label" for="resend_email">Почта для повторной отправки</label>
-                <input class="input" type="email" id="resend_email" name="email" required placeholder="Ваш email" value="{{ resend_email|default('') }}" autocomplete="email">
+                <input class="input" type="email" id="resend_email" name="email" required placeholder="name@example.com" value="{{ resend_email or '' }}" autocomplete="email">
             </div>
             <button type="submit" class="btn btn--secondary btn--sm">Отправить письмо повторно</button>
         </form>
