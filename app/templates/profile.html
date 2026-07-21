@@ -8,38 +8,62 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=23">
-<link rel="stylesheet" href="/static/css/profile-hub.css?v=1">
+<link rel="stylesheet" href="/static/css/profile-hub.css?v=3">
 {% endblock %}
 
 {% block app_content %}
 <div class="profile-page" id="profile-page" data-csrf="{{ csrf_token }}">
 
     <section class="profile-hero card" id="profile-hero">
-        <div class="profile-hero__main">
-            <div class="profile-hero__avatar-wrap">
-                {% if consultant.profile_photo %}
-                <img src="{{ consultant.profile_photo|profile_photo_src }}" alt="" class="profile-hero__avatar" id="heroAvatar">
-                {% else %}
-                <div class="profile-hero__avatar profile-hero__avatar--empty" id="heroAvatar">{{ (consultant.first_name or "?")[:1] }}</div>
-                {% endif %}
+        <div class="profile-hero__glow profile-hero__glow--purple" aria-hidden="true"></div>
+        <div class="profile-hero__glow profile-hero__glow--cyan" aria-hidden="true"></div>
+        <div class="profile-hero__inner">
+            <div class="profile-hero__main">
+                <div class="profile-hero__avatar-wrap">
+                    {% if profile_photo_url %}
+                    <img src="{{ profile_photo_url }}" alt="" class="profile-hero__avatar" id="heroAvatar" data-avatar-role="photo">
+                    {% else %}
+                    <div class="profile-hero__avatar profile-hero__avatar--empty" id="heroAvatar" data-avatar-role="initials">{{ profile_initials }}</div>
+                    {% endif %}
+                    <span class="profile-hero__status" title="Профиль активен"><span class="profile-hero__status-dot"></span> Онлайн</span>
+                </div>
+                <div class="profile-hero__info">
+                    <h1 class="profile-hero__name" id="heroName">{{ consultant.first_name }} {{ consultant.last_name }}</h1>
+                    <p class="profile-hero__role" id="heroSpecialization">{{ consultant.category.name_category if consultant.category else "Специалист" }}</p>
+                    <div class="profile-hero__metrics">
+                        <span class="profile-hero__metric"><strong data-hero-stat="services">{{ profile_dashboard.services_total }}</strong> услуг</span>
+                        <span class="profile-hero__metric"><strong data-hero-stat="clients">{{ profile_dashboard.clients_total }}</strong> клиентов</span>
+                        <span class="profile-hero__metric"><strong data-hero-stat="completeness">{{ profile_completeness.percent }}</strong>% профиль</span>
+                    </div>
+                    <p class="profile-hero__meta" id="heroUpdated">Последнее изменение: только что</p>
+                </div>
             </div>
-            <div>
-                <h1 class="profile-hero__name" id="heroName">{{ consultant.first_name }} {{ consultant.last_name }}</h1>
-                <span class="badge badge--secondary" id="heroSpecialization">{{ consultant.category.name_category if consultant.category else "Специалист" }}</span>
-                <p class="profile-hero__meta" id="heroUpdated">Последнее изменение: загрузка…</p>
+            <div class="profile-hero__actions">
+                <button type="button" class="btn btn--secondary btn--sm" id="btn-preview-mode">Предпросмотр</button>
+                <button type="button" class="btn btn--primary btn--sm" id="btn-share-profile" data-link="{{ public_booking_url }}">Поделиться</button>
             </div>
-        </div>
-        <div class="profile-hero__actions">
-            <button type="button" class="btn btn--secondary btn--sm" id="btn-preview-mode">👁 Предпросмотр</button>
-            <button type="button" class="btn btn--primary btn--sm" id="btn-share-profile" data-link="{{ public_booking_url }}">🔗 Поделиться</button>
         </div>
     </section>
 
     <section class="profile-dashboard" id="profile-dashboard" aria-label="Статистика профиля">
-        <div class="dashboard-card dashboard-card--accent"><span class="dashboard-card__value" data-dash="services_total">—</span><span class="dashboard-card__label">Услуг</span><span class="dashboard-card__sub" data-dash-sub="services_active"></span></div>
-        <div class="dashboard-card dashboard-card--success"><span class="dashboard-card__value" data-dash="calendars_total">—</span><span class="dashboard-card__label">Календаря</span><span class="dashboard-card__sub" data-dash-sub="calendars_active"></span></div>
-        <div class="dashboard-card dashboard-card--info"><span class="dashboard-card__value" data-dash="clients_total">—</span><span class="dashboard-card__label">Клиентов</span></div>
-        <div class="dashboard-card dashboard-card--warning"><span class="dashboard-card__value" data-dash="completeness">—</span><span class="dashboard-card__label">Заполненность</span></div>
+        <div class="dashboard-card dashboard-card--accent">
+            <span class="dashboard-card__value" data-dash="services_total">{{ profile_dashboard.services_total }}</span>
+            <span class="dashboard-card__label">Услуг</span>
+            <span class="dashboard-card__sub" data-dash-sub="services_active">Активных: {{ profile_dashboard.services_active }}</span>
+        </div>
+        <div class="dashboard-card dashboard-card--success">
+            <span class="dashboard-card__value" data-dash="calendars_total">{{ profile_dashboard.calendars_total }}</span>
+            <span class="dashboard-card__label">Календаря</span>
+            <span class="dashboard-card__sub" data-dash-sub="calendars_active">Активных: {{ profile_dashboard.calendars_active }}</span>
+        </div>
+        <div class="dashboard-card dashboard-card--info">
+            <span class="dashboard-card__value" data-dash="clients_total">{{ profile_dashboard.clients_total }}</span>
+            <span class="dashboard-card__label">Клиентов</span>
+        </div>
+        <div class="dashboard-card dashboard-card--warning">
+            <span class="dashboard-card__value" data-dash="completeness">{{ profile_completeness.percent }}%</span>
+            <span class="dashboard-card__label">Профиль заполнен</span>
+        </div>
     </section>
 
     <div class="profile-mode-bar">
@@ -59,20 +83,28 @@
     <div class="profile-layout" id="profile-layout">
         <aside class="profile-sidebar-col">
             <nav class="profile-sidebar card" id="profile-sidebar" aria-label="Разделы профиля">
-                <button type="button" class="profile-sidebar__btn is-active" data-tab="basic">👤 Основное</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="photo">📷 Фото</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="about">📝 О себе</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="video">🎥 Видео</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="social">🌐 Соцсети</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="share">🔗 Ссылка</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="auth">🔐 Вход</button>
+                <button type="button" class="profile-sidebar__btn is-active" data-tab="basic"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Основное</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="photo"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span> Фото</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="about"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></span> О себе</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="video"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span> Видео</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="social"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Соцсети</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="share"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> Ссылка</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="auth"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Вход</button>
             </nav>
             <div class="progress-card card" id="progress-card">
                 <h3 class="progress-card__title">Заполненность профиля</h3>
-                <div class="progress-card__percent"><span id="progress-percent">0</span>%</div>
-                <div class="progress-card__bar"><div class="progress-card__fill" id="progress-fill"></div></div>
-                <p class="progress-card__message" id="progress-message"></p>
-                <ul class="progress-card__list" id="progress-list"></ul>
+                <div class="progress-card__percent"><span id="progress-percent">{{ profile_completeness.percent }}</span>%</div>
+                <div class="progress-card__bar"><div class="progress-card__fill" id="progress-fill" style="width: {{ profile_completeness.percent }}%"></div></div>
+                <p class="progress-card__message" id="progress-message">{{ profile_completeness.message }}</p>
+                <ul class="progress-card__list" id="progress-list">
+                    {% for check in profile_completeness.checks %}
+                    <li class="progress-card__item {% if check.done %}is-done{% elif check.partial %}is-partial{% else %}is-missing{% endif %}"{% if check.tab %} data-tab="{{ check.tab }}" role="button" tabindex="0"{% endif %}>
+                        <span class="progress-card__item-icon">{% if check.done %}✔{% elif check.partial %}◐{% else %}○{% endif %}</span>
+                        <span class="progress-card__item-text">{{ check.label }}</span>
+                        <span class="progress-card__item-points">{{ check.points }}/{{ check.weight }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
         </aside>
 
@@ -218,15 +250,54 @@
         <aside class="profile-preview-col">
             <div class="profile-preview card" id="live-preview">
                 <h3 class="profile-preview__title">Предпросмотр профиля</h3>
-                <div class="profile-preview__body">
-                    <div class="profile-preview__avatar" id="preview-avatar"></div>
-                    <h4 class="profile-preview__name" id="preview-name"></h4>
-                    <p class="profile-preview__spec" id="preview-spec"></p>
-                    <p class="profile-preview__desc" id="preview-desc"></p>
-                    <div class="profile-preview__social" id="preview-social"></div>
-                    <div class="profile-preview__video" id="preview-video" hidden></div>
-                    <ul class="profile-preview__services" id="preview-services"></ul>
-                    <button type="button" class="btn btn--primary btn--block" disabled>Записаться</button>
+                <div class="profile-preview__frame">
+                    <div class="pp-banner" id="preview-banner">
+                        <div class="pp-banner__glow" aria-hidden="true"></div>
+                        <div class="pp-avatar-wrap">
+                            {% if profile_photo_url %}
+                            <img class="pp-avatar" id="preview-avatar" src="{{ profile_photo_url }}" alt="" data-avatar-role="photo">
+                            {% else %}
+                            <div class="pp-avatar pp-avatar--empty" id="preview-avatar" data-avatar-role="initials">{{ profile_initials }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="profile-preview__body">
+                        <div class="pp-head">
+                            <h4 class="pp-name" id="preview-name">{{ consultant.first_name }} {{ consultant.last_name }}</h4>
+                            <p class="pp-spec" id="preview-spec">{{ consultant.category.name_category if consultant.category else "Специалист" }}</p>
+                            <div class="pp-badges">
+                                <span class="pp-badge pp-badge--verified">Проверенный специалист</span>
+                            </div>
+                            <div class="pp-rating" aria-hidden="true">
+                                <span class="pp-stars">★★★★★</span>
+                                <span class="pp-rating-note">Отзывы скоро</span>
+                            </div>
+                        </div>
+                        <div class="pp-card pp-card--about">
+                            <h5 class="pp-card__title">О специалисте</h5>
+                            <p class="pp-card__role" id="preview-role">{{ consultant.category.name_category if consultant.category else "Специалист" }}</p>
+                            <p class="pp-desc" id="preview-desc">{% if consultant.profile_description %}{{ consultant.profile_description }}{% else %}<span class="pp-desc__empty">Описание пока не заполнено. Расскажите клиентам о себе и своих услугах.</span>{% endif %}</p>
+                        </div>
+                        <div class="pp-social" id="preview-social"></div>
+                        <div class="pp-video-card" id="preview-video-card" hidden>
+                            <button type="button" class="pp-video-card__trigger" id="preview-video-trigger">
+                                <span class="pp-video-card__play" aria-hidden="true">▶</span>
+                                <span class="pp-video-card__text">
+                                    <span class="pp-video-card__label">Видео-приветствие</span>
+                                    <span class="pp-video-card__hint">Нажмите, чтобы посмотреть</span>
+                                </span>
+                            </button>
+                            <div class="pp-video-card__embed" id="preview-video" hidden></div>
+                        </div>
+                        <ul class="pp-services" id="preview-services">
+                            {% for s in profile_initial_data.preview.services %}
+                            <li class="pp-services__item" style="--svc-color: {{ s.color }}">
+                                <span class="pp-services__dot"></span><span>{{ s.name }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <button type="button" class="pp-book-btn" disabled>Записаться</button>
+                    </div>
                 </div>
             </div>
         </aside>
@@ -264,9 +335,12 @@
 <script src="/static/js/toast.js?v=1" defer></script>
 <script src="/static/js/copy-link.js?v=1" defer></script>
 <script src="/static/js/profile-api.js?v=1" defer></script>
-<script src="/static/js/profile-preview.js?v=1" defer></script>
-<script src="/static/js/profile-autosave.js?v=1" defer></script>
-<script src="/static/js/profile-tabs.js?v=1" defer></script>
-<script src="/static/js/profile-page.js?v=1" defer></script>
+<script src="/static/js/profile-completion.js?v=1" defer></script>
+<script src="/static/js/profile-preview.js?v=3" defer></script>
+<script src="/static/js/profile-autosave.js?v=2" defer></script>
+<script src="/static/js/profile-tabs.js?v=2" defer></script>
+<script src="/static/js/profile-page.js?v=3" defer></script>
 <script src="/static/js/avatar-crop.js?v=4" defer></script>
+<script type="application/json" id="profile-completion-meta">{{ profile_completion_meta | tojson }}</script>
+<script type="application/json" id="profile-initial-data">{{ profile_initial_data | tojson }}</script>
 {% endblock %}

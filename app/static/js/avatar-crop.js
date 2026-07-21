@@ -211,6 +211,12 @@
                 if (!blob) return;
                 pendingBlob = blob;
                 updateProfilePreview(blob);
+                if (window.profilePreview && window.profilePreview.setAvatars) {
+                    var first = document.getElementById('first_name');
+                    var last = document.getElementById('last_name');
+                    var blobUrl = URL.createObjectURL(blob);
+                    window.profilePreview.setAvatars(blobUrl, first && first.value, last && last.value);
+                }
                 assignFileToInput(blob);
                 closeModal(false);
                 if (hint) hint.textContent = 'Фото будет сохранено автоматически.';

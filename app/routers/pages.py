@@ -937,10 +937,31 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
                         db.rollback()
                         error = f"Ошибка при обновлении: {e}"
     from app.services.public_client import ensure_public_slug, specialist_public_url
+    from app.services.profile_hub import completion_meta, completeness, dashboard_stats
 
     slug = ensure_public_slug(db, consultant)
     connected = {sa.provider for sa in db.query(SocialAccount).filter(SocialAccount.user_id == user.id).all()}
     primary = db.query(EmailAddress).filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True)).first()
+    profile_completeness = completeness(consultant, db, consultant.id)
+    profile_dashboard = dashboard_stats(db, consultant.id)
+    profile_dashboard["completeness"] = profile_completeness["percent"]
+    from app.services.profile_hub import build_profile_payload
+    from app.services.yandex_auth import yandex_oauth_configured
+
+    profile_initial_data = build_profile_payload(
+        db,
+        consultant,
+        user,
+        connected_providers=connected,
+        primary_email=primary.email if primary else consultant.email,
+        primary_email_verified=bool(primary and primary.verified),
+        has_usable_password=user.has_usable_password,
+        yandex_oauth_enabled=yandex_oauth_configured(),
+    )
+    profile_photo_url = profile_initial_data["profile"].get("photo_url")
+    profile_initials = (
+        (consultant.first_name or consultant.last_name or "?")[:1].upper()
+    )
     return templates.TemplateResponse("profile.html", page_context(
         request, db, user, consultant=consultant, success=success, error=error,
         connected_providers=connected,
@@ -948,6 +969,12 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
         primary_email_verified=bool(primary and primary.verified),
         public_booking_url=specialist_public_url(settings.site_url, slug),
         has_usable_password=user.has_usable_password,
+        profile_completeness=profile_completeness,
+        profile_dashboard=profile_dashboard,
+        profile_completion_meta=completion_meta(consultant, db, consultant.id),
+        profile_initial_data=profile_initial_data,
+        profile_photo_url=profile_photo_url,
+        profile_initials=profile_initials,
     ))
 
 

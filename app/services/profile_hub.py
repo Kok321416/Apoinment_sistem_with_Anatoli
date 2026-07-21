@@ -1,8 +1,6 @@
 """Profile hub: serialization, completeness, dashboard stats."""
 from __future__ import annotations
 
-from datetime import datetime
-
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -21,6 +19,10 @@ SOCIAL_FIELDS = (
     "social_youtube",
     "website",
 )
+
+ABOUT_MIN_CHARS = 30
+ABOUT_FULL_CHARS = 80
+SOCIAL_LINKS_FOR_FULL = 2
 
 
 def full_name(consultant: Consultant) -> str:
@@ -42,105 +44,228 @@ def connected_social_count(consultant: Consultant) -> int:
     return sum(1 for field in SOCIAL_FIELDS if getattr(consultant, field))
 
 
-def completeness(consultant: Consultant, db: Session, consultant_id: int) -> dict:
-    checks = []
-    score = 0
+def _text(value: str | None) -> str:
+    text = (value or "").strip()
+    if text.lower() in ("none", "null"):
+        return ""
+    return text
 
-    if consultant.profile_photo:
-        score += 15
-        checks.append({"id": "photo", "label": "Фото профиля", "done": True})
-    else:
-        checks.append({"id": "photo", "label": "Фото профиля", "done": False})
 
-    if (consultant.profile_description or "").strip():
-        score += 20
-        checks.append({"id": "about", "label": "Описание", "done": True})
-    else:
-        checks.append({"id": "about", "label": "Описание", "done": False})
+def _about_points(description: str | None) -> tuple[int, bool, str]:
+    length = len(_text(description))
+    if length >= ABOUT_FULL_CHARS:
+        return 20, True, f"Описание ({length} симв.)"
+    if length >= ABOUT_MIN_CHARS:
+        return 10, False, f"Описание ({length} из {ABOUT_FULL_CHARS} симв.)"
+    return 0, False, f"Описание (от {ABOUT_MIN_CHARS} симв.)"
 
-    if consultant.video_link:
-        score += 10
-        checks.append({"id": "video", "label": "Видео", "done": True})
-    else:
-        checks.append({"id": "video", "label": "Видео", "done": False})
 
-    social_count = connected_social_count(consultant)
-    social_done = social_count >= 2
-    if social_done:
-        score += 15
-    checks.append({
-        "id": "social",
-        "label": f"Соцсети ({social_count} из 6)",
-        "done": social_done,
-    })
+def _social_points(social_count: int) -> tuple[int, bool, str]:
+    if social_count >= SOCIAL_LINKS_FOR_FULL:
+        return 15, True, f"Соцсети ({social_count} из {len(SOCIAL_FIELDS)})"
+    if social_count == 1:
+        return 8, False, f"Соцсети (1 из {SOCIAL_LINKS_FOR_FULL}, нужна ещё 1)"
+    return 0, False, f"Соцсети (0 из {SOCIAL_LINKS_FOR_FULL})"
 
+
+def _completion_message(percent: int) -> str:
+    if percent >= 90:
+        return "Профиль готов для клиентов"
+    if percent >= 70:
+        return "Профиль почти готов"
+    if percent >= 40:
+        return "Хороший старт — добавьте ещё несколько блоков"
+    return "Заполните профиль, чтобы клиентам было проще записаться"
+
+
+def _service_counts(db: Session, consultant_id: int) -> tuple[int, int]:
     svc_total = db.query(func.count(Service.id)).filter(Service.consultant_id == consultant_id).scalar() or 0
     svc_active = (
         db.query(func.count(Service.id))
         .filter(Service.consultant_id == consultant_id, Service.is_active.is_(True))
         .scalar()
     ) or 0
-    svc_done = svc_active > 0
-    if svc_done:
-        score += 15
-    checks.append({
-        "id": "services",
-        "label": f"Услуги ({svc_active} из {svc_total})",
-        "done": svc_done,
-    })
-
-    basic_done = all([
-        consultant.first_name,
-        consultant.last_name,
-        consultant.email,
-        consultant.phone,
-    ])
-    if basic_done:
-        score += 15
-    checks.append({"id": "basic", "label": "Основные данные", "done": basic_done})
-
-    if consultant.email and consultant.phone:
-        score += 10
-        checks.append({"id": "contacts", "label": "Контакты", "done": True})
-    else:
-        checks.append({"id": "contacts", "label": "Контакты", "done": False})
-
-    score = min(score, 100)
-    if score >= 90:
-        message = "Профиль готов"
-    elif score >= 70:
-        message = "Профиль почти готов"
-    else:
-        message = "Заполните профиль для клиентов"
-
-    missing = [c["label"] for c in checks if not c["done"]]
-    return {
-        "percent": score,
-        "message": message,
-        "checks": checks,
-        "missing": missing[:4],
-    }
+    return svc_total, svc_active
 
 
-def dashboard_stats(db: Session, consultant_id: int) -> dict:
-    services_total = db.query(func.count(Service.id)).filter(Service.consultant_id == consultant_id).scalar() or 0
-    services_active = (
-        db.query(func.count(Service.id))
-        .filter(Service.consultant_id == consultant_id, Service.is_active.is_(True))
-        .scalar()
-    ) or 0
-    calendars_total = db.query(func.count(Calendar.id)).filter(Calendar.consultant_id == consultant_id).scalar() or 0
-    calendars_active = (
+def _calendar_counts(db: Session, consultant_id: int) -> tuple[int, int]:
+    cal_total = db.query(func.count(Calendar.id)).filter(Calendar.consultant_id == consultant_id).scalar() or 0
+    cal_active = (
         db.query(func.count(Calendar.id))
         .filter(Calendar.consultant_id == consultant_id, Calendar.is_active.is_(True))
         .scalar()
     ) or 0
+    return cal_total, cal_active
+
+
+def compute_completeness(
+    *,
+    first_name: str | None,
+    last_name: str | None,
+    email: str | None,
+    phone: str | None,
+    profile_description: str | None,
+    video_link: str | None,
+    has_photo: bool,
+    social_count: int,
+    services_active: int,
+    services_total: int,
+    calendars_active: int,
+    calendars_total: int,
+) -> dict:
+    checks: list[dict] = []
+    score = 0
+
+    name_ok = bool(_text(first_name)) and bool(_text(last_name))
+    name_points = 10 if name_ok else 0
+    score += name_points
+    checks.append({
+        "id": "name",
+        "label": "Имя и фамилия",
+        "tab": "basic",
+        "weight": 10,
+        "points": name_points,
+        "done": name_ok,
+    })
+
+    contacts_ok = bool(_text(email)) and bool(_text(phone))
+    contacts_points = 10 if contacts_ok else 0
+    score += contacts_points
+    checks.append({
+        "id": "contacts",
+        "label": "Email и телефон",
+        "tab": "basic",
+        "weight": 10,
+        "points": contacts_points,
+        "done": contacts_ok,
+    })
+
+    photo_points = 15 if has_photo else 0
+    score += photo_points
+    checks.append({
+        "id": "photo",
+        "label": "Фото профиля",
+        "tab": "photo",
+        "weight": 15,
+        "points": photo_points,
+        "done": has_photo,
+    })
+
+    about_points, about_done, about_label = _about_points(profile_description)
+    score += about_points
+    checks.append({
+        "id": "about",
+        "label": about_label,
+        "tab": "about",
+        "weight": 20,
+        "points": about_points,
+        "done": about_done,
+        "partial": about_points > 0 and not about_done,
+    })
+
+    video_ok = bool(_text(video_link))
+    video_points = 5 if video_ok else 0
+    score += video_points
+    checks.append({
+        "id": "video",
+        "label": "Видео-презентация",
+        "tab": "video",
+        "weight": 5,
+        "points": video_points,
+        "done": video_ok,
+    })
+
+    social_points, social_done, social_label = _social_points(social_count)
+    score += social_points
+    checks.append({
+        "id": "social",
+        "label": social_label,
+        "tab": "social",
+        "weight": 15,
+        "points": social_points,
+        "done": social_done,
+        "partial": social_points > 0 and not social_done,
+    })
+
+    services_done = services_active > 0
+    services_points = 15 if services_done else 0
+    score += services_points
+    checks.append({
+        "id": "services",
+        "label": f"Активные услуги ({services_active} из {services_total})",
+        "tab": None,
+        "weight": 15,
+        "points": services_points,
+        "done": services_done,
+    })
+
+    calendar_done = calendars_active > 0
+    calendar_points = 10 if calendar_done else 0
+    score += calendar_points
+    checks.append({
+        "id": "calendar",
+        "label": f"Активный календарь ({calendars_active} из {calendars_total})",
+        "tab": None,
+        "weight": 10,
+        "points": calendar_points,
+        "done": calendar_done,
+    })
+
+    percent = min(score, 100)
+    missing = [c["label"] for c in checks if not c["done"]]
+    return {
+        "percent": percent,
+        "message": _completion_message(percent),
+        "checks": checks,
+        "missing": missing[:4],
+        "total_weight": 100,
+    }
+
+
+def completeness(consultant: Consultant, db: Session, consultant_id: int) -> dict:
+    svc_total, svc_active = _service_counts(db, consultant_id)
+    cal_total, cal_active = _calendar_counts(db, consultant_id)
+    return compute_completeness(
+        first_name=consultant.first_name,
+        last_name=consultant.last_name,
+        email=consultant.email,
+        phone=consultant.phone,
+        profile_description=consultant.profile_description,
+        video_link=consultant.video_link,
+        has_photo=bool(consultant.profile_photo),
+        social_count=connected_social_count(consultant),
+        services_active=svc_active,
+        services_total=svc_total,
+        calendars_active=cal_active,
+        calendars_total=cal_total,
+    )
+
+
+def completion_meta(consultant: Consultant, db: Session, consultant_id: int) -> dict:
+    svc_total, svc_active = _service_counts(db, consultant_id)
+    cal_total, cal_active = _calendar_counts(db, consultant_id)
+    return {
+        "has_photo": bool(consultant.profile_photo),
+        "services_active": svc_active,
+        "services_total": svc_total,
+        "calendars_active": cal_active,
+        "calendars_total": cal_total,
+        "about_min_chars": ABOUT_MIN_CHARS,
+        "about_full_chars": ABOUT_FULL_CHARS,
+        "social_links_for_full": SOCIAL_LINKS_FOR_FULL,
+        "social_fields": list(SOCIAL_FIELDS),
+    }
+
+
+def dashboard_stats(db: Session, consultant_id: int) -> dict:
+    svc_total, svc_active = _service_counts(db, consultant_id)
+    cal_total, cal_active = _calendar_counts(db, consultant_id)
     clients = db.query(func.count(ClientCard.id)).filter(ClientCard.consultant_id == consultant_id).scalar() or 0
     return {
-        "services_total": services_total,
-        "services_active": services_active,
-        "calendars_total": calendars_total,
-        "calendars_active": calendars_active,
+        "services_total": svc_total,
+        "services_active": svc_active,
+        "calendars_total": cal_total,
+        "calendars_active": cal_active,
         "clients_total": clients,
     }
 
@@ -202,6 +327,7 @@ def build_profile_payload(
         },
         "dashboard": dash,
         "completeness": comp,
+        "completion_meta": completion_meta(consultant, db, consultant.id),
         "preview": serialize_preview(consultant, slug, db, consultant.id),
         "auth": {
             "connected_providers": sorted(connected_providers),

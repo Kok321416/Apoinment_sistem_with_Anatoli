@@ -86,6 +86,12 @@ def _refresh_schema_health() -> None:
     if not _column_exists("services", "calendar_id"):
         issues.append("services.calendar_id missing")
         logger.critical("Schema degraded: services.calendar_id is missing")
+    if not _column_exists("calendars", "disabled_weekdays"):
+        issues.append("calendars.disabled_weekdays missing")
+        logger.critical("Schema degraded: calendars.disabled_weekdays is missing")
+    if not _column_exists("services", "sort_order"):
+        issues.append("services.sort_order missing")
+        logger.warning("Schema: services.sort_order is missing")
     _schema_issues = issues
     _schema_degraded = bool(issues)
 
@@ -118,12 +124,12 @@ def ensure_app_schema() -> None:
         logger.exception("services.calendar_id patch failed")
 
     try:
-        _add_column("calendars", "disabled_weekdays", "VARCHAR(32) DEFAULT ''")
+        _add_column("calendars", "disabled_weekdays", "VARCHAR(32) NOT NULL DEFAULT ''")
     except Exception:
         logger.exception("calendars.disabled_weekdays patch failed")
 
     try:
-        _add_column("services", "color", "VARCHAR(7) DEFAULT '#7d5cff'")
+        _add_column("services", "color", "VARCHAR(7) NOT NULL DEFAULT '#7d5cff'")
     except Exception:
         logger.exception("services.color patch failed")
 
@@ -133,7 +139,7 @@ def ensure_app_schema() -> None:
         logger.exception("services.icon patch failed")
 
     try:
-        _add_column("services", "sort_order", "INTEGER DEFAULT 0")
+        _add_column("services", "sort_order", "INTEGER NOT NULL DEFAULT 0")
     except Exception:
         logger.exception("services.sort_order patch failed")
 
@@ -151,20 +157,29 @@ def ensure_all_schema() -> None:
     except Exception:
         logger.exception("email auth schema ensure failed")
     ensure_app_schema()
-    _schema_ready = True
+    _refresh_schema_health()
+    _schema_ready = not _schema_degraded
+
+
+def _schema_needs_patch() -> bool:
+    return (
+        not _column_exists("calendars", "disabled_weekdays")
+        or not _column_exists("services", "calendar_id")
+        or not _column_exists("services", "sort_order")
+    )
 
 
 def ensure_schema_before_query() -> None:
     """Best-effort runtime recovery if startup patch did not run."""
     global _schema_ready
-    if _schema_ready:
+    if _schema_ready and not _schema_needs_patch():
         return
     try:
         ensure_app_schema()
-        _schema_ready = True
+        _refresh_schema_health()
+        _schema_ready = not _schema_degraded
     except Exception:
         logger.exception("Runtime schema ensure failed")
-        _schema_ready = True
 
 
 if __name__ == "__main__":

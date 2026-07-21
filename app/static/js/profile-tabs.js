@@ -3,6 +3,7 @@
         var sidebar = document.getElementById('profile-sidebar');
         var panels = document.querySelectorAll('.profile-panel[data-panel]');
         var authPanel = document.getElementById('auth-panel');
+        if (!sidebar) return;
 
         function showTab(tab) {
             sidebar.querySelectorAll('.profile-sidebar__btn').forEach(function (btn) {
@@ -11,15 +12,20 @@
             panels.forEach(function (panel) {
                 if (panel.dataset.panel === tab) {
                     panel.hidden = false;
+                    panel.classList.remove('is-leaving');
                     panel.classList.add('is-active');
+                    requestAnimationFrame(function () {
+                        panel.classList.add('is-entering');
+                    });
                 } else if (panel.id !== 'auth-panel') {
+                    panel.classList.remove('is-entering', 'is-active');
+                    panel.classList.add('is-leaving');
                     panel.hidden = true;
-                    panel.classList.remove('is-active');
                 }
             });
             if (authPanel) {
                 authPanel.hidden = tab !== 'auth';
-                if (tab === 'auth') authPanel.classList.add('is-active');
+                authPanel.classList.toggle('is-active', tab === 'auth');
             }
         }
 

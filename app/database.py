@@ -31,6 +31,9 @@ class Base(DeclarativeBase):
 
 
 def get_db() -> Generator[Session, None, None]:
+    from app.db_schema import ensure_schema_before_query
+
+    ensure_schema_before_query()
     db = SessionLocal()
     try:
         yield db

@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import app.models  # noqa: F401
-from app.database import Base
+from app.database import Base, get_db
 
 
 def test_specialist_slug_for():
@@ -223,12 +223,82 @@ def test_profile_completeness_empty_consultant():
     db.add(c)
     db.flush()
     result = completeness(c, db, c.id)
-    assert result["percent"] < 50
+    assert result["percent"] == 0
+    assert len(result["checks"]) == 8
     assert any(not ch["done"] for ch in result["checks"])
     db.close()
 
 
-def test_services_catalog_dashboard():
+def test_profile_completeness_basic_fields():
+    from app.models import Calendar, Category, Consultant, Service
+    from app.services.profile_hub import compute_completeness
+
+    result = compute_completeness(
+        first_name="Иван",
+        last_name="Петров",
+        email="ivan@example.com",
+        phone="+79991234567",
+        profile_description="Короткое описание специалиста для клиентов.",
+        video_link="",
+        has_photo=True,
+        social_count=1,
+        services_active=1,
+        services_total=2,
+        calendars_active=1,
+        calendars_total=1,
+    )
+    assert result["percent"] == 78
+    assert result["checks"][0]["done"] is True
+    assert result["checks"][2]["done"] is True
+    assert result["checks"][3]["partial"] is True
+    assert result["checks"][5]["partial"] is True
+
+def test_calendars_query_after_schema_patch():
+    from sqlalchemy import text
+
+    from app.db_schema import ensure_app_schema
+    from app.models import Calendar
+    import app.db_schema as schema_mod
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE calendars DROP COLUMN disabled_weekdays"))
+        conn.execute(text(
+            "INSERT INTO calendars (consultant_id, name, color, is_active, created_at, updated_at, "
+            "break_between_services_minutes, book_ahead_hours, max_services_per_day, "
+            "reminder_hours_first, reminder_hours_second) "
+            "VALUES (1, 'Main', '#7d5cff', 1, datetime('now'), datetime('now'), 0, 24, 0, 24, 1)"
+        ))
+
+    schema_mod.engine = engine
+    ensure_app_schema()
+    db = sessionmaker(bind=engine)()
+    calendars = db.query(Calendar).all()
+    assert len(calendars) == 1
+    assert calendars[0].name == "Main"
+    assert calendars[0].disabled_weekdays == ""
+    db.close()
+
+
+def test_schema_patch_adds_disabled_weekdays():
+    from sqlalchemy import inspect, text
+
+    from app.db_schema import ensure_app_schema
+    import app.db_schema as schema_mod
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE calendars DROP COLUMN disabled_weekdays"))
+
+    schema_mod.engine = engine
+    ensure_app_schema()
+
+    insp = inspect(engine)
+    cols = {c["name"] for c in insp.get_columns("calendars")}
+    assert "disabled_weekdays" in cols
+
     from app.models import Calendar, Category, Consultant, Service
     from app.services.services_catalog import build_catalog_payload
 

@@ -14,8 +14,10 @@
         try {
             var d = new Date(iso);
             var diff = Date.now() - d.getTime();
-            var hours = Math.floor(diff / 3600000);
-            if (hours < 1) return 'только что';
+            var mins = Math.floor(diff / 60000);
+            if (mins < 1) return 'только что';
+            if (mins < 60) return mins + ' мин. назад';
+            var hours = Math.floor(mins / 60);
             if (hours < 24) return hours + ' ч. назад';
             var days = Math.floor(hours / 24);
             if (days < 7) return days + ' дн. назад';
@@ -25,58 +27,81 @@
         }
     }
 
+    function loadJson(id) {
+        var node = document.getElementById(id);
+        if (!node) return null;
+        try {
+            return JSON.parse(node.textContent || 'null');
+        } catch (e) {
+            console.error('[profile] Failed to parse JSON:', id, e);
+            return null;
+        }
+    }
+
+    function dashValue(val) {
+        return val != null && val !== '' ? val : '0';
+    }
+
+    function updateHeroStats(dash, completeness) {
+        var services = document.querySelector('[data-hero-stat="services"]');
+        var clients = document.querySelector('[data-hero-stat="clients"]');
+        var comp = document.querySelector('[data-hero-stat="completeness"]');
+        if (services) services.textContent = dashValue(dash.services_total);
+        if (clients) clients.textContent = dashValue(dash.clients_total);
+        if (comp) comp.textContent = completeness != null ? completeness : dashValue(dash.completeness);
+    }
+
     function applyData(data) {
         if (!data) return;
         var dash = data.dashboard || {};
         document.querySelectorAll('[data-dash]').forEach(function (el) {
             var key = el.getAttribute('data-dash');
-            var val = dash[key];
             if (key === 'completeness') {
-                el.textContent = (val != null ? val : 0) + '%';
-            } else {
-                el.textContent = val != null ? val : '—';
+                var pct = data.completeness ? data.completeness.percent : dash.completeness;
+                el.textContent = dashValue(pct) + '%';
+                return;
             }
+            el.textContent = dashValue(dash[key]);
         });
         var subServices = document.querySelector('[data-dash-sub="services_active"]');
-        if (subServices) subServices.textContent = 'Активных: ' + (dash.services_active || 0);
+        if (subServices) subServices.textContent = 'Активных: ' + dashValue(dash.services_active);
         var subCal = document.querySelector('[data-dash-sub="calendars_active"]');
-        if (subCal) subCal.textContent = 'Активных: ' + (dash.calendars_active || 0);
+        if (subCal) subCal.textContent = 'Активных: ' + dashValue(dash.calendars_active);
 
-        var comp = data.completeness || {};
-        var pct = document.getElementById('progress-percent');
-        var fill = document.getElementById('progress-fill');
-        var msg = document.getElementById('progress-message');
-        var list = document.getElementById('progress-list');
-        if (pct) pct.textContent = comp.percent || 0;
-        if (fill) fill.style.width = (comp.percent || 0) + '%';
-        if (msg) msg.textContent = comp.message || '';
-        if (list) {
-            list.innerHTML = '';
-            (comp.checks || []).forEach(function (c) {
-                var li = document.createElement('li');
-                li.textContent = (c.done ? '✔ ' : '○ ') + c.label;
-                list.appendChild(li);
-            });
+        if (data.completion_meta) {
+            window.profileCompletionMeta = data.completion_meta;
         }
+
+        if (window.profileCompletion) {
+            profileCompletion.applyCompleteness(data.completeness || {}, dash);
+            profileCompletion.bindChecklistNavigation();
+        }
+
+        updateHeroStats(dash, data.completeness ? data.completeness.percent : null);
 
         var profile = data.profile || {};
         var heroUpdated = document.getElementById('heroUpdated');
-        if (heroUpdated) heroUpdated.textContent = 'Последнее изменение: ' + formatRelative(profile.updated_at);
+        if (heroUpdated) {
+            heroUpdated.textContent = 'Последнее изменение: ' + formatRelative(profile.updated_at);
+        }
         var heroSpec = document.getElementById('heroSpecialization');
         if (heroSpec && profile.specialization) heroSpec.textContent = profile.specialization;
 
-        var heroAvatar = document.getElementById('heroAvatar');
-        if (heroAvatar && profile.photo_url) {
-            if (heroAvatar.tagName === 'IMG') {
-                heroAvatar.src = profile.photo_url;
-            }
+        if (window.profilePreview) {
+            window.profilePreview.setAvatars(
+                profile.photo_url || null,
+                profile.first_name,
+                profile.last_name
+            );
+            window.profilePreview.applyServer(data.preview);
+            window.profilePreview.update();
         }
 
         var footer = data.footer || {};
         var map = {
             'footer-created': formatDate(footer.created_at),
             'footer-updated': formatRelative(footer.updated_at),
-            'footer-id': '#' + (footer.consultant_id || '—'),
+            'footer-id': footer.consultant_id ? '#' + footer.consultant_id : '—',
             'footer-tz': footer.timezone || '—',
             'footer-version': footer.profile_version || '—',
         };
@@ -84,11 +109,6 @@
             var el = document.getElementById(id);
             if (el) el.textContent = map[id];
         });
-
-        if (window.profilePreview) {
-            window.profilePreview.applyServer(data.preview);
-            window.profilePreview.update();
-        }
     }
 
     async function init() {
@@ -97,12 +117,25 @@
         var csrf = page.dataset.csrf || '';
         var api = new ProfileApi(csrf);
         window.profilePage = { applyData: applyData };
+        window.profileCompletionMeta = loadJson('profile-completion-meta') || {};
+
+        var initialData = loadJson('profile-initial-data');
+        if (initialData) {
+            applyData(initialData);
+        }
+
+        if (window.profileCompletion) {
+            profileCompletion.bindChecklistNavigation();
+        }
 
         try {
             var data = await api.getData();
             applyData(data);
         } catch (e) {
-            if (window.showToast) showToast('Не удалось загрузить данные профиля', 'error');
+            console.error('[profile] API load failed, using server-rendered data:', e);
+            if (window.profileCompletion && window.profilePreview) {
+                profileCompletion.updateLive(window.profileCompletionMeta);
+            }
         }
 
         if (window.profilePreview) profilePreview.bind();

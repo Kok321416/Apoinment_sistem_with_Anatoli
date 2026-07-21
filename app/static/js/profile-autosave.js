@@ -27,8 +27,8 @@
                     global.profilePage.applyData(result.data);
                 }
             } catch (error) {
-                setStatus('error', error.message);
-                if (global.showToast) global.showToast(error.message, 'error');
+                console.error('[profile] Autosave failed:', error);
+                setStatus('', '');
             } finally {
                 saving = false;
             }
@@ -47,11 +47,10 @@
                 var file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
                 var result = await api.uploadAvatar(file);
                 setStatus('saved', 'Фото обновлено');
-                if (global.showToast) global.showToast('Фото обновлено');
                 if (result.data) global.profilePage.applyData(result.data);
             } catch (error) {
-                setStatus('error', error.message);
-                if (global.showToast) global.showToast(error.message, 'error');
+                console.error('[profile] Avatar upload failed:', error);
+                setStatus('', '');
             }
         });
 
