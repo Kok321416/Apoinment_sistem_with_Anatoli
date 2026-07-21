@@ -248,6 +248,24 @@
     margin-bottom: var(--space-2xs);
 }
 
+.day-dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-bottom: var(--space-xs);
+}
+
+.day-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+}
+
+.day-dot.confirmed { background: rgba(59, 228, 200, 0.9); }
+.day-dot.pending { background: rgba(245, 166, 35, 0.95); }
+.day-dot.completed { background: rgba(148, 163, 184, 0.9); }
+.day-dot.cancelled { background: rgba(255, 92, 122, 0.9); }
+
 .day-events {
     display: flex;
     flex-direction: column;

@@ -208,15 +208,15 @@
                 '<label class="service-card__select">' +
                     '<input type="checkbox" data-select="' + service.id + '"' + (selectedIds.has(service.id) ? ' checked' : '') + '>' +
                 '</label>' +
-                '<span class="service-card__status badge ' + (service.is_active ? 'badge--success' : 'badge--ghost') + '">' +
-                    (service.is_active ? 'Активна' : 'Отключена') +
-                '</span>' +
                 '<div class="service-card__head">' +
                     '<div class="service-card__icon" aria-hidden="true">' + service.icon_display + '</div>' +
                     '<div class="service-card__info">' +
                         '<h3 class="service-card__title">' + escapeHtml(service.name) + '</h3>' +
                         '<p class="service-card__desc">' + escapeHtml(service.description || 'Без описания') + '</p>' +
                     '</div>' +
+                    '<span class="service-card__status badge ' + (service.is_active ? 'badge--success' : 'badge--ghost') + '">' +
+                        (service.is_active ? 'Активна' : 'Отключена') +
+                    '</span>' +
                     '<div class="service-card__menu-wrap">' +
                         '<button type="button" class="service-card__menu-btn" data-menu="' + service.id + '" aria-label="Меню">⋮</button>' +
                         '<div class="service-card__menu" hidden>' +

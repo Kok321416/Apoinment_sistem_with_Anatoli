@@ -483,26 +483,28 @@ async def calendars_page(request: Request, db: Session = Depends(get_db)):
                         success, error = (msg, None) if ok else (None, msg)
                     else:
                         error = "Календарь не найден"
-    calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).order_by(Calendar.name).all()
-    slot_counts = {}
-    if calendars:
-        rows = (
-            db.query(TimeSlot.calendar_id, func.count(TimeSlot.id))
-            .filter(TimeSlot.calendar_id.in_([c.id for c in calendars]))
-            .group_by(TimeSlot.calendar_id)
-            .all()
-        )
-        slot_counts = {calendar_id: count for calendar_id, count in rows}
-    for calendar in calendars:
-        calendar.time_slots_count = slot_counts.get(calendar.id, 0)
+    calendars = (
+        db.query(Calendar)
+        .filter(Calendar.consultant_id == consultant.id)
+        .order_by(Calendar.updated_at.desc())
+        .all()
+    )
+    from app.services.calendars_hub import build_calendars_payload
     from app.services.public_client import ensure_public_slug, specialist_public_url
 
     slug = ensure_public_slug(db, consultant)
     public_url = specialist_public_url(settings.site_url, slug)
-    calendars_with_links = [{"calendar": c, "booking_url": f"{public_url}c/{c.id}/"} for c in calendars]
+    hub_payload = build_calendars_payload(db, calendars, public_url)
     return templates.TemplateResponse("calendars.html", page_context(
-        request, db, user, calendars=calendars, calendars_with_links=calendars_with_links,
-        public_booking_url=public_url, success=success, error=error,
+        request, db, user,
+        calendars=calendars,
+        public_booking_url=public_url,
+        hub_dashboard=hub_payload["dashboard"],
+        hub_calendars=hub_payload["calendars"],
+        hub_activity=hub_payload["activity"],
+        hub_payload=hub_payload,
+        success=success,
+        error=error,
     ))
 
 
@@ -839,9 +841,22 @@ async def specialist_bookings(request: Request, db: Session = Depends(get_db)):
         if status_filter != "all":
             upcoming = [b for b in upcoming if b.status == status_filter]
             past = [b for b in past if b.status == status_filter]
+    from app.services.bookings_hub import build_bookings_payload
+
+    hub_payload = build_bookings_payload(db, cal_ids, upcoming, past, today, now)
     return templates.TemplateResponse("booking.html", page_context(
-        request, db, user, upcoming_bookings=upcoming, past_bookings=past,
-        status_filter=status_filter, today=today, success=success, error=error,
+        request, db, user,
+        upcoming_bookings=upcoming,
+        past_bookings=past,
+        status_filter=status_filter,
+        today=today,
+        hub_dashboard=hub_payload["dashboard"],
+        hub_upcoming_groups=hub_payload["upcoming_groups"],
+        hub_past_groups=hub_payload["past_groups"],
+        hub_sidebar=hub_payload["sidebar"],
+        hub_payload=hub_payload,
+        success=success,
+        error=error,
     ))
 
 

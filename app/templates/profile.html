@@ -8,7 +8,7 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=23">
-<link rel="stylesheet" href="/static/css/profile-hub.css?v=3">
+<link rel="stylesheet" href="/static/css/profile-hub.css?v=4">
 {% endblock %}
 
 {% block app_content %}
@@ -161,6 +161,8 @@
 
                 <section class="profile-panel card" data-panel="social" hidden>
                     <h2 class="profile-panel__title">Социальные сети</h2>
+                    <p class="text-body-sm text-muted">Подсвеченные иконки ведут на указанные ссылки. Серые — ссылка не заполнена.</p>
+                    <div class="pp-social pp-social--editor" id="social-icons-bar" aria-label="Статус соцсетей"></div>
                     <div class="social-cards-grid">
                         <div class="social-edit-card"><span class="social-edit-card__label">Telegram</span><input class="input profile-field" id="social_telegram" name="social_telegram" value="{{ consultant.social_telegram|blank_field }}" placeholder="t.me/username"><span class="social-edit-card__status" data-social-status="social_telegram"></span></div>
                         <div class="social-edit-card"><span class="social-edit-card__label">VK</span><input class="input profile-field" id="social_vk" name="social_vk" value="{{ consultant.social_vk|blank_field }}" placeholder="vk.com/username"><span class="social-edit-card__status" data-social-status="social_vk"></span></div>
@@ -336,7 +338,7 @@
 <script src="/static/js/copy-link.js?v=1" defer></script>
 <script src="/static/js/profile-api.js?v=1" defer></script>
 <script src="/static/js/profile-completion.js?v=1" defer></script>
-<script src="/static/js/profile-preview.js?v=3" defer></script>
+<script src="/static/js/profile-preview.js?v=4" defer></script>
 <script src="/static/js/profile-autosave.js?v=2" defer></script>
 <script src="/static/js/profile-tabs.js?v=2" defer></script>
 <script src="/static/js/profile-page.js?v=3" defer></script>

@@ -74,7 +74,15 @@
         cell.className = 'calendar-day' + (otherMonth ? ' other-month' : '');
         cell.setAttribute('data-date', dateStr);
         var events = eventsByDate[dateStr] || [];
-        var html = '<div class="day-num">' + dayNum + '</div><div class="day-events">';
+        var html = '<div class="day-num">' + dayNum + '</div>';
+        if (events.length) {
+            html += '<div class="day-dots">';
+            events.slice(0, 4).forEach(function (ev) {
+                html += '<span class="day-dot ' + (ev.status || '') + '"></span>';
+            });
+            html += '</div>';
+        }
+        html += '<div class="day-events">';
         events.forEach(function (ev) {
             var timeStr = ev.time;
             if (ev.end_time) timeStr += ' – ' + ev.end_time;
@@ -115,13 +123,13 @@
         if (bookingId && csrf) {
             actionsHtml.push('<div class="popover-actions">');
             if (status === 'pending') {
-                actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '"><input type="hidden" name="csrfmiddlewaretoken" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="confirm"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn btn--success btn--sm">Подтвердить</button></form>');
+                actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '"><input type="hidden" name="csrf_token" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="confirm"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn btn--success btn--sm">Подтвердить</button></form>');
             }
             if (status !== 'cancelled' && status !== 'completed') {
-                actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '" onsubmit="return confirm(\'Отменить запись?\');"><input type="hidden" name="csrfmiddlewaretoken" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="cancel"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn btn--danger btn--sm">Отменить</button></form>');
+                actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '" onsubmit="return confirm(\'Отменить запись?\');"><input type="hidden" name="csrf_token" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="cancel"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn btn--danger btn--sm">Отменить</button></form>');
             }
             if (status === 'confirmed') {
-                actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '"><input type="hidden" name="csrfmiddlewaretoken" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="complete"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn btn--secondary btn--sm">Завершить</button></form>');
+                actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '"><input type="hidden" name="csrf_token" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="complete"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn btn--secondary btn--sm">Завершить</button></form>');
             }
             if (status !== 'cancelled' && status !== 'completed') {
                 var calId = el.getAttribute('data-calendar-id') || '';
@@ -183,11 +191,15 @@
         var layoutList = viewList ? viewList.querySelector('.booking-page-layout') : null;
         var pageContainer = document.getElementById('bookingPageContainer');
 
-        document.querySelectorAll('.view-switcher-btn').forEach(function (btn) {
+        document.querySelectorAll('.bookings-segment__btn, .view-switcher-btn').forEach(function (btn) {
             btn.onclick = function () {
                 var v = this.getAttribute('data-view');
-                document.querySelectorAll('.view-switcher-btn').forEach(function (b) { b.classList.remove('is-active'); });
+                document.querySelectorAll('.bookings-segment__btn, .view-switcher-btn').forEach(function (b) {
+                    b.classList.remove('is-active');
+                    b.setAttribute('aria-selected', 'false');
+                });
                 this.classList.add('is-active');
+                this.setAttribute('aria-selected', 'true');
                 if (v === 'calendar') {
                     if (viewList) viewList.classList.remove('is-active');
                     if (viewCalendar) viewCalendar.classList.add('is-active');
@@ -342,6 +354,103 @@
                 document.getElementById('rescheduleNewDate').value = document.getElementById('rescheduleDate').value;
             };
         }
+
+        initBookingsHubFilters();
+        initNextBookingCountdown();
+        initBookingsFab();
+    }
+
+    function initBookingsHubFilters() {
+        var searchEl = document.getElementById('bookings-search');
+        var quickPills = document.querySelectorAll('.bookings-quick-pill');
+        var todayIsoEl = document.getElementById('bookingsTodayIso');
+        var todayIso = todayIsoEl ? todayIsoEl.value : '';
+        var dateFilter = 'all';
+
+        function addDays(iso, days) {
+            if (!iso) return '';
+            var p = iso.split('-');
+            var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+            d.setDate(d.getDate() + days);
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+
+        var tomorrowIso = addDays(todayIso, 1);
+        var weekEndIso = addDays(todayIso, 6);
+
+        function matchDate(cardDate) {
+            if (dateFilter === 'all') return true;
+            if (!cardDate || !todayIso) return true;
+            if (dateFilter === 'today') return cardDate === todayIso;
+            if (dateFilter === 'tomorrow') return cardDate === tomorrowIso;
+            if (dateFilter === 'week') return cardDate >= todayIso && cardDate <= weekEndIso;
+            return true;
+        }
+
+        function filterBookings() {
+            var q = (searchEl && searchEl.value || '').trim().toLowerCase();
+            var cards = Array.from(document.querySelectorAll('.bkg-card'));
+            var visibleCount = 0;
+
+            cards.forEach(function (card) {
+                var searchText = card.getAttribute('data-search') || '';
+                var cardDate = card.getAttribute('data-date') || '';
+                var show = (!q || searchText.indexOf(q) !== -1) && matchDate(cardDate);
+                card.classList.toggle('is-hidden', !show);
+                if (show) visibleCount++;
+            });
+
+            document.querySelectorAll('.bookings-day-group').forEach(function (group) {
+                var visibleInGroup = group.querySelectorAll('.bkg-card:not(.is-hidden)').length;
+                group.classList.toggle('is-hidden', visibleInGroup === 0);
+            });
+
+            var pastSection = document.getElementById('bookings-past-section');
+            if (pastSection) {
+                var pastVisible = pastSection.querySelectorAll('.bkg-card:not(.is-hidden)').length;
+                pastSection.classList.toggle('is-hidden', pastVisible === 0);
+            }
+
+            var empty = document.getElementById('bookings-filter-empty');
+            if (empty) empty.hidden = visibleCount > 0 || cards.length === 0;
+        }
+
+        if (searchEl) searchEl.addEventListener('input', filterBookings);
+        quickPills.forEach(function (pill) {
+            pill.addEventListener('click', function () {
+                quickPills.forEach(function (p) { p.classList.remove('is-active'); });
+                pill.classList.add('is-active');
+                dateFilter = pill.getAttribute('data-date-filter') || 'all';
+                filterBookings();
+            });
+        });
+    }
+
+    function initNextBookingCountdown() {
+        var el = document.getElementById('bookings-next-countdown');
+        if (!el) return;
+        var mins = parseInt(el.getAttribute('data-minutes') || '0', 10);
+        if (mins <= 0) {
+            el.textContent = 'Скоро начнётся';
+            return;
+        }
+        if (mins < 60) {
+            el.textContent = 'через ' + mins + ' мин.';
+            return;
+        }
+        var hours = Math.floor(mins / 60);
+        var rest = mins % 60;
+        el.textContent = rest ? ('через ' + hours + ' ч. ' + rest + ' мин.') : ('через ' + hours + ' ч.');
+    }
+
+    function initBookingsFab() {
+        var fab = document.getElementById('bookings-fab');
+        if (!fab) return;
+        fab.addEventListener('click', function () {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Ручное создание записи скоро будет доступно', 'success');
+            }
+        });
     }
 
     if (document.readyState === 'loading') {

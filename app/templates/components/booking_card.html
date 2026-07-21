@@ -12,6 +12,78 @@
 {% endif %}
 {% endmacro %}
 
+{% macro booking_status_chip(status) %}
+<span class="bkg-card__status bkg-card__status--{{ status }}">
+    {% if status == 'pending' %}🟡{% elif status == 'confirmed' %}🟢{% elif status == 'completed' %}🔵{% elif status == 'cancelled' %}🔴{% else %}⚪{% endif %}
+    {{ status|booking_status }}
+</span>
+{% endmacro %}
+
+{% macro booking_card_actions(booking) %}
+<div class="bkg-card__actions">
+    {% if booking.status == 'pending' %}
+    <form method="POST" class="bkg-card__form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="confirm">
+        <input type="hidden" name="booking_id" value="{{ booking.id }}">
+        <button type="submit" class="btn btn--success btn--sm">✔ Подтвердить</button>
+    </form>
+    {% endif %}
+    {% if booking.status != 'cancelled' and booking.status != 'completed' %}
+    <button type="button" class="btn btn--ghost btn--sm btn-reschedule"
+            data-booking-id="{{ booking.id }}"
+            data-calendar-id="{{ booking.calendar_id or (booking.calendar.id if booking.calendar else '') }}"
+            data-service-id="{{ booking.service_id or (booking.service.id if booking.service else '') }}">✏ Перенести</button>
+    {% endif %}
+    {% if booking.status == 'confirmed' %}
+    <form method="POST" class="bkg-card__form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="complete">
+        <input type="hidden" name="booking_id" value="{{ booking.id }}">
+        <button type="submit" class="btn btn--secondary btn--sm">✔ Завершить</button>
+    </form>
+    {% endif %}
+    {% if booking.status != 'cancelled' and booking.status != 'completed' %}
+    <form method="POST" class="bkg-card__form" onsubmit="return confirm('Отменить запись?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="cancel">
+        <input type="hidden" name="booking_id" value="{{ booking.id }}">
+        <button type="submit" class="btn btn--danger btn--sm">🗑 Отменить</button>
+    </form>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro booking_card_crm(booking, is_past=false) %}
+<article class="bkg-card bkg-card--{{ booking.status }}{% if is_past %} bkg-card--past{% endif %}"
+         data-booking-id="{{ booking.id }}"
+         data-status="{{ booking.status }}"
+         data-date="{{ booking.booking_date }}"
+         data-search="{{ booking.search_text }}"
+         style="--bkg-stripe: {{ booking.calendar_color }};">
+    <div class="bkg-card__stripe" aria-hidden="true"></div>
+    <div class="bkg-card__body">
+        <div class="bkg-card__head">
+            <h3 class="bkg-card__title">👤 {{ booking.client_name }}</h3>
+            {{ booking_status_chip(booking.status) }}
+        </div>
+        <ul class="bkg-card__meta">
+            <li><span class="bkg-card__meta-icon">🕘</span><span>{{ booking.day_label }}, {{ booking.time_range }}</span></li>
+            <li><span class="bkg-card__meta-icon">🧠</span><span>{{ booking.service_name }}</span></li>
+            <li><span class="bkg-card__meta-icon">📍</span><span>{{ booking.calendar_name }}</span></li>
+            {% if booking.client_phone %}<li><span class="bkg-card__meta-icon">☎</span><span>{{ booking.client_phone }}</span></li>{% endif %}
+            {% if booking.client_email %}<li><span class="bkg-card__meta-icon">✉</span><span>{{ booking.client_email }}</span></li>{% endif %}
+        </ul>
+        {% if booking.notes %}<p class="bkg-card__notes">{{ booking.notes }}</p>{% endif %}
+        {% if is_past %}
+        <p class="bkg-card__past-label">{% if booking.status == 'completed' %}✔ Завершено{% elif booking.status == 'cancelled' %}Отменена{% else %}{{ booking.status_label }}{% endif %}</p>
+        {% else %}
+        {{ booking_card_actions(booking) }}
+        {% endif %}
+    </div>
+</article>
+{% endmacro %}
+
 {% macro booking_card_info(booking) %}
 <div class="booking-card__info">
     <h3 class="booking-card__title">{{ booking.client_name }}</h3>
@@ -28,40 +100,5 @@
     </div>
     {% if booking.notes %}<p class="booking-card__notes"><strong>Примечания:</strong> {{ booking.notes }}</p>{% endif %}
     {{ booking_status_badge(booking.status) }}
-</div>
-{% endmacro %}
-
-{% macro booking_card_actions(booking) %}
-<div class="booking-card__actions">
-    {% if booking.status == 'pending' %}
-    <form method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="confirm">
-        <input type="hidden" name="booking_id" value="{{ booking.id }}">
-        <button type="submit" class="btn btn--success btn--sm">Подтвердить</button>
-    </form>
-    {% endif %}
-    {% if booking.status != 'cancelled' and booking.status != 'completed' %}
-    <form method="POST" onsubmit="return confirm('Отменить запись?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="cancel">
-        <input type="hidden" name="booking_id" value="{{ booking.id }}">
-        <button type="submit" class="btn btn--danger btn--sm">Отменить</button>
-    </form>
-    {% endif %}
-    {% if booking.status == 'confirmed' %}
-    <form method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="complete">
-        <input type="hidden" name="booking_id" value="{{ booking.id }}">
-        <button type="submit" class="btn btn--secondary btn--sm">Завершить</button>
-    </form>
-    {% endif %}
-    {% if booking.status != 'cancelled' and booking.status != 'completed' %}
-    <button type="button" class="btn btn--ghost btn--sm btn-reschedule"
-            data-booking-id="{{ booking.id }}"
-            data-calendar-id="{{ booking.calendar.id if booking.calendar else '' }}"
-            data-service-id="{{ booking.service.id if booking.service else '' }}">Перенести</button>
-    {% endif %}
 </div>
 {% endmacro %}

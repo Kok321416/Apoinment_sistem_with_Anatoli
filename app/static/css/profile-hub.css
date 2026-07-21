@@ -681,6 +681,16 @@
     margin-bottom: var(--space-md);
 }
 
+.pp-social--editor {
+    justify-content: flex-start;
+    margin-top: var(--space-md);
+    margin-bottom: var(--space-lg);
+    padding: var(--space-md);
+    border-radius: var(--radius-sm);
+    background: var(--surface-200);
+    border: 1px solid var(--border-subtle);
+}
+
 .pp-social__btn {
     display: grid;
     place-items: center;
@@ -691,14 +701,56 @@
     border: 1px solid var(--border-default);
     color: var(--text-secondary);
     text-decoration: none;
-    transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
-.pp-social__btn:hover {
+.pp-social__btn.is-inactive {
+    opacity: 0.38;
+    color: var(--text-muted);
+    background: var(--surface-100);
+    border-color: var(--border-subtle);
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.pp-social__btn.is-active {
+    opacity: 1;
+    cursor: pointer;
+}
+
+.pp-social__btn.is-active:hover {
     transform: scale(1.08);
-    background: rgba(125, 92, 255, 0.2);
+    box-shadow: 0 0 16px rgba(125, 92, 255, 0.25);
+}
+
+.pp-social__btn.is-active.pp-social__btn--telegram {
+    color: #2aabee;
+    background: rgba(42, 171, 238, 0.16);
+    border-color: rgba(42, 171, 238, 0.45);
+}
+
+.pp-social__btn.is-active.pp-social__btn--vk {
+    color: #0077ff;
+    background: rgba(0, 119, 255, 0.16);
+    border-color: rgba(0, 119, 255, 0.45);
+}
+
+.pp-social__btn.is-active.pp-social__btn--instagram {
+    color: #e4405f;
+    background: rgba(228, 64, 95, 0.16);
+    border-color: rgba(228, 64, 95, 0.45);
+}
+
+.pp-social__btn.is-active.pp-social__btn--youtube {
+    color: #ff0000;
+    background: rgba(255, 0, 0, 0.14);
+    border-color: rgba(255, 0, 0, 0.4);
+}
+
+.pp-social__btn.is-active.pp-social__btn--website {
     color: var(--accent-primary);
-    box-shadow: 0 0 16px rgba(125, 92, 255, 0.35);
+    background: rgba(125, 92, 255, 0.18);
+    border-color: rgba(125, 92, 255, 0.45);
 }
 
 .pp-video-card {

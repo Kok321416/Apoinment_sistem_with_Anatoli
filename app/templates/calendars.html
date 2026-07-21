@@ -1,93 +1,248 @@
 {% extends "layouts/app.html" %}
-{% from "components/app_page_head.html" import app_page_head %}
 
 {% block meta_tags %}
-{% set page_title = "Календари — " ~ site_brand_name %}
-{% set meta_description = "Управление календарями записи — " ~ site_brand_name %}
+{% set page_title = "Календари записи — " ~ site_brand_name %}
+{% set meta_description = "Центр управления календарями и расписанием — " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/app.css?v=23">
+<link rel="stylesheet" href="/static/css/calendars-hub.css?v=1">
+{% endblock %}
+
 {% block app_content %}
-{{ app_page_head("Календари") }}
+<div class="calendars-page" id="calendars-page" data-csrf="{{ csrf_token }}">
 
-{% if success %}
-<div class="alert alert--success" role="status">{{ success }}</div>
-{% endif %}
-{% if error %}
-<div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
-{% endif %}
-
-{% if public_booking_url %}
-<section class="app-section">
-    <h2 class="app-section__title">Ссылка для клиентов</h2>
-    <p class="text-body-sm text-muted mb-lg">Одна ссылка на ваш профиль специалиста. Клиент сначала укажет контакты, затем увидит календари и услуги.</p>
-    <p class="break-all mb-lg"><strong>{{ public_booking_url }}</strong></p>
-    <button type="button" class="btn btn--primary btn--sm" data-link="{{ public_booking_url }}" onclick="copyBookingLink(this)">Скопировать ссылку</button>
-</section>
-{% endif %}
-
-<section class="app-section">
-    <h2 class="app-section__title">Создать календарь</h2>
-    <form method="POST" action="/calendars/" class="stack">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="create_calendar">
-        <div class="app-form-grid">
-            <div class="form-field">
-                <label class="form-field__label" for="calendar_name">Название</label>
-                <input class="input" type="text" id="calendar_name" name="name" required placeholder="Рабочий календарь">
+    <section class="calendars-hero card" id="calendars-hero">
+        <div class="calendars-hero__glow calendars-hero__glow--purple" aria-hidden="true"></div>
+        <div class="calendars-hero__glow calendars-hero__glow--cyan" aria-hidden="true"></div>
+        <div class="calendars-hero__inner">
+            <div class="calendars-hero__main">
+                <div class="calendars-hero__icon" aria-hidden="true">📅</div>
+                <div>
+                    <h1 class="calendars-hero__title">Календари записи</h1>
+                    <p class="calendars-hero__desc">Управляйте всеми календарями, ссылками и расписанием клиентов.</p>
+                    <p class="calendars-hero__stat"><strong id="hero-total">{{ hub_dashboard.total }}</strong> календарей</p>
+                    <p class="calendars-hero__meta" id="calendars-hero-updated">Последнее изменение: —</p>
+                </div>
             </div>
-            <div class="form-field">
-                <label class="form-field__label" for="calendar_color">Цвет</label>
-                <input class="input input--color" type="color" id="calendar_color" name="color" value="#7d5cff">
+            <div class="calendars-hero__actions">
+                <button type="button" class="btn btn--primary btn--sm" id="btn-hero-new-calendar">+ Новый календарь</button>
+                <button type="button" class="btn btn--ghost btn--sm" id="btn-import-calendars" title="Скоро">Импорт</button>
+                <button type="button" class="btn btn--secondary btn--sm" id="btn-export-calendars" title="Скоро">Экспорт</button>
             </div>
         </div>
-        <button type="submit" class="btn btn--primary">Создать календарь</button>
-    </form>
-</section>
+    </section>
 
-<section class="app-section">
-    <h2 class="app-section__title">Мои календари</h2>
+    <section class="calendars-dashboard" id="calendars-dashboard" aria-label="Статистика календарей">
+        <div class="calendars-dash-card calendars-dash-card--accent">
+            <span class="calendars-dash-card__value">{{ hub_dashboard.total }}</span>
+            <span class="calendars-dash-card__label">Календарей</span>
+        </div>
+        <div class="calendars-dash-card calendars-dash-card--info">
+            <span class="calendars-dash-card__value">{{ hub_dashboard.slots_total }}</span>
+            <span class="calendars-dash-card__label">Окон записи</span>
+        </div>
+        <div class="calendars-dash-card calendars-dash-card--success">
+            <span class="calendars-dash-card__value">{{ hub_dashboard.today_bookings }}</span>
+            <span class="calendars-dash-card__label">Записей сегодня</span>
+        </div>
+        <div class="calendars-dash-card calendars-dash-card--warning">
+            <span class="calendars-dash-card__value">{{ hub_dashboard.activity_pct }}%</span>
+            <span class="calendars-dash-card__label">Активность</span>
+        </div>
+    </section>
 
-    {% if calendars_with_links %}
-    <div class="app-list-grid">
-        {% for item in calendars_with_links %}
-        {% set calendar = item.calendar %}
-        <article class="app-list-card" style="--cal-color: {{ calendar.color }};">
-            <div class="app-list-card__head">
-                <h3 class="app-list-card__title">{{ calendar.name }}</h3>
-                <span class="badge badge--secondary">{{ calendar.time_slots_count }} окон</span>
-            </div>
-            <div class="app-list-card__meta">
-                <p><strong>Цвет:</strong> <span class="app-color-swatch" aria-hidden="true"></span></p>
-                <p><strong>Статус:</strong> {% if calendar.is_active %}<span class="badge badge--success">Активен</span>{% else %}<span class="badge badge--ghost">Неактивен</span>{% endif %}</p>
-                <p><strong>Создан:</strong> {{ calendar.created_at|date('d.m.Y') }}</p>
-                <p><strong>Прямая ссылка на календарь:</strong><br><span class="break-all">{{ item.booking_url }}</span></p>
-            </div>
-            <div class="app-list-card__actions">
-                <button type="button" class="btn btn--secondary btn--sm" data-link="{{ item.booking_url }}" onclick="copyBookingLink(this)">Скопировать</button>
-                <a href="/calendars/{{ calendar.id }}/" class="btn btn--ghost btn--sm">Управление</a>
-                <form method="POST" action="/calendars/" onsubmit="return confirm('Удалить календарь?');">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <input type="hidden" name="action" value="delete_calendar">
-                    <input type="hidden" name="calendar_id" value="{{ calendar.id }}">
-                    <button type="submit" class="btn btn--danger btn--sm">Удалить</button>
-                </form>
-                <form method="POST" action="/calendars/">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <input type="hidden" name="action" value="toggle_calendar">
-                    <input type="hidden" name="calendar_id" value="{{ calendar.id }}">
-                    <button type="submit" class="btn btn--secondary btn--sm">{% if calendar.is_active %}Выключить{% else %}Включить{% endif %}</button>
-                </form>
-            </div>
-        </article>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="booking-empty">Календарей пока нет. Создайте первый календарь выше.</div>
+    {% if success %}
+    <div class="alert alert--success" role="status">{{ success }}</div>
     {% endif %}
-</section>
+    {% if error %}
+    <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    {% if public_booking_url %}
+    <section class="calendars-link-card card" id="calendars-link-card">
+        <div class="calendars-link-card__head">
+            <span class="calendars-link-card__icon" aria-hidden="true">🌍</span>
+            <div>
+                <h2 class="calendars-link-card__title">Общая ссылка специалиста</h2>
+                <p class="calendars-link-card__desc">Клиент укажет контакты и увидит все активные календари и услуги.</p>
+            </div>
+        </div>
+        <p class="calendars-link-card__url" id="public-booking-url-display">{{ public_booking_url|replace('https://', '')|replace('http://', '') }}</p>
+        <div class="calendars-link-card__actions">
+            <button type="button" class="btn btn--primary btn--sm" data-link="{{ public_booking_url }}" onclick="copyBookingLink(this)">Копировать</button>
+            <a href="{{ public_booking_url }}" class="btn btn--secondary btn--sm" target="_blank" rel="noopener noreferrer">Открыть</a>
+            <button type="button" class="btn btn--ghost btn--sm" id="btn-public-qr" title="Скоро">QR-код</button>
+        </div>
+    </section>
+    {% endif %}
+
+    <button type="button" class="calendars-create-toggle card" id="calendars-create-toggle" aria-expanded="false">
+        <span class="calendars-create-toggle__label">＋ Создать календарь</span>
+        <span class="btn btn--ghost btn--sm" aria-hidden="true">Развернуть</span>
+    </button>
+
+    <section class="calendars-create card" id="calendars-create" hidden>
+        <div class="calendars-create__head">
+            <h2 class="calendars-create__title">Новый календарь</h2>
+            <button type="button" class="btn btn--ghost btn--sm" id="btn-close-create" aria-label="Закрыть">✕</button>
+        </div>
+        <form method="POST" action="/calendars/" class="stack">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="create_calendar">
+            <div class="app-form-grid">
+                <div class="form-field">
+                    <label class="form-field__label" for="calendar_name">Название</label>
+                    <input class="input" type="text" id="calendar_name" name="name" required placeholder="Рабочий календарь">
+                </div>
+                <div class="form-field">
+                    <label class="form-field__label" for="calendar_color">Цвет</label>
+                    <input class="input input--color" type="color" id="calendar_color" name="color" value="#7d5cff">
+                </div>
+            </div>
+            <button type="submit" class="btn btn--primary">Создать календарь</button>
+        </form>
+    </section>
+
+    <div class="calendars-layout">
+        <div class="calendars-main">
+            {% if hub_calendars %}
+            <section class="calendars-toolbar card">
+                <div class="calendars-toolbar__search">
+                    <span class="calendars-toolbar__search-icon" aria-hidden="true">🔍</span>
+                    <input class="input" type="search" id="calendars-search" placeholder="Поиск календаря..." autocomplete="off">
+                </div>
+                <div class="calendars-toolbar__filters">
+                    <select class="select" id="calendars-filter" aria-label="Фильтр">
+                        <option value="all">Все</option>
+                        <option value="active">Активные</option>
+                        <option value="inactive">Выключенные</option>
+                        <option value="archive">Архив</option>
+                    </select>
+                    <select class="select" id="calendars-sort" aria-label="Сортировка">
+                        <option value="recent">Последние</option>
+                        <option value="name">По названию</option>
+                        <option value="created">По дате создания</option>
+                        <option value="activity">По активности</option>
+                    </select>
+                </div>
+            </section>
+
+            <section class="calendars-grid-wrap" id="calendars-grid-wrap" aria-live="polite">
+                <div class="calendars-grid" id="calendars-grid">
+                    {% for cal in hub_calendars %}
+                    <article class="cal-card"
+                             data-id="{{ cal.id }}"
+                             data-name="{{ cal.name|lower }}"
+                             data-status="{{ cal.status }}"
+                             data-archive="{{ 'true' if cal.is_archive else 'false' }}"
+                             data-created="{{ cal.created_at or '' }}"
+                             data-updated="{{ cal.updated_at or '' }}"
+                             data-activity="{{ cal.activity_score }}"
+                             data-search="{{ cal.name|lower }}"
+                             style="--cal-color: {{ cal.color }};">
+                        <div class="cal-card__head">
+                            <div class="cal-card__title-wrap">
+                                <h3 class="cal-card__title">{{ cal.name }}</h3>
+                                <p class="cal-card__subtitle">{% if cal.time_slots_count %}Рабочий календарь{% else %}Настройте расписание{% endif %}</p>
+                            </div>
+                            <span class="cal-card__status cal-card__status--{{ cal.status }}">
+                                {% if cal.status == 'active' %}🟢{% else %}⚪{% endif %} {{ cal.status_label }}
+                            </span>
+                        </div>
+
+                        <div class="cal-card__stats">
+                            <p class="cal-card__stat"><span class="cal-card__stat-icon">🪟</span>{{ cal.time_slots_count }} рабочих окон</p>
+                            {% if cal.break_minutes %}
+                            <p class="cal-card__stat"><span class="cal-card__stat-icon">⏰</span>{{ cal.break_minutes }} мин. перерыв</p>
+                            {% endif %}
+                            {% if cal.max_per_day %}
+                            <p class="cal-card__stat"><span class="cal-card__stat-icon">👥</span>лимит {{ cal.max_per_day }} клиента</p>
+                            {% endif %}
+                            {% if cal.reminders_enabled %}
+                            <p class="cal-card__stat"><span class="cal-card__stat-icon">🔔</span>Напоминания включены</p>
+                            {% endif %}
+                            {% if cal.services_count %}
+                            <p class="cal-card__stat"><span class="cal-card__stat-icon">💼</span>{{ cal.services_count }} услуг</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="cal-card__meta-row">
+                            <div class="cal-card__meta">
+                                <span class="cal-card__meta-label">Последняя запись</span>
+                                <span class="cal-card__meta-value cal-card__meta-value--booking" data-relative="{{ cal.last_booking or '' }}">{% if cal.last_booking %}—{% else %}Нет записей{% endif %}</span>
+                            </div>
+                            <div class="cal-card__meta">
+                                <span class="cal-card__meta-label">Изменён</span>
+                                <span class="cal-card__meta-value" data-relative="{{ cal.updated_at or cal.created_at or '' }}">—</span>
+                            </div>
+                        </div>
+
+                        <div class="cal-card__link" title="{{ cal.booking_url }}">🔗 {{ cal.booking_url|replace('https://', '')|replace('http://', '') }}</div>
+
+                        <div class="cal-card__future" aria-hidden="false">
+                            <span class="cal-card__future-tag" title="Скоро">Ближайшая запись</span>
+                            <span class="cal-card__future-tag" title="Скоро">Загрузка недели</span>
+                        </div>
+
+                        <div class="cal-card__actions">
+                            <a href="{{ cal.manage_url }}" class="btn btn--primary btn--sm">⚙ Управление</a>
+                            <a href="{{ cal.settings_url }}" class="btn btn--ghost btn--sm">✏ Настройки</a>
+                            <button type="button" class="btn btn--secondary btn--sm" data-link="{{ cal.booking_url }}" onclick="copyBookingLink(this)">📋 Копировать</button>
+                            <button type="button" class="btn btn--ghost btn--sm" data-stub-stats>📊 Статистика</button>
+                            <form method="POST" action="/calendars/" class="cal-card__toggle-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="action" value="toggle_calendar">
+                                <input type="hidden" name="calendar_id" value="{{ cal.id }}">
+                                <button type="submit" class="btn btn--secondary btn--sm">{% if cal.is_active %}⏸ Выключить{% else %}▶ Включить{% endif %}</button>
+                            </form>
+                            <form method="POST" action="/calendars/" class="cal-card__delete-form" onsubmit="return confirm('Удалить календарь?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="action" value="delete_calendar">
+                                <input type="hidden" name="calendar_id" value="{{ cal.id }}">
+                                <button type="submit" class="btn btn--danger btn--sm">🗑 Удалить</button>
+                            </form>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+                <div class="calendars-filter-empty" id="calendars-filter-empty" hidden>
+                    <p>По вашему запросу календари не найдены. Измените фильтр или поиск.</p>
+                </div>
+            </section>
+            {% else %}
+            <div class="calendars-empty" id="calendars-empty">
+                <div class="calendars-empty__icon" aria-hidden="true">📅</div>
+                <h2 class="calendars-empty__title">У вас пока нет календарей</h2>
+                <p class="calendars-empty__text">Создайте первый календарь, настройте окна записи и отправьте ссылку клиентам.</p>
+                <button type="button" class="btn btn--primary" id="btn-empty-create">Создать календарь</button>
+            </div>
+            {% endif %}
+        </div>
+
+        <aside class="calendars-activity card" id="calendars-activity" aria-label="Последние действия">
+            <h2 class="calendars-activity__title">Последние действия</h2>
+            <ul class="calendars-activity__list" id="calendars-activity-list">
+                {% for item in hub_activity %}
+                <li class="calendars-activity__item">
+                    <span class="calendars-activity__name">{{ item.calendar_name }}</span>
+                    <span class="calendars-activity__action">{{ item.action_label }}</span>
+                    <time class="calendars-activity__time" datetime="{{ item.at or '' }}" data-relative="{{ item.at or '' }}">—</time>
+                </li>
+                {% else %}
+                <li class="calendars-activity__empty">Действий пока нет</li>
+                {% endfor %}
+            </ul>
+        </aside>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/toast.js?v=1" defer></script>
 <script src="/static/js/copy-link.js?v=1" defer></script>
+<script src="/static/js/calendars-page.js?v=1" defer></script>
+<script type="application/json" id="calendars-hub-data">{{ hub_payload | tojson }}</script>
 {% endblock %}
