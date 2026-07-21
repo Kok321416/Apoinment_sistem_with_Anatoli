@@ -72,6 +72,7 @@ class Calendar(Base):
     max_services_per_day: Mapped[int] = mapped_column(Integer, default=0)
     reminder_hours_first: Mapped[int] = mapped_column(Integer, default=24)
     reminder_hours_second: Mapped[int] = mapped_column(Integer, default=1)
+    disabled_weekdays: Mapped[str] = mapped_column(String(32), default="")
 
     consultant = relationship("Consultant", back_populates="calendars")
     time_slots = relationship("TimeSlot", back_populates="calendar")
@@ -103,6 +104,9 @@ class Service(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration_minutes: Mapped[int] = mapped_column(Integer, default=60)
     price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    color: Mapped[str] = mapped_column(String(7), default="#7d5cff")
+    icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

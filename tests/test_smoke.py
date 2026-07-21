@@ -5,6 +5,11 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+import app.models  # noqa: F401
+from app.database import Base
 
 
 def test_specialist_slug_for():
@@ -180,3 +185,95 @@ def test_yandex_login_redirects_to_register_without_signup_data(monkeypatch):
     r = client.get("/accounts/yandex/login/?process=signup", follow_redirects=False)
     assert r.status_code == 302
     assert r.headers["location"] == "/register/?error=yandex_signup"
+
+
+def test_new_api_routes_require_auth():
+    from app.main import app
+
+    client = TestClient(app)
+    for path in ("/services/catalog", "/profile/data", "/calendars/1/schedule"):
+        assert client.get(path).status_code == 401
+
+
+def test_calendar_schedule_slot_position():
+    from app.services.calendar_schedule import slot_position
+
+    top, height = slot_position(time(9, 30), time(15, 0))
+    assert 39.0 < top < 40.0
+    assert 22.0 < height < 24.0
+
+
+def test_profile_completeness_empty_consultant():
+    from app.models import Category, Consultant
+    from app.services.profile_hub import completeness
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    db = sessionmaker(bind=engine)()
+    cat = Category(name_category="Психолог")
+    db.add(cat)
+    db.flush()
+    c = Consultant(
+        first_name="",
+        last_name="",
+        email="a@b.c",
+        phone="",
+        category_of_specialist_id=cat.id,
+    )
+    db.add(c)
+    db.flush()
+    result = completeness(c, db, c.id)
+    assert result["percent"] < 50
+    assert any(not ch["done"] for ch in result["checks"])
+    db.close()
+
+
+def test_services_catalog_dashboard():
+    from app.models import Calendar, Category, Consultant, Service
+    from app.services.services_catalog import build_catalog_payload
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    db = sessionmaker(bind=engine)()
+    cat = Category(name_category="Общая")
+    db.add(cat)
+    db.flush()
+    c = Consultant(
+        first_name="A",
+        last_name="B",
+        email="s@b.c",
+        phone="+79990000000",
+        category_of_specialist_id=cat.id,
+    )
+    db.add(c)
+    db.flush()
+    cal = Calendar(consultant_id=c.id, name="Cal", color="#7d5cff")
+    db.add(cal)
+    db.flush()
+    db.add(Service(consultant_id=c.id, calendar_id=cal.id, name="Svc", duration_minutes=60, is_active=True))
+    db.commit()
+    payload = build_catalog_payload(db, c.id)
+    assert payload["dashboard"]["total"] == 1
+    assert payload["dashboard"]["active"] == 1
+    assert len(payload["services"]) == 1
+    assert payload["dashboard"]["calendars_total"] == 1
+    db.close()
+
+
+def test_disabled_weekday_blocks_slots():
+    from app.models import Calendar
+    from app.services.calendar_schedule import set_day_working
+    from app.services.slots import get_available_slots
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    db = sessionmaker(bind=engine)()
+    cal = Calendar(consultant_id=1, name="C", color="#7d5cff")
+    db.add(cal)
+    db.flush()
+    set_day_working(cal, date.today().weekday(), False)
+    db.commit()
+    svc = SimpleNamespace(duration_minutes=60)
+    result = get_available_slots(db, cal, svc, date.today())
+    assert result["available_slots"] == []
+    db.close()

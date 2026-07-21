@@ -117,6 +117,26 @@ def ensure_app_schema() -> None:
     except Exception:
         logger.exception("services.calendar_id patch failed")
 
+    try:
+        _add_column("calendars", "disabled_weekdays", "VARCHAR(32) DEFAULT ''")
+    except Exception:
+        logger.exception("calendars.disabled_weekdays patch failed")
+
+    try:
+        _add_column("services", "color", "VARCHAR(7) DEFAULT '#7d5cff'")
+    except Exception:
+        logger.exception("services.color patch failed")
+
+    try:
+        _add_column("services", "icon", "VARCHAR(50) NULL")
+    except Exception:
+        logger.exception("services.icon patch failed")
+
+    try:
+        _add_column("services", "sort_order", "INTEGER DEFAULT 0")
+    except Exception:
+        logger.exception("services.sort_order patch failed")
+
     _refresh_schema_health()
 
 

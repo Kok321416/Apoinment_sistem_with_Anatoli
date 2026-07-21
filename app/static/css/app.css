@@ -404,118 +404,12 @@
     }
 }
 
-/* Calendar detail */
-.calendar-settings-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-md);
-    padding: var(--space-xl) var(--space-2xl);
-    margin-bottom: var(--space-2xl);
-    border-radius: var(--radius-xl);
-    background: var(--glass-medium);
-    border: 1px solid var(--border-default);
-}
-
-.calendar-settings-bar__edit {
-    margin-left: auto;
-}
-
-.day-schedule {
-    padding: var(--space-2xl);
-    margin-bottom: var(--space-xl);
-    border-radius: var(--radius-lg);
-    background: var(--surface-200);
-    border: 1px solid var(--border-subtle);
-}
-
-.day-schedule:last-child {
-    margin-bottom: 0;
-}
-
-.day-schedule__title {
-    margin: 0 0 var(--space-lg);
-    font-size: var(--font-size-h3);
-    color: var(--text-primary);
-}
-
-.day-schedule__empty {
-    margin: 0 0 var(--space-lg);
-    padding: var(--space-xl);
-    text-align: center;
-    font-size: var(--font-size-body-sm);
-    color: var(--text-muted);
-    font-style: italic;
-    border-radius: var(--radius-md);
-    background: var(--glass-medium);
-    border: 1px dashed var(--border-subtle);
-}
-
-.time-slot-item {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-md);
-    padding: var(--space-md) var(--space-lg);
-    margin-bottom: var(--space-sm);
-    border-radius: var(--radius-md);
-    background: var(--glass-medium);
-    border: 1px solid var(--border-default);
-}
-
-.time-slot-item__time {
-    font-weight: var(--font-weight-semibold);
-    font-family: var(--font-family-mono, ui-monospace, monospace);
-    font-size: var(--font-size-body);
-    color: var(--text-primary);
-}
-
-.time-slot-item__form {
-    margin: 0;
-}
-
-.add-slot-form {
-    margin-top: var(--space-xl);
-    padding-top: var(--space-xl);
-    border-top: 1px solid var(--border-subtle);
-}
-
-.add-slot-form__row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: var(--space-lg);
-}
-
-.add-slot-form__row .form-field {
-    flex: 1 1 140px;
-    min-width: 120px;
-}
-
-.add-slot-form__arrow {
-    color: var(--text-secondary);
-    font-size: var(--font-size-h3);
-    padding-bottom: var(--space-md);
-}
-
 .app-section--narrow {
     max-width: 520px;
 }
 
 .text-muted {
     color: var(--text-secondary);
-}
-
-@media (max-width: 768px) {
-    .calendar-settings-bar__edit {
-        margin-left: 0;
-        width: 100%;
-    }
-
-    .add-slot-form__arrow {
-        display: none;
-    }
 }
 
 /* Integrations */

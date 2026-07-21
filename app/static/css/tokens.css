@@ -234,4 +234,16 @@
 
     /* ── Calendar widget (Stage 5 prep) ── */
     --calendar-width: 420px;
+
+    /* ── Week grid day colors ── */
+    --day-monday: #42c96b;
+    --day-tuesday: #f59e0b;
+    --day-wednesday: #3b82f6;
+    --day-thursday: #7c5cff;
+    --day-friday: #ec4899;
+    --day-saturday: #eab308;
+    --day-sunday: #6b7280;
+
+    --schedule-grid-height: 720px;
+    --schedule-transition: 0.2s ease;
 }

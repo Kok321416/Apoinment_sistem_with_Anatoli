@@ -2,76 +2,123 @@
 {% from "components/app_page_head.html" import app_page_head %}
 
 {% block meta_tags %}
-{% set page_title = calendar.name ~ " — временные окна — " ~ site_brand_name %}
-{% set meta_description = "Управление временными окнами календаря — " ~ site_brand_name %}
+{% set page_title = calendar.name ~ " — расписание — " ~ site_brand_name %}
+{% set meta_description = "Редактор расписания календаря — " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
-{% block app_content %}
-{{ app_page_head(calendar.name, '/calendars/', '← Календари') }}
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/app.css?v=23">
+<link rel="stylesheet" href="/static/css/calendar-schedule.css?v=1">
+{% endblock %}
 
-<div class="calendar-settings-bar">
-    <span class="badge badge--secondary"><strong>Перерыв:</strong> {{ calendar.break_between_services_minutes|default(0) }} мин</span>
-    <span class="badge badge--secondary"><strong>Лимит в день:</strong> {% if calendar.max_services_per_day %}{{ calendar.max_services_per_day }}{% else %}—{% endif %}</span>
-    <span class="badge badge--secondary"><strong>Запись за:</strong> {{ calendar.book_ahead_hours|default(24) }} ч</span>
-    <span class="badge badge--secondary"><strong>Напоминания:</strong> за {{ calendar.reminder_hours_first|default(24) }} ч и за {{ calendar.reminder_hours_second|default(1) }} ч</span>
-    <a href="/calendars/{{ calendar.id }}/settings/" class="btn btn--ghost btn--sm calendar-settings-bar__edit">Изменить</a>
+{% block app_content %}
+<div
+    class="calendar-page"
+    id="calendar-page"
+    data-calendar-id="{{ calendar.id }}"
+    data-csrf="{{ csrf_token }}"
+    data-booking-url="{{ booking_url }}"
+    data-calendar-name="{{ calendar.name }}"
+>
+    <header class="calendar-page__header">
+        <div class="calendar-page__title-row">
+            <div>
+                {{ app_page_head(calendar.name, '/calendars/', '← Календари') }}
+                <span class="calendar-page__status badge {% if calendar.is_active %}badge--success{% else %}badge--ghost{% endif %}" id="calendar-status">
+                    {% if calendar.is_active %}Активен{% else %}Неактивен{% endif %}
+                </span>
+            </div>
+            <div class="calendar-page__header-actions">
+                <button type="button" class="btn btn--secondary btn--sm" id="copy-booking-link" data-link="{{ booking_url }}">Скопировать ссылку</button>
+                <a href="{{ booking_url }}" class="btn btn--ghost btn--sm" target="_blank" rel="noopener">Предпросмотр записи</a>
+            </div>
+        </div>
+        <div class="calendar-page__badges" id="calendar-badges" aria-live="polite"></div>
+    </header>
+
+    {% if success %}
+    <div class="alert alert--success" role="status">{{ success }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <div class="calendar-layout" id="calendar-layout">
+        <section class="week-grid-panel card" aria-label="Недельная сетка">
+            <div class="week-grid-panel__toolbar">
+                <h2 class="week-grid-panel__title">Расписание недели</h2>
+                <p class="week-grid-panel__hint">Кликните по дню или окну, чтобы открыть редактор справа</p>
+            </div>
+            <div class="week-grid-wrap" id="week-grid-wrap">
+                <div class="week-grid-loading" id="week-grid-loading">Загрузка расписания…</div>
+                <div class="week-grid" id="week-grid" hidden></div>
+            </div>
+        </section>
+
+        <section class="day-editor-panel card" aria-label="Редактор дня" id="day-editor-panel">
+            <div class="day-editor-loading" id="day-editor-loading">Выберите день в сетке</div>
+            <div id="day-editor" hidden></div>
+        </section>
+    </div>
+
+    <footer class="calendar-settings-footer card" id="calendar-settings-footer">
+        <div class="calendar-settings-footer__head">
+            <h2 class="calendar-settings-footer__title">Дополнительные настройки календаря</h2>
+            <p class="calendar-settings-footer__lead">Перерывы, лимиты записи и напоминания клиентам</p>
+        </div>
+        <form class="calendar-settings-form" id="calendar-settings-form">
+            <div class="calendar-settings-form__grid">
+                <div class="settings-card">
+                    <label class="settings-card__label" for="setting-break">Перерыв между записями</label>
+                    <div class="settings-card__input-wrap">
+                        <input class="input" type="number" id="setting-break" name="break_between_services_minutes" min="0" value="{{ calendar.break_between_services_minutes|default(0) }}">
+                        <span class="settings-card__unit">минут</span>
+                    </div>
+                </div>
+                <div class="settings-card">
+                    <label class="settings-card__label" for="setting-limit">Лимит записей в день</label>
+                    <div class="settings-card__input-wrap">
+                        <input class="input" type="number" id="setting-limit" name="max_services_per_day" min="0" value="{{ calendar.max_services_per_day|default(0) }}">
+                        <span class="settings-card__unit">0 = без лимита</span>
+                    </div>
+                </div>
+                <div class="settings-card">
+                    <label class="settings-card__label" for="setting-ahead">Запись заранее</label>
+                    <div class="settings-card__input-wrap">
+                        <input class="input" type="number" id="setting-ahead" name="book_ahead_hours" min="0" value="{{ calendar.book_ahead_hours|default(24) }}">
+                        <span class="settings-card__unit">часов</span>
+                    </div>
+                </div>
+                <div class="settings-card settings-card--reminders">
+                    <span class="settings-card__label">Напоминания в Телеграм</span>
+                    <label class="settings-reminder">
+                        <input type="checkbox" id="setting-reminder-first-enabled"{% if calendar.reminder_hours_first|default(0) > 0 %} checked{% endif %}>
+                        <span>за</span>
+                        <input class="input input--inline" type="number" id="setting-reminder-first" name="reminder_hours_first" min="1" value="{{ calendar.reminder_hours_first|default(24) }}">
+                        <span>часов</span>
+                    </label>
+                    <label class="settings-reminder">
+                        <input type="checkbox" id="setting-reminder-second-enabled"{% if calendar.reminder_hours_second|default(0) > 0 %} checked{% endif %}>
+                        <span>за</span>
+                        <input class="input input--inline" type="number" id="setting-reminder-second" name="reminder_hours_second" min="1" value="{{ calendar.reminder_hours_second|default(1) }}">
+                        <span>часов</span>
+                    </label>
+                </div>
+            </div>
+            <button type="submit" class="btn btn--primary btn--lg calendar-settings-form__save" id="settings-save-btn">Сохранить изменения</button>
+        </form>
+    </footer>
 </div>
 
-{% if success %}
-<div class="alert alert--success" role="status">{{ success }}</div>
-{% endif %}
-{% if error %}
-<div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
-{% endif %}
-
-<section class="app-section">
-    <h2 class="app-section__title">Временные окна для записи</h2>
-
-    {% for day in range(7) %}
-    <div class="day-schedule">
-        <h3 class="day-schedule__title">{{ days_names[day] }}</h3>
-
-        {% for slot in time_slots_by_day[day] %}
-        <div class="time-slot-item">
-            <span class="time-slot-item__time">{{ slot.start_time|time('H:i') }} — {{ slot.end_time|time('H:i') }}</span>
-            <form method="POST" class="time-slot-item__form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="action" value="delete_time_slot">
-                <input type="hidden" name="slot_id" value="{{ slot.id }}">
-                <button type="submit" class="btn btn--danger btn--sm" onclick="return confirm('Удалить это окно?')">Удалить</button>
-            </form>
-        </div>
-        {% else %}
-        <p class="day-schedule__empty">Нет временных окон</p>
-        {% endfor %}
-
-        <form method="POST" class="add-slot-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="action" value="add_time_slot">
-            <input type="hidden" name="day_of_week" value="{{ day }}">
-            <div class="add-slot-form__row">
-                <div class="form-field">
-                    <label class="form-field__label" for="start_{{ day }}">С</label>
-                    <select class="select" name="start_time" id="start_{{ day }}" required>
-                        <option value="">Выберите</option>
-                    </select>
-                </div>
-                <span class="add-slot-form__arrow" aria-hidden="true">→</span>
-                <div class="form-field">
-                    <label class="form-field__label" for="end_{{ day }}">До</label>
-                    <select class="select" name="end_time" id="end_{{ day }}" required>
-                        <option value="">Выберите</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn--primary btn--sm">+ Добавить окно</button>
-            </div>
-        </form>
-    </div>
-    {% endfor %}
-</section>
+<div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/calendar-time-slots.js?v=1" defer></script>
+<script src="/static/js/copy-link.js?v=1" defer></script>
+<script src="/static/js/toast.js?v=1" defer></script>
+<script src="/static/js/calendar-api.js?v=1" defer></script>
+<script src="/static/js/calendar-week-grid.js?v=1" defer></script>
+<script src="/static/js/calendar-day-editor.js?v=1" defer></script>
+<script src="/static/js/calendar-page.js?v=1" defer></script>
 {% endblock %}

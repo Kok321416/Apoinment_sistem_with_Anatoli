@@ -565,12 +565,12 @@ async def calendar_detail(request: Request, calendar_id: int, db: Session = Depe
                     success, error = (msg, None) if ok else (None, msg)
                 else:
                     error = "Временное окно не найдено"
-    time_slots_by_day = [
-        db.query(TimeSlot).filter(TimeSlot.calendar_id == calendar.id, TimeSlot.day_of_week == d).order_by(TimeSlot.start_time).all()
-        for d in range(7)
-    ]
+    from app.services.public_client import ensure_public_slug, specialist_public_url
+
+    slug = ensure_public_slug(db, consultant)
+    booking_url = f"{specialist_public_url(settings.site_url, slug)}c/{calendar.id}/"
     return templates.TemplateResponse("calendar_detail.html", page_context(
-        request, db, user, calendar=calendar, time_slots_by_day=time_slots_by_day,
+        request, db, user, calendar=calendar, booking_url=booking_url,
         days_names=DAYS_NAMES, days_short=DAYS_SHORT, success=success, error=error,
     ))
 
@@ -685,7 +685,7 @@ async def services_page(request: Request, db: Session = Depends(get_db)):
                     success, error = (msg, None) if ok else (None, msg)
                 else:
                     error = "Услуга не найдена"
-    services = db.query(Service).filter(Service.consultant_id == consultant.id).order_by(Service.name).all()
+    services = db.query(Service).filter(Service.consultant_id == consultant.id).order_by(Service.sort_order, Service.name).all()
     calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).order_by(Calendar.name).all()
     return templates.TemplateResponse(
         "services.html",

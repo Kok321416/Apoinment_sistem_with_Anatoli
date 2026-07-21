@@ -213,7 +213,8 @@
                 updateProfilePreview(blob);
                 assignFileToInput(blob);
                 closeModal(false);
-                if (hint) hint.textContent = 'Фото готово. Нажмите «Сохранить профиль».';
+                if (hint) hint.textContent = 'Фото будет сохранено автоматически.';
+                document.dispatchEvent(new CustomEvent('profile-photo-cropped', { detail: { blob: blob } }));
             }, 'image/jpeg', 0.92);
         });
     }

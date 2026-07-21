@@ -1,149 +1,156 @@
 {% extends "layouts/app.html" %}
-{% from "components/app_page_head.html" import app_page_head %}
 
 {% block meta_tags %}
 {% set page_title = "Услуги — " ~ site_brand_name %}
-{% set meta_description = "Управление услугами специалиста — " ~ site_brand_name %}
+{% set meta_description = "Каталог услуг специалиста — " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/app.css?v=23">
+<link rel="stylesheet" href="/static/css/services-catalog.css?v=1">
+{% endblock %}
+
 {% block app_content %}
-{{ app_page_head("Услуги") }}
+<div class="services-page" id="services-page" data-csrf="{{ csrf_token }}">
 
-{% if success %}
-<div class="alert alert--success" role="status">{{ success }}</div>
-{% endif %}
-{% if error %}
-<div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
-{% endif %}
+    <section class="services-hero card">
+        <div class="services-hero__content">
+            <h1 class="services-hero__title">Услуги</h1>
+            <p class="services-hero__lead">Создавайте услуги, управляйте ценами, длительностью и календарями записи.</p>
+        </div>
+        <button type="button" class="btn btn--primary btn--lg" id="btn-new-service">+ Новая услуга</button>
+    </section>
 
-<section class="app-section">
-    <h2 class="app-section__title">Создать услугу</h2>
-    {% if not calendars %}
-    <div class="alert alert--warning">Сначала создайте календарь на странице «Календари», затем привяжите к нему услугу.</div>
-    {% else %}
-    <form method="POST" action="/services/" class="stack">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="create_service">
+    <section class="services-stats" id="services-stats" aria-label="Статистика услуг">
+        <div class="stat-card"><span class="stat-card__value" data-stat="total">—</span><span class="stat-card__label">Всего услуг</span></div>
+        <div class="stat-card stat-card--success"><span class="stat-card__value" data-stat="active">—</span><span class="stat-card__label">Активных</span></div>
+        <div class="stat-card stat-card--accent"><span class="stat-card__value" data-stat="avg_duration">—</span><span class="stat-card__label">Средняя длительность</span></div>
+        <div class="stat-card stat-card--warning"><span class="stat-card__value" data-stat="calendars_used">—</span><span class="stat-card__label">Календарей</span></div>
+    </section>
 
-        <div class="form-field">
-            <label class="form-field__label" for="calendar_id">Календарь</label>
-            <select class="input" id="calendar_id" name="calendar_id" required>
-                <option value="">Выберите календарь</option>
-                {% for calendar in calendars %}
-                <option value="{{ calendar.id }}">{{ calendar.name }}</option>
-                {% endfor %}
+    <section class="services-toolbar card" id="services-toolbar">
+        <div class="services-toolbar__search">
+            <input class="input" type="search" id="services-search" placeholder="Поиск услуги..." autocomplete="off">
+        </div>
+        <div class="services-toolbar__filters">
+            <select class="select" id="filter-status" aria-label="Фильтр по статусу">
+                <option value="all">Все</option>
+                <option value="active">Активные</option>
+                <option value="inactive">Отключённые</option>
             </select>
-            <p class="form-field__hint">Услуга будет видна клиенту внутри выбранного календаря.</p>
-        </div>
-
-        <div class="form-field">
-            <label class="form-field__label" for="service_name">Название услуги</label>
-            <input class="input" type="text" id="service_name" name="name" required placeholder="Например: Консультация">
-        </div>
-
-        <div class="form-field">
-            <label class="form-field__label" for="service_description">Описание</label>
-            <textarea class="textarea" id="service_description" name="description" rows="3" placeholder="Кратко опишите услугу"></textarea>
-        </div>
-
-        <div class="app-form-grid">
-            <div class="form-field">
-                <label class="form-field__label" for="duration">Длительность (минуты)</label>
-                <input class="input" type="number" id="duration" name="duration_minutes" value="60" min="15" step="15" required>
-            </div>
-            <div class="form-field">
-                <label class="form-field__label" for="price">Цена (руб.)</label>
-                <input class="input" type="number" id="price" name="price" step="0.01" min="0" placeholder="Необязательно">
+            <select class="select" id="sort-by" aria-label="Сортировка">
+                <option value="name">Название</option>
+                <option value="price">Цена</option>
+                <option value="duration">Длительность</option>
+                <option value="created">Дата создания</option>
+                <option value="updated">Последнее изменение</option>
+                <option value="manual">Порядок вручную</option>
+            </select>
+            <div class="view-toggle" role="group" aria-label="Вид отображения">
+                <button type="button" class="view-toggle__btn is-active" data-view="grid" title="Карточки">▦</button>
+                <button type="button" class="view-toggle__btn" data-view="list" title="Список">≣</button>
             </div>
         </div>
+    </section>
 
-        <button type="submit" class="btn btn--primary">Создать услугу</button>
-    </form>
-    {% endif %}
-</section>
-
-<section class="app-section">
-    <h2 class="app-section__title">Мои услуги</h2>
-
-    {% if services %}
-    <div class="app-list-grid app-list-grid--services">
-        {% for service in services %}
-        <article class="app-list-card">
-            <div class="app-list-card__head">
-                <h3 class="app-list-card__title">{{ service.name }}</h3>
-                {% if service.is_active %}
-                <span class="badge badge--success">Активна</span>
-                {% else %}
-                <span class="badge badge--ghost">Неактивна</span>
-                {% endif %}
-            </div>
-            <div class="app-list-card__meta">
-                <p><strong>Календарь:</strong> {% if service.calendar %}{{ service.calendar.name }}{% else %}<span class="text-muted">не привязан</span>{% endif %}</p>
-                {% if service.description %}
-                <p><strong>Описание:</strong> {{ service.description|truncatewords(20) }}</p>
-                {% endif %}
-                <p><strong>Длительность:</strong> {{ service.duration_minutes }} мин.</p>
-                {% if service.price %}
-                <p><strong>Цена:</strong> {{ service.price }} ₽</p>
-                {% endif %}
-            </div>
-            <div class="app-list-card__actions">
-                <details class="service-edit">
-                    <summary class="btn btn--ghost btn--sm">Изменить</summary>
-                    <form method="POST" action="/services/" class="stack mt-lg">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <input type="hidden" name="action" value="update_service">
-                        <input type="hidden" name="service_id" value="{{ service.id }}">
-                        <div class="form-field">
-                            <label class="form-field__label">Календарь</label>
-                            <select class="input" name="calendar_id" required>
-                                {% for calendar in calendars %}
-                                <option value="{{ calendar.id }}" {% if service.calendar_id == calendar.id %}selected{% endif %}>{{ calendar.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label class="form-field__label">Название</label>
-                            <input class="input" type="text" name="name" value="{{ service.name }}" required>
-                        </div>
-                        <div class="form-field">
-                            <label class="form-field__label">Описание</label>
-                            <textarea class="textarea" name="description" rows="2">{{ service.description or '' }}</textarea>
-                        </div>
-                        <div class="app-form-grid">
-                            <div class="form-field">
-                                <label class="form-field__label">Минуты</label>
-                                <input class="input" type="number" name="duration_minutes" value="{{ service.duration_minutes }}" min="15" step="15" required>
-                            </div>
-                            <div class="form-field">
-                                <label class="form-field__label">Цена</label>
-                                <input class="input" type="number" name="price" value="{{ service.price or '' }}" step="0.01" min="0">
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn--primary btn--sm">Сохранить</button>
-                    </form>
-                </details>
-                <form method="POST" action="/services/">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <input type="hidden" name="action" value="toggle_service">
-                    <input type="hidden" name="service_id" value="{{ service.id }}">
-                    <button type="submit" class="btn btn--secondary btn--sm">
-                        {% if service.is_active %}Деактивировать{% else %}Активировать{% endif %}
-                    </button>
-                </form>
-                <form method="POST" action="/services/" onsubmit="return confirm('Удалить услугу?');">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <input type="hidden" name="action" value="delete_service">
-                    <input type="hidden" name="service_id" value="{{ service.id }}">
-                    <button type="submit" class="btn btn--danger btn--sm">Удалить</button>
-                </form>
-            </div>
-        </article>
-        {% endfor %}
+    <div class="services-bulk-bar" id="services-bulk-bar" hidden>
+        <span id="bulk-count">0 выбрано</span>
+        <div class="services-bulk-bar__actions">
+            <button type="button" class="btn btn--ghost btn--sm" data-bulk="activate">Включить</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-bulk="deactivate">Отключить</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-bulk="delete">Удалить</button>
+            <button type="button" class="btn btn--ghost btn--sm" id="bulk-clear">Снять выбор</button>
+        </div>
     </div>
-    {% else %}
-    <div class="booking-empty">Услуг пока нет. Создайте первую услугу выше.</div>
-    {% endif %}
-</section>
+
+    <section class="services-catalog" id="services-catalog" aria-live="polite">
+        <div class="services-loading" id="services-loading">Загрузка услуг…</div>
+        <div class="services-grid" id="services-grid" hidden></div>
+        <div class="services-empty" id="services-empty" hidden>
+            <div class="services-empty__icon" aria-hidden="true">📋</div>
+            <h2 class="services-empty__title">У вас пока нет услуг</h2>
+            <p class="services-empty__text">Создайте первую услугу или выберите готовый шаблон</p>
+            <button type="button" class="btn btn--primary" id="btn-empty-create">+ Создать услугу</button>
+        </div>
+    </section>
+
+    <nav class="services-pagination" id="services-pagination" aria-label="Пагинация" hidden></nav>
+
+    <section class="services-analytics card" id="services-analytics" aria-label="Общая аналитика">
+        <h2 class="services-analytics__title">Общая аналитика</h2>
+        <div class="services-analytics__grid">
+            <div class="analytics-item"><span class="analytics-item__value" data-analytics="total_bookings">—</span><span class="analytics-item__label">Всего записей</span></div>
+            <div class="analytics-item"><span class="analytics-item__value" data-analytics="fill_rate">—</span><span class="analytics-item__label">Заполненность</span></div>
+            <div class="analytics-item"><span class="analytics-item__value" data-analytics="avg_price">—</span><span class="analytics-item__label">Средняя стоимость</span></div>
+            <div class="analytics-item"><span class="analytics-item__value" data-analytics="avg_duration">—</span><span class="analytics-item__label">Средняя длительность</span></div>
+            <div class="analytics-item analytics-item--wide"><span class="analytics-item__value" data-analytics="popular_service">—</span><span class="analytics-item__label">Самая популярная услуга</span></div>
+        </div>
+    </section>
+</div>
+
+<div class="service-drawer-backdrop" id="drawer-backdrop" hidden></div>
+<aside class="service-drawer" id="service-drawer" aria-hidden="true">
+    <div class="service-drawer__head">
+        <h2 class="service-drawer__title" id="drawer-title">Новая услуга</h2>
+        <button type="button" class="service-drawer__close" id="drawer-close" aria-label="Закрыть">×</button>
+    </div>
+    <div class="service-drawer__body">
+        <div class="drawer-templates" id="drawer-templates">
+            <p class="drawer-templates__label">Шаблоны</p>
+            <div class="drawer-templates__grid" id="templates-grid"></div>
+        </div>
+        <form class="service-drawer__form stack" id="service-form">
+            <input type="hidden" id="service-id" value="">
+            <div class="form-field">
+                <label class="form-field__label" for="service-name">Название</label>
+                <input class="input" type="text" id="service-name" required placeholder="Консультация">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="service-description">Описание</label>
+                <textarea class="textarea" id="service-description" rows="3" placeholder="Кратко опишите услугу"></textarea>
+            </div>
+            <div class="app-form-grid">
+                <div class="form-field">
+                    <label class="form-field__label" for="service-duration">Длительность (мин)</label>
+                    <input class="input" type="number" id="service-duration" min="15" step="15" value="60" required>
+                </div>
+                <div class="form-field">
+                    <label class="form-field__label" for="service-price">Цена (₽)</label>
+                    <input class="input" type="number" id="service-price" min="0" step="1" placeholder="Необязательно">
+                </div>
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="service-calendar">Календарь</label>
+                <select class="select" id="service-calendar" required></select>
+            </div>
+            <div class="form-field">
+                <span class="form-field__label">Цвет услуги</span>
+                <div class="color-palette" id="color-palette"></div>
+                <input type="hidden" id="service-color" value="#7d5cff">
+            </div>
+            <label class="day-editor__toggle">
+                <span>Активна</span>
+                <span class="toggle-switch">
+                    <input type="checkbox" id="service-active" checked>
+                    <span class="toggle-switch__track"></span>
+                </span>
+            </label>
+            <div class="service-drawer__stats" id="drawer-stats" hidden></div>
+        </form>
+    </div>
+    <div class="service-drawer__foot">
+        <button type="button" class="btn btn--danger btn--sm" id="drawer-delete" hidden>Удалить</button>
+        <button type="button" class="btn btn--primary" id="drawer-save">Создать</button>
+    </div>
+</aside>
+
+<div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/toast.js?v=1" defer></script>
+<script src="/static/js/services-api.js?v=1" defer></script>
+<script src="/static/js/services-drawer.js?v=1" defer></script>
+<script src="/static/js/services-page.js?v=1" defer></script>
 {% endblock %}

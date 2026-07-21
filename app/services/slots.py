@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.models import Booking, Calendar, Service, TimeSlot
+from app.services.calendar_schedule import is_day_disabled
 
 
 def get_available_slots(
@@ -13,6 +14,8 @@ def get_available_slots(
     exclude_booking_id: int | None = None,
 ) -> dict:
     day_of_week = booking_date.weekday()
+    if is_day_disabled(calendar, day_of_week):
+        return {"available_slots": [], "available_windows": []}
     time_slots = (
         db.query(TimeSlot)
         .filter(
