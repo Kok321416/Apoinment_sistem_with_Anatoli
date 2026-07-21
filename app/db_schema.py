@@ -67,22 +67,39 @@ def _ddl(ddl: str) -> str:
     return ddl
 
 
+_SCHEMA_LOCK_NAME = "ayc_schema_migration"
+_SCHEMA_LOCK_WAIT_SEC = 5
+
+
 @contextmanager
-def _schema_migration_lock():
-    """Avoid concurrent ALTER TABLE when several Passenger workers start at once."""
+def _schema_migration_lock(*, wait_seconds: int = _SCHEMA_LOCK_WAIT_SEC):
+    """Best-effort lock for concurrent Passenger worker startups. Skip if busy."""
     if engine.dialect.name != "mysql":
-        yield
+        yield True
         return
     conn = engine.connect()
     acquired = False
     try:
-        acquired = conn.execute(text("SELECT GET_LOCK('ayc_schema_migration', 60)")).scalar() == 1
+        try:
+            acquired = (
+                conn.execute(
+                    text(f"SELECT GET_LOCK('{_SCHEMA_LOCK_NAME}', :wait)"),
+                    {"wait": wait_seconds},
+                ).scalar()
+                == 1
+            )
+        except Exception:
+            logger.exception("Could not acquire schema migration lock")
+            acquired = False
         if not acquired:
-            logger.warning("Schema migration lock busy; waiting for another worker")
-        yield
+            logger.warning("Schema migration lock busy; skipping patch in this worker")
+        yield acquired
     finally:
         if acquired:
-            conn.execute(text("SELECT RELEASE_LOCK('ayc_schema_migration')"))
+            try:
+                conn.execute(text(f"SELECT RELEASE_LOCK('{_SCHEMA_LOCK_NAME}')"))
+            except Exception:
+                logger.exception("Could not release schema migration lock")
         conn.close()
 
 
@@ -171,16 +188,28 @@ def ensure_app_schema() -> None:
     ensure_schema_patches()
 
 
-def ensure_schema_patches() -> None:
+def ensure_schema_patches(*, use_lock: bool = True) -> None:
     """Lightweight idempotent patches. Safe to run once per process on import."""
     global _SCHEMA_PATCHES_ATTEMPTED
     if _SCHEMA_PATCHES_ATTEMPTED:
         return
-    with _schema_migration_lock():
+
+    def _run() -> None:
+        global _SCHEMA_PATCHES_ATTEMPTED
         if _SCHEMA_PATCHES_ATTEMPTED:
             return
         _apply_app_schema_patches()
         _SCHEMA_PATCHES_ATTEMPTED = True
+
+    if not use_lock:
+        _run()
+        return
+
+    with _schema_migration_lock() as acquired:
+        if not acquired:
+            _refresh_schema_health()
+            return
+        _run()
 
 
 def ensure_telegram_login_schema() -> None:
@@ -214,27 +243,25 @@ def ensure_email_auth_schema() -> None:
 
 def ensure_all_schema() -> None:
     """Full schema ensure for deploy scripts and dev server startup. Never raises."""
-    global _SCHEMA_FULL_ATTEMPTED
+    global _SCHEMA_FULL_ATTEMPTED, _SCHEMA_PATCHES_ATTEMPTED
     if _SCHEMA_FULL_ATTEMPTED:
         return
-    with _schema_migration_lock():
-        if _SCHEMA_FULL_ATTEMPTED:
-            return
-        try:
-            Base.metadata.create_all(bind=engine)
-        except Exception:
-            logger.exception("create_all failed during ensure_all_schema")
-        try:
-            ensure_telegram_login_schema()
-        except Exception:
-            logger.exception("telegram login schema ensure failed")
-        try:
-            ensure_email_auth_schema()
-        except Exception:
-            logger.exception("email auth schema ensure failed")
-        ensure_schema_patches()
-        _refresh_schema_health()
-        _SCHEMA_FULL_ATTEMPTED = True
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        logger.exception("create_all failed during ensure_all_schema")
+    try:
+        ensure_telegram_login_schema()
+    except Exception:
+        logger.exception("telegram login schema ensure failed")
+    try:
+        ensure_email_auth_schema()
+    except Exception:
+        logger.exception("email auth schema ensure failed")
+    # Deploy/migrate runs in a single process — no MySQL lock (avoids self-deadlock).
+    ensure_schema_patches(use_lock=False)
+    _refresh_schema_health()
+    _SCHEMA_FULL_ATTEMPTED = True
 
 
 def bootstrap_on_import() -> None:

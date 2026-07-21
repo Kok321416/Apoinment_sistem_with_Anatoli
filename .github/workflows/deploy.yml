@@ -189,9 +189,13 @@ jobs:
           fi
 
           chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh
-          ./scripts/migrate.sh
-
+          echo "🔄 Restarting Passenger before DB migration (release old worker connections)"
           mkdir -p tmp logs media
+          touch tmp/restart.txt
+          touch .restart-app
+          sleep 5
+
+          ./scripts/migrate.sh
 
           echo "🧪 Checking Passenger WSGI entrypoint"
           python -c "import passenger_wsgi; print('passenger_wsgi OK')"
