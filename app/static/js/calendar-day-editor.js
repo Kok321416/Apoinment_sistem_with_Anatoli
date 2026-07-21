@@ -12,12 +12,29 @@
         }
 
         renderDay(dayData) {
+            if (this.selectedDay !== dayData.day) {
+                this._editingSlotId = null;
+            }
             this.dayData = dayData;
             this.selectedDay = dayData.day;
             this.container.hidden = false;
-            this._editingSlotId = null;
-            this.container.innerHTML = this._template(dayData);
+            this._render();
+        }
+
+        _render() {
+            this.container.innerHTML = this._template(this.dayData);
             this._bindEvents();
+            if (this._editingSlotId) {
+                const slot = this.dayData.slots.find((s) => s.id === this._editingSlotId);
+                const startSelect = this.container.querySelector('.edit-start');
+                const endSelect = this.container.querySelector('.edit-end');
+                if (slot && startSelect && endSelect) {
+                    global.calendarTimeOptions(startSelect);
+                    global.calendarTimeOptions(endSelect);
+                    startSelect.value = slot.start;
+                    endSelect.value = slot.end;
+                }
+            }
         }
 
         _template(dayData) {
@@ -97,11 +114,17 @@
                 );
             }
             return (
-                '<div class="slot-card" data-slot-id="' + slot.id + '">' +
+                '<div class="slot-card' + (editing ? ' slot-card--editing' : '') + '" data-slot-id="' + slot.id + '">' +
                     '<span class="slot-card__time">' + slot.start + ' — ' + slot.end + '</span>' +
                     '<div class="slot-card__actions">' +
-                        '<button type="button" class="slot-card__btn edit-slot-btn" data-slot-id="' + slot.id + '" title="Редактировать">✏</button>' +
-                        '<button type="button" class="slot-card__btn slot-card__btn--danger delete-slot-btn" data-slot-id="' + slot.id + '" title="Удалить">🗑</button>' +
+                        '<button type="button" class="slot-card__action edit-slot-btn" data-slot-id="' + slot.id + '">' +
+                            '<span class="slot-card__action-icon" aria-hidden="true">✏</span>' +
+                            '<span class="slot-card__action-label">Изменить</span>' +
+                        '</button>' +
+                        '<button type="button" class="slot-card__action slot-card__action--danger delete-slot-btn" data-slot-id="' + slot.id + '">' +
+                            '<span class="slot-card__action-icon" aria-hidden="true">🗑</span>' +
+                            '<span class="slot-card__action-label">Удалить</span>' +
+                        '</button>' +
                     '</div>' +
                 '</div>'
             );
@@ -120,23 +143,14 @@
             this.container.querySelectorAll('.edit-slot-btn').forEach((btn) => {
                 btn.addEventListener('click', () => {
                     this._editingSlotId = parseInt(btn.dataset.slotId, 10);
-                    this.renderDay(this.dayData);
-                    const slot = this.dayData.slots.find((s) => s.id === this._editingSlotId);
-                    const startSelect = this.container.querySelector('.edit-start');
-                    const endSelect = this.container.querySelector('.edit-end');
-                    if (slot && startSelect && endSelect) {
-                        global.calendarTimeOptions(startSelect);
-                        global.calendarTimeOptions(endSelect);
-                        startSelect.value = slot.start;
-                        endSelect.value = slot.end;
-                    }
+                    this._render();
                 });
             });
 
             this.container.querySelectorAll('.cancel-edit-btn').forEach((btn) => {
                 btn.addEventListener('click', () => {
                     this._editingSlotId = null;
-                    this.renderDay(this.dayData);
+                    this._render();
                 });
             });
 
@@ -178,6 +192,7 @@
             const end = this.container.querySelector('.edit-end').value;
             try {
                 const data = await this.api.updateSlot(slotId, { start_time: start, end_time: end });
+                this._editingSlotId = null;
                 global.showToast(data.message || 'Окно обновлено');
                 await this._applySchedule(data.schedule, data.schedule.week[this.selectedDay]);
             } catch (error) {

@@ -340,24 +340,75 @@
 
 .slot-card {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-md);
-    padding: var(--space-md) var(--space-lg);
+    padding: var(--space-lg) var(--space-xl);
     border-radius: var(--radius-sm);
     background: var(--surface-100);
     border: 1px solid var(--border-subtle);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.slot-card--editing {
+    border-color: rgba(108, 99, 255, 0.45);
+    box-shadow: 0 0 0 1px rgba(108, 99, 255, 0.2);
 }
 
 .slot-card__time {
     font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-body);
 }
 
 .slot-card__actions {
     display: flex;
-    gap: var(--space-xs);
+    flex-wrap: wrap;
+    gap: var(--space-sm);
 }
 
+.slot-card__action {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 72px;
+    min-height: 52px;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-default);
+    background: var(--surface-200);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.slot-card__action:hover {
+    background: rgba(108, 99, 255, 0.12);
+    color: var(--text-primary);
+    border-color: rgba(108, 99, 255, 0.35);
+    transform: translateY(-1px);
+}
+
+.slot-card__action--danger:hover {
+    background: rgba(255, 92, 122, 0.12);
+    color: var(--accent-danger);
+    border-color: rgba(255, 92, 122, 0.4);
+}
+
+.slot-card__action-icon {
+    font-size: 1.125rem;
+    line-height: 1;
+}
+
+.slot-card__action-label {
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    font-weight: var(--font-weight-medium);
+}
+
+/* legacy icon-only buttons */
 .slot-card__btn {
     width: 32px;
     height: 32px;
