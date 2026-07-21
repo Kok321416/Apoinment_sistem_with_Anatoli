@@ -18,164 +18,192 @@
 <div class="alert alert--success mt-lg" role="status">{{ success }}</div>
 {% endif %}
 
-<section class="app-section">
-    <div class="integration-card__head">
-        <h2 class="app-section__title app-section__title--plain">Вход по почте</h2>
-        {% if email_verified %}
-        <span class="badge badge--success">Подтверждена</span>
-        {% else %}
-        <span class="badge badge--warning">Нужно подтверждение</span>
-        {% endif %}
-    </div>
-    <p class="text-muted mt-lg mb-lg">
-        Подтвердите почту 6-значным кодом из письма. После этого можно входить в кабинет по почте и паролю.
-    </p>
-    {% if email_verified %}
-    <div class="auth-provider-card is-connected">
-        <p class="mb-0">Почта подтверждена: <strong>{{ email_address }}</strong></p>
-        <p class="text-body-sm text-muted mt-lg mb-0">Спасибо, что привязали почту. Теперь вы можете авторизовываться через почту и пароль.</p>
-    </div>
-    <form method="POST" action="/integrations/" class="mt-lg" onsubmit="return confirm('Отвязать почту?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="disconnect_email_login">
-        <button type="submit" class="btn btn--ghost">Отвязать почту</button>
-    </form>
-    {% else %}
-    <form method="POST" action="/integrations/" class="stack">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="send_email_code">
-        <div class="form-field">
-            <label class="form-field__label" for="email_login">Почта</label>
-            <input class="input" type="email" id="email_login" name="email" value="{{ email_pending or email_address }}" required autocomplete="email">
+<div class="integrations-grid">
+    <article class="integration-tile{% if email_verified %} is-connected{% endif %}">
+        <div class="integration-tile__icon-wrap">
+            <img class="integration-tile__icon" src="/static/svg/icons/email.svg" alt="">
         </div>
-        <button type="submit" class="btn btn--primary">Привязать почту - отправить код</button>
-    </form>
-    {% if email_pending %}
-    <form method="POST" action="/integrations/" class="stack mt-3xl">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="confirm_email_code">
-        <input type="hidden" name="email" value="{{ email_pending }}">
-        <p class="text-body-sm text-muted mb-lg">Код отправлен на <strong>{{ email_pending }}</strong>. Введите 6 цифр из письма.</p>
-        {{ verification_code_input("email_code", hint="Можно вставить код целиком из буфера обмена.") }}
-        <button type="submit" class="btn btn--secondary">Подтвердить почту</button>
-    </form>
-    {% endif %}
-    {% endif %}
-</section>
-
-<section class="app-section">
-    <div class="integration-card__head">
-        <h2 class="app-section__title app-section__title--plain">Телеграм для входа</h2>
-        {% if telegram_login_connected %}
-        <span class="badge badge--success">Привязан</span>
-        {% else %}
-        <span class="badge badge--ghost">Не привязан</span>
-        {% endif %}
-    </div>
-    <p class="text-muted mt-lg mb-lg">Вход в кабинет через бота Телеграм. Можно отвязать и привязать другой аккаунт.</p>
-    {% if telegram_login_connected %}
-    <form method="POST" action="/integrations/" onsubmit="return confirm('Отвязать Телеграм для входа?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="disconnect_telegram_login">
-        <button type="submit" class="btn btn--ghost">Отвязать Телеграм</button>
-    </form>
-    {% else %}
-    <a href="/accounts/telegram/login/?process=connect&next=/integrations/" class="btn btn--primary">Привязать Телеграм</a>
-    {% endif %}
-</section>
-
-<section class="app-section">
-    <div class="integration-card__head">
-        <h2 class="app-section__title app-section__title--plain">Яндекс для входа</h2>
-        {% if yandex_login_connected %}
-        <span class="badge badge--success">Привязан</span>
-        {% else %}
-        <span class="badge badge--ghost">Не привязан</span>
-        {% endif %}
-    </div>
-    <p class="text-muted mt-lg mb-lg">Вход в кабинет через Яндекс ID. Можно отвязать и привязать другой аккаунт.</p>
-    {% if yandex_login_connected %}
-    <form method="POST" action="/integrations/" onsubmit="return confirm('Отвязать Яндекс для входа?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="disconnect_yandex_login">
-        <button type="submit" class="btn btn--ghost">Отвязать Яндекс</button>
-    </form>
-    {% elif yandex_oauth_enabled %}
-    <a href="/accounts/yandex/login/?process=connect&next=/integrations/" class="btn btn--primary">Привязать Яндекс</a>
-    {% else %}
-    <p class="text-muted mb-0">Вход через Яндекс не настроен на сервере (YANDEX_OAUTH_CLIENT_ID / SECRET).</p>
-    {% endif %}
-</section>
-
-<section class="app-section">
-    <div class="integration-card__head">
-        <h2 class="app-section__title app-section__title--plain">Уведомления в Телеграм</h2>
-        {% if integration.telegram_connected %}
-        <span class="badge badge--success">Подключено</span>
-        {% elif integration.telegram_enabled %}
-        <span class="badge badge--warning">Включено, бот не подключён</span>
-        {% else %}
-        <span class="badge badge--ghost">Отключено</span>
-        {% endif %}
-    </div>
-
-    <p class="text-muted mt-lg mb-lg">
-        Получайте уведомления о новых записях в Телеграм.
-    </p>
-
-    {% if integration.telegram_connected %}
-    <div class="auth-provider-card is-connected">
-        <p class="mb-0">Бот Телеграм подключён.</p>
-        {% if integration.telegram_chat_id %}
-        <p class="text-muted mt-sm">Идентификатор чата: {{ integration.telegram_chat_id }}</p>
-        {% endif %}
-    </div>
-    <form method="POST" action="/integrations/" class="mt-lg">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="disconnect_telegram">
-        <button type="submit" class="btn btn--ghost">Отвязать уведомления</button>
-    </form>
-    {% else %}
-        {% if integration.telegram_enabled %}
-        <p class="mb-lg">Подключите Телеграм - уведомления о новых записях и напоминания о консультациях будут приходить в приложение.</p>
-        <a href="/integrations/telegram/connect-app/" class="btn btn--primary">Привязать через бота Телеграм</a>
-        <p class="form-field__hint mt-lg">Откроется бот - нажмите «Подтвердить подключение» в чате.</p>
-
-        <hr class="divider">
-
-        <p class="form-field__hint mb-lg">Или вручную (токен своего бота и идентификатор чата). Без токена используется бот платформы:</p>
-        <form method="POST" action="/integrations/" class="stack app-section app-section--inset">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="action" value="connect_telegram">
-            <div class="form-field">
-                <label class="form-field__label" for="bot_token">Токен бота</label>
-                <input class="input" type="text" id="bot_token" name="bot_token" placeholder="123456:ABC-DEF..." autocomplete="off">
+        <div class="integration-tile__body">
+            <div class="integration-tile__head">
+                <h2 class="integration-tile__title">Вход по почте</h2>
+                {% if email_verified %}
+                <span class="badge badge--success">Подтверждена</span>
+                {% else %}
+                <span class="badge badge--warning">Нужно подтверждение</span>
+                {% endif %}
             </div>
-            <div class="form-field">
-                <label class="form-field__label" for="chat_id">Идентификатор чата</label>
-                <input class="input" type="text" id="chat_id" name="chat_id" placeholder="123456789" required autocomplete="off">
+            {% if email_verified %}
+            <p class="integration-tile__meta">Почта: <strong>{{ email_address }}</strong></p>
+            <p class="integration-tile__text">Спасибо, что привязали почту. Теперь можно входить через почту и пароль.</p>
+            <div class="integration-tile__actions">
+                <form method="POST" action="/integrations/" onsubmit="return confirm('Отвязать почту?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="action" value="disconnect_email_login">
+                    <button type="submit" class="btn btn--ghost">Отвязать</button>
+                </form>
             </div>
-            <button type="submit" class="btn btn--secondary">Подключить вручную</button>
-        </form>
-        {% else %}
-        <form method="POST" action="/integrations/">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="action" value="toggle_telegram">
-            <button type="submit" class="btn btn--primary">Включить интеграцию</button>
-        </form>
-        {% endif %}
-    {% endif %}
-</section>
+            {% else %}
+            <p class="integration-tile__text">Подтвердите почту 6-значным кодом из письма, чтобы входить в кабинет по почте и паролю.</p>
+            <form method="POST" action="/integrations/" class="integration-tile__form stack">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="send_email_code">
+                <div class="form-field">
+                    <label class="form-field__label" for="email_login">Почта</label>
+                    <input class="input" type="email" id="email_login" name="email" value="{{ email_pending or email_address }}" required autocomplete="email">
+                </div>
+                <div class="integration-tile__actions">
+                    <button type="submit" class="btn btn--primary">Привязать</button>
+                </div>
+            </form>
+            {% if email_pending %}
+            <form method="POST" action="/integrations/" class="integration-tile__form stack">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="confirm_email_code">
+                <input type="hidden" name="email" value="{{ email_pending }}">
+                <p class="form-field__hint mb-lg">Код отправлен на <strong>{{ email_pending }}</strong></p>
+                {{ verification_code_input("email_code", hint="Можно вставить код из буфера обмена.") }}
+                <div class="integration-tile__actions">
+                    <button type="submit" class="btn btn--secondary">Подтвердить</button>
+                </div>
+            </form>
+            {% endif %}
+            {% endif %}
+        </div>
+    </article>
 
-<section class="app-section">
-    <div class="integration-card__head">
-        <h2 class="app-section__title app-section__title--plain">Google Календарь</h2>
-        <span class="badge badge--ghost">Скоро</span>
-    </div>
-    <p class="text-muted mt-lg mb-0">
-        Синхронизация записей с Google Календарём готовится. Пока подключение из кабинета недоступно.
-    </p>
-</section>
+    <article class="integration-tile{% if telegram_login_connected %} is-connected{% endif %}">
+        <div class="integration-tile__icon-wrap">
+            <img class="integration-tile__icon" src="/static/svg/icons/telegram.svg" alt="">
+        </div>
+        <div class="integration-tile__body">
+            <div class="integration-tile__head">
+                <h2 class="integration-tile__title">Телеграм для входа</h2>
+                {% if telegram_login_connected %}
+                <span class="badge badge--success">Привязан</span>
+                {% else %}
+                <span class="badge badge--ghost">Не привязан</span>
+                {% endif %}
+            </div>
+            <p class="integration-tile__text">Вход в кабинет через бота Телеграм. Можно отвязать и привязать другой аккаунт.</p>
+            <div class="integration-tile__actions">
+                {% if telegram_login_connected %}
+                <form method="POST" action="/integrations/" onsubmit="return confirm('Отвязать Телеграм для входа?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="action" value="disconnect_telegram_login">
+                    <button type="submit" class="btn btn--ghost">Отвязать</button>
+                </form>
+                {% else %}
+                <a href="/accounts/telegram/login/?process=connect&next=/integrations/" class="btn btn--primary">Привязать</a>
+                {% endif %}
+            </div>
+        </div>
+    </article>
+
+    <article class="integration-tile{% if yandex_login_connected %} is-connected{% endif %}">
+        <div class="integration-tile__icon-wrap">
+            <img class="integration-tile__icon" src="/static/svg/icons/yandex.svg" alt="">
+        </div>
+        <div class="integration-tile__body">
+            <div class="integration-tile__head">
+                <h2 class="integration-tile__title">Яндекс для входа</h2>
+                {% if yandex_login_connected %}
+                <span class="badge badge--success">Привязан</span>
+                {% else %}
+                <span class="badge badge--ghost">Не привязан</span>
+                {% endif %}
+            </div>
+            <p class="integration-tile__text">Вход в кабинет через Яндекс ID. Можно отвязать и привязать другой аккаунт.</p>
+            <div class="integration-tile__actions">
+                {% if yandex_login_connected %}
+                <form method="POST" action="/integrations/" onsubmit="return confirm('Отвязать Яндекс для входа?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="action" value="disconnect_yandex_login">
+                    <button type="submit" class="btn btn--ghost">Отвязать</button>
+                </form>
+                {% elif yandex_oauth_enabled %}
+                <a href="/accounts/yandex/login/?process=connect&next=/integrations/" class="btn btn--primary">Привязать</a>
+                {% else %}
+                <span class="text-body-sm text-muted">Не настроено на сервере</span>
+                {% endif %}
+            </div>
+        </div>
+    </article>
+
+    <article class="integration-tile{% if integration.telegram_connected %} is-connected{% endif %}">
+        <div class="integration-tile__icon-wrap">
+            <img class="integration-tile__icon" src="/static/svg/icons/telegram.svg" alt="">
+        </div>
+        <div class="integration-tile__body">
+            <div class="integration-tile__head">
+                <h2 class="integration-tile__title">Уведомления в Телеграм</h2>
+                {% if integration.telegram_connected %}
+                <span class="badge badge--success">Подключено</span>
+                {% elif integration.telegram_enabled %}
+                <span class="badge badge--warning">Включено</span>
+                {% else %}
+                <span class="badge badge--ghost">Отключено</span>
+                {% endif %}
+            </div>
+            <p class="integration-tile__text">Уведомления о новых записях и напоминания о консультациях в Телеграм.</p>
+            {% if integration.telegram_connected %}
+            {% if integration.telegram_chat_id %}
+            <p class="integration-tile__meta">Чат: {{ integration.telegram_chat_id }}</p>
+            {% endif %}
+            <div class="integration-tile__actions">
+                <form method="POST" action="/integrations/">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="action" value="disconnect_telegram">
+                    <button type="submit" class="btn btn--ghost">Отвязать</button>
+                </form>
+            </div>
+            {% elif integration.telegram_enabled %}
+            <div class="integration-tile__actions">
+                <a href="/integrations/telegram/connect-app/" class="btn btn--primary">Привязать</a>
+            </div>
+            <details class="integration-tile__details">
+                <summary>Подключить вручную (токен и chat id)</summary>
+                <form method="POST" action="/integrations/" class="stack mt-lg">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="action" value="connect_telegram">
+                    <div class="form-field">
+                        <label class="form-field__label" for="bot_token">Токен бота</label>
+                        <input class="input" type="text" id="bot_token" name="bot_token" placeholder="123456:ABC-DEF..." autocomplete="off">
+                    </div>
+                    <div class="form-field">
+                        <label class="form-field__label" for="chat_id">Идентификатор чата</label>
+                        <input class="input" type="text" id="chat_id" name="chat_id" placeholder="123456789" required autocomplete="off">
+                    </div>
+                    <button type="submit" class="btn btn--secondary btn--sm">Подключить</button>
+                </form>
+            </details>
+            {% else %}
+            <div class="integration-tile__actions">
+                <form method="POST" action="/integrations/">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="action" value="toggle_telegram">
+                    <button type="submit" class="btn btn--primary">Включить</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </article>
+
+    <article class="integration-tile is-disabled">
+        <div class="integration-tile__icon-wrap">
+            <img class="integration-tile__icon" src="/static/svg/icons/google.svg" alt="">
+        </div>
+        <div class="integration-tile__body">
+            <div class="integration-tile__head">
+                <h2 class="integration-tile__title">Google Календарь</h2>
+                <span class="badge badge--ghost">Скоро</span>
+            </div>
+            <p class="integration-tile__text">Синхронизация записей с Google Календарём готовится. Пока подключение из кабинета недоступно.</p>
+            <div class="integration-tile__actions">
+                <button type="button" class="btn btn--ghost" disabled>Скоро</button>
+            </div>
+        </div>
+    </article>
+</div>
 {% endblock %}
 
 {% block scripts %}
