@@ -1,4 +1,5 @@
 import json
+import logging
 import secrets
 from datetime import datetime
 from urllib.parse import quote
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.auth.session import get_current_user, login_user
 from app.config import get_settings
 from app.database import get_db
+from app.deps import normalize_phone
 from app.models import EmailAddress, SocialAccount, User
 from app.security.csrf import validate_csrf_token
 from app.services.email_verification import resend_verification_email, verify_email_code
@@ -27,6 +29,7 @@ from app.utils.safe_redirect import safe_next_url
 
 router = APIRouter(prefix="/accounts", tags=["oauth"])
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 def _form_csrf_ok(request: Request, form) -> bool:
@@ -136,7 +139,7 @@ async def yandex_login(request: Request, db: Session = Depends(get_db)):
             return RedirectResponse(next_url, status_code=302)
         if process == "signup":
             register_fio = (request.session.get("register_fio") or "").strip()
-            register_phone = (request.session.get("register_phone") or "").strip()
+            register_phone = normalize_phone(request.session.get("register_phone"))
             if not register_fio or not register_phone:
                 return RedirectResponse("/register/?error=yandex_signup", status_code=302)
 
@@ -149,50 +152,55 @@ async def yandex_login(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/yandex/callback/")
 async def yandex_callback(request: Request, db: Session = Depends(get_db)):
-    if request.query_params.get("error"):
-        return RedirectResponse("/login/?error=yandex_denied", status_code=302)
+    try:
+        if request.query_params.get("error"):
+            return RedirectResponse("/login/?error=yandex_denied", status_code=302)
 
-    code = request.query_params.get("code")
-    state = request.query_params.get("state")
-    expected_state = request.session.pop("yandex_oauth_state", None)
-    process = request.session.pop("yandex_oauth_process", "login")
-    next_url = safe_next_url(request.session.pop("yandex_oauth_next", "/"))
-    connect_user_id = request.session.pop("yandex_connect_user_id", None)
+        code = request.query_params.get("code")
+        state = request.query_params.get("state")
+        expected_state = request.session.pop("yandex_oauth_state", None)
+        process = request.session.pop("yandex_oauth_process", "login")
+        next_url = safe_next_url(request.session.pop("yandex_oauth_next", "/"))
+        connect_user_id = request.session.pop("yandex_connect_user_id", None)
 
-    if not code or not state or not expected_state or not secrets.compare_digest(state, expected_state):
-        return RedirectResponse("/login/?error=yandex_state", status_code=302)
+        if not code or not state or not expected_state or not secrets.compare_digest(state, expected_state):
+            return RedirectResponse("/login/?error=yandex_state", status_code=302)
 
-    token_data = exchange_code_for_token(code)
-    access_token = (token_data or {}).get("access_token")
-    if not access_token:
-        return RedirectResponse("/login/?error=yandex_token", status_code=302)
+        token_data = exchange_code_for_token(code)
+        access_token = (token_data or {}).get("access_token")
+        if not access_token:
+            return RedirectResponse("/login/?error=yandex_token", status_code=302)
 
-    profile = fetch_yandex_profile(access_token)
-    if not profile:
-        return RedirectResponse("/login/?error=yandex_profile", status_code=302)
+        profile = fetch_yandex_profile(access_token)
+        if not profile:
+            return RedirectResponse("/login/?error=yandex_profile", status_code=302)
 
-    register_fio = register_phone = None
-    if process == "signup":
-        register_fio = (request.session.pop("register_fio", None) or "").strip() or None
-        register_phone = (request.session.pop("register_phone", None) or "").strip() or None
-
-    user, err = complete_yandex_oauth(
-        db,
-        process=process,
-        profile=profile,
-        register_fio=register_fio,
-        register_phone=register_phone,
-        connect_user_id=connect_user_id,
-    )
-    if err or not user:
+        register_fio = register_phone = None
         if process == "signup":
-            return RedirectResponse("/register/?error=yandex_failed", status_code=302)
-        return RedirectResponse("/login/?error=yandex_failed", status_code=302)
+            register_fio = (request.session.pop("register_fio", None) or "").strip() or None
+            register_phone = normalize_phone(request.session.pop("register_phone", None)) or None
 
-    login_user(request, user)
-    if process == "connect":
-        request.session["integrations_success"] = "Яндекс привязан."
-    return RedirectResponse(next_url, status_code=302)
+        user, err = complete_yandex_oauth(
+            db,
+            process=process,
+            profile=profile,
+            register_fio=register_fio,
+            register_phone=register_phone,
+            connect_user_id=connect_user_id,
+        )
+        if err or not user:
+            if process == "signup":
+                return RedirectResponse("/register/?error=yandex_failed", status_code=302)
+            return RedirectResponse("/login/?error=yandex_failed", status_code=302)
+
+        login_user(request, user)
+        if process == "connect":
+            request.session["integrations_success"] = "Яндекс привязан."
+        return RedirectResponse(next_url, status_code=302)
+    except Exception:
+        logger.exception("Unhandled Yandex OAuth callback error")
+        db.rollback()
+        return RedirectResponse("/register/?error=yandex_failed", status_code=302)
 
 
 @router.get("/confirm-email/{token}/")

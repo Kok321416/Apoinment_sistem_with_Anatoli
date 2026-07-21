@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.auth.passwords import hash_password
+from app.deps import normalize_phone
 from app.models import Category, Consultant, Integration, SocialAccount, TelegramLoginRequest, User
 from app.services.bookings import parse_fio
 
@@ -35,7 +36,7 @@ def create_login_request(
         next_url=_safe_next_url(next_url),
         process=process,
         register_fio=(register_fio or "").strip() or None,
-        register_phone=(register_phone or "").strip() or None,
+        register_phone=normalize_phone(register_phone) or None,
         connect_user_id=connect_user_id,
         created_at=now,
         expires_at=now + timedelta(minutes=LOGIN_TTL_MINUTES),

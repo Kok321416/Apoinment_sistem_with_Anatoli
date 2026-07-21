@@ -6,16 +6,17 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 import httpx
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.passwords import hash_password
 from app.config import get_settings
+from app.deps import normalize_phone
 from app.models import Category, Consultant, SocialAccount, User
 from app.services.bookings import parse_fio
 from app.services.email_verification import ensure_email_address
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 YANDEX_AUTHORIZE_URL = "https://oauth.yandex.ru/authorize"
 YANDEX_TOKEN_URL = "https://oauth.yandex.ru/token"
@@ -28,10 +29,12 @@ def yandex_oauth_configured() -> bool:
 
 
 def yandex_redirect_uri() -> str:
+    settings = get_settings()
     return f"{settings.site_url.rstrip('/')}/accounts/yandex/callback/"
 
 
 def build_authorize_url(state: str) -> str:
+    settings = get_settings()
     params = {
         "response_type": "code",
         "client_id": settings.yandex_oauth_client_id,
@@ -43,6 +46,8 @@ def build_authorize_url(state: str) -> str:
 
 
 def exchange_code_for_token(code: str) -> dict | None:
+    settings = get_settings()
+    redirect_uri = yandex_redirect_uri()
     try:
         response = httpx.post(
             YANDEX_TOKEN_URL,
@@ -51,10 +56,18 @@ def exchange_code_for_token(code: str) -> dict | None:
                 "code": code,
                 "client_id": settings.yandex_oauth_client_id,
                 "client_secret": settings.yandex_oauth_client_secret,
+                "redirect_uri": redirect_uri,
             },
             timeout=15,
         )
-        response.raise_for_status()
+        if response.status_code >= 400:
+            logger.error(
+                "Yandex token exchange failed: status=%s body=%s redirect_uri=%s",
+                response.status_code,
+                response.text[:500],
+                redirect_uri,
+            )
+            return None
         return response.json()
     except Exception:
         logger.exception("Yandex token exchange failed")
@@ -86,6 +99,16 @@ def _profile_extra(profile: dict) -> dict:
     }
 
 
+def _unique_consultant_email(db: Session, email: str, user: User, yandex_id: str) -> str:
+    candidate = (email or user.email or f"yandex_{yandex_id}@yandex.user").strip().lower()
+    if not candidate:
+        candidate = f"yandex_{yandex_id}@yandex.user"
+    existing = db.query(Consultant).filter(Consultant.email == candidate).first()
+    if existing and existing.user_id != user.id:
+        candidate = f"yandex_{yandex_id}@yandex.user"
+    return candidate
+
+
 def _sync_user_email_from_yandex(db: Session, user: User, email: str) -> None:
     email = (email or "").strip().lower()
     if not email:
@@ -106,6 +129,7 @@ def _create_consultant_from_register(
     register_fio: str,
     register_phone: str,
     email: str,
+    yandex_id: str,
 ) -> None:
     if db.query(Consultant).filter(Consultant.user_id == user.id).first():
         return
@@ -120,8 +144,8 @@ def _create_consultant_from_register(
         first_name=first_name,
         last_name=last_name,
         middle_name=middle_name,
-        email=email or user.email or "",
-        phone=register_phone,
+        email=_unique_consultant_email(db, email, user, yandex_id),
+        phone=normalize_phone(register_phone),
         telegram_nickname="",
         category_of_specialist_id=category.id,
     ))
@@ -130,7 +154,6 @@ def _create_consultant_from_register(
 def _create_yandex_user(
     db: Session,
     yandex_id: str,
-    profile: dict,
     extra: dict,
 ) -> User:
     email = extra["default_email"]
@@ -198,32 +221,48 @@ def complete_yandex_oauth(
         SocialAccount.uid == yandex_id,
     ).first()
 
-    if process == "connect":
-        if not connect_user_id:
-            return None, "Требуется авторизация"
-        user = db.get(User, connect_user_id)
-        if not user:
-            return None, "Пользователь не найден"
-        err = _link_yandex_account(db, user, yandex_id, extra)
-        if err:
-            return None, err
-        db.commit()
-        return user, None
+    try:
+        if process == "connect":
+            if not connect_user_id:
+                return None, "Требуется авторизация"
+            user = db.get(User, connect_user_id)
+            if not user:
+                return None, "Пользователь не найден"
+            err = _link_yandex_account(db, user, yandex_id, extra)
+            if err:
+                return None, err
+            db.commit()
+            return user, None
 
-    if existing_social:
-        user = db.get(User, existing_social.user_id)
-        if not user:
-            return None, "Пользователь не найден"
-        _sync_user_email_from_yandex(db, user, extra["default_email"])
-        db.commit()
-        return user, None
+        if existing_social:
+            user = db.get(User, existing_social.user_id)
+            if not user:
+                return None, "Пользователь не найден"
+            _sync_user_email_from_yandex(db, user, extra["default_email"])
+            db.commit()
+            return user, None
 
-    if process == "signup":
-        if not register_fio or not register_phone:
-            return None, "Укажите ФИО и телефон перед регистрацией через Яндекс"
-        user = _create_yandex_user(db, yandex_id, profile, extra)
-        _create_consultant_from_register(db, user, register_fio, register_phone, extra["default_email"])
-        db.commit()
-        return user, None
+        if process == "signup":
+            if not register_fio or not register_phone:
+                return None, "Укажите ФИО и телефон перед регистрацией через Яндекс"
+            user = _create_yandex_user(db, yandex_id, extra)
+            _create_consultant_from_register(
+                db,
+                user,
+                register_fio,
+                register_phone,
+                extra["default_email"],
+                yandex_id,
+            )
+            db.commit()
+            return user, None
 
-    return None, "Аккаунт не найден. Сначала зарегистрируйтесь."
+        return None, "Аккаунт не найден. Сначала зарегистрируйтесь."
+    except IntegrityError as exc:
+        db.rollback()
+        logger.exception("Yandex OAuth DB integrity error during %s", process)
+        return None, "Не удалось создать аккаунт. Возможно, почта или телефон уже используются."
+    except Exception:
+        db.rollback()
+        logger.exception("Yandex OAuth failed during %s", process)
+        return None, "Внутренняя ошибка при регистрации через Яндекс. Попробуйте позже."

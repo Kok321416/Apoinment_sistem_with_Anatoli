@@ -106,6 +106,7 @@ async def password_required_middleware(request: Request, call_next):
         "/accounts/logout",
         "/accounts/confirm-email/",
         "/accounts/telegram/",
+        "/accounts/yandex/",
         "/static/",
         "/media/",
         "/api/",

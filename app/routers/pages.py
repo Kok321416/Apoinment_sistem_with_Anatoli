@@ -15,7 +15,7 @@ from app.auth.passwords import hash_password, verify_password
 from app.auth.session import get_current_user, login_user, logout_user
 from app.config import get_settings
 from app.database import get_db
-from app.deps import get_consultant, normalize_url
+from app.deps import get_consultant, normalize_phone, normalize_url
 from app.models import (
     Booking,
     Calendar,
@@ -262,7 +262,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
     if request.method == "POST":
         form = await request.form()
         fio = (form.get("fio") or "").strip()
-        phone = (form.get("phone") or "").strip()
+        phone = normalize_phone(form.get("phone"))
         auth_method = form.get("auth_method", "email")
         if not _form_csrf_ok(request, form):
             error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."

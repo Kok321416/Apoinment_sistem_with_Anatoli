@@ -35,3 +35,21 @@ def normalize_url(value: str | None) -> str | None:
     if value.startswith(("http://", "https://")):
         return value
     return f"https://{value.lstrip('/')}"
+
+
+def normalize_phone(phone: str | None) -> str:
+    """Store phone in E.164-ish form that fits consultants.phone (max 15 chars)."""
+    raw = (phone or "").strip()
+    if not raw:
+        return ""
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    if len(digits) == 11 and digits.startswith("8"):
+        digits = "7" + digits[1:]
+    if len(digits) == 11 and digits.startswith("7"):
+        return f"+{digits}"
+    if raw.startswith("+") and len(raw) <= 15:
+        return raw
+    if digits:
+        normalized = f"+{digits}"
+        return normalized[:15]
+    return raw[:15]

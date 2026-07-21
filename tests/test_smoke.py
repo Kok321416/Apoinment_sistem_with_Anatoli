@@ -98,7 +98,7 @@ def test_yandex_redirect_uri(monkeypatch):
     class S:
         site_url = "https://example.com"
 
-    monkeypatch.setattr(yandex_auth, "settings", S())
+    monkeypatch.setattr(yandex_auth, "get_settings", lambda: S())
     assert yandex_auth.yandex_redirect_uri() == "https://example.com/accounts/yandex/callback/"
 
 
@@ -110,11 +110,56 @@ def test_yandex_authorize_url_contains_client_id(monkeypatch):
         yandex_oauth_client_secret = "secret"
         site_url = "https://example.com"
 
-    monkeypatch.setattr(yandex_auth, "settings", S())
+    monkeypatch.setattr(yandex_auth, "get_settings", lambda: S())
     url = yandex_auth.build_authorize_url("state-token")
     assert "client_id=test-client-id" in url
     assert "state=state-token" in url
     assert "oauth.yandex.ru/authorize" in url
+
+
+def test_normalize_phone_fits_db_column():
+    from app.deps import normalize_phone
+
+    assert normalize_phone("+7 (999) 123-45-67") == "+79991234567"
+    assert len(normalize_phone("+7 (999) 123-45-67")) <= 15
+
+
+def test_yandex_signup_creates_consultant():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    import app.models  # noqa: F401 — register metadata
+    from app.database import Base
+    from app.models import Consultant, SocialAccount, User
+    from app.services.yandex_auth import complete_yandex_oauth
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+    profile = {
+        "id": 12345,
+        "login": "testuser",
+        "first_name": "Иван",
+        "last_name": "Иванов",
+        "display_name": "Иван Иванов",
+        "default_email": "ivan@yandex.ru",
+    }
+    user, err = complete_yandex_oauth(
+        db,
+        process="signup",
+        profile=profile,
+        register_fio="Иванов Иван Петрович",
+        register_phone="+7 (999) 123-45-67",
+        connect_user_id=None,
+    )
+    assert err is None
+    assert user is not None
+    consultant = db.query(Consultant).filter(Consultant.user_id == user.id).one()
+    assert consultant.phone == "+79991234567"
+    assert len(consultant.phone) <= 15
+    assert db.query(SocialAccount).filter(SocialAccount.provider == "yandex").count() == 1
+    db.close()
 
 
 def test_yandex_login_redirects_to_register_without_signup_data(monkeypatch):
