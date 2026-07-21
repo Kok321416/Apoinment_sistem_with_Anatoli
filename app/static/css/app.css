@@ -172,6 +172,30 @@
     gap: var(--space-2xl);
 }
 
+.app-list-grid--services {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-xl);
+}
+
+.app-list-grid--services .app-list-card {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.app-list-grid--services .app-list-card__actions {
+    margin-top: auto;
+}
+
+.app-list-grid--services .service-edit {
+    width: 100%;
+}
+
+.app-list-grid--services .service-edit form {
+    width: 100%;
+}
+
 .app-list-card {
     padding: var(--space-3xl);
     border-radius: var(--radius-xl);
@@ -353,6 +377,10 @@
 
 @media (max-width: 768px) {
     .app-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .app-list-grid--services {
         grid-template-columns: 1fr;
     }
 
