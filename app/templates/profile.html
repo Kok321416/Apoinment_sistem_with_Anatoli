@@ -24,6 +24,7 @@
 {% endif %}
 
 <form method="POST" action="/profile/" enctype="multipart/form-data" class="profile-layout" id="profileForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="update_profile">
 
     <section class="app-section profile-share">
@@ -133,6 +134,7 @@
             {% if 'telegram' in connected_providers %}
             <span class="badge badge--success mt-sm">Привязан</span>
             <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('Отвязать Телеграм? После этого можно привязать другой аккаунт.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="disconnect_telegram_login">
                 <button type="submit" class="btn btn--ghost btn--sm">Отвязать</button>
             </form>
@@ -149,6 +151,7 @@
             {% if primary_email_verified %}
             <span class="badge badge--success mt-sm">Привязана и подтверждена</span>
             <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('Отвязать почту? Потребуется подтвердить код из письма заново.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="disconnect_email_login">
                 <button type="submit" class="btn btn--ghost btn--sm">Отвязать</button>
             </form>

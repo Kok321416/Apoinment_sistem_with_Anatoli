@@ -20,6 +20,7 @@
 <section class="app-section">
     <h2 class="app-section__title">Добавить карточку</h2>
     <form method="POST" action="/clients/" class="stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="create">
         <div class="app-form-grid">
             <div class="form-field">

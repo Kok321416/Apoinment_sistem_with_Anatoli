@@ -10,22 +10,9 @@ from app.config import get_settings
 _MAX_SKEW_SECONDS = 300
 
 
-def _bot_secrets() -> list[str]:
-    settings = get_settings()
-    secrets: list[str] = []
-    if settings.bot_api_secret:
-        secrets.append(settings.bot_api_secret)
-    if settings.telegram_bot_token:
-        secrets.append(settings.telegram_bot_token)
-    return secrets
-
-
 def verify_bot_request(request: Request, body: bytes) -> bool:
     settings = get_settings()
-    secrets = _bot_secrets()
-    if not secrets:
-        return False
-
+    # When BOT_API_SECRET is set, only HMAC signature is accepted (not raw bot token).
     if settings.bot_api_secret:
         ts_raw = (request.headers.get("X-Bot-Timestamp") or "").strip()
         sig = (request.headers.get("X-Bot-Signature") or "").strip()
@@ -39,16 +26,12 @@ def verify_bot_request(request: Request, body: bytes) -> bool:
             return False
         message = f"{ts}.".encode() + body
         expected = hmac.new(settings.bot_api_secret.encode(), message, hashlib.sha256).hexdigest()
-        if hmac.compare_digest(expected, sig):
-            return True
+        return hmac.compare_digest(expected, sig)
 
     header_token = (request.headers.get("X-Bot-Token") or "").strip()
-    if not header_token:
+    if not header_token or not settings.telegram_bot_token:
         return False
-    for secret in secrets:
-        if hmac.compare_digest(header_token, secret):
-            return True
-    return False
+    return hmac.compare_digest(header_token, settings.telegram_bot_token)
 
 
 def sign_bot_body(body: bytes, secret: str) -> tuple[str, str]:

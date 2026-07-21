@@ -38,7 +38,15 @@ app.include_router(oauth.router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    from app.db_schema import get_schema_health
+
+    schema = get_schema_health()
+    if schema.get("degraded"):
+        return {
+            "status": "degraded",
+            "schema": schema,
+        }
+    return {"status": "ok", "schema": {"ready": schema.get("ready", False), "degraded": False}}
 
 
 @app.on_event("startup")

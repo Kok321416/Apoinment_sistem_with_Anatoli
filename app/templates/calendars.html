@@ -29,6 +29,7 @@
 <section class="app-section">
     <h2 class="app-section__title">Создать календарь</h2>
     <form method="POST" action="/calendars/" class="stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="create_calendar">
         <div class="app-form-grid">
             <div class="form-field">
@@ -66,9 +67,16 @@
                 <button type="button" class="btn btn--secondary btn--sm" data-link="{{ item.booking_url }}" onclick="copyBookingLink(this)">Скопировать</button>
                 <a href="/calendars/{{ calendar.id }}/" class="btn btn--ghost btn--sm">Управление</a>
                 <form method="POST" action="/calendars/" onsubmit="return confirm('Удалить календарь?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="delete_calendar">
                     <input type="hidden" name="calendar_id" value="{{ calendar.id }}">
                     <button type="submit" class="btn btn--danger btn--sm">Удалить</button>
+                </form>
+                <form method="POST" action="/calendars/">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="action" value="toggle_calendar">
+                    <input type="hidden" name="calendar_id" value="{{ calendar.id }}">
+                    <button type="submit" class="btn btn--secondary btn--sm">{% if calendar.is_active %}Выключить{% else %}Включить{% endif %}</button>
                 </form>
             </div>
         </article>

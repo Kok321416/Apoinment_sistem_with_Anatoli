@@ -39,7 +39,6 @@ jobs:
         host: ${{ secrets.DEPLOY_HOST || secrets.VPS_HOST }}
         username: ${{ secrets.DEPLOY_USER || secrets.VPS_USER }}
         key: ${{ secrets.DEPLOY_SSH_KEY || secrets.VPS_SSH_KEY }}
-        envs: TELEGRAM_BOT_TOKEN,SITE_URL
         script: |
           set -e
           APP_DIR="${{ secrets.DEPLOY_PATH || secrets.APP_DIR }}"
@@ -52,6 +51,7 @@ jobs:
           chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh scripts/stop_bot.sh 2>/dev/null || true
 
           # Код на сервер попадает через основной workflow (deploy.yml, SCP). git pull не делаем — без учётки даёт "could not read Username".
+          # Env берём только из серверного .env (load_dotenv). Не экспортируем пустые TELEGRAM_BOT_TOKEN/SITE_URL из Actions.
 
           export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
           if [ ! -d venv ]; then
@@ -61,10 +61,6 @@ jobs:
           . venv/bin/activate
           pip install -q -r requirements.txt
           pip install -q --upgrade certifi
-
-          # Django загружает .env сам через load_dotenv() в appoiment_system/settings.py.
-          export TELEGRAM_BOT_TOKEN
-          export SITE_URL
 
           if [ -x scripts/migrate.sh ]; then
             ./scripts/migrate.sh

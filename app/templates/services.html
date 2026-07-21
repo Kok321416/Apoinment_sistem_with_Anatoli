@@ -23,6 +23,7 @@
     <div class="alert alert--warning">Сначала создайте календарь на странице «Календари», затем привяжите к нему услугу.</div>
     {% else %}
     <form method="POST" action="/services/" class="stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="create_service">
 
         <div class="form-field">
@@ -88,7 +89,43 @@
                 {% endif %}
             </div>
             <div class="app-list-card__actions">
+                <details class="service-edit">
+                    <summary class="btn btn--ghost btn--sm">Изменить</summary>
+                    <form method="POST" action="/services/" class="stack mt-lg">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="action" value="update_service">
+                        <input type="hidden" name="service_id" value="{{ service.id }}">
+                        <div class="form-field">
+                            <label class="form-field__label">Календарь</label>
+                            <select class="input" name="calendar_id" required>
+                                {% for calendar in calendars %}
+                                <option value="{{ calendar.id }}" {% if service.calendar_id == calendar.id %}selected{% endif %}>{{ calendar.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-field__label">Название</label>
+                            <input class="input" type="text" name="name" value="{{ service.name }}" required>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-field__label">Описание</label>
+                            <textarea class="textarea" name="description" rows="2">{{ service.description or '' }}</textarea>
+                        </div>
+                        <div class="app-form-grid">
+                            <div class="form-field">
+                                <label class="form-field__label">Минуты</label>
+                                <input class="input" type="number" name="duration_minutes" value="{{ service.duration_minutes }}" min="15" step="15" required>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-field__label">Цена</label>
+                                <input class="input" type="number" name="price" value="{{ service.price or '' }}" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn--primary btn--sm">Сохранить</button>
+                    </form>
+                </details>
                 <form method="POST" action="/services/">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="toggle_service">
                     <input type="hidden" name="service_id" value="{{ service.id }}">
                     <button type="submit" class="btn btn--secondary btn--sm">
@@ -96,6 +133,7 @@
                     </button>
                 </form>
                 <form method="POST" action="/services/" onsubmit="return confirm('Удалить услугу?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="delete_service">
                     <input type="hidden" name="service_id" value="{{ service.id }}">
                     <button type="submit" class="btn btn--danger btn--sm">Удалить</button>

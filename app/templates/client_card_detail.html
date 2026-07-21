@@ -21,6 +21,7 @@
 <section class="app-section">
     <h2 class="app-section__title">Данные и контакты</h2>
     <form method="POST" action="/clients/{{ card.id }}/" class="stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="update">
         <div class="form-field">
             <label class="form-field__label" for="card_name">Имя</label>
@@ -84,6 +85,7 @@
 </section>
 
 <form method="POST" action="/clients/{{ card.id }}/" onsubmit="return confirm('Удалить карточку?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="action" value="delete">
     <button type="submit" class="btn btn--danger">Удалить карточку</button>
 </form>

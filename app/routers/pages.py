@@ -177,7 +177,7 @@ async def robots_txt():
 @router.get("/sitemap.xml")
 async def sitemap_xml():
     base = settings.site_url.rstrip("/")
-    urls = ["/", "/guide/", "/privacy/", "/terms/", "/login/", "/register/"]
+    urls = ["/", "/guide/", "/privacy/", "/terms/", "/login/", "/register/", "/book/"]
     body = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
@@ -357,7 +357,9 @@ async def logout_page(request: Request):
     form = await request.form()
     if _form_csrf_ok(request, form):
         logout_user(request)
-    return RedirectResponse("/", status_code=302)
+        return RedirectResponse("/", status_code=302)
+    # CSRF failed: do not clear session (avoid forged logout), stay in cabinet
+    return RedirectResponse("/dashboard/", status_code=302)
 
 
 @router.get("/calendars/")
@@ -370,27 +372,59 @@ async def calendars_page(request: Request, db: Session = Depends(get_db)):
     success = error = None
     if request.method == "POST":
         form = await request.form()
-        action = form.get("action")
-        if action == "create_calendar":
-            name = form.get("name")
-            color = form.get("color", "#667eea")
-            if name:
-                db.add(Calendar(consultant_id=consultant.id, name=name, color=color))
-                db.commit()
-                success = "Календарь создан успешно!"
-            else:
-                error = "Укажите название календаря"
-        elif action == "delete_calendar":
-            cal_id = _form_int(form, "calendar_id")
-            if cal_id is None:
-                error = "Некорректный ID календаря"
-            else:
-                cal = db.query(Calendar).filter(Calendar.id == cal_id, Calendar.consultant_id == consultant.id).first()
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+        else:
+            action = form.get("action")
+            if action == "create_calendar":
+                name = form.get("name")
+                color = form.get("color", "#667eea")
+                if name:
+                    db.add(Calendar(consultant_id=consultant.id, name=name, color=color))
+                    db.commit()
+                    success = "Календарь создан успешно!"
+                else:
+                    error = "Укажите название календаря"
+            elif action == "toggle_calendar":
+                cal_id = _form_int(form, "calendar_id")
+                cal = (
+                    db.query(Calendar).filter(Calendar.id == cal_id, Calendar.consultant_id == consultant.id).first()
+                    if cal_id is not None else None
+                )
                 if cal:
-                    ok, msg = delete_calendar(db, cal)
-                    success, error = (msg, None) if ok else (None, msg)
+                    cal.is_active = not cal.is_active
+                    db.commit()
+                    success = "Статус календаря изменён"
                 else:
                     error = "Календарь не найден"
+            elif action == "update_calendar":
+                cal_id = _form_int(form, "calendar_id")
+                cal = (
+                    db.query(Calendar).filter(Calendar.id == cal_id, Calendar.consultant_id == consultant.id).first()
+                    if cal_id is not None else None
+                )
+                name = (form.get("name") or "").strip()
+                color = form.get("color") or "#667eea"
+                if not cal:
+                    error = "Календарь не найден"
+                elif not name:
+                    error = "Укажите название календаря"
+                else:
+                    cal.name = name
+                    cal.color = color
+                    db.commit()
+                    success = "Календарь обновлён"
+            elif action == "delete_calendar":
+                cal_id = _form_int(form, "calendar_id")
+                if cal_id is None:
+                    error = "Некорректный ID календаря"
+                else:
+                    cal = db.query(Calendar).filter(Calendar.id == cal_id, Calendar.consultant_id == consultant.id).first()
+                    if cal:
+                        ok, msg = delete_calendar(db, cal)
+                        success, error = (msg, None) if ok else (None, msg)
+                    else:
+                        error = "Календарь не найден"
     calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).order_by(Calendar.name).all()
     slot_counts = {}
     if calendars:
@@ -427,32 +461,52 @@ async def calendar_detail(request: Request, calendar_id: int, db: Session = Depe
     success = error = None
     if request.method == "POST":
         form = await request.form()
-        action = form.get("action")
-        if action == "add_time_slot":
-            day = _form_int(form, "day_of_week")
-            start_t = _parse_time(form.get("start_time"))
-            end_t = _parse_time(form.get("end_time"))
-            if day is None or start_t is None or end_t is None:
-                error = "Заполните день недели и корректное время"
-            else:
-                db.add(TimeSlot(
-                    calendar_id=calendar.id, day_of_week=day,
-                    start_time=start_t,
-                    end_time=end_t,
-                ))
-                db.commit()
-                success = "Временное окно добавлено!"
-        elif action == "delete_time_slot":
-            slot_id = _form_int(form, "slot_id")
-            slot = (
-                db.query(TimeSlot).filter(TimeSlot.id == slot_id, TimeSlot.calendar_id == calendar.id).first()
-                if slot_id is not None else None
-            )
-            if slot:
-                ok, msg = delete_time_slot(db, slot)
-                success, error = (msg, None) if ok else (None, msg)
-            else:
-                error = "Временное окно не найдено"
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+        else:
+            action = form.get("action")
+            if action == "add_time_slot":
+                day = _form_int(form, "day_of_week")
+                start_t = _parse_time(form.get("start_time"))
+                end_t = _parse_time(form.get("end_time"))
+                if day is None or start_t is None or end_t is None:
+                    error = "Заполните день недели и корректное время"
+                else:
+                    db.add(TimeSlot(
+                        calendar_id=calendar.id, day_of_week=day,
+                        start_time=start_t,
+                        end_time=end_t,
+                    ))
+                    db.commit()
+                    success = "Временное окно добавлено!"
+            elif action == "update_time_slot":
+                slot_id = _form_int(form, "slot_id")
+                start_t = _parse_time(form.get("start_time"))
+                end_t = _parse_time(form.get("end_time"))
+                slot = (
+                    db.query(TimeSlot).filter(TimeSlot.id == slot_id, TimeSlot.calendar_id == calendar.id).first()
+                    if slot_id is not None else None
+                )
+                if not slot or start_t is None or end_t is None:
+                    error = "Некорректные данные окна"
+                elif start_t >= end_t:
+                    error = "Время начала должно быть раньше окончания"
+                else:
+                    slot.start_time = start_t
+                    slot.end_time = end_t
+                    db.commit()
+                    success = "Окно обновлено"
+            elif action == "delete_time_slot":
+                slot_id = _form_int(form, "slot_id")
+                slot = (
+                    db.query(TimeSlot).filter(TimeSlot.id == slot_id, TimeSlot.calendar_id == calendar.id).first()
+                    if slot_id is not None else None
+                )
+                if slot:
+                    ok, msg = delete_time_slot(db, slot)
+                    success, error = (msg, None) if ok else (None, msg)
+                else:
+                    error = "Временное окно не найдено"
     time_slots_by_day = [
         db.query(TimeSlot).filter(TimeSlot.calendar_id == calendar.id, TimeSlot.day_of_week == d).order_by(TimeSlot.start_time).all()
         for d in range(7)
@@ -475,6 +529,11 @@ async def calendar_settings(request: Request, calendar_id: int, db: Session = De
         return RedirectResponse("/calendars/", status_code=302)
     if request.method == "POST":
         form = await request.form()
+        if not _form_csrf_ok(request, form):
+            return templates.TemplateResponse(
+                "calendar_settings_edit.html",
+                page_context(request, db, user, calendar=calendar, error="Ошибка безопасности. Обновите страницу."),
+            )
         calendar.break_between_services_minutes = _form_int(form, "break_between_services_minutes", 0) or 0
         calendar.book_ahead_hours = _form_int(form, "book_ahead_hours", 24) or 24
         calendar.max_services_per_day = _form_int(form, "max_services_per_day", 0) or 0
@@ -495,50 +554,79 @@ async def services_page(request: Request, db: Session = Depends(get_db)):
     success = error = None
     if request.method == "POST":
         form = await request.form()
-        action = form.get("action")
-        if action == "create_service":
-            name = form.get("name")
-            calendar_id = _form_int(form, "calendar_id")
-            calendar = (
-                db.query(Calendar).filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id).first()
-                if calendar_id is not None else None
-            )
-            if not name:
-                error = "Укажите название услуги"
-            elif not calendar:
-                error = "Выберите календарь для услуги"
-            else:
-                db.add(Service(
-                    consultant_id=consultant.id,
-                    calendar_id=calendar.id,
-                    name=name,
-                    description=form.get("description", ""),
-                    duration_minutes=_form_int(form, "duration_minutes", 60) or 60,
-                    price=form.get("price") or None,
-                ))
-                db.commit()
-                success = "Услуга создана успешно!"
-        elif action == "toggle_service":
-            svc_id = _form_int(form, "service_id")
-            svc = (
-                db.query(Service).filter(Service.id == svc_id, Service.consultant_id == consultant.id).first()
-                if svc_id is not None else None
-            )
-            if svc:
-                svc.is_active = not svc.is_active
-                db.commit()
-                success = "Статус услуги изменен"
-        elif action == "delete_service":
-            svc_id = _form_int(form, "service_id")
-            svc = (
-                db.query(Service).filter(Service.id == svc_id, Service.consultant_id == consultant.id).first()
-                if svc_id is not None else None
-            )
-            if svc:
-                ok, msg = delete_service(db, svc)
-                success, error = (msg, None) if ok else (None, msg)
-            else:
-                error = "Услуга не найдена"
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+        else:
+            action = form.get("action")
+            if action == "create_service":
+                name = form.get("name")
+                calendar_id = _form_int(form, "calendar_id")
+                calendar = (
+                    db.query(Calendar).filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id).first()
+                    if calendar_id is not None else None
+                )
+                if not name:
+                    error = "Укажите название услуги"
+                elif not calendar:
+                    error = "Выберите календарь для услуги"
+                else:
+                    db.add(Service(
+                        consultant_id=consultant.id,
+                        calendar_id=calendar.id,
+                        name=name,
+                        description=form.get("description", ""),
+                        duration_minutes=_form_int(form, "duration_minutes", 60) or 60,
+                        price=form.get("price") or None,
+                    ))
+                    db.commit()
+                    success = "Услуга создана успешно!"
+            elif action == "update_service":
+                svc_id = _form_int(form, "service_id")
+                svc = (
+                    db.query(Service).filter(Service.id == svc_id, Service.consultant_id == consultant.id).first()
+                    if svc_id is not None else None
+                )
+                calendar_id = _form_int(form, "calendar_id")
+                calendar = (
+                    db.query(Calendar).filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id).first()
+                    if calendar_id is not None else None
+                )
+                name = (form.get("name") or "").strip()
+                if not svc:
+                    error = "Услуга не найдена"
+                elif not name:
+                    error = "Укажите название услуги"
+                elif not calendar:
+                    error = "Выберите календарь"
+                else:
+                    svc.name = name
+                    svc.description = form.get("description") or ""
+                    svc.duration_minutes = _form_int(form, "duration_minutes", 60) or 60
+                    svc.price = form.get("price") or None
+                    svc.calendar_id = calendar.id
+                    db.commit()
+                    success = "Услуга обновлена"
+            elif action == "toggle_service":
+                svc_id = _form_int(form, "service_id")
+                svc = (
+                    db.query(Service).filter(Service.id == svc_id, Service.consultant_id == consultant.id).first()
+                    if svc_id is not None else None
+                )
+                if svc:
+                    svc.is_active = not svc.is_active
+                    db.commit()
+                    success = "Статус услуги изменен"
+            elif action == "delete_service":
+                svc_id = _form_int(form, "service_id")
+                svc = (
+                    db.query(Service).filter(Service.id == svc_id, Service.consultant_id == consultant.id).first()
+                    if svc_id is not None else None
+                )
+                if svc:
+                    ok, msg = delete_service(db, svc)
+                    success, error = (msg, None) if ok else (None, msg)
+                else:
+                    error = "Услуга не найдена"
     services = db.query(Service).filter(Service.consultant_id == consultant.id).order_by(Service.name).all()
     calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).order_by(Calendar.name).all()
     return templates.TemplateResponse(
@@ -578,15 +666,22 @@ async def public_booking(request: Request, calendar_id: int, db: Session = Depen
 
 @router.get("/book/{calendar_id}/slots/")
 async def available_slots(
+    request: Request,
     calendar_id: int,
     service_id: int,
     date: str,
     exclude_booking_id: int | None = None,
     db: Session = Depends(get_db),
 ):
+    user = _optional_user(request, db)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
     calendar = db.query(Calendar).filter(Calendar.id == calendar_id, Calendar.is_active.is_(True)).first()
     if not calendar:
         return JSONResponse({"error": "Календарь не найден"}, status_code=404)
+    consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
+    if not consultant or calendar.consultant_id != consultant.id:
+        return JSONResponse({"error": "Forbidden"}, status_code=403)
     service = db.query(Service).filter(Service.id == service_id, Service.consultant_id == calendar.consultant_id, Service.is_active.is_(True)).first()
     if not service:
         return JSONResponse({"error": "Услуга не найдена"}, status_code=404)
@@ -610,37 +705,40 @@ async def specialist_bookings(request: Request, db: Session = Depends(get_db)):
     success = error = None
     if request.method == "POST":
         form = await request.form()
-        booking_id = _form_int(form, "booking_id")
-        booking = (
-            db.query(Booking).filter(Booking.id == booking_id, Booking.calendar_id.in_([c.id for c in calendars])).first()
-            if booking_id is not None else None
-        )
-        if booking:
-            old_status = booking.status
-            action = form.get("action")
-            if action == "confirm":
-                booking.status = "confirmed"
-                db.commit()
-                notify_booking_status_changed(db, booking, old_status)
-            elif action == "cancel":
-                booking.status = "cancelled"
-                db.commit()
-                notify_booking_status_changed(db, booking, old_status)
-            elif action == "complete":
-                booking.status = "completed"
-                db.commit()
-                notify_booking_status_changed(db, booking, old_status)
-            elif action == "reschedule":
-                new_date = _parse_date(form.get("new_date"))
-                new_time = (form.get("new_time") or "").strip()
-                if not new_date or not new_time:
-                    error = "Укажите новую дату и время"
-                else:
-                    err = reschedule_booking(db, booking, new_date, new_time)
-                    if err:
-                        error = err
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+        else:
+            booking_id = _form_int(form, "booking_id")
+            booking = (
+                db.query(Booking).filter(Booking.id == booking_id, Booking.calendar_id.in_([c.id for c in calendars])).first()
+                if booking_id is not None else None
+            )
+            if booking:
+                old_status = booking.status
+                action = form.get("action")
+                if action == "confirm":
+                    booking.status = "confirmed"
+                    db.commit()
+                    notify_booking_status_changed(db, booking, old_status)
+                elif action == "cancel":
+                    booking.status = "cancelled"
+                    db.commit()
+                    notify_booking_status_changed(db, booking, old_status)
+                elif action == "complete":
+                    booking.status = "completed"
+                    db.commit()
+                    notify_booking_status_changed(db, booking, old_status)
+                elif action == "reschedule":
+                    new_date = _parse_date(form.get("new_date"))
+                    new_time = (form.get("new_time") or "").strip()
+                    if not new_date or not new_time:
+                        error = "Укажите новую дату и время"
                     else:
-                        success = "Запись перенесена"
+                        err = reschedule_booking(db, booking, new_date, new_time)
+                        if err:
+                            error = err
+                        else:
+                            success = "Запись перенесена"
         mark_past_bookings_completed(db, calendars)
     today = date.today()
     now = datetime.now().time()
@@ -671,12 +769,18 @@ async def calendar_events(request: Request, db: Session = Depends(get_db)):
     consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
     if not consultant:
         return {"success": False, "events": []}
-    year = int(request.query_params.get("year", 0))
-    month = int(request.query_params.get("month", 0))
-    if not year or not month:
+    try:
+        year = int(request.query_params.get("year", 0))
+        month = int(request.query_params.get("month", 0))
+    except (TypeError, ValueError):
+        return {"success": False, "events": []}
+    if not year or not (1 <= month <= 12):
         return {"success": False, "events": []}
     from calendar import monthrange
-    _, last_day = monthrange(year, month)
+    try:
+        _, last_day = monthrange(year, month)
+    except ValueError:
+        return {"success": False, "events": []}
     start_date = date(year, month, 1)
     end_date = date(year, month, last_day)
     cal_ids = [c.id for c in db.query(Calendar).filter(Calendar.consultant_id == consultant.id).all()]
@@ -702,68 +806,71 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
     success = error = None
     if request.method == "POST":
         form = await request.form()
-        action = form.get("action")
-        if action == "disconnect_telegram_login":
-            tg_accounts = db.query(SocialAccount).filter(
-                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
-            ).all()
-            email_ok = db.query(EmailAddress).filter(
-                EmailAddress.user_id == user.id, EmailAddress.verified.is_(True)
-            ).first()
-            if not tg_accounts:
-                error = "Телеграм для входа не привязан."
-            elif not user.has_usable_password and not email_ok:
-                error = "Нельзя отвязать Телеграм: сначала подтвердите почту или задайте пароль, иначе вход будет недоступен."
-            else:
-                for acc in tg_accounts:
-                    db.delete(acc)
-                db.commit()
-                success = "Телеграм отвязан. Можно привязать другой аккаунт."
-        elif action == "disconnect_email_login":
-            rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
-            has_tg = db.query(SocialAccount).filter(
-                SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
-            ).first()
-            if not rows or not any(r.verified for r in rows):
-                error = "Подтверждённая почта не привязана."
-            elif not user.has_usable_password and not has_tg:
-                error = "Нельзя отвязать почту: сначала привяжите Телеграм или задайте пароль."
-            else:
-                for row in rows:
-                    row.verified = False
-                db.commit()
-                success = "Почта отвязана. Можно подтвердить ту же или другую почту заново."
-        elif action == "update_profile":
-            consultant.first_name = form.get("first_name", "")
-            consultant.last_name = form.get("last_name", "")
-            consultant.middle_name = form.get("middle_name", "")
-            consultant.phone = form.get("phone", "")
-            consultant.telegram_nickname = form.get("telegram_nickname", "")
-            consultant.email = form.get("email", "")
-            consultant.profile_description = form.get("profile_description", "")
-            consultant.video_link = normalize_url(form.get("video_link"))
-            consultant.social_instagram = normalize_url(form.get("social_instagram"))
-            consultant.social_facebook = normalize_url(form.get("social_facebook"))
-            consultant.social_vk = normalize_url(form.get("social_vk"))
-            consultant.social_telegram = normalize_url(form.get("social_telegram"))
-            consultant.social_youtube = normalize_url(form.get("social_youtube"))
-            consultant.website = normalize_url(form.get("website"))
-            photo_err = _save_profile_photo(consultant, form.get("profile_photo"))
-            if photo_err:
-                error = photo_err
-            else:
-                try:
-                    from app.services.public_client import ensure_public_slug
-
-                    ensure_public_slug(db, consultant)
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+        else:
+            action = form.get("action")
+            if action == "disconnect_telegram_login":
+                tg_accounts = db.query(SocialAccount).filter(
+                    SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+                ).all()
+                email_ok = db.query(EmailAddress).filter(
+                    EmailAddress.user_id == user.id, EmailAddress.verified.is_(True)
+                ).first()
+                if not tg_accounts:
+                    error = "Телеграм для входа не привязан."
+                elif not user.has_usable_password and not email_ok:
+                    error = "Нельзя отвязать Телеграм: сначала подтвердите почту или задайте пароль, иначе вход будет недоступен."
+                else:
+                    for acc in tg_accounts:
+                        db.delete(acc)
                     db.commit()
-                    success = "Профиль успешно обновлен!"
-                except IntegrityError:
-                    db.rollback()
-                    error = "Ошибка при обновлении: почта уже используется другим аккаунтом"
-                except Exception as e:
-                    db.rollback()
-                    error = f"Ошибка при обновлении: {e}"
+                    success = "Телеграм отвязан. Можно привязать другой аккаунт."
+            elif action == "disconnect_email_login":
+                rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
+                has_tg = db.query(SocialAccount).filter(
+                    SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
+                ).first()
+                if not rows or not any(r.verified for r in rows):
+                    error = "Подтверждённая почта не привязана."
+                elif not user.has_usable_password and not has_tg:
+                    error = "Нельзя отвязать почту: сначала привяжите Телеграм или задайте пароль."
+                else:
+                    for row in rows:
+                        row.verified = False
+                    db.commit()
+                    success = "Почта отвязана. Можно подтвердить ту же или другую почту заново."
+            elif action == "update_profile":
+                consultant.first_name = form.get("first_name", "")
+                consultant.last_name = form.get("last_name", "")
+                consultant.middle_name = form.get("middle_name", "")
+                consultant.phone = form.get("phone", "")
+                consultant.telegram_nickname = form.get("telegram_nickname", "")
+                consultant.email = form.get("email", "")
+                consultant.profile_description = form.get("profile_description", "")
+                consultant.video_link = normalize_url(form.get("video_link"))
+                consultant.social_instagram = normalize_url(form.get("social_instagram"))
+                consultant.social_facebook = normalize_url(form.get("social_facebook"))
+                consultant.social_vk = normalize_url(form.get("social_vk"))
+                consultant.social_telegram = normalize_url(form.get("social_telegram"))
+                consultant.social_youtube = normalize_url(form.get("social_youtube"))
+                consultant.website = normalize_url(form.get("website"))
+                photo_err = _save_profile_photo(consultant, form.get("profile_photo"))
+                if photo_err:
+                    error = photo_err
+                else:
+                    try:
+                        from app.services.public_client import ensure_public_slug
+
+                        ensure_public_slug(db, consultant)
+                        db.commit()
+                        success = "Профиль успешно обновлен!"
+                    except IntegrityError:
+                        db.rollback()
+                        error = "Ошибка при обновлении: почта уже используется другим аккаунтом"
+                    except Exception as e:
+                        db.rollback()
+                        error = f"Ошибка при обновлении: {e}"
     from app.services.public_client import ensure_public_slug, specialist_public_url
 
     slug = ensure_public_slug(db, consultant)
@@ -789,7 +896,9 @@ async def client_cards_list(request: Request, db: Session = Depends(get_db)):
     success = error = None
     if request.method == "POST":
         form = await request.form()
-        if form.get("action") == "create":
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+        elif form.get("action") == "create":
             db.add(ClientCard(
                 consultant_id=consultant.id,
                 name=(form.get("name") or "").strip() or None,
@@ -842,7 +951,9 @@ async def client_card_detail(request: Request, card_id: int, db: Session = Depen
     success = error = None
     if request.method == "POST":
         form = await request.form()
-        if form.get("action") == "update":
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+        elif form.get("action") == "update":
             card.name = (form.get("name") or "").strip() or None
             card.email = (form.get("email") or "").strip() or None
             card.phone = (form.get("phone") or "").strip() or None
@@ -881,7 +992,11 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
     email_pending = request.session.get("integrations_email_pending") or ""
     if request.method == "POST":
         form = await request.form()
-        action = form.get("action")
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+            action = None
+        else:
+            action = form.get("action")
         if action == "toggle_telegram":
             integration.telegram_enabled = not integration.telegram_enabled
             db.commit()

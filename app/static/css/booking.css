@@ -399,6 +399,99 @@
     background: var(--glass-medium);
 }
 
+/* Dark booking calendar scene (client) */
+.book-cal-scene {
+    padding: var(--space-2xl);
+    border-radius: var(--radius-xl);
+    background:
+        radial-gradient(ellipse 80% 60% at 20% 0%, rgba(73, 209, 255, 0.12), transparent 55%),
+        radial-gradient(ellipse 70% 50% at 90% 20%, rgba(59, 228, 200, 0.08), transparent 50%),
+        linear-gradient(165deg, var(--bg-800) 0%, var(--bg-900) 100%);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-inner);
+}
+
+.book-cal-scene__title {
+    margin: var(--space-lg) 0 0;
+    font-size: var(--font-size-h1);
+    color: var(--text-primary);
+}
+
+.book-cal-scene__meta {
+    margin-top: var(--space-sm);
+    color: var(--text-secondary);
+}
+
+.book-cal-layout {
+    display: grid;
+    grid-template-columns: minmax(200px, 0.9fr) minmax(260px, 1.1fr) minmax(240px, 1fr);
+    gap: var(--space-2xl);
+    margin-top: var(--space-3xl);
+    align-items: start;
+}
+
+.book-cal-panel {
+    padding: var(--space-2xl);
+    border-radius: var(--radius-lg);
+    background: var(--glass-medium);
+    border: 1px solid var(--border-subtle);
+}
+
+.book-cal-panel__title {
+    margin: 0 0 var(--space-lg);
+    font-size: var(--font-size-h3);
+}
+
+.book-cal-panel--month .booking-cal__day {
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    width: 100%;
+}
+
+.booking-cal__day.is-workday:not(.is-selected)::not(.is-past)::after {
+    content: "";
+    display: block;
+    width: 5px;
+    height: 5px;
+    margin-top: 2px;
+    border-radius: 50%;
+    background: var(--accent-success);
+}
+
+.book-cal-legend {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--text-muted);
+}
+
+.book-cal-legend__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-success);
+}
+
+.book-windows__label {
+    margin: 0 0 var(--space-sm);
+    font-size: var(--font-size-body-sm);
+    color: var(--text-secondary);
+}
+
+.book-windows__list {
+    margin: 0;
+    padding-left: var(--space-xl);
+    color: var(--text-primary);
+}
+
+@media (max-width: 1024px) {
+    .book-cal-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
 .is-hidden {
     display: none !important;
 }

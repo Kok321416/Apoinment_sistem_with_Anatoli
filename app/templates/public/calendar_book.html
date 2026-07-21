@@ -7,10 +7,16 @@
 {% endblock %}
 
 {% block booking_content %}
-<div class="public-spec">
+<div
+    class="book-cal-scene"
+    id="bookingRoot"
+    data-slots-url="/s/{{ slug }}/c/{{ calendar.id }}/slots/"
+    data-weekly-windows='{{ weekly_windows_json|safe }}'
+    data-today="{{ today }}"
+>
     <p class="text-caption"><a class="link-accent" href="/s/{{ slug }}/">← К профилю специалиста</a></p>
-    <h1 class="text-h1 mt-lg">{{ calendar.name }}</h1>
-    <p class="text-body text-muted">Специалист: {{ consultant.first_name }} {{ consultant.last_name }} · клиент: {{ client_name }}</p>
+    <h1 class="book-cal-scene__title">{{ calendar.name }}</h1>
+    <p class="book-cal-scene__meta">Специалист: {{ consultant.first_name }} {{ consultant.last_name }} · клиент: {{ client_name }}</p>
 
     {% if error %}
     <div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
@@ -19,89 +25,66 @@
     {% if not services %}
     <div class="booking-empty mt-3xl">В этом календаре пока нет активных услуг.</div>
     {% else %}
-    <form method="POST" action="/s/{{ slug }}/c/{{ calendar.id }}/" class="stack mt-3xl" id="publicBookForm">
-        <div class="form-field">
-            <label class="form-field__label" for="service_id">Услуга</label>
-            <select class="input" id="service_id" name="service_id" required>
-                <option value="">Выберите услугу</option>
-                {% for service in services %}
-                <option value="{{ service.id }}" data-duration="{{ service.duration_minutes }}">
-                    {{ service.name }} · {{ service.duration_minutes }} мин{% if service.price %} · {{ service.price }} ₽{% endif %}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-field">
-            <label class="form-field__label" for="booking_date">Дата</label>
-            <input class="input" type="date" id="booking_date" name="booking_date" min="{{ today }}" required>
-        </div>
-        <input type="hidden" name="booking_time" id="booking_time" value="">
-        <input type="hidden" name="booking_end_time" id="booking_end_time" value="">
-        <div class="form-field">
-            <span class="form-field__label">Время</span>
-            <div id="slotsGrid" class="slots-grid" aria-live="polite"></div>
-            <p class="form-field__hint" id="slotsHint">Выберите услугу и дату, чтобы увидеть слоты.</p>
-        </div>
-        <button type="submit" class="btn btn--primary" id="bookSubmit" disabled>Записаться</button>
+    <form method="POST" action="/s/{{ slug }}/c/{{ calendar.id }}/" class="book-cal-layout" id="publicBookForm">
+        <section class="book-cal-panel book-cal-panel--service">
+            <h2 class="book-cal-panel__title">Услуга</h2>
+            <div class="form-field">
+                <label class="form-field__label" for="service_id">Выберите услугу</label>
+                <select class="input" id="service_id" name="service_id" required>
+                    <option value="">Выберите услугу</option>
+                    {% for service in services %}
+                    <option value="{{ service.id }}" data-duration="{{ service.duration_minutes }}">
+                        {{ service.name }} · {{ service.duration_minutes }} мин{% if service.price %} · {{ service.price }} ₽{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </section>
+
+        <section class="book-cal-panel book-cal-panel--month" aria-label="Календарь">
+            <div class="booking-cal">
+                <div class="booking-cal__header">
+                    <button type="button" class="booking-cal__nav" id="calPrev" aria-label="Предыдущий месяц">‹</button>
+                    <div class="booking-cal__month" id="calMonthYear"></div>
+                    <button type="button" class="booking-cal__nav" id="calNext" aria-label="Следующий месяц">›</button>
+                </div>
+                <div class="booking-cal__grid booking-cal__weekdays" aria-hidden="true">
+                    <span class="booking-cal__weekday">Пн</span>
+                    <span class="booking-cal__weekday">Вт</span>
+                    <span class="booking-cal__weekday">Ср</span>
+                    <span class="booking-cal__weekday">Чт</span>
+                    <span class="booking-cal__weekday">Пт</span>
+                    <span class="booking-cal__weekday">Сб</span>
+                    <span class="booking-cal__weekday">Вс</span>
+                </div>
+                <div class="booking-cal__grid" id="calDays"></div>
+            </div>
+            <p class="book-cal-legend text-caption mt-lg">
+                <span class="book-cal-legend__dot"></span> дни с окнами приёма специалиста
+            </p>
+        </section>
+
+        <section class="book-cal-panel book-cal-panel--day">
+            <h2 class="book-cal-panel__title" id="dayPanelTitle">Выберите дату</h2>
+            <div id="windowsBlock" class="book-windows" hidden>
+                <p class="book-windows__label">Окна приёма</p>
+                <ul id="windowsList" class="book-windows__list"></ul>
+            </div>
+            <input type="hidden" name="booking_date" id="booking_date" value="" required>
+            <input type="hidden" name="booking_time" id="booking_time" value="">
+            <input type="hidden" name="booking_end_time" id="booking_end_time" value="">
+            <div class="form-field mt-lg">
+                <span class="form-field__label">Свободное время</span>
+                <div id="slotsGrid" class="slots-grid" aria-live="polite"></div>
+                <p class="form-field__hint" id="slotsHint">Выберите услугу и день в календаре.</p>
+            </div>
+            <button type="submit" class="btn btn--primary mt-3xl" id="bookSubmit" disabled>Записаться</button>
+        </section>
     </form>
     {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-(function () {
-    var form = document.getElementById('publicBookForm');
-    if (!form) return;
-    var serviceEl = document.getElementById('service_id');
-    var dateEl = document.getElementById('booking_date');
-    var slotsGrid = document.getElementById('slotsGrid');
-    var slotsHint = document.getElementById('slotsHint');
-    var timeEl = document.getElementById('booking_time');
-    var endEl = document.getElementById('booking_end_time');
-    var submitBtn = document.getElementById('bookSubmit');
-    var slotsUrl = '/s/{{ slug }}/c/{{ calendar.id }}/slots/';
-
-    function loadSlots() {
-        timeEl.value = '';
-        endEl.value = '';
-        submitBtn.disabled = true;
-        slotsGrid.innerHTML = '';
-        var sid = serviceEl.value;
-        var date = dateEl.value;
-        if (!sid || !date) {
-            slotsHint.textContent = 'Выберите услугу и дату, чтобы увидеть слоты.';
-            return;
-        }
-        slotsHint.textContent = 'Загрузка слотов...';
-        fetch(slotsUrl + '?date=' + encodeURIComponent(date) + '&service_id=' + encodeURIComponent(sid))
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                var slots = data.available_slots || [];
-                if (!slots.length) {
-                    slotsHint.textContent = 'Нет свободных слотов на эту дату.';
-                    return;
-                }
-                slotsHint.textContent = 'Выберите время:';
-                slots.forEach(function (s) {
-                    var btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'slot-btn';
-                    btn.textContent = s.start_time + (s.end_time ? ' – ' + s.end_time : '');
-                    btn.addEventListener('click', function () {
-                        slotsGrid.querySelectorAll('.slot-btn').forEach(function (b) { b.classList.remove('is-selected'); });
-                        btn.classList.add('is-selected');
-                        timeEl.value = s.start_time || '';
-                        endEl.value = s.end_time || '';
-                        submitBtn.disabled = false;
-                    });
-                    slotsGrid.appendChild(btn);
-                });
-            })
-            .catch(function () { slotsHint.textContent = 'Не удалось загрузить слоты.'; });
-    }
-    serviceEl.addEventListener('change', loadSlots);
-    dateEl.addEventListener('change', loadSlots);
-})();
-</script>
+<script src="/static/js/public-calendar-book.js?v=1" defer></script>
 {% endblock %}

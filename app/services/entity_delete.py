@@ -12,10 +12,13 @@ def delete_calendar(db: Session, calendar: Calendar) -> tuple[bool, str]:
             f"Нельзя удалить календарь: в нём {booking_count} "
             f"запис(ей). Сначала отмените или удалите записи в разделе «Записи»."
         )
+    service_count = db.query(Service).filter(Service.calendar_id == calendar.id).count()
+    if service_count:
+        return False, (
+            f"Нельзя удалить календарь: к нему привязано {service_count} услуг(и). "
+            f"Сначала удалите или перенесите услуги на другой календарь."
+        )
     db.query(TimeSlot).filter(TimeSlot.calendar_id == calendar.id).delete(synchronize_session=False)
-    db.query(Service).filter(Service.calendar_id == calendar.id).update(
-        {Service.calendar_id: None}, synchronize_session=False
-    )
     db.delete(calendar)
     try:
         db.commit()

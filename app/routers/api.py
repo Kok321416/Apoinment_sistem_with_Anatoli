@@ -1,9 +1,10 @@
 import hashlib
 import hmac
 import json
+import logging
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -19,13 +20,22 @@ from app.services.telegram import format_client_booked_message, send_telegram_to
 
 router = APIRouter(prefix="/api", tags=["api"])
 settings = get_settings()
+logger = logging.getLogger(__name__)
+
+BOOKING_LINK_TTL_SECONDS = 48 * 3600
 
 
 async def _require_bot(request: Request) -> bytes:
     body = await request.body()
     if not verify_bot_request(request, body):
-        raise JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
+        raise HTTPException(status_code=403, detail="Forbidden")
     return body
+
+
+def _booking_link_expired(booking: Booking) -> bool:
+    if not booking.created_at:
+        return False
+    return (datetime.utcnow() - booking.created_at).total_seconds() > BOOKING_LINK_TTL_SECONDS
 
 
 @router.post("/auth/register")
@@ -135,14 +145,25 @@ async def confirm_booking_telegram(request: Request, db: Session = Depends(get_d
     booking = db.query(Booking).filter(Booking.link_token == link_token).first()
     if not booking:
         return JSONResponse({"success": False, "error": "Invalid or expired link"}, status_code=404)
-    booking.telegram_id = int(telegram_id)
+    # TTL: 48 hours from booking creation
+    if _booking_link_expired(booking):
+        booking.link_token = None
+        db.commit()
+        return JSONResponse({"success": False, "error": "Ссылка истекла"}, status_code=400)
+    tid = int(telegram_id)
+    # Idempotent re-confirm
+    if booking.telegram_id and int(booking.telegram_id) == tid:
+        booking.link_token = None
+        db.commit()
+        return {"success": True, "message": "Телеграм уже привязан к записи"}
+    booking.telegram_id = tid
     booking.link_token = None
     db.commit()
     db.refresh(booking)
     try:
         send_telegram_to_client(booking.telegram_id, format_client_booked_message(booking))
     except Exception:
-        pass
+        logger.exception("confirm-telegram client notify failed")
     return {"success": True, "message": "Телеграм привязан к записи"}
 
 
@@ -273,7 +294,16 @@ async def confirm_booking_telegram_browser_api(request: Request, db: Session = D
     booking = db.query(Booking).filter(Booking.link_token == link_token).first()
     if not booking:
         return JSONResponse({"success": False, "error": "Invalid or expired link"}, status_code=404)
-    booking.telegram_id = int(telegram_id)
+    if _booking_link_expired(booking):
+        booking.link_token = None
+        db.commit()
+        return JSONResponse({"success": False, "error": "Ссылка истекла"}, status_code=400)
+    tid = int(telegram_id)
+    if booking.telegram_id and int(booking.telegram_id) == tid:
+        booking.link_token = None
+        db.commit()
+        return {"success": True, "message": "Телеграм уже привязан, сообщение отправлено"}
+    booking.telegram_id = tid
     booking.link_token = None
     username = data.get("username") or ""
     if username and not username.startswith("@"):
@@ -283,5 +313,5 @@ async def confirm_booking_telegram_browser_api(request: Request, db: Session = D
     try:
         send_telegram_to_client(booking.telegram_id, format_client_booked_message(booking))
     except Exception:
-        pass
+        logger.exception("confirm-telegram-browser notify failed")
     return {"success": True, "message": "Телеграм привязан, сообщение отправлено"}

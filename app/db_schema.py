@@ -15,6 +15,16 @@ _TELEGRAM_LOGIN_COLUMNS = {
 }
 
 _schema_ready = False
+_schema_degraded = False
+_schema_issues: list[str] = []
+
+
+def get_schema_health() -> dict:
+    return {
+        "ready": _schema_ready,
+        "degraded": _schema_degraded,
+        "issues": list(_schema_issues),
+    }
 
 
 def _column_exists(table: str, column: str) -> bool:
@@ -41,7 +51,6 @@ def _add_column(table: str, column: str, ddl: str) -> None:
             logger.info("Column %s.%s already present", table, column)
             return
         logger.exception("Could not add %s.%s", table, column)
-        # Do not raise: production may lack ALTER privileges; app must keep working.
 
 
 def _add_unique_index(table: str, index_name: str, column: str) -> None:
@@ -70,6 +79,17 @@ def ensure_telegram_login_schema() -> None:
             logger.exception("telegram_login column %s failed", name)
 
 
+def _refresh_schema_health() -> None:
+    global _schema_degraded, _schema_issues
+    issues: list[str] = []
+    # ORM maps Service.calendar_id — missing column breaks services/booking.
+    if not _column_exists("services", "calendar_id"):
+        issues.append("services.calendar_id missing")
+        logger.critical("Schema degraded: services.calendar_id is missing")
+    _schema_issues = issues
+    _schema_degraded = bool(issues)
+
+
 def ensure_app_schema() -> None:
     """Idempotent patches required by the current app code. Never raises."""
     try:
@@ -82,6 +102,8 @@ def ensure_app_schema() -> None:
         _add_column("services", "calendar_id", "INTEGER NULL")
     except Exception:
         logger.exception("services.calendar_id patch failed")
+
+    _refresh_schema_health()
 
 
 def ensure_all_schema() -> None:
@@ -104,9 +126,9 @@ def ensure_schema_before_query() -> None:
         _schema_ready = True
     except Exception:
         logger.exception("Runtime schema ensure failed")
-        _schema_ready = True  # do not retry forever on every request
+        _schema_ready = True
 
 
 if __name__ == "__main__":
     ensure_all_schema()
-    print("schema OK")
+    print("schema OK", get_schema_health())

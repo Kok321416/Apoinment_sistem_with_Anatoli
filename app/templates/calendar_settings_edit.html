@@ -14,6 +14,7 @@
 
 <section class="app-section app-section--narrow">
     <form method="post" class="stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="form-field">
             <label class="form-field__label" for="break_between_services_minutes">Перерыв между услугами (минуты)</label>
             <input class="input" type="number" id="break_between_services_minutes" name="break_between_services_minutes" min="0" value="{{ calendar.break_between_services_minutes|default(0) }}">

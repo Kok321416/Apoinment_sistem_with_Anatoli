@@ -167,6 +167,12 @@ def handle_telegram_update(update_data: dict) -> None:
             elif data == "history":
                 answer_callback_query(callback_query_id)
                 handle_history_command(chat_id, user_id)
+            elif data == "help":
+                answer_callback_query(callback_query_id)
+                handle_help_command(chat_id)
+            elif data == "spec_next":
+                answer_callback_query(callback_query_id)
+                handle_specialist_next_appointments(chat_id, user_id)
             elif data.startswith("login_confirm_"):
                 handle_login_confirm_callback(
                     chat_id, user_id, callback_query_id,
@@ -178,6 +184,8 @@ def handle_telegram_update(update_data: dict) -> None:
                 handle_booking_link_callback(chat_id, user_id, callback_query_id, data.replace("booklink_", "", 1))
             elif data.startswith("spec_confirm_"):
                 handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query_id, data.replace("spec_confirm_", "", 1))
+            else:
+                answer_callback_query(callback_query_id, "Неизвестная кнопка")
     except Exception as e:
         logger.exception("TG bot update error: %s", e)
 

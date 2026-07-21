@@ -36,6 +36,7 @@
         <div class="time-slot-item">
             <span class="time-slot-item__time">{{ slot.start_time|time('H:i') }} — {{ slot.end_time|time('H:i') }}</span>
             <form method="POST" class="time-slot-item__form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="delete_time_slot">
                 <input type="hidden" name="slot_id" value="{{ slot.id }}">
                 <button type="submit" class="btn btn--danger btn--sm" onclick="return confirm('Удалить это окно?')">Удалить</button>
@@ -46,6 +47,7 @@
         {% endfor %}
 
         <form method="POST" class="add-slot-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="add_time_slot">
             <input type="hidden" name="day_of_week" value="{{ day }}">
             <div class="add-slot-form__row">

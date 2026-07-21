@@ -3,12 +3,12 @@ from datetime import date, datetime
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.models import Calendar, Consultant, Service
+from app.models import Calendar, Consultant, Service, TimeSlot
 from app.services.bookings import create_public_booking
 from app.services.email import send_verification_email
 from app.services.public_client import (
@@ -270,18 +270,6 @@ async def specialist_calendar_book(
         .order_by(Service.name)
         .all()
     )
-    # Fallback for legacy services without calendar_id
-    if not services:
-        services = (
-            db.query(Service)
-            .filter(
-                Service.consultant_id == consultant.id,
-                Service.is_active.is_(True),
-                Service.calendar_id.is_(None),
-            )
-            .order_by(Service.name)
-            .all()
-        )
 
     error = None
     if request.method == "POST":
@@ -325,6 +313,22 @@ async def specialist_calendar_book(
                     ),
                 )
 
+    import json
+
+    weekly: dict[str, list] = {str(i): [] for i in range(7)}
+    for slot in (
+        db.query(TimeSlot)
+        .filter(TimeSlot.calendar_id == calendar.id, TimeSlot.is_available.is_(True))
+        .order_by(TimeSlot.day_of_week, TimeSlot.start_time)
+        .all()
+    ):
+        weekly[str(slot.day_of_week)].append(
+            {
+                "start_time": slot.start_time.strftime("%H:%M"),
+                "end_time": slot.end_time.strftime("%H:%M"),
+            }
+        )
+
     return templates.TemplateResponse(
         "public/calendar_book.html",
         page_context(
@@ -338,12 +342,14 @@ async def specialist_calendar_book(
             client_name=request.session.get("pc_name", ""),
             slug=slug,
             today=date.today().isoformat(),
+            weekly_windows_json=json.dumps(weekly, ensure_ascii=False),
         ),
     )
 
 
 @router.get("/s/{slug}/c/{calendar_id}/slots/")
 async def specialist_calendar_slots(
+    request: Request,
     slug: str,
     calendar_id: int,
     db: Session = Depends(get_db),
@@ -351,6 +357,8 @@ async def specialist_calendar_slots(
     service_id: int | None = None,
 ):
     consultant = _get_consultant_by_slug(db, slug)
+    if not client_gate_ok(request.session, consultant.id):
+        return JSONResponse({"available_slots": [], "available_windows": [], "error": "gate"}, status_code=403)
     calendar = (
         db.query(Calendar)
         .filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id, Calendar.is_active.is_(True))

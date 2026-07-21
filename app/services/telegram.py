@@ -1,16 +1,19 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import requests
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
-from app.models import Booking, Integration
+from app.models import Booking, Calendar, Consultant, Integration
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 TIMEZONE_STR = "Europe/Moscow"
+
+_tg_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="tg-send")
 
 
 def _send_telegram(chat_id, text: str, bot_token: str | None = None) -> bool:
@@ -29,6 +32,11 @@ def _send_telegram(chat_id, text: str, bot_token: str | None = None) -> bool:
         return False
 
 
+def send_telegram_async(chat_id, text: str, bot_token: str | None = None) -> None:
+    """Fire-and-forget send so FastAPI event loop is not blocked."""
+    _tg_executor.submit(_send_telegram, chat_id, text, bot_token)
+
+
 def _integration_bot_token(integration: Integration | None) -> str | None:
     if not integration:
         return None
@@ -36,8 +44,33 @@ def _integration_bot_token(integration: Integration | None) -> str | None:
     return token or None
 
 
+def _integration_notifications_on(integration: Integration | None) -> bool:
+    if not integration:
+        return False
+    if not integration.telegram_connected:
+        return False
+    if integration.telegram_enabled is False:
+        return False
+    return bool((integration.telegram_chat_id or "").strip())
+
+
 def send_telegram_to_client(telegram_id: int, text: str) -> bool:
     return _send_telegram(telegram_id, text)
+
+
+def _hours_label(hours: int) -> str:
+    hours = int(hours or 0)
+    if hours <= 0:
+        return "скоро"
+    if hours == 1:
+        return "1 час"
+    if 2 <= hours <= 4:
+        return f"{hours} часа"
+    if hours % 10 == 1 and hours % 100 != 11:
+        return f"{hours} час"
+    if 2 <= hours % 10 <= 4 and not (12 <= hours % 100 <= 14):
+        return f"{hours} часа"
+    return f"{hours} часов"
 
 
 def _booking_base_info(booking: Booking) -> dict:
@@ -65,26 +98,16 @@ def _booking_base_info(booking: Booking) -> dict:
 
 def format_reminder_message(booking: Booking, hours_ahead: int) -> str:
     info = _booking_base_info(booking)
-    if hours_ahead >= 24:
-        return (
-            f"📅 <b>Напоминание о консультации</b>\n\n"
-            f"Через 24 часа у вас запланирована консультация:\n\n"
-            f"📌 Услуга: {info['service_name']}{info['duration']}\n"
-            f"📅 Дата: {info['date_str']}\n"
-            f"🕐 Время: {info['slot']}\n"
-            f"👤 Специалист: {info['consultant_name']}\n"
-            f"📍 Место: {info['calendar_name']}\n\n"
-            f"До встречи!"
-        )
+    label = _hours_label(hours_ahead)
     return (
-        f"⏰ <b>Скоро консультация</b>\n\n"
-        f"Через 1 час у вас запланирована консультация:\n\n"
+        f"📅 <b>Напоминание о консультации</b>\n\n"
+        f"Через {label} у вас запланирована консультация:\n\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
         f"📅 Дата: {info['date_str']}\n"
         f"🕐 Время: {info['slot']}\n"
         f"👤 Специалист: {info['consultant_name']}\n"
         f"📍 Место: {info['calendar_name']}\n\n"
-        f"Ждём вас!"
+        f"До встречи!"
     )
 
 
@@ -127,7 +150,7 @@ def format_client_booked_message(booking: Booking) -> str:
         f"🕐 Время: {info['slot']}\n"
         f"👤 Специалист: {info['consultant_name']}\n"
         f"📍 Место: {info['calendar_name']}\n\n"
-        f"Напоминания за сутки и за час придут сюда."
+        f"Напоминания придут сюда перед консультацией."
     )
 
 
@@ -139,18 +162,9 @@ def format_specialist_reminder_message(booking: Booking, hours_ahead: int) -> st
     if booking.client_telegram:
         client_contact.append(booking.client_telegram)
     contact_str = ", ".join(client_contact) if client_contact else "—"
-    if hours_ahead >= 24:
-        return (
-            f"📅 <b>Напоминание: консультация через 24 часа</b>\n\n"
-            f"👤 Клиент: {booking.client_name or '—'}\n"
-            f"📌 Услуга: {info['service_name']}{info['duration']}\n"
-            f"📅 Дата: {info['date_str']}\n"
-            f"🕐 Время: {info['slot']}\n"
-            f"📍 Календарь: {info['calendar_name']}\n"
-            f"📞 Контакт: {contact_str}"
-        )
+    label = _hours_label(hours_ahead)
     return (
-        f"⏰ <b>Через 1 час — консультация</b>\n\n"
+        f"📅 <b>Напоминание: консультация через {label}</b>\n\n"
         f"👤 Клиент: {booking.client_name or '—'}\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
         f"📅 Дата: {info['date_str']}\n"
@@ -219,13 +233,13 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
     try:
         if booking.telegram_id:
             text_client = format_booking_status_changed_client(booking, new_status, old_status)
-            _send_telegram(booking.telegram_id, text_client)
+            send_telegram_async(booking.telegram_id, text_client)
         consultant = booking.calendar.consultant if booking.calendar else None
-        if consultant and consultant.integration and consultant.integration.telegram_chat_id:
-            chat_id = (consultant.integration.telegram_chat_id or "").strip()
-            if chat_id:
-                text_spec = format_booking_status_changed_specialist(booking, new_status, old_status)
-                _send_telegram(chat_id, text_spec, _integration_bot_token(consultant.integration))
+        integration = consultant.integration if consultant else None
+        if _integration_notifications_on(integration):
+            chat_id = (integration.telegram_chat_id or "").strip()
+            text_spec = format_booking_status_changed_specialist(booking, new_status, old_status)
+            send_telegram_async(chat_id, text_spec, _integration_bot_token(integration))
     except Exception as e:
         logger.exception("Status change notification error: %s", e)
 
@@ -236,11 +250,9 @@ def notify_specialist_new_booking(booking: Booking) -> bool:
         if not consultant:
             return False
         integration = consultant.integration
-        if not integration or not integration.telegram_connected:
+        if not _integration_notifications_on(integration):
             return False
         chat_id = (integration.telegram_chat_id or "").strip()
-        if not chat_id:
-            return False
         text = format_new_booking_message_for_specialist(booking)
         return _send_telegram(chat_id, text, _integration_bot_token(integration))
     except Exception as e:
@@ -249,28 +261,51 @@ def notify_specialist_new_booking(booking: Booking) -> bool:
 
 
 def on_booking_created(db: Session, booking: Booking) -> None:
-    notify_specialist_new_booking(booking)
-    if booking.telegram_id:
-        send_telegram_to_client(booking.telegram_id, format_client_booked_message(booking))
-    from app.services.google_calendar import sync_booking_to_google
+    try:
+        notify_specialist_new_booking(booking)
+    except Exception:
+        logger.exception("on_booking_created specialist notify failed")
+    try:
+        if booking.telegram_id:
+            send_telegram_async(booking.telegram_id, format_client_booked_message(booking))
+    except Exception:
+        logger.exception("on_booking_created client notify failed")
+    try:
+        from app.services.google_calendar import sync_booking_to_google
 
-    sync_booking_to_google(db, booking, created=True)
+        sync_booking_to_google(db, booking, created=True)
+    except Exception:
+        logger.exception("on_booking_created google sync failed")
 
 
 def on_booking_updated(db: Session, booking: Booking, created: bool = False) -> None:
-    from app.services.google_calendar import sync_booking_to_google
+    try:
+        from app.services.google_calendar import sync_booking_to_google
 
-    sync_booking_to_google(db, booking, created=created)
+        sync_booking_to_google(db, booking, created=created)
+    except Exception:
+        logger.exception("on_booking_updated google sync failed")
 
 
 def send_reminders(db: Session) -> dict:
     tz = ZoneInfo(settings.timezone)
     now = datetime.now(tz)
     sent = {"client_24": 0, "client_1": 0, "spec_24": 0, "spec_1": 0}
+    horizon = now.date() + timedelta(days=14)
 
     bookings = (
         db.query(Booking)
-        .filter(Booking.status.in_(["pending", "confirmed"]), Booking.booking_date >= now.date())
+        .options(
+            joinedload(Booking.service),
+            joinedload(Booking.calendar)
+            .joinedload(Calendar.consultant)
+            .joinedload(Consultant.integration),
+        )
+        .filter(
+            Booking.status.in_(["pending", "confirmed"]),
+            Booking.booking_date >= now.date(),
+            Booking.booking_date <= horizon,
+        )
         .all()
     )
 
@@ -284,11 +319,12 @@ def send_reminders(db: Session) -> dict:
 
         specialist_chat_id = None
         specialist_bot_token = None
-        if booking.calendar and booking.calendar.consultant and booking.calendar.consultant.integration:
+        integration = None
+        if booking.calendar and booking.calendar.consultant:
             integration = booking.calendar.consultant.integration
-            if integration.telegram_connected:
-                specialist_chat_id = (integration.telegram_chat_id or "").strip()
-                specialist_bot_token = _integration_bot_token(integration)
+        if _integration_notifications_on(integration):
+            specialist_chat_id = (integration.telegram_chat_id or "").strip()
+            specialist_bot_token = _integration_bot_token(integration)
 
         h1 = booking.calendar.reminder_hours_first if booking.calendar else 24
         h2 = booking.calendar.reminder_hours_second if booking.calendar else 1
