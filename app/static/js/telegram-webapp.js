@@ -16,10 +16,21 @@
 
     function applyViewport(tg) {
         var root = document.documentElement;
+        var body = document.body;
         try {
             var h = tg.viewportStableHeight || tg.viewportHeight;
             if (h) {
                 root.style.setProperty("--tg-viewport-stable-height", h + "px");
+            }
+            // Keep document height fluid so long pages can scroll in Telegram WebView.
+            root.style.height = "auto";
+            root.style.maxHeight = "none";
+            root.style.overflowY = "auto";
+            if (body) {
+                body.style.height = "auto";
+                body.style.maxHeight = "none";
+                body.style.overflowY = "auto";
+                body.style.minHeight = (h ? h + "px" : "") || "";
             }
         } catch (e) {}
     }
@@ -116,17 +127,31 @@
         try {
             tg.ready();
             tg.expand();
+            // Prefer content scroll over Telegram closing-swipe when API allows.
             if (typeof tg.disableVerticalSwipes === "function") {
                 try {
                     tg.disableVerticalSwipes();
                 } catch (e) {}
             }
+            if (typeof tg.setHeaderColor === "function") {
+                try {
+                    tg.setHeaderColor("secondary_bg_color");
+                } catch (e) {}
+            }
 
             document.documentElement.classList.add("tg-webapp");
             document.body.classList.add("tg-webapp");
+            document.documentElement.style.overflowY = "auto";
+            document.body.style.overflowY = "auto";
+            document.documentElement.style.height = "auto";
+            document.body.style.height = "auto";
 
             applyTheme(tg);
             applyViewport(tg);
+            // Re-apply after expand animation settles.
+            setTimeout(function () {
+                applyViewport(tg);
+            }, 300);
             if (typeof tg.onEvent === "function") {
                 tg.onEvent("viewportChanged", function () {
                     applyViewport(tg);

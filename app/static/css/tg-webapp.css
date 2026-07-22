@@ -8,8 +8,12 @@ body.tg-webapp {
     --tg-safe-left: env(safe-area-inset-left, 0px);
     background: var(--tg-bg, var(--bg-900));
     color: var(--tg-text, var(--text-primary));
+    height: auto !important;
+    max-height: none !important;
     overflow-x: hidden;
-    overscroll-behavior-y: none;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -20,13 +24,24 @@ body.tg-webapp {
     padding-bottom: var(--tg-safe-bottom);
     padding-left: var(--tg-safe-left);
     padding-right: var(--tg-safe-right);
+    box-sizing: border-box;
+}
+
+/* Auth flex centering clips overflow in WebView - force normal document flow */
+body.tg-webapp.auth-page,
+body.tg-webapp.tg-hub-page,
+body.tg-webapp.app-shell,
+body.tg-webapp.booking-page {
+    display: block;
+    height: auto !important;
+    min-height: var(--tg-viewport-stable-height, 100dvh);
+    overflow-x: hidden;
+    overflow-y: visible;
 }
 
 body.tg-webapp .app-shell,
-body.tg-webapp .booking-page,
-body.tg-webapp.tg-hub-page {
-    min-height: 100dvh;
-    min-height: var(--tg-viewport-stable-height, 100dvh);
+body.tg-webapp .booking-page {
+    min-height: 0;
 }
 
 body.tg-webapp .app-header {
@@ -35,17 +50,61 @@ body.tg-webapp .app-header {
 }
 
 body.tg-webapp .app-main {
-    padding-block: var(--space-2xl);
+    padding-block: var(--space-xl);
+    overflow: visible;
 }
 
 body.tg-webapp .app-footer-mini {
     padding-bottom: calc(var(--space-2xl) + var(--tg-safe-bottom));
 }
 
+body.tg-webapp .auth-page__main,
+body.tg-webapp .tg-hub-auth {
+    display: block;
+    flex: none;
+    align-items: stretch;
+    justify-content: flex-start;
+    min-height: 0;
+    height: auto;
+    padding: 1rem;
+    overflow: visible;
+}
+
+body.tg-webapp .auth-card {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 1.25rem;
+    box-sizing: border-box;
+}
+
+body.tg-webapp .auth-card__lead {
+    margin-bottom: 1.25rem;
+}
+
+body.tg-webapp .book-cal-scene {
+    padding: 1rem;
+    border-radius: 16px;
+}
+
+body.tg-webapp .book-cal-layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+body.tg-webapp .book-cal-panel {
+    padding: 1rem;
+}
+
+body.tg-webapp .book-cal-step {
+    white-space: normal;
+    max-width: 100%;
+}
+
 /* Full-height Mini App hub (/tg/) */
 .tg-hub-page {
     margin: 0;
-    min-height: 100dvh;
     background: var(--bg-900);
 }
 
@@ -53,13 +112,12 @@ body.tg-webapp .app-footer-mini {
     box-sizing: border-box;
     width: 100%;
     max-width: 480px;
-    min-height: 100dvh;
-    min-height: var(--tg-viewport-stable-height, 100dvh);
+    min-height: 0;
     margin: 0 auto;
-    padding: max(1rem, var(--tg-safe-top, 0px)) 1rem max(1.25rem, var(--tg-safe-bottom, 0px));
+    padding: max(0.75rem, var(--tg-safe-top, 0px)) 1rem max(1.5rem, var(--tg-safe-bottom, 0px));
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.85rem;
 }
 
 .tg-hub__brand {
@@ -77,7 +135,7 @@ body.tg-webapp .app-footer-mini {
 
 .tg-hub__title {
     margin: 0;
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     line-height: 1.25;
     font-weight: 700;
     color: var(--text-primary);
@@ -129,7 +187,8 @@ body.tg-webapp .app-footer-mini {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    margin-top: auto;
+    margin-top: 0.25rem;
+    padding-bottom: 0.5rem;
 }
 
 .tg-hub__actions .btn {
@@ -184,28 +243,25 @@ body.tg-webapp .app-footer-mini {
 @media (min-width: 481px) {
     .tg-hub {
         max-width: 420px;
-        justify-content: center;
-        padding-block: 2rem;
+        padding-block: 1.5rem;
     }
 
-    .tg-hub__actions {
-        margin-top: 1.5rem;
+    body.tg-webapp .auth-card {
+        max-width: 420px;
+        padding: var(--space-3xl);
     }
 }
 
 .tg-hub-auth {
     box-sizing: border-box;
     width: 100%;
-    min-height: 100dvh;
-    min-height: var(--tg-viewport-stable-height, 100dvh);
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: max(1rem, var(--tg-safe-top, 0px)) 1rem max(1.25rem, var(--tg-safe-bottom, 0px));
+    min-height: 0;
+    display: block;
+    padding: max(0.75rem, var(--tg-safe-top, 0px)) 1rem max(1.5rem, var(--tg-safe-bottom, 0px));
 }
 
 .tg-hub-auth .auth-card {
     width: 100%;
-    max-width: 520px;
+    max-width: 100%;
     margin: 0 auto;
 }
