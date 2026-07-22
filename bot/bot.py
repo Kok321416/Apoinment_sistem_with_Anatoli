@@ -228,7 +228,7 @@ def _send_webapp_button(chat_id):
     }
     send_telegram_message(
         chat_id,
-        "Нажмите кнопку ниже — сайт откроется <b>внутри Telegram</b>:",
+        "Нажмите кнопку ниже - сайт откроется <b>внутри Telegram</b>:",
         keyboard,
     )
 
@@ -369,7 +369,7 @@ def handle_login_via_bot(chat_id):
     send_telegram_message(
         chat_id,
         "👋 <b>Вход на сайт через Телеграм</b>\n\n"
-        "Откройте страницу входа на сайте и нажмите «Телеграм» — "
+        "Откройте страницу входа на сайте и нажмите «Телеграм» - "
         "бот отправит ссылку для подтверждения.",
         keyboard,
     )

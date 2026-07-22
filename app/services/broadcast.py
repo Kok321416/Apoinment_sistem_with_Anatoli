@@ -290,7 +290,9 @@ def process_broadcast_jobs(
             .all()
         )
         for rec in pending:
-            ok, err = send_telegram_with_retry(rec.chat_id, job.text)
+            from app.services.telegram_copy import format_broadcast_message
+
+            ok, err = send_telegram_with_retry(rec.chat_id, format_broadcast_message(job.text))
             if ok:
                 rec.status = REC_SENT
                 rec.sent_at = datetime.utcnow()

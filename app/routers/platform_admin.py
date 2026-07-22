@@ -135,6 +135,7 @@ async def admin_telegram(request: Request, db: Session = Depends(get_db)):
     stats = telegram_stats(db)
     db_user = db.get(User, user.id)
     my_opt_in = bool(db_user and db_user.notify_broadcast)
+    from app.services.telegram_copy import sample_template_previews
 
     return templates.TemplateResponse(
         "platform_admin/telegram.html",
@@ -152,6 +153,7 @@ async def admin_telegram(request: Request, db: Session = Depends(get_db)):
             jobs=jobs,
             stats=stats,
             my_opt_in=my_opt_in,
+            template_previews=sample_template_previews(),
         ),
     )
 

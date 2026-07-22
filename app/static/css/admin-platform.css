@@ -169,3 +169,5 @@
 }
 .pa-ok-line { color: var(--accent-success, #3be4c8); margin-bottom: 1rem; }
 .pa-inline-form { margin-bottom: 1rem; }
+.pa-details { margin-bottom: 0.75rem; }
+.pa-details summary { cursor: pointer; color: var(--text-secondary, #b4bac6); }

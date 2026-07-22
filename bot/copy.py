@@ -1,4 +1,11 @@
-"""Copy for Telegram bot UX and BotFather profile fields."""
+"""Copy for Telegram bot UX and BotFather profile fields.
+
+Phase 11 style (aligned with app/services/telegram_copy.py):
+- Role/type in first line where relevant
+- Short paragraphs; hyphen "-" not em/en dashes
+- HTML parse_mode; escape user data on the site side
+Transactional booking texts live in app/services/telegram_copy.py
+"""
 
 BOTFATHER = {
     "name": "Все клиенты здесь",
@@ -20,7 +27,7 @@ BOTFATHER = {
     ],
     "avatar_brief": (
         "Квадрат 512×512 или 640×640, PNG/JPG. Тёмный фон (#0B1020), круглый знак бренда "
-        "с градиентом #7D5CFF → #49D1FF, без мелкого текста. Лицо/фото людей не нужны - "
+        "с градиентом #7D5CFF -> #49D1FF, без мелкого текста. Лицо/фото людей не нужны - "
         "достаточно логотипа сервиса, чтобы аватар читался в списке чатов."
     ),
 }

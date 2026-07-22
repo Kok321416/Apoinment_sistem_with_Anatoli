@@ -8,6 +8,18 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
 from app.models import Booking, Calendar, Consultant, Integration
+from app.services.telegram_copy import (
+    STATUS_LABELS,
+    format_booking_rescheduled_client,
+    format_booking_rescheduled_specialist,
+    format_booking_status_changed_client,
+    format_booking_status_changed_specialist,
+    format_client_booked_message,
+    format_new_booking_message_for_specialist,
+    format_reminder_message,
+    format_specialist_reminder_message,
+    booking_base_info as _booking_base_info,
+)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -83,210 +95,6 @@ def _integration_notifications_on(integration: Integration | None) -> bool:
 
 def send_telegram_to_client(telegram_id: int, text: str) -> bool:
     return _send_telegram(telegram_id, text)
-
-
-def _hours_label(hours: int) -> str:
-    hours = int(hours or 0)
-    if hours <= 0:
-        return "скоро"
-    if hours == 1:
-        return "1 час"
-    if 2 <= hours <= 4:
-        return f"{hours} часа"
-    if hours % 10 == 1 and hours % 100 != 11:
-        return f"{hours} час"
-    if 2 <= hours % 10 <= 4 and not (12 <= hours % 100 <= 14):
-        return f"{hours} часа"
-    return f"{hours} часов"
-
-
-def _booking_base_info(booking: Booking) -> dict:
-    time_str = booking.booking_time.strftime("%H:%M") if booking.booking_time else "—"
-    end_str = booking.booking_end_time.strftime("%H:%M") if booking.booking_end_time else ""
-    slot = f"{time_str}" + (f" – {end_str}" if end_str else "")
-    service_name = booking.service.name if booking.service else "Консультация"
-    duration = ""
-    if booking.service and booking.service.duration_minutes:
-        duration = f", {booking.service.duration_minutes} мин"
-    calendar_name = booking.calendar.name if booking.calendar else "—"
-    consultant_name = "—"
-    if booking.calendar and booking.calendar.consultant:
-        c = booking.calendar.consultant
-        consultant_name = f"{c.first_name or ''} {c.last_name or ''}".strip() or c.email or consultant_name
-    return {
-        "service_name": service_name,
-        "date_str": booking.booking_date.strftime("%d.%m.%Y"),
-        "slot": slot,
-        "duration": duration,
-        "calendar_name": calendar_name,
-        "consultant_name": consultant_name,
-    }
-
-
-def format_reminder_message(booking: Booking, hours_ahead: int) -> str:
-    info = _booking_base_info(booking)
-    label = _hours_label(hours_ahead)
-    return (
-        f"📅 <b>Ваша запись: напоминание</b>\n\n"
-        f"Через {label} у вас запланирована консультация:\n\n"
-        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
-        f"📅 Дата: {info['date_str']}\n"
-        f"🕐 Время: {info['slot']}\n"
-        f"👤 Специалист: {info['consultant_name']}\n"
-        f"📍 Место: {info['calendar_name']}\n\n"
-        f"До встречи!"
-    )
-
-
-def _telegram_link(username: str) -> str:
-    u = (username or "").strip().lstrip("@").split("/")[-1].split("?")[0]
-    return f"https://t.me/{u}" if u else ""
-
-
-def format_new_booking_message_for_specialist(booking: Booking) -> str:
-    info = _booking_base_info(booking)
-    contact = []
-    if booking.client_phone:
-        contact.append(f"📞 {booking.client_phone}")
-    telegram_raw = booking.client_telegram or ""
-    if telegram_raw.strip():
-        link = _telegram_link(telegram_raw)
-        contact.append(f"✈️ Telegram: {link}" if link else f"✈️ {telegram_raw}")
-    if booking.client_email:
-        contact.append(f"📧 {booking.client_email}")
-    contact_str = "\n".join(contact) if contact else "—"
-    status_note = "\n⏳ Данные ждут подтверждения (клиент может подтвердить Телеграм на странице после записи)."
-    return (
-        f"🆕 <b>К вам новая запись</b>\n\n"
-        f"👤 Клиент: {booking.client_name or '—'}\n"
-        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
-        f"📅 Дата: {info['date_str']}\n"
-        f"🕐 Время: {info['slot']}\n"
-        f"📍 Календарь: {info['calendar_name']}\n\n"
-        f"<b>Контакты:</b>\n{contact_str}"
-        f"{status_note}"
-    )
-
-
-def format_client_booked_message(booking: Booking) -> str:
-    info = _booking_base_info(booking)
-    return (
-        f"✅ <b>Ваша запись подтверждена</b>\n\n"
-        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
-        f"📅 Дата: {info['date_str']}\n"
-        f"🕐 Время: {info['slot']}\n"
-        f"👤 Специалист: {info['consultant_name']}\n"
-        f"📍 Место: {info['calendar_name']}\n\n"
-        f"Напоминания придут сюда перед консультацией."
-    )
-
-
-def format_specialist_reminder_message(booking: Booking, hours_ahead: int) -> str:
-    info = _booking_base_info(booking)
-    client_contact = []
-    if booking.client_phone:
-        client_contact.append(booking.client_phone)
-    if booking.client_telegram:
-        client_contact.append(booking.client_telegram)
-    contact_str = ", ".join(client_contact) if client_contact else "—"
-    label = _hours_label(hours_ahead)
-    return (
-        f"📅 <b>К вам запись: напоминание через {label}</b>\n\n"
-        f"👤 Клиент: {booking.client_name or '—'}\n"
-        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
-        f"📅 Дата: {info['date_str']}\n"
-        f"🕐 Время: {info['slot']}\n"
-        f"📍 Календарь: {info['calendar_name']}\n"
-        f"📞 Контакт: {contact_str}"
-    )
-
-
-STATUS_LABELS = {
-    "pending": "Ожидает",
-    "confirmed": "Подтверждена",
-    "cancelled": "Отменена",
-    "completed": "Завершена",
-}
-
-
-def format_booking_status_changed_client(booking: Booking, new_status: str, old_status: str | None = None) -> str:
-    info = _booking_base_info(booking)
-    new_label = STATUS_LABELS.get(new_status, new_status)
-    if old_status:
-        old_label = STATUS_LABELS.get(old_status, old_status)
-        status_line = f"Статус изменён: <b>{old_label}</b> → <b>{new_label}</b>"
-    else:
-        status_line = f"Статус: <b>{new_label}</b>"
-    return (
-        f"📋 <b>Ваша запись: изменение статуса</b>\n\n"
-        f"{status_line}\n\n"
-        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
-        f"📅 Дата: {info['date_str']}\n"
-        f"🕐 Время: {info['slot']}\n"
-        f"👤 Специалист: {info['consultant_name']}\n"
-        f"📍 Место: {info['calendar_name']}"
-    )
-
-
-def format_booking_status_changed_specialist(booking: Booking, new_status: str, old_status: str | None = None) -> str:
-    info = _booking_base_info(booking)
-    new_label = STATUS_LABELS.get(new_status, new_status)
-    if old_status:
-        old_label = STATUS_LABELS.get(old_status, old_status)
-        status_line = f"Статус: <b>{old_label}</b> → <b>{new_label}</b>"
-    else:
-        status_line = f"Статус: <b>{new_label}</b>"
-    contact = []
-    if booking.client_phone:
-        contact.append(booking.client_phone)
-    if booking.client_telegram:
-        contact.append(booking.client_telegram)
-    contact_str = ", ".join(contact) if contact else "-"
-    return (
-        f"📋 <b>К вам запись: статус обновлён</b>\n\n"
-        f"👤 Клиент: {booking.client_name or '-'}\n"
-        f"{status_line}\n\n"
-        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
-        f"📅 Дата: {info['date_str']}\n"
-        f"🕐 Время: {info['slot']}\n"
-        f"📞 Контакт: {contact_str}"
-    )
-
-
-def _fmt_dt(d, t) -> str:
-    ds = d.strftime("%d.%m.%Y") if d else "-"
-    ts = t.strftime("%H:%M") if t else "-"
-    return f"{ds} {ts}"
-
-
-def format_booking_rescheduled_client(booking: Booking, *, old_date, old_time, old_end_time=None) -> str:
-    info = _booking_base_info(booking)
-    old_slot = _fmt_dt(old_date, old_time)
-    if old_end_time:
-        old_slot = f"{old_slot} - {old_end_time.strftime('%H:%M')}"
-    return (
-        f"📅 <b>Ваша запись: перенесена</b>\n\n"
-        f"Было: {old_slot}\n"
-        f"Стало: {info['date_str']} {info['slot']}\n\n"
-        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
-        f"👤 Специалист: {info['consultant_name']}\n"
-        f"📍 Место: {info['calendar_name']}"
-    )
-
-
-def format_booking_rescheduled_specialist(booking: Booking, *, old_date, old_time, old_end_time=None) -> str:
-    info = _booking_base_info(booking)
-    old_slot = _fmt_dt(old_date, old_time)
-    if old_end_time:
-        old_slot = f"{old_slot} - {old_end_time.strftime('%H:%M')}"
-    return (
-        f"📅 <b>К вам запись: перенесена</b>\n\n"
-        f"👤 Клиент: {booking.client_name or '-'}\n"
-        f"Было: {old_slot}\n"
-        f"Стало: {info['date_str']} {info['slot']}\n"
-        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
-        f"📍 Календарь: {info['calendar_name']}"
-    )
 
 
 def notify_booking_status_changed(db: Session, booking: Booking, old_status: str | None = None) -> None:

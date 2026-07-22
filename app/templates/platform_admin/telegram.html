@@ -39,7 +39,7 @@
             <textarea name="text" class="pa-input pa-textarea" rows="8" maxlength="4000" required>{{ preview_text }}</textarea>
         </label>
         <div class="pa-preview">
-            <div class="pa-preview__title">Превью</div>
+            <div class="pa-preview__title">Превью (как уйдёт в Telegram)</div>
             <div class="pa-preview__bubble" id="pa-preview-bubble">{{ preview_text or 'Текст появится здесь…' }}</div>
         </div>
         <div class="pa-actions">
@@ -48,6 +48,19 @@
                     onclick="return confirm('Поставить рассылку в очередь?');">Отправить / в очередь</button>
         </div>
     </form>
+</section>
+
+<section class="pa-panel">
+    <h2>Канонические шаблоны (Phase 11)</h2>
+    <p class="pa-muted">Транзакционные тексты сайта. Рассылка добавляет заголовок «Новости сервиса», если его нет.</p>
+    <div class="pa-templates">
+        {% for t in template_previews %}
+        <details class="pa-details">
+            <summary>{{ t.title }}</summary>
+            <pre class="pa-pre">{{ t.text }}</pre>
+        </details>
+        {% endfor %}
+    </div>
 </section>
 
 <section class="pa-panel">
@@ -80,10 +93,17 @@
     var ta = document.querySelector('textarea[name="text"]');
     var bubble = document.getElementById('pa-preview-bubble');
     if (!ta || !bubble) return;
-    function sync() {
-        bubble.textContent = ta.value || 'Текст появится здесь…';
+    function wrapBroadcast(raw) {
+        var t = (raw || "").trim();
+        if (!t) return "Текст появится здесь…";
+        if (t.indexOf("📢") === 0) return t;
+        return "📢 Новости сервиса\n\n" + t;
     }
-    ta.addEventListener('input', sync);
+    function sync() {
+        bubble.textContent = wrapBroadcast(ta.value);
+    }
+    ta.addEventListener("input", sync);
+    sync();
 })();
 </script>
 {% endblock %}
