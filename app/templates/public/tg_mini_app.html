@@ -8,13 +8,14 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/auth.css?v=17">
-<link rel="stylesheet" href="/static/css/tg-webapp.css?v=3">
+<link rel="stylesheet" href="/static/css/auth.css?v=18">
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=4">
 {% endblock %}
 
 {% block body_class %}{% if user and user.is_authenticated %}tg-hub-page{% else %}auth-page tg-hub-page{% endif %}{% endblock %}
 
 {% block body %}
+<div id="tg-scroll-root" class="tg-scroll-root" data-tg-shell="1">
 {% if user and user.is_authenticated %}
 <div class="tg-hub" data-tg-hub="1" data-tg-authed="1">
     <div class="tg-hub__brand">
@@ -73,10 +74,11 @@
     </div>
 </div>
 {% else %}
-<div class="auth-page__main tg-hub-auth" data-tg-hub="1" data-tg-authed="0">
-    <div class="auth-card card card--static animate-fade-in-up">
+<div class="tg-hub-auth" data-tg-hub="1" data-tg-authed="0">
+    <div class="auth-card card card--static">
         <h1 class="text-h1 auth-card__title">Вход</h1>
         <p class="text-body-sm text-muted auth-card__lead">Войдите, чтобы открыть кабинет и «Мои записи» в Telegram</p>
+        <p class="form-field__hint" id="tg-auth-hint" hidden>Входим через Telegram…</p>
 
         <div class="form-field">
             <span class="form-field__label">Быстрый вход</span>
@@ -99,15 +101,7 @@
                 </a>
             </div>
             <p class="form-field__hint">
-                {% if telegram_bot_username and vk_oauth_enabled %}
-                Телеграм откроет бота, VK и Яндекс - страницу входа.
-                {% elif telegram_bot_username %}
-                Телеграм откроет бота, Яндекс - страницу входа Яндекс ID.
-                {% elif vk_oauth_enabled %}
-                Откроется страница входа через VK ID или Яндекс ID.
-                {% else %}
-                Откроется страница входа через Яндекс ID.
-                {% endif %}
+                В Telegram удобнее войти через кнопку «Телеграм». VK и Яндекс откроются во внешнем браузере.
             </p>
         </div>
 
@@ -133,8 +127,8 @@
             <p>Нет аккаунта? <a href="/register/?next={{ '/tg/'|urlencode }}">Зарегистрироваться</a></p>
             <p><a href="/book/">Записаться без входа</a></p>
         </div>
-        <p class="form-field__hint" id="tg-auth-hint" hidden>Входим через Telegram…</p>
     </div>
 </div>
 {% endif %}
+</div>
 {% endblock %}

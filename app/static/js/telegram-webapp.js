@@ -1,7 +1,6 @@
 /**
- * Bootstrap Telegram Mini App (WebApp) when opened inside Telegram.
- * Safe no-op outside Telegram.
- * Phase 8: silent session via initData on /tg/ hub.
+ * Telegram Mini App bootstrap.
+ * Sticky shell: body locked, #tg-scroll-root scrolls and receives taps.
  */
 (function () {
     "use strict";
@@ -14,23 +13,53 @@
         return "";
     }
 
+    function ensureScrollShell() {
+        var body = document.body;
+        if (!body) return null;
+
+        var existing = document.getElementById("tg-scroll-root");
+        if (existing) {
+            Array.prototype.slice.call(body.children).forEach(function (el) {
+                if (el === existing || el.tagName === "SCRIPT") return;
+                existing.appendChild(el);
+            });
+            return existing;
+        }
+
+        var shell = document.createElement("div");
+        shell.id = "tg-scroll-root";
+        shell.className = "tg-scroll-root";
+
+        var move = [];
+        Array.prototype.forEach.call(body.children, function (el) {
+            if (!el || el.id === "tg-scroll-root") return;
+            if (el.tagName === "SCRIPT") return;
+            move.push(el);
+        });
+        body.insertBefore(shell, body.firstChild);
+        move.forEach(function (el) {
+            shell.appendChild(el);
+        });
+        return shell;
+    }
+
     function applyViewport(tg) {
         var root = document.documentElement;
         var body = document.body;
+        var shell = document.getElementById("tg-scroll-root");
         try {
-            var h = tg.viewportStableHeight || tg.viewportHeight;
-            if (h) {
+            var h = Math.round(tg.viewportStableHeight || tg.viewportHeight || window.innerHeight || 0);
+            if (h > 0) {
                 root.style.setProperty("--tg-viewport-stable-height", h + "px");
-            }
-            // Keep document height fluid so long pages can scroll in Telegram WebView.
-            root.style.height = "auto";
-            root.style.maxHeight = "none";
-            root.style.overflowY = "auto";
-            if (body) {
-                body.style.height = "auto";
-                body.style.maxHeight = "none";
-                body.style.overflowY = "auto";
-                body.style.minHeight = (h ? h + "px" : "") || "";
+                root.style.height = h + "px";
+                root.style.maxHeight = h + "px";
+                if (body) {
+                    body.style.height = h + "px";
+                    body.style.maxHeight = h + "px";
+                }
+                if (shell) {
+                    shell.style.height = h + "px";
+                }
             }
         } catch (e) {}
     }
@@ -59,47 +88,31 @@
         } catch (e) {}
     }
 
-    function tryWebappAuth(tg) {
-        var hub = document.querySelector("[data-tg-hub]");
-        if (!hub) return;
-        if (hub.getAttribute("data-tg-authed") === "1") return;
-        var initData = tg.initData || "";
-        if (!initData) return;
-        if (sessionStorage.getItem("tg_webapp_auth_done") === "1") return;
-
-        var hint = document.getElementById("tg-auth-hint");
-        if (hint) hint.hidden = false;
-
-        var body = { init_data: initData };
-        var mode = qsMode();
-        if (mode) body.mode = mode;
-
-        fetch("/api/telegram/webapp-auth", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
-            credentials: "same-origin",
-            body: JSON.stringify(body),
-        })
-            .then(function (r) {
-                return r.json().then(function (data) {
-                    return { ok: r.ok, data: data };
-                });
-            })
-            .then(function (res) {
-                sessionStorage.setItem("tg_webapp_auth_done", "1");
-                if (res.ok && res.data && res.data.success) {
-                    var url = window.location.pathname + window.location.search;
-                    window.location.replace(url);
-                } else if (hint) {
-                    hint.textContent = "Не удалось войти автоматически. Используйте «Войти».";
+    function wireExternalLinks(tg) {
+        document.addEventListener(
+            "click",
+            function (e) {
+                var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+                if (!a) return;
+                var href = (a.getAttribute("href") || "").trim();
+                if (!href || href.charAt(0) === "#" || href.charAt(0) === "/") return;
+                if (href.indexOf("mailto:") === 0 || href.indexOf("tel:") === 0) return;
+                if (!/^https?:\/\//i.test(href)) return;
+                e.preventDefault();
+                try {
+                    if (/^https?:\/\/t\.me\//i.test(href) && typeof tg.openTelegramLink === "function") {
+                        tg.openTelegramLink(href);
+                    } else if (typeof tg.openLink === "function") {
+                        tg.openLink(href);
+                    } else {
+                        window.location.href = href;
+                    }
+                } catch (err) {
+                    window.location.href = href;
                 }
-            })
-            .catch(function () {
-                sessionStorage.setItem("tg_webapp_auth_done", "1");
-                if (hint) {
-                    hint.textContent = "Не удалось войти автоматически. Используйте «Войти».";
-                }
-            });
+            },
+            true
+        );
     }
 
     function wireBackButton(tg) {
@@ -120,38 +133,83 @@
         });
     }
 
+    function tryWebappAuth(tg) {
+        var hub = document.querySelector("[data-tg-hub]");
+        if (!hub) return;
+        if (hub.getAttribute("data-tg-authed") === "1") return;
+        var initData = tg.initData || "";
+        if (!initData) return;
+        if (sessionStorage.getItem("tg_webapp_auth_done") === "1") return;
+
+        var hint = document.getElementById("tg-auth-hint");
+        if (hint) hint.hidden = false;
+
+        var body = { init_data: initData };
+        var mode = qsMode();
+        if (mode) body.mode = mode;
+
+        // Mark early to avoid auth storms if reload races.
+        sessionStorage.setItem("tg_webapp_auth_done", "1");
+
+        fetch("/api/telegram/webapp-auth", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify(body),
+        })
+            .then(function (r) {
+                return r.json().then(function (data) {
+                    return { ok: r.ok, data: data };
+                });
+            })
+            .then(function (res) {
+                if (res.ok && res.data && res.data.success) {
+                    var url = window.location.pathname + window.location.search;
+                    window.location.replace(url);
+                } else if (hint) {
+                    hint.hidden = false;
+                    hint.textContent = "Не удалось войти автоматически. Используйте кнопки ниже.";
+                }
+            })
+            .catch(function () {
+                if (hint) {
+                    hint.hidden = false;
+                    hint.textContent = "Не удалось войти автоматически. Используйте кнопки ниже.";
+                }
+            });
+    }
+
     function boot() {
         var tg = window.Telegram && window.Telegram.WebApp;
         if (!tg) return;
 
         try {
+            document.documentElement.classList.add("tg-webapp");
+            document.body.classList.add("tg-webapp");
+
+            ensureScrollShell();
+
             tg.ready();
             tg.expand();
-            // Prefer content scroll over Telegram closing-swipe when API allows.
+
             if (typeof tg.disableVerticalSwipes === "function") {
                 try {
                     tg.disableVerticalSwipes();
                 } catch (e) {}
             }
-            if (typeof tg.setHeaderColor === "function") {
-                try {
-                    tg.setHeaderColor("secondary_bg_color");
-                } catch (e) {}
-            }
-
-            document.documentElement.classList.add("tg-webapp");
-            document.body.classList.add("tg-webapp");
-            document.documentElement.style.overflowY = "auto";
-            document.body.style.overflowY = "auto";
-            document.documentElement.style.height = "auto";
-            document.body.style.height = "auto";
 
             applyTheme(tg);
             applyViewport(tg);
-            // Re-apply after expand animation settles.
+            wireBackButton(tg);
+            wireExternalLinks(tg);
+
             setTimeout(function () {
                 applyViewport(tg);
-            }, 300);
+            }, 50);
+            setTimeout(function () {
+                applyViewport(tg);
+            }, 350);
+
             if (typeof tg.onEvent === "function") {
                 tg.onEvent("viewportChanged", function () {
                     applyViewport(tg);
@@ -160,8 +218,6 @@
                     applyTheme(tg);
                 });
             }
-
-            wireBackButton(tg);
 
             window.__TG_WEBAPP__ = {
                 initData: tg.initData || "",
@@ -172,7 +228,7 @@
 
             tryWebappAuth(tg);
         } catch (e) {
-            // Ignore Mini App bootstrap errors in regular browsers.
+            // Ignore Mini App bootstrap errors outside Telegram.
         }
     }
 
