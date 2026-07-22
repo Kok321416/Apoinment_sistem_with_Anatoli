@@ -56,6 +56,38 @@ def get_active_login_request(db: Session, token: str) -> TelegramLoginRequest | 
     return req
 
 
+def _ensure_social_account(
+    db: Session,
+    *,
+    user_id: int,
+    telegram_id: str,
+    username: str,
+    first_name: str,
+) -> None:
+    existing = db.query(SocialAccount).filter(
+        SocialAccount.provider == "telegram",
+        SocialAccount.uid == telegram_id,
+    ).first()
+    if existing:
+        return
+    db.add(
+        SocialAccount(
+            provider="telegram",
+            uid=telegram_id,
+            user_id=user_id,
+            extra_data=json.dumps({"username": username, "first_name": first_name}),
+        )
+    )
+
+
+def _maybe_update_consultant_nickname(db: Session, user: User, username: str) -> None:
+    if not username:
+        return
+    consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
+    if consultant and not (consultant.telegram_nickname or "").strip():
+        consultant.telegram_nickname = username
+
+
 def _find_or_create_user_for_telegram(
     db: Session,
     telegram_id: str,
@@ -64,6 +96,12 @@ def _find_or_create_user_for_telegram(
     register_fio: str | None,
     register_phone: str | None,
 ) -> User:
+    """
+    Login/signup via Telegram.
+
+    Phase 4: does NOT write Integration.telegram_chat_id.
+    Specialist notifications are linked only via Integrations UI / connect_spec_*.
+    """
     social = db.query(SocialAccount).filter(
         SocialAccount.provider == "telegram",
         SocialAccount.uid == telegram_id,
@@ -71,6 +109,7 @@ def _find_or_create_user_for_telegram(
     if social:
         user = db.get(User, social.user_id)
         if user:
+            _maybe_update_consultant_nickname(db, user, username)
             return user
 
     uname = f"telegram_{telegram_id}"
@@ -86,7 +125,13 @@ def _find_or_create_user_for_telegram(
         )
         db.add(user)
         db.flush()
-        db.add(SocialAccount(provider="telegram", uid=telegram_id, user_id=user.id, extra_data="{}"))
+        _ensure_social_account(
+            db,
+            user_id=user.id,
+            telegram_id=telegram_id,
+            username=username,
+            first_name=first_name,
+        )
 
     if register_fio and register_phone and not db.query(Consultant).filter(Consultant.user_id == user.id).first():
         fn, ln, mn = parse_fio(register_fio)
@@ -107,36 +152,18 @@ def _find_or_create_user_for_telegram(
         )
         db.add(consultant)
         db.flush()
-        integration = Integration(
-            consultant_id=consultant.id,
-            telegram_chat_id=telegram_id,
-            telegram_connected=True,
-            telegram_enabled=True,
-        )
-        db.add(integration)
+        # Stub only - notifications require explicit connect_spec / Integrations
+        db.add(Integration(consultant_id=consultant.id))
     else:
-        consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
-        if consultant:
-            if username and not consultant.telegram_nickname:
-                consultant.telegram_nickname = username
-            integration = db.query(Integration).filter(Integration.consultant_id == consultant.id).first()
-            if not integration:
-                integration = Integration(consultant_id=consultant.id)
-                db.add(integration)
-            integration.telegram_chat_id = telegram_id
-            integration.telegram_connected = True
-            integration.telegram_enabled = True
+        _maybe_update_consultant_nickname(db, user, username)
 
-    if not db.query(SocialAccount).filter(
-        SocialAccount.provider == "telegram",
-        SocialAccount.uid == telegram_id,
-    ).first():
-        db.add(SocialAccount(
-            provider="telegram",
-            uid=telegram_id,
-            user_id=user.id,
-            extra_data=json.dumps({"username": username, "first_name": first_name}),
-        ))
+    _ensure_social_account(
+        db,
+        user_id=user.id,
+        telegram_id=telegram_id,
+        username=username,
+        first_name=first_name,
+    )
 
     return user
 
@@ -166,23 +193,19 @@ def confirm_login_via_bot(
         if existing and existing.user_id != user.id:
             return False, "Этот аккаунт Телеграм уже привязан к другому пользователю", None
         if not existing:
-            db.add(SocialAccount(
-                provider="telegram",
-                uid=tg_id,
-                user_id=user.id,
-                extra_data=json.dumps({"username": username, "first_name": first_name}),
-            ))
-        consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
-        if consultant:
-            if username:
+            db.add(
+                SocialAccount(
+                    provider="telegram",
+                    uid=tg_id,
+                    user_id=user.id,
+                    extra_data=json.dumps({"username": username, "first_name": first_name}),
+                )
+            )
+        # Phase 4: connect = SocialAccount only. Do not touch Integration.telegram_chat_id.
+        if username:
+            consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
+            if consultant:
                 consultant.telegram_nickname = username
-            integration = db.query(Integration).filter(Integration.consultant_id == consultant.id).first()
-            if not integration:
-                integration = Integration(consultant_id=consultant.id)
-                db.add(integration)
-            integration.telegram_chat_id = tg_id
-            integration.telegram_connected = True
-            integration.telegram_enabled = True
     else:
         user = _find_or_create_user_for_telegram(
             db,

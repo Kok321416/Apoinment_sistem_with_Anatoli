@@ -144,7 +144,7 @@
                 <span class="badge badge--ghost">Отключено</span>
                 {% endif %}
             </div>
-            <p class="integration-tile__text">Уведомления о новых записях и напоминания о консультациях в Телеграм.</p>
+            <p class="integration-tile__text">Уведомления о новых записях и напоминания о консультациях в Телеграм. Вход через Телеграм на сайт - отдельно: он не включает эти уведомления автоматически.</p>
             {% if integration.telegram_connected %}
             {% if integration.telegram_chat_id %}
             <p class="integration-tile__meta">Чат: {{ integration.telegram_chat_id }}</p>

@@ -18,6 +18,7 @@ from app.services.bookings import parse_fio
 from app.services.email_verification import ensure_email_address, send_user_verification_email
 from app.services.telegram import format_client_booked_message, send_telegram_to_client
 from app.services.dual_role_backfill import resolve_client_user_id_for_telegram
+from app.services.integration_telegram import claim_integration_telegram_chat
 
 router = APIRouter(prefix="/api", tags=["api"])
 settings = get_settings()
@@ -192,9 +193,9 @@ async def confirm_specialist_telegram(request: Request, db: Session = Depends(ge
             integration.telegram_link_token_created_at = None
             db.commit()
             return JSONResponse({"success": False, "error": "Ссылка истекла"}, status_code=400)
-    integration.telegram_chat_id = str(int(telegram_id))
-    integration.telegram_connected = True
-    integration.telegram_enabled = True
+    ok, err = claim_integration_telegram_chat(db, integration, str(int(telegram_id)))
+    if not ok:
+        return JSONResponse({"success": False, "error": err}, status_code=409)
     integration.telegram_link_token = None
     integration.telegram_link_token_created_at = None
     db.commit()

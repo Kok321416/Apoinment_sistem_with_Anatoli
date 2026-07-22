@@ -3,7 +3,7 @@
 Цель: один логин/пароль/Telegram на человека. Роли - способности + режим интерфейса, не два аккаунта.
 Охват: сайт, Telegram-бот, Mini App (`/tg/`).
 
-Статус документа: в работе. Phase 0-2 в main; Phase 3 (dedup + role labels) - в этом PR, flag NOTIFY_DEDUP по умолчанию off.  
+Статус документа: в работе. Phase 0-4 в main (Phase 4: login TG != Integration notify). NOTIFY_DEDUP по умолчанию off.  
 Менять код только по фазам ниже, с feature flag и откатом.
 
 ---
