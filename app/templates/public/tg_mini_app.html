@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% from "components/icon.html" import auth_provider_icon %}
 
 {% block meta_tags %}
 {% set page_title = "Открыть в Telegram — " ~ site_brand_name %}
@@ -7,19 +8,20 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/tg-webapp.css?v=1">
+<link rel="stylesheet" href="/static/css/auth.css?v=17">
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=2">
 {% endblock %}
 
-{% block body_class %}tg-hub-page{% endblock %}
+{% block body_class %}{% if user and user.is_authenticated %}tg-hub-page{% else %}auth-page tg-hub-page{% endif %}{% endblock %}
 
 {% block body %}
-<div class="tg-hub" data-tg-hub="1" data-tg-authed="{{ '1' if user and user.is_authenticated else '0' }}">
+{% if user and user.is_authenticated %}
+<div class="tg-hub" data-tg-hub="1" data-tg-authed="1">
     <div class="tg-hub__brand">
         <img class="tg-hub__logo" src="/static/svg/logo.svg" alt="" width="40" height="40" decoding="async">
         <h1 class="tg-hub__title">{{ site_brand_name }}</h1>
     </div>
 
-    {% if user and user.is_authenticated %}
     <span class="tg-hub__mode">
         {% if tg_mode == tg_mode_specialist %}Режим: специалист{% else %}Режим: клиент{% endif %}
     </span>
@@ -69,25 +71,70 @@
         {% endif %}
         {% endif %}
     </div>
-    {% else %}
-    <p class="tg-hub__text">
-        Сервис открыт внутри Telegram. Можно сразу записаться. Для «Моих записей» и кабинета войдите через Телеграм.
-    </p>
-    <div class="tg-hub__actions">
-        <a class="tg-hub__card-link tg-hub__card-link--primary" href="/book/">
-            <span class="tg-hub__card-title">Записаться</span>
-            <span class="tg-hub__card-desc">Без лишних шагов</span>
-        </a>
-        <a class="tg-hub__card-link" href="/login/?next=/tg/">
-            <span class="tg-hub__card-title">Войти</span>
-            <span class="tg-hub__card-desc">Через Телеграм или почту</span>
-        </a>
-        <a class="tg-hub__card-link" href="/">
-            <span class="tg-hub__card-title">На главную</span>
-            <span class="tg-hub__card-desc">Сайт в браузере</span>
-        </a>
-    </div>
-    <p class="tg-hub__hint" id="tg-auth-hint" hidden>Входим через Telegram…</p>
-    {% endif %}
 </div>
+{% else %}
+<div class="auth-page__main tg-hub-auth" data-tg-hub="1" data-tg-authed="0">
+    <div class="auth-card card card--static animate-fade-in-up">
+        <h1 class="text-h1 auth-card__title">Вход</h1>
+        <p class="text-body-sm text-muted auth-card__lead">Войдите, чтобы открыть кабинет и «Мои записи» в Telegram</p>
+
+        <div class="form-field">
+            <span class="form-field__label">Быстрый вход</span>
+            <div class="auth-methods">
+                {% if telegram_bot_username %}
+                <a href="/accounts/telegram/login/?next={{ '/tg/'|urlencode }}" class="auth-method auth-method--telegram">
+                    {{ auth_provider_icon('telegram') }}
+                    <span>Телеграм</span>
+                </a>
+                {% endif %}
+                {% if vk_oauth_enabled %}
+                <a href="/accounts/vk/login/?next={{ '/tg/'|urlencode }}" class="auth-method auth-method--vk">
+                    {{ auth_provider_icon('vk') }}
+                    <span>VK</span>
+                </a>
+                {% endif %}
+                <a href="/accounts/yandex/login/?next={{ '/tg/'|urlencode }}" class="auth-method auth-method--yandex">
+                    {{ auth_provider_icon('yandex') }}
+                    <span>Яндекс</span>
+                </a>
+            </div>
+            <p class="form-field__hint">
+                {% if telegram_bot_username and vk_oauth_enabled %}
+                Телеграм откроет бота, VK и Яндекс - страницу входа.
+                {% elif telegram_bot_username %}
+                Телеграм откроет бота, Яндекс - страницу входа Яндекс ID.
+                {% elif vk_oauth_enabled %}
+                Откроется страница входа через VK ID или Яндекс ID.
+                {% else %}
+                Откроется страница входа через Яндекс ID.
+                {% endif %}
+            </p>
+        </div>
+
+        <hr class="auth-divider">
+
+        <form method="POST" action="/login/?next={{ '/tg/'|urlencode }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="next" value="/tg/">
+            <div class="stack">
+                <div class="form-field">
+                    <label class="form-field__label" for="tg_email">Почта</label>
+                    <input class="input" type="email" id="tg_email" name="email" required placeholder="name@example.com" autocomplete="username">
+                </div>
+                <div class="form-field">
+                    <label class="form-field__label" for="tg_password">Пароль</label>
+                    <input class="input" type="password" id="tg_password" name="password" required placeholder="Введите пароль" autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn--primary">Войти</button>
+            </div>
+        </form>
+
+        <div class="auth-footer-links">
+            <p>Нет аккаунта? <a href="/register/?next={{ '/tg/'|urlencode }}">Зарегистрироваться</a></p>
+            <p><a href="/book/">Записаться без входа</a></p>
+        </div>
+        <p class="form-field__hint" id="tg-auth-hint" hidden>Входим через Telegram…</p>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

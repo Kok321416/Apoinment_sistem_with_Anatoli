@@ -1,63 +1,82 @@
-{% extends "layouts/booking.html" %}
+{% extends "layouts/auth.html" %}
+{% from "components/icon.html" import auth_provider_icon %}
 
 {% block meta_tags %}
-{% set page_title = "Регистрация для записи — " ~ consultant.first_name %}
-{% set meta_description = "Укажите контакты, чтобы получать уведомления о записях" %}
+{% set page_title = "Вход для записи — " ~ consultant.first_name %}
+{% set meta_description = "Войдите, чтобы записаться к специалисту" %}
 {% include "components/meta.html" %}
 {% endblock %}
 
-{% block booking_content %}
-<div class="auth-card card card--static" style="max-width: 520px; margin: 0 auto;">
-    <h1 class="text-h1 auth-card__title">Перед записью</h1>
-    <p class="text-body text-muted mb-2xl">
-        Вы переходите к специалисту <strong>{{ consultant.first_name }} {{ consultant.last_name }}</strong>.
-        Укажите имя и способ связи - почту или Телеграм, чтобы получать уведомления о регистрации и записях.
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/auth.css?v=17">
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-card card card--static animate-fade-in-up">
+    <h1 class="text-h1 auth-card__title">Вход</h1>
+    <p class="text-body-sm text-muted auth-card__lead">
+        Вы переходите к специалисту
+        <strong>{{ consultant.first_name }} {{ consultant.last_name }}</strong>.
+        Войдите любым способом - после входа откроется профиль для записи.
     </p>
 
     {% if error %}
-    <div class="alert alert--error mb-lg" role="alert">{{ error }}</div>
+    <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert--success" role="status">{{ success }}</div>
     {% endif %}
 
-    <form method="POST" action="/s/{{ consultant.public_slug }}/welcome/?next={{ next_url|urlencode }}" class="stack" id="clientWelcomeForm">
-        <div class="form-field">
-            <label class="form-field__label" for="client_name">Имя</label>
-            <input class="input" id="client_name" name="name" required autocomplete="name" placeholder="Как к вам обращаться" value="{{ prefill_name or '' }}">
-        </div>
-        <div class="form-field">
-            <label class="form-field__label" for="client_phone">Телефон</label>
-            <input class="input" id="client_phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="79991234567" pattern="[0-9]*">
-            <p class="form-field__hint">Только цифры, без пробелов и букв</p>
-        </div>
-
-        <fieldset class="stack">
-            <legend class="form-field__label">Как получать уведомления</legend>
-            <label class="auth-provider-card">
-                <input type="radio" name="channel" value="email" checked>
-                <span>Почта - придёт код подтверждения</span>
-            </label>
-            <label class="auth-provider-card">
-                <input type="radio" name="channel" value="telegram">
-                <span>Телеграм - ник для уведомлений</span>
-            </label>
-        </fieldset>
-
-        <div class="form-field" id="emailBlock">
-            <label class="form-field__label" for="client_email">Почта</label>
-            <input class="input" id="client_email" name="email" type="email" autocomplete="email" placeholder="you@example.com" value="{{ prefill_email or '' }}">
-        </div>
-        <div class="form-field is-hidden" id="telegramBlock">
-            <label class="form-field__label" for="client_telegram">Ник в Телеграм</label>
-            <input class="input" id="client_telegram" name="telegram" placeholder="@username">
-            {% if bot_username %}
-            <p class="form-field__hint">После записи можно подтвердить чат с ботом @{{ bot_username }}</p>
+    <div class="form-field">
+        <span class="form-field__label">Быстрый вход</span>
+        <div class="auth-methods">
+            {% if telegram_bot_username or bot_username %}
+            <a href="/accounts/telegram/login/?next={{ next_url|urlencode }}" class="auth-method auth-method--telegram" id="welcomeTg">
+                {{ auth_provider_icon('telegram') }}
+                <span>Телеграм</span>
+            </a>
             {% endif %}
+            {% if vk_oauth_enabled %}
+            <a href="/accounts/vk/login/?next={{ next_url|urlencode }}" class="auth-method auth-method--vk">
+                {{ auth_provider_icon('vk') }}
+                <span>VK</span>
+            </a>
+            {% endif %}
+            <a href="/accounts/yandex/login/?next={{ next_url|urlencode }}" class="auth-method auth-method--yandex">
+                {{ auth_provider_icon('yandex') }}
+                <span>Яндекс</span>
+            </a>
         </div>
+        <p class="form-field__hint">
+            {% if telegram_bot_username or bot_username %}
+            Телеграм откроет бота, VK и Яндекс - страницу входа.
+            {% else %}
+            Откроется страница входа через выбранный сервис.
+            {% endif %}
+        </p>
+    </div>
 
-        <button type="submit" class="btn btn--primary btn--block">Продолжить</button>
+    <hr class="auth-divider">
+
+    <form method="POST" action="{{ login_url }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <div class="stack">
+            <div class="form-field">
+                <label class="form-field__label" for="email">Почта</label>
+                <input class="input" type="email" id="email" name="email" required placeholder="name@example.com" value="{{ email or '' }}" autocomplete="username">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="password">Пароль</label>
+                <input class="input" type="password" id="password" name="password" required placeholder="Введите пароль" autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn--primary">Войти</button>
+        </div>
     </form>
-</div>
-{% endblock %}
 
-{% block scripts %}
-<script src="/static/js/public-welcome.js?v=1" defer></script>
+    <div class="auth-footer-links">
+        <p>Нет аккаунта? <a href="/register/?as=client&amp;next={{ next_url|urlencode }}">Зарегистрироваться</a></p>
+        <p><a href="/">На главную</a></p>
+    </div>
+</div>
 {% endblock %}

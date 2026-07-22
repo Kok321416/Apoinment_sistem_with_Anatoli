@@ -108,12 +108,12 @@
         windowsList.innerHTML = "";
         if (!dateStr) {
             windowsBlock.hidden = true;
-            dayPanelTitle.textContent = "Выберите дату";
+            dayPanelTitle.textContent = "Сначала выберите дату в календаре";
             return;
         }
         var dt = new Date(dateStr + "T00:00:00");
         dayPanelTitle.textContent =
-            "День: " +
+            "Дата: " +
             dt.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
         var list = weeklyWindows[String(weekdayIndex(dt))] || [];
         if (!list.length) {

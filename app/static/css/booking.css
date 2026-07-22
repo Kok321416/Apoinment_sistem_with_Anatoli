@@ -555,6 +555,37 @@
     font-size: var(--font-size-h3);
 }
 
+.book-cal-step {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin: 0 0 var(--space-xl);
+    padding: 0.7rem 1.4rem;
+    border: none;
+    border-radius: var(--radius-full);
+    background: var(--gradient-primary);
+    color: var(--text-on-accent);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    box-shadow: var(--shadow-glow);
+    white-space: nowrap;
+}
+
+.book-cal-step__num {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.35rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.book-cal-day-sub {
+    margin: calc(var(--space-sm) * -1) 0 var(--space-lg);
+    color: var(--text-secondary);
+    font-size: var(--font-size-body-sm);
+}
+
 .book-cal-panel--month .booking-cal__day {
     border: none;
     font: inherit;

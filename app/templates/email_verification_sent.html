@@ -26,6 +26,7 @@
 
     <form method="POST" action="/accounts/verify-email/" class="stack">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
         <div class="form-field">
             <label class="form-field__label" for="verify_email">Почта</label>
             <input class="input" type="email" id="verify_email" name="email" value="{{ email or '' }}" required autocomplete="email">
@@ -41,11 +42,12 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="resend">
         <input type="hidden" name="email" value="{{ email or '' }}">
+        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
         <button type="submit" class="btn btn--ghost btn--block">Отправить код ещё раз</button>
     </form>
 
     <div class="auth-footer-links">
-        <p><a href="/login/">Перейти ко входу</a></p>
+        <p><a href="/login/{% if next_url %}?next={{ next_url|urlencode }}{% endif %}">Перейти ко входу</a></p>
         <p><a href="/">На главную страницу</a></p>
     </div>
 </div>

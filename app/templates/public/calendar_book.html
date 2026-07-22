@@ -27,7 +27,7 @@
     {% else %}
     <form method="POST" action="/s/{{ slug }}/c/{{ calendar.id }}/" class="book-cal-layout" id="publicBookForm">
         <section class="book-cal-panel book-cal-panel--service">
-            <h2 class="book-cal-panel__title">Услуга</h2>
+            <h2 class="book-cal-step"><span class="book-cal-step__num">1</span> Услуга</h2>
             <div class="form-field">
                 <label class="form-field__label book-cal-service-label" for="service_id">Выберите услугу</label>
                 <select class="input" id="service_id" name="service_id" required>
@@ -42,6 +42,7 @@
         </section>
 
         <section class="book-cal-panel book-cal-panel--month" aria-label="Календарь">
+            <h2 class="book-cal-step"><span class="book-cal-step__num">2</span> Выберите дату</h2>
             <div class="booking-cal">
                 <div class="booking-cal__header">
                     <button type="button" class="booking-cal__nav" id="calPrev" aria-label="Предыдущий месяц">‹</button>
@@ -66,7 +67,8 @@
         </section>
 
         <section class="book-cal-panel book-cal-panel--day">
-            <h2 class="book-cal-panel__title" id="dayPanelTitle">Выберите дату</h2>
+            <h2 class="book-cal-step"><span class="book-cal-step__num">3</span> Выберите время</h2>
+            <p class="book-cal-day-sub" id="dayPanelTitle">Сначала выберите дату в календаре</p>
             <div id="windowsBlock" class="book-windows" hidden>
                 <p class="book-windows__label">Окна приёма</p>
                 <ul id="windowsList" class="book-windows__list"></ul>
@@ -87,5 +89,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/public-calendar-book.js?v=3" defer></script>
+<script src="/static/js/public-calendar-book.js?v=4" defer></script>
 {% endblock %}

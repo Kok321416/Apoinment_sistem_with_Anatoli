@@ -45,7 +45,19 @@ def _sync_booking_session(request: Request) -> None:
     request.session["booking_client_email"] = request.session.get("pc_email", "")
 
 
-def _require_gate(request: Request, consultant: Consultant, next_path: str):
+def _require_gate(request: Request, consultant: Consultant, next_path: str, db: Session | None = None):
+    auth_user = get_current_user(request, db) if db is not None else None
+    if auth_user:
+        from app.services.public_client import apply_client_gate_from_user
+
+        apply_client_gate_from_user(
+            db,
+            request.session,
+            consultant_id=consultant.id,
+            user=auth_user,
+        )
+        _sync_booking_session(request)
+        return None
     if client_gate_ok(request.session, consultant.id):
         return None
     slug = getattr(consultant, "public_slug", None) or f"id-{consultant.id}"
@@ -55,7 +67,7 @@ def _require_gate(request: Request, consultant: Consultant, next_path: str):
 @router.get("/s/{slug}/")
 async def specialist_public_home(request: Request, slug: str, db: Session = Depends(get_db)):
     consultant = _get_consultant_by_slug(db, slug)
-    gate = _require_gate(request, consultant, f"/s/{slug}/")
+    gate = _require_gate(request, consultant, f"/s/{slug}/", db)
     if gate:
         return gate
 
@@ -92,76 +104,46 @@ async def specialist_public_home(request: Request, slug: str, db: Session = Depe
 @router.get("/s/{slug}/welcome/")
 @router.post("/s/{slug}/welcome/")
 async def specialist_welcome(request: Request, slug: str, db: Session = Depends(get_db)):
+    """Login gate before public booking (same visual as /login/)."""
+    from app.services.public_client import apply_client_gate_from_user
+    from app.utils.safe_redirect import login_url_with_next, safe_next_url
+
     consultant = _get_consultant_by_slug(db, slug)
     next_url = request.query_params.get("next") or f"/s/{slug}/"
     if not next_url.startswith(f"/s/{slug}"):
         next_url = f"/s/{slug}/"
-    error = None
+    next_url = safe_next_url(next_url, default=f"/s/{slug}/")
 
-    if request.method == "POST":
-        form = await request.form()
-        name = (form.get("name") or "").strip()
-        channel = (form.get("channel") or "email").strip()
-        email = (form.get("email") or "").strip().lower()
-        phone = (form.get("phone") or "").strip()
-        telegram = (form.get("telegram") or "").strip().lstrip("@")
-        phone_norm, phone_err = normalize_client_phone(phone)
-        if phone_err:
-            error = phone_err
-        elif not name:
-            error = "Укажите имя"
-        elif channel == "email":
-            if not email or "@" not in email:
-                error = "Укажите корректную почту"
-            else:
-                code = make_email_code()
-                set_client_gate(
-                    request.session,
-                    consultant_id=consultant.id,
-                    name=name,
-                    email=email,
-                    phone=phone_norm,
-                    telegram=telegram,
-                    verified=False,
-                )
-                request.session["pc_email_code"] = code
-                request.session["pc_email_pending"] = email
-                if not send_verification_email(email, code):
-                    error = "Не удалось отправить письмо. Проверьте почту или выберите Телеграм."
-                else:
-                    q = urlencode({"next": next_url, "email": email})
-                    return RedirectResponse(f"/s/{slug}/verify-email/?{q}", status_code=302)
-        elif channel == "telegram":
-            if not telegram and not phone_norm:
-                error = "Укажите ник в Телеграм или телефон"
-            else:
-                set_client_gate(
-                    request.session,
-                    consultant_id=consultant.id,
-                    name=name,
-                    email=email,
-                    phone=phone_norm,
-                    telegram=telegram or phone_norm,
-                    verified=True,
-                )
-                _sync_booking_session(request)
-                return RedirectResponse(next_url, status_code=302)
-        else:
-            error = "Выберите способ связи: почта или Телеграм"
+    welcome_errors = {
+        "yandex_signup": "Не удалось войти через Яндекс. Попробуйте снова.",
+        "yandex_failed": "Не удалось войти через Яндекс. Попробуйте другой способ.",
+        "vk_signup": "Не удалось войти через VK. Попробуйте снова.",
+        "vk_failed": "Не удалось войти через VK. Попробуйте другой способ.",
+        "telegram_signup": "Не удалось войти через Телеграм. Попробуйте снова.",
+    }
+    err_key = request.query_params.get("error") or ""
+    error = welcome_errors.get(err_key)
 
     auth_user = get_current_user(request, db)
+    if auth_user:
+        apply_client_gate_from_user(
+            db, request.session, consultant_id=consultant.id, user=auth_user
+        )
+        _sync_booking_session(request)
+        return RedirectResponse(next_url, status_code=302)
+
     return templates.TemplateResponse(
         "public/welcome.html",
         page_context(
             request,
             db,
-            auth_user,
+            None,
             consultant=consultant,
             next_url=next_url,
             error=error,
+            email=(request.query_params.get("email") or "").strip(),
+            login_url=login_url_with_next(next_url),
             bot_username=(settings.telegram_bot_username or "").lstrip("@"),
-            prefill_name=(auth_user.get_full_name() if auth_user else "") or request.session.get("pc_name", ""),
-            prefill_email=(auth_user.email if auth_user else "") or request.session.get("pc_email", ""),
         ),
     )
 
@@ -262,7 +244,7 @@ async def specialist_calendar_book(
     if not calendar:
         raise HTTPException(status_code=404, detail="Календарь не найден")
 
-    gate = _require_gate(request, consultant, f"/s/{slug}/c/{calendar_id}/")
+    gate = _require_gate(request, consultant, f"/s/{slug}/c/{calendar_id}/", db)
     if gate:
         return gate
     _sync_booking_session(request)

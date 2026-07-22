@@ -387,7 +387,8 @@ async def legal_pages(request: Request):
 async def register_page(request: Request, db: Session = Depends(get_db)):
     user = _optional_user(request, db)
     if user:
-        return RedirectResponse("/dashboard/", status_code=302)
+        next_after = safe_next_url(request.query_params.get("next"), default="/dashboard/")
+        return RedirectResponse(next_after, status_code=302)
     error = fio = phone = email = None
     account_role = (request.query_params.get("as") or "specialist").strip().lower()
     if account_role not in ("client", "specialist"):
@@ -414,6 +415,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         tg_process = "signup" if as_specialist else "signup_client"
         ya_process = "signup" if as_specialist else "signup_client"
         vk_process = "signup" if as_specialist else "signup_client"
+        next_after = safe_next_url(form.get("next") or request.query_params.get("next"), default="/dashboard/")
         if not _form_csrf_ok(request, form):
             error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
         elif not fio or not phone:
@@ -426,7 +428,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                 request.session["register_fio"] = fio
                 request.session["register_phone"] = phone
                 return RedirectResponse(
-                    f"/accounts/yandex/login/?{urlencode({'process': ya_process, 'next': '/dashboard/'})}",
+                    f"/accounts/yandex/login/?{urlencode({'process': ya_process, 'next': next_after})}",
                     status_code=302,
                 )
         elif auth_method == "vk":
@@ -437,14 +439,14 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                 request.session["register_fio"] = fio
                 request.session["register_phone"] = phone
                 return RedirectResponse(
-                    f"/accounts/vk/login/?{urlencode({'process': vk_process, 'next': '/dashboard/'})}",
+                    f"/accounts/vk/login/?{urlencode({'process': vk_process, 'next': next_after})}",
                     status_code=302,
                 )
         elif auth_method == "telegram":
             request.session["register_fio"] = fio
             request.session["register_phone"] = phone
             return RedirectResponse(
-                f"/accounts/telegram/login/?{urlencode({'process': tg_process, 'next': '/dashboard/'})}",
+                f"/accounts/telegram/login/?{urlencode({'process': tg_process, 'next': next_after})}",
                 status_code=302,
             )
         else:
@@ -485,12 +487,16 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                     else:
                         apply_user_names_from_fio(new_user, fio)
                     ensure_email_address(db, new_user, email, verified=False)
+                    request.session["register_phone"] = phone
                     if not send_user_verification_email(db, new_user):
                         db.rollback()
                         error = "Не удалось отправить письмо. Проверьте почту или обратитесь к администратору."
                     else:
+                        verify_q = {"email": email}
+                        if next_after and next_after != "/dashboard/":
+                            verify_q["next"] = next_after
                         return RedirectResponse(
-                            f"/accounts/verify-email/?{urlencode({'email': email})}",
+                            f"/accounts/verify-email/?{urlencode(verify_q)}",
                             status_code=302,
                         )
                 except IntegrityError:
@@ -507,6 +513,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         phone=phone or "",
         email=email or "",
         account_role=account_role,
+        next_url=safe_next_url(request.query_params.get("next"), default=""),
     ))
 
 

@@ -150,3 +150,58 @@ def clear_client_gate(session: dict) -> None:
 
 def make_email_code() -> str:
     return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def client_display_name(user) -> str:
+    name = ""
+    if hasattr(user, "get_full_name"):
+        name = (user.get_full_name() or "").strip()
+    if not name:
+        first = (getattr(user, "first_name", None) or "").strip()
+        last = (getattr(user, "last_name", None) or "").strip()
+        name = f"{first} {last}".strip()
+    if not name:
+        name = (getattr(user, "username", None) or getattr(user, "email", None) or "Клиент").strip()
+    return name
+
+
+def apply_client_gate_from_user(db: Session, session: dict, *, consultant_id: int, user) -> None:
+    """Open booking gate for a logged-in account (after register/login via specialist link)."""
+    from app.models import SocialAccount
+
+    name = client_display_name(user)
+    email = (getattr(user, "email", None) or "").strip()
+    phone = (session.get("register_phone") or session.get("pc_phone") or "").strip()
+    telegram = (session.get("pc_telegram") or "").strip()
+
+    user_id = getattr(user, "id", None)
+    if user_id and not telegram:
+        sa = (
+            db.query(SocialAccount)
+            .filter(SocialAccount.user_id == user_id, SocialAccount.provider == "telegram")
+            .first()
+        )
+        if sa:
+            telegram = (sa.uid or "").strip()
+            try:
+                import json
+
+                extra = json.loads(sa.extra_data or "{}")
+                username = (extra.get("username") or "").strip().lstrip("@")
+                if username:
+                    telegram = username
+            except Exception:
+                pass
+
+    if not email and not telegram:
+        telegram = f"user:{user_id or 'guest'}"
+
+    set_client_gate(
+        session,
+        consultant_id=consultant_id,
+        name=name,
+        email=email,
+        phone=phone,
+        telegram=telegram,
+        verified=True,
+    )

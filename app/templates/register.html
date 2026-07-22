@@ -21,6 +21,7 @@
     <form method="POST" action="/register/" id="register-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="auth_method" id="auth_method" value="email">
+        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
 
         <div class="stack">
             <div class="form-field">

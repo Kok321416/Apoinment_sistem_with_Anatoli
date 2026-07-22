@@ -35,7 +35,7 @@ from app.services.vk_auth import (
     vk_oauth_configured,
 )
 from app.templating import page_context, templates
-from app.utils.safe_redirect import safe_next_url
+from app.utils.safe_redirect import safe_next_url, signup_error_redirect
 
 router = APIRouter(prefix="/accounts", tags=["oauth"])
 settings = get_settings()
@@ -75,9 +75,8 @@ async def telegram_login_page(request: Request, db: Session = Depends(get_db)):
                 register_fio=register_fio,
                 register_phone=register_phone,
             )
-        elif process == "signup":
-            # Missing fio/phone - fall through to plain login request after session check above
-            req = create_login_request(db, next_url=next_url, process="login")
+        elif process in ("signup", "signup_client"):
+            return RedirectResponse(signup_error_redirect(next_url, "telegram_signup"), status_code=302)
         else:
             req = create_login_request(db, next_url=next_url, process="login")
 
@@ -154,7 +153,7 @@ async def yandex_login(request: Request, db: Session = Depends(get_db)):
             register_fio = (request.session.get("register_fio") or "").strip()
             register_phone = normalize_phone(request.session.get("register_phone"))
             if not register_fio or not register_phone:
-                return RedirectResponse("/register/?error=yandex_signup", status_code=302)
+                return RedirectResponse(signup_error_redirect(next_url, "yandex_signup"), status_code=302)
 
     state = secrets.token_urlsafe(32)
     request.session["yandex_oauth_state"] = state
@@ -203,7 +202,7 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
         )
         if err or not user:
             if process in ("signup", "signup_client"):
-                return RedirectResponse("/register/?error=yandex_failed", status_code=302)
+                return RedirectResponse(signup_error_redirect(next_url, "yandex_failed"), status_code=302)
             return RedirectResponse("/login/?error=yandex_failed", status_code=302)
 
         login_user(request, user, db)
@@ -213,7 +212,8 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
     except Exception:
         logger.exception("Unhandled Yandex OAuth callback error")
         db.rollback()
-        return RedirectResponse("/register/?error=yandex_failed", status_code=302)
+        next_fallback = safe_next_url(request.session.pop("yandex_oauth_next", "/"), default="/")
+        return RedirectResponse(signup_error_redirect(next_fallback, "yandex_failed"), status_code=302)
 
 
 @router.get("/vk/login/")
@@ -241,7 +241,7 @@ async def vk_login(request: Request, db: Session = Depends(get_db)):
             register_fio = (request.session.get("register_fio") or "").strip()
             register_phone = normalize_phone(request.session.get("register_phone"))
             if not register_fio or not register_phone:
-                return RedirectResponse("/register/?error=vk_signup", status_code=302)
+                return RedirectResponse(signup_error_redirect(next_url, "vk_signup"), status_code=302)
 
     state = secrets.token_urlsafe(32)
     code_verifier, code_challenge = generate_pkce_pair()
@@ -345,7 +345,7 @@ async def vk_callback(request: Request, db: Session = Depends(get_db)):
         )
         if err or not user:
             if process in ("signup", "signup_client"):
-                return RedirectResponse("/register/?error=vk_failed", status_code=302)
+                return RedirectResponse(signup_error_redirect(next_url, "vk_failed"), status_code=302)
             return RedirectResponse("/login/?error=vk_failed", status_code=302)
 
         login_user(request, user, db)
@@ -359,7 +359,8 @@ async def vk_callback(request: Request, db: Session = Depends(get_db)):
     except Exception:
         logger.exception("Unhandled VK OAuth callback error")
         db.rollback()
-        return RedirectResponse("/login/?error=vk_failed", status_code=302)
+        next_fallback = safe_next_url(request.session.pop("vk_oauth_next", "/"), default="/")
+        return RedirectResponse(signup_error_redirect(next_fallback, "vk_failed"), status_code=302)
 
 
 @router.get("/confirm-email/{token}/")
@@ -379,12 +380,14 @@ async def confirm_email(request: Request, token: str, db: Session = Depends(get_
 @router.post("/verify-email/")
 async def verify_email_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
+    next_after = safe_next_url(request.query_params.get("next"), default="")
     if user and user.is_active:
-        return RedirectResponse("/dashboard/", status_code=302)
+        return RedirectResponse(next_after or "/dashboard/", status_code=302)
     email = (request.query_params.get("email") or "").strip()
     error = success = None
     if request.method == "POST":
         form = await request.form()
+        next_after = safe_next_url(form.get("next") or next_after, default="")
         if not _form_csrf_ok(request, form):
             error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
             email = (form.get("email") or email or "").strip()
@@ -400,7 +403,12 @@ async def verify_email_page(request: Request, db: Session = Depends(get_db)):
             code = (form.get("code") or "").strip()
             db_user, err = verify_email_code(db, email, code)
             if db_user:
-                return RedirectResponse("/login/?verified=1&email=" + (db_user.email or email), status_code=302)
+                from urllib.parse import urlencode
+
+                params = {"verified": "1", "email": db_user.email or email}
+                if next_after:
+                    params["next"] = next_after
+                return RedirectResponse("/login/?" + urlencode(params), status_code=302)
             error = err
     return templates.TemplateResponse("email_verification_sent.html", page_context(
         request, db, user,
@@ -408,6 +416,7 @@ async def verify_email_page(request: Request, db: Session = Depends(get_db)):
         error=error,
         success=success,
         email_verify_hours=settings.email_verify_hours,
+        next_url=next_after,
     ))
 
 

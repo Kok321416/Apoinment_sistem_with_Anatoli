@@ -192,3 +192,20 @@ body.tg-webapp .app-footer-mini {
         margin-top: 1.5rem;
     }
 }
+
+.tg-hub-auth {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 100dvh;
+    min-height: var(--tg-viewport-stable-height, 100dvh);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: max(1rem, var(--tg-safe-top, 0px)) 1rem max(1.25rem, var(--tg-safe-bottom, 0px));
+}
+
+.tg-hub-auth .auth-card {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+}
