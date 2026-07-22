@@ -141,6 +141,8 @@ class Booking(Base):
     time_slot_id: Mapped[int | None] = mapped_column(ForeignKey("time_slots.id"), nullable=True)
     calendar_id: Mapped[int] = mapped_column(ForeignKey("calendars.id"))
     client_card_id: Mapped[int | None] = mapped_column(ForeignKey("consultant_client_cards.id"), nullable=True)
+    # Dual-role Phase 1: link booking-as-client to auth User (nullable; backfill in Phase 2)
+    client_user_id: Mapped[int | None] = mapped_column(ForeignKey("auth_user.id"), nullable=True, index=True)
     client_name: Mapped[str] = mapped_column(String(255))
     client_phone: Mapped[str] = mapped_column(String(20))
     client_telegram: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -163,6 +165,7 @@ class Booking(Base):
     service = relationship("Service", back_populates="bookings")
     calendar = relationship("Calendar", back_populates="bookings")
     client_card = relationship("ClientCard", back_populates="bookings")
+    client_user = relationship("User", foreign_keys=[client_user_id], back_populates="client_bookings")
     time_slot = relationship("TimeSlot")
 
 

@@ -23,6 +23,11 @@ class User(Base):
 
     consultant = relationship("Consultant", back_populates="user", uselist=False)
     social_accounts = relationship("SocialAccount", back_populates="user")
+    client_bookings = relationship(
+        "Booking",
+        foreign_keys="Booking.client_user_id",
+        back_populates="client_user",
+    )
 
 
 class SocialAccount(Base):

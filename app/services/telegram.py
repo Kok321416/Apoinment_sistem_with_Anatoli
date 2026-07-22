@@ -16,6 +16,33 @@ TIMEZONE_STR = "Europe/Moscow"
 _tg_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="tg-send")
 
 
+def _norm_chat_id(value) -> str | None:
+    if value is None:
+        return None
+    s = str(value).strip()
+    return s or None
+
+
+def same_telegram_chat(a, b) -> bool:
+    """True when two chat ids refer to the same Telegram chat."""
+    na, nb = _norm_chat_id(a), _norm_chat_id(b)
+    return bool(na and nb and na == nb)
+
+
+def notify_dedup_enabled() -> bool:
+    return bool(getattr(settings, "notify_dedup", False))
+
+
+def _specialist_chat_for_booking(booking: Booking) -> tuple[str | None, str | None]:
+    """Return (chat_id, bot_token) for specialist notifications, or (None, None)."""
+    consultant = booking.calendar.consultant if booking.calendar else None
+    integration = consultant.integration if consultant else None
+    if not _integration_notifications_on(integration):
+        return None, None
+    chat_id = (integration.telegram_chat_id or "").strip() or None
+    return chat_id, _integration_bot_token(integration)
+
+
 def _send_telegram(chat_id, text: str, bot_token: str | None = None) -> bool:
     token = (bot_token or "").strip() or settings.telegram_bot_token
     if not token:
@@ -231,30 +258,27 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
     if not new_status or new_status == "completed":
         return
     try:
-        if booking.telegram_id:
+        specialist_chat_id, specialist_token = _specialist_chat_for_booking(booking)
+        client_chat = booking.telegram_id
+        skip_client = notify_dedup_enabled() and same_telegram_chat(client_chat, specialist_chat_id)
+
+        if client_chat and not skip_client:
             text_client = format_booking_status_changed_client(booking, new_status, old_status)
-            send_telegram_async(booking.telegram_id, text_client)
-        consultant = booking.calendar.consultant if booking.calendar else None
-        integration = consultant.integration if consultant else None
-        if _integration_notifications_on(integration):
-            chat_id = (integration.telegram_chat_id or "").strip()
+            send_telegram_async(client_chat, text_client)
+        if specialist_chat_id:
             text_spec = format_booking_status_changed_specialist(booking, new_status, old_status)
-            send_telegram_async(chat_id, text_spec, _integration_bot_token(integration))
+            send_telegram_async(specialist_chat_id, text_spec, specialist_token)
     except Exception as e:
         logger.exception("Status change notification error: %s", e)
 
 
 def notify_specialist_new_booking(booking: Booking) -> bool:
     try:
-        consultant = booking.calendar.consultant if booking.calendar else None
-        if not consultant:
+        chat_id, token = _specialist_chat_for_booking(booking)
+        if not chat_id:
             return False
-        integration = consultant.integration
-        if not _integration_notifications_on(integration):
-            return False
-        chat_id = (integration.telegram_chat_id or "").strip()
         text = format_new_booking_message_for_specialist(booking)
-        return _send_telegram(chat_id, text, _integration_bot_token(integration))
+        return _send_telegram(chat_id, text, token)
     except Exception as e:
         logger.exception("New booking notification error: %s", e)
         return False
@@ -267,7 +291,12 @@ def on_booking_created(db: Session, booking: Booking) -> None:
         logger.exception("on_booking_created specialist notify failed")
     try:
         if booking.telegram_id:
-            send_telegram_async(booking.telegram_id, format_client_booked_message(booking))
+            specialist_chat_id, _ = _specialist_chat_for_booking(booking)
+            if notify_dedup_enabled() and same_telegram_chat(booking.telegram_id, specialist_chat_id):
+                # Specialist already got "new booking"; skip duplicate client confirm to same chat
+                pass
+            else:
+                send_telegram_async(booking.telegram_id, format_client_booked_message(booking))
     except Exception:
         logger.exception("on_booking_created client notify failed")
     try:
@@ -334,9 +363,16 @@ def send_reminders(db: Session) -> dict:
 
         if in_first:
             if booking.telegram_id and not booking.reminder_24h_sent:
-                if send_telegram_to_client(booking.telegram_id, format_reminder_message(booking, h1)):
+                skip_client = notify_dedup_enabled() and same_telegram_chat(
+                    booking.telegram_id, specialist_chat_id
+                )
+                if not skip_client:
+                    if send_telegram_to_client(booking.telegram_id, format_reminder_message(booking, h1)):
+                        booking.reminder_24h_sent = True
+                        sent["client_24"] += 1
+                else:
+                    # Mark sent so we do not retry forever when dedup skips duplicate
                     booking.reminder_24h_sent = True
-                    sent["client_24"] += 1
             if specialist_chat_id and not booking.specialist_reminder_24h_sent:
                 if _send_telegram(specialist_chat_id, format_specialist_reminder_message(booking, h1), specialist_bot_token):
                     booking.specialist_reminder_24h_sent = True
@@ -344,9 +380,15 @@ def send_reminders(db: Session) -> dict:
 
         if in_second:
             if booking.telegram_id and not booking.reminder_1h_sent:
-                if send_telegram_to_client(booking.telegram_id, format_reminder_message(booking, h2)):
+                skip_client = notify_dedup_enabled() and same_telegram_chat(
+                    booking.telegram_id, specialist_chat_id
+                )
+                if not skip_client:
+                    if send_telegram_to_client(booking.telegram_id, format_reminder_message(booking, h2)):
+                        booking.reminder_1h_sent = True
+                        sent["client_1"] += 1
+                else:
                     booking.reminder_1h_sent = True
-                    sent["client_1"] += 1
             if specialist_chat_id and not booking.specialist_reminder_1h_sent:
                 if _send_telegram(specialist_chat_id, format_specialist_reminder_message(booking, h2), specialist_bot_token):
                     booking.specialist_reminder_1h_sent = True

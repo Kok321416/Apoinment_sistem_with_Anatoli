@@ -134,6 +134,21 @@ def _add_unique_index(table: str, index_name: str, column: str) -> None:
         logger.exception("Could not create index %s", index_name)
 
 
+def _add_index(table: str, index_name: str, column: str) -> None:
+    """Non-unique index; idempotent."""
+    if not _table_exists(table):
+        return
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(f"CREATE INDEX {index_name} ON {table} ({column})"))
+        logger.info("Created index %s", index_name)
+    except Exception as exc:
+        msg = str(exc).lower()
+        if "duplicate" in msg or "exists" in msg or "already" in msg:
+            return
+        logger.exception("Could not create index %s", index_name)
+
+
 def _refresh_schema_health() -> None:
     global _schema_degraded, _schema_issues
     issues: list[str] = []
@@ -179,6 +194,13 @@ def _apply_app_schema_patches() -> None:
             _add_column("services", column, ddl)
         except Exception:
             logger.exception("services.%s patch failed", column)
+
+    # Dual-role Phase 1: additive only (no UX change)
+    try:
+        _add_column("bookings", "client_user_id", "INTEGER NULL")
+        _add_index("bookings", "ix_bookings_client_user_id", "client_user_id")
+    except Exception:
+        logger.exception("bookings.client_user_id patch failed")
 
     _refresh_schema_health()
 
