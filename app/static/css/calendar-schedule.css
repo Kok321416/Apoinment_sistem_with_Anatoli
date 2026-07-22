@@ -135,8 +135,8 @@
 
 .week-grid {
     display: grid;
-    grid-template-columns: 52px repeat(7, minmax(88px, 1fr));
-    min-width: 760px;
+    grid-template-columns: 52px repeat(7, minmax(4.5rem, 1fr));
+    min-width: 640px;
     height: var(--schedule-grid-height);
     position: relative;
 }

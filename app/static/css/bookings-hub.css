@@ -618,11 +618,11 @@
 
 .bookings-fab {
     position: fixed;
-    right: var(--space-2xl);
-    bottom: var(--space-2xl);
-    z-index: 50;
-    width: 52px;
-    height: 52px;
+    right: max(var(--space-2xl), var(--safe-right));
+    bottom: max(var(--space-2xl), var(--safe-bottom));
+    z-index: var(--z-sticky);
+    width: max(52px, var(--touch-comfortable));
+    height: max(52px, var(--touch-comfortable));
     border-radius: var(--radius-full);
     border: none;
     background: var(--gradient-primary);

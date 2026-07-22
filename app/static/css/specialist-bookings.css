@@ -359,11 +359,11 @@
 .reschedule-overlay {
     position: fixed;
     inset: 0;
-    z-index: var(--z-modal, 2000);
+    z-index: var(--z-modal);
     display: none;
     align-items: center;
     justify-content: center;
-    padding: var(--space-2xl);
+    padding: max(var(--space-2xl), var(--safe-top)) var(--space-2xl) max(var(--space-2xl), var(--safe-bottom));
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(var(--blur-sm));
 }

@@ -1,8 +1,151 @@
+/*
+ * Responsive Design System — shared adaptive behavior.
+ * Prefer tokens + fluid CSS; keep media queries minimal and token-driven.
+ */
+
+/* Base: prevent page-level horizontal bleed without hiding bugs in admin */
+html {
+    max-width: 100%;
+}
+
+body {
+    max-width: 100%;
+    overflow-x: clip;
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+}
+
+img,
+svg,
+video,
+canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Fluid / safe text wrapping for long emails, names, telegram handles */
+.truncate,
+.text-ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.break-words,
+.text-break {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* Shared responsive grids */
+.grid-auto-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--grid-card-min), 1fr));
+    gap: var(--grid-gap);
+}
+
+.grid-auto-cards--lg {
+    grid-template-columns: repeat(auto-fill, minmax(var(--grid-card-min-lg), 1fr));
+}
+
+/* Hub shell primitives (calendars / bookings / clients / profile) */
+.hub-stats,
+.app-nav-grid,
+.dash-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--grid-gap);
+}
+
+.hub-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) min(17.5rem, 100%);
+    gap: var(--grid-gap);
+    align-items: start;
+}
+
+.hub-layout > * {
+    min-width: 0;
+}
+
+/* Forms: comfortable mobile stack */
+.stack,
+.form-stack,
+.auth-card .stack {
+    gap: max(var(--space-md), 12px);
+}
+
+.form-field + .form-field {
+    margin-top: 0;
+}
+
+/* Contained scroll for wide tables (no page-wide horizontal scroll) */
+.table-wrap,
+.pa-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+}
+
+/* Touch-friendly controls */
+@media (pointer: coarse) {
+    .btn,
+    .btn--sm,
+    .input,
+    .auth-method,
+    .app-header__menu-btn,
+    .tg-hub__card-link,
+    .app-mode-toggle__btn {
+        min-height: var(--touch-min);
+    }
+
+    .btn--primary,
+    .btn--secondary,
+    .btn--ghost {
+        min-height: var(--touch-comfortable);
+    }
+}
+
+/* Safe-area for sticky/fixed chrome */
+.app-header {
+    padding-top: var(--safe-top);
+}
+
+.app-footer-mini,
+.booking-page footer,
+.auth-page footer {
+    padding-bottom: max(var(--space-2xl), var(--safe-bottom));
+}
+
+.toast-stack {
+    right: max(var(--space-lg), var(--safe-right));
+    bottom: max(var(--space-lg), var(--safe-bottom));
+}
+
+/* Token-driven breakpoint tuning (DS: 1024 / 768 / 480) */
 @media (max-width: 1024px) {
     :root {
-        --container-padding: var(--space-2xl);
+        --container-padding: clamp(var(--space-lg), 2vw, var(--space-2xl));
         --grid-hero-ratio-left: 1fr;
         --grid-hero-ratio-right: 1fr;
+        --header-height: 64px;
+    }
+
+    .hub-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .hub-stats,
+    .app-nav-grid,
+    .dash-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-12 {
+        gap: var(--space-2xl);
     }
 }
 
@@ -11,14 +154,10 @@
         --container-padding: var(--space-lg);
         --header-height: 56px;
         --btn-height: var(--btn-height-sm);
+        --input-height: var(--btn-height-sm);
         --orb-size-purple: 280px;
         --orb-size-cyan: 240px;
-    }
-
-    html,
-    body {
-        overflow-x: hidden;
-        max-width: 100%;
+        --schedule-grid-height: min(560px, 70dvh);
     }
 
     .container {
@@ -32,15 +171,47 @@
     .cluster {
         gap: var(--space-md);
     }
+
+    .app-footer-mini {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: var(--space-sm) var(--space-md);
+        padding-inline: var(--container-padding);
+    }
+
+    .app-footer-mini a {
+        margin: 0;
+    }
+
+    /* Book / calendar panels stack */
+    .book-cal-layout {
+        grid-template-columns: 1fr !important;
+    }
 }
 
 @media (max-width: 480px) {
     :root {
         --container-padding: var(--space-md);
         --space-8xl: var(--space-6xl);
+        --grid-gap: var(--space-lg);
+    }
+
+    .hub-stats,
+    .app-nav-grid,
+    .dash-stats {
+        grid-template-columns: 1fr;
     }
 
     .btn {
-        min-height: 44px;
+        min-height: var(--touch-min);
+    }
+
+    .auth-card {
+        padding: var(--space-2xl) !important;
+    }
+
+    .book-cal-step {
+        white-space: normal;
     }
 }

@@ -504,10 +504,10 @@
 
 .avatar-crop-modal {
     inset: 0;
-    z-index: 80;
+    z-index: var(--z-modal);
     display: grid;
     place-items: center;
-    padding: var(--space-xl);
+    padding: max(var(--space-xl), var(--safe-top)) var(--space-xl) max(var(--space-xl), var(--safe-bottom));
     background: rgba(8, 12, 24, 0.72);
     position: fixed;
 }
