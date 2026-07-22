@@ -45,9 +45,9 @@
         </div>
     </section>
 
-    <section class="section-sm section--defer" id="value">
+    <section class="section-sm" id="value">
         <div class="container">
-            <div class="stats-grid reveal-stagger">
+            <div class="stats-grid">
                 {% for point in value_points %}
                 <article class="stat-card card card--static">
                     <div class="stat-card__value stat-card__value--text">{{ point.title }}</div>
@@ -58,13 +58,13 @@
         </div>
     </section>
 
-    <section class="section section--defer" id="features">
+    <section class="section" id="features">
         <div class="container stack-lg">
-            <div class="text-center reveal">
+            <div class="text-center">
                 <h2 class="text-display">Возможности платформы</h2>
                 <p class="text-body-lg text-muted max-w-lead mx-auto">Всё необходимое для записи клиентов — без перегруженной CRM.</p>
             </div>
-            <div class="features-grid reveal-stagger">
+            <div class="features-grid">
                 {% for feature in features %}
                 <article class="feature-card card card--static">
                     <div class="icon-tile feature-card__icon" aria-hidden="true">
@@ -78,12 +78,12 @@
         </div>
     </section>
 
-    <section class="section section--defer" id="how">
+    <section class="section" id="how">
         <div class="container stack-lg">
-            <div class="text-center reveal">
+            <div class="text-center">
                 <h2 class="text-display">Как это работает</h2>
             </div>
-            <div class="timeline reveal-stagger">
+            <div class="timeline">
                 {% for item in how_it_works %}
                 <article class="card card--static">
                     <div class="timeline__step-num">{{ item.step }}</div>
@@ -95,9 +95,9 @@
         </div>
     </section>
 
-    <section class="section-sm section--defer" id="cta">
+    <section class="section-sm" id="cta">
         <div class="container">
-            <div class="cta-panel card card--static reveal">
+            <div class="cta-panel card card--static">
                 <h2 class="text-h1">{{ cta_block.title }}</h2>
                 <p class="text-body-lg text-muted mt-lg">{{ cta_block.subtitle }}</p>
                 <a href="{{ cta_block.button_href }}" class="btn btn--primary focus-ring mt-3xl">{{ cta_block.button_label }}</a>
@@ -105,12 +105,12 @@
         </div>
     </section>
 
-    <section class="section section--defer" id="faq">
+    <section class="section" id="faq">
         <div class="container stack-lg">
-            <div class="text-center reveal">
+            <div class="text-center">
                 <h2 class="text-display">Частые вопросы</h2>
             </div>
-            <div class="accordion reveal" role="list">
+            <div class="accordion" role="list">
                 {% for item in faq_items %}
                 <details class="accordion__item" role="listitem">
                     <summary class="accordion__trigger">{{ item.question }}</summary>
@@ -125,6 +125,3 @@
 {% include "components/landing_footer.html" %}
 {% endblock %}
 
-{% block scripts %}
-<script src="/static/js/motion-reveal.js?v=1" defer></script>
-{% endblock %}

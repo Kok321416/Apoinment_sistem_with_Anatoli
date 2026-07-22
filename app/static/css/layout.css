@@ -17,9 +17,11 @@
     padding-block: var(--space-6xl);
 }
 
+/* Optional: skip painting far-below-fold sections. Do NOT use on first paint
+   content — empty intrinsic size caused a long dark gap while scrolling. */
 .section--defer {
     content-visibility: auto;
-    contain-intrinsic-size: 1px 720px;
+    contain-intrinsic-size: auto 480px;
 }
 
 

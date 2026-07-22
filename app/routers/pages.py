@@ -161,9 +161,24 @@ def _login_redirect(request: Request) -> RedirectResponse:
 
 
 @router.get("/")
-async def landing_page(request: Request, db: Session = Depends(get_db)):
-    user = _optional_user(request, db)
-    return templates.TemplateResponse("landing/index.html", landing_context(request, db, user))
+async def landing_page(request: Request):
+    """Public landing: skip MySQL when guest (no session user) for faster TTFB."""
+    from app.auth.session import get_session_user_id
+    from app.database import SessionLocal
+
+    user = None
+    db = None
+    try:
+        if "session" in request.scope and get_session_user_id(request):
+            db = SessionLocal()
+            user = get_current_user(request, db)
+        return templates.TemplateResponse(
+            "landing/index.html",
+            landing_context(request, db, user),
+        )
+    finally:
+        if db is not None:
+            db.close()
 
 
 @router.get("/tg/")
@@ -191,6 +206,7 @@ async def telegram_mini_app_entry(request: Request, db: Session = Depends(get_db
             db,
             user,
             tg_hub=True,
+            load_telegram_webapp=True,
             tg_mode=active,
             tg_has_consultant=has_c,
             tg_show_mode_switcher=has_c,

@@ -6,14 +6,16 @@
     {% include "components/meta.html" %}
     {% endblock %}
     {% block page_css %}
-    <link rel="stylesheet" href="/static/css/landing.css?v=17">
+    <link rel="stylesheet" href="/static/css/landing.css?v=18">
     {% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
     {% include "components/skip_link.html" %}
     {% block body %}{% endblock %}
     {% include "components/yandex_metrika.html" %}
+    {% if load_telegram_webapp %}
     {% include "components/telegram_webapp.html" %}
+    {% endif %}
     {% block scripts %}{% endblock %}
 </body>
 </html>

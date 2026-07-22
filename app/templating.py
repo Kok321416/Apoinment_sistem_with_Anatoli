@@ -162,7 +162,7 @@ templates.env.filters["booking_status"] = booking_status_label
 
 
 def build_header_context(db, user) -> dict:
-    if not user:
+    if not user or db is None:
         return {"header_consultant_name": "", "header_account_display": ""}
     try:
         name = ""
@@ -225,7 +225,7 @@ def page_context(request, db, user=None, **extra):
 
     has_consultant = False
     active_mode = "client"
-    if user is not None:
+    if user is not None and db is not None:
         has_consultant = user_has_consultant(db, user.id)
         active_mode = get_active_mode(request, db, user.id)
     ctx = {
@@ -246,6 +246,7 @@ def page_context(request, db, user=None, **extra):
         "active_mode": active_mode,
         "show_mode_switcher": bool(user and has_consultant),
         "impersonator_id": None,
+        "load_telegram_webapp": False,
         **build_header_context(db, user),
         **extra,
     }
