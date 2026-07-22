@@ -43,7 +43,7 @@ from app.services.email_verification import ensure_email_address, resend_verific
 from app.services.entity_delete import delete_calendar, delete_client_card, delete_service, delete_time_slot
 from app.services.slots import get_available_slots
 from app.services.telegram import notify_booking_status_changed
-from app.services.integration_telegram import claim_integration_telegram_chat
+from app.services.integration_telegram import claim_integration_telegram_chat, clear_integration_telegram_chat
 from app.templating import guide_context, landing_context, media_relative_path, page_context, templates
 from app.utils.safe_redirect import login_url_with_next, safe_next_url
 
@@ -1302,7 +1302,12 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
                 error = "Укажите идентификатор чата."
             else:
                 ok, err = claim_integration_telegram_chat(
-                    db, integration, chat_id, bot_token=bot_token or None
+                    db,
+                    integration,
+                    chat_id,
+                    bot_token=bot_token or None,
+                    source="integrations_form",
+                    actor_user_id=user.id if user else None,
                 )
                 if not ok:
                     error = err
@@ -1310,11 +1315,12 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
                     db.commit()
                     success = "Телеграм подключён."
         elif action == "disconnect_telegram":
-            integration.telegram_connected = False
-            integration.telegram_bot_token = None
-            integration.telegram_chat_id = None
-            integration.telegram_link_token = None
-            integration.telegram_link_token_created_at = None
+            clear_integration_telegram_chat(
+                db,
+                integration,
+                source="integrations_disconnect",
+                actor_user_id=user.id if user else None,
+            )
             db.commit()
             success = "Телеграм отключён."
         elif action == "send_email_code":

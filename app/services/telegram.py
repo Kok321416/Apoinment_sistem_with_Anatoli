@@ -241,15 +241,51 @@ def format_booking_status_changed_specialist(booking: Booking, new_status: str, 
         contact.append(booking.client_phone)
     if booking.client_telegram:
         contact.append(booking.client_telegram)
-    contact_str = ", ".join(contact) if contact else "—"
+    contact_str = ", ".join(contact) if contact else "-"
     return (
         f"📋 <b>К вам запись: статус обновлён</b>\n\n"
-        f"👤 Клиент: {booking.client_name or '—'}\n"
+        f"👤 Клиент: {booking.client_name or '-'}\n"
         f"{status_line}\n\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
         f"📅 Дата: {info['date_str']}\n"
         f"🕐 Время: {info['slot']}\n"
         f"📞 Контакт: {contact_str}"
+    )
+
+
+def _fmt_dt(d, t) -> str:
+    ds = d.strftime("%d.%m.%Y") if d else "-"
+    ts = t.strftime("%H:%M") if t else "-"
+    return f"{ds} {ts}"
+
+
+def format_booking_rescheduled_client(booking: Booking, *, old_date, old_time, old_end_time=None) -> str:
+    info = _booking_base_info(booking)
+    old_slot = _fmt_dt(old_date, old_time)
+    if old_end_time:
+        old_slot = f"{old_slot} - {old_end_time.strftime('%H:%M')}"
+    return (
+        f"📅 <b>Ваша запись: перенесена</b>\n\n"
+        f"Было: {old_slot}\n"
+        f"Стало: {info['date_str']} {info['slot']}\n\n"
+        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
+        f"👤 Специалист: {info['consultant_name']}\n"
+        f"📍 Место: {info['calendar_name']}"
+    )
+
+
+def format_booking_rescheduled_specialist(booking: Booking, *, old_date, old_time, old_end_time=None) -> str:
+    info = _booking_base_info(booking)
+    old_slot = _fmt_dt(old_date, old_time)
+    if old_end_time:
+        old_slot = f"{old_slot} - {old_end_time.strftime('%H:%M')}"
+    return (
+        f"📅 <b>К вам запись: перенесена</b>\n\n"
+        f"👤 Клиент: {booking.client_name or '-'}\n"
+        f"Было: {old_slot}\n"
+        f"Стало: {info['date_str']} {info['slot']}\n"
+        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
+        f"📍 Календарь: {info['calendar_name']}"
     )
 
 
@@ -261,6 +297,10 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
         specialist_chat_id, specialist_token = _specialist_chat_for_booking(booking)
         client_chat = booking.telegram_id
         skip_client = notify_dedup_enabled() and same_telegram_chat(client_chat, specialist_chat_id)
+        if skip_client:
+            from app.services.app_counters import record_notify_dedup_hit
+
+            record_notify_dedup_hit(db)
 
         if client_chat and not skip_client:
             text_client = format_booking_status_changed_client(booking, new_status, old_status)
@@ -270,6 +310,42 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
             send_telegram_async(specialist_chat_id, text_spec, specialist_token)
     except Exception as e:
         logger.exception("Status change notification error: %s", e)
+
+
+def notify_booking_rescheduled(
+    db: Session,
+    booking: Booking,
+    *,
+    old_date,
+    old_time,
+    old_end_time=None,
+) -> None:
+    try:
+        specialist_chat_id, specialist_token = _specialist_chat_for_booking(booking)
+        client_chat = booking.telegram_id
+        skip_client = notify_dedup_enabled() and same_telegram_chat(client_chat, specialist_chat_id)
+        if skip_client:
+            from app.services.app_counters import record_notify_dedup_hit
+
+            record_notify_dedup_hit(db)
+
+        if client_chat and not skip_client:
+            send_telegram_async(
+                client_chat,
+                format_booking_rescheduled_client(
+                    booking, old_date=old_date, old_time=old_time, old_end_time=old_end_time
+                ),
+            )
+        if specialist_chat_id:
+            send_telegram_async(
+                specialist_chat_id,
+                format_booking_rescheduled_specialist(
+                    booking, old_date=old_date, old_time=old_time, old_end_time=old_end_time
+                ),
+                specialist_token,
+            )
+    except Exception as e:
+        logger.exception("Reschedule notification error: %s", e)
 
 
 def notify_specialist_new_booking(booking: Booking) -> bool:
@@ -293,8 +369,9 @@ def on_booking_created(db: Session, booking: Booking) -> None:
         if booking.telegram_id:
             specialist_chat_id, _ = _specialist_chat_for_booking(booking)
             if notify_dedup_enabled() and same_telegram_chat(booking.telegram_id, specialist_chat_id):
-                # Specialist already got "new booking"; skip duplicate client confirm to same chat
-                pass
+                from app.services.app_counters import record_notify_dedup_hit
+
+                record_notify_dedup_hit(db)
             else:
                 send_telegram_async(booking.telegram_id, format_client_booked_message(booking))
     except Exception:
@@ -371,6 +448,9 @@ def send_reminders(db: Session) -> dict:
                         booking.reminder_24h_sent = True
                         sent["client_24"] += 1
                 else:
+                    from app.services.app_counters import record_notify_dedup_hit
+
+                    record_notify_dedup_hit(db)
                     # Mark sent so we do not retry forever when dedup skips duplicate
                     booking.reminder_24h_sent = True
             if specialist_chat_id and not booking.specialist_reminder_24h_sent:
@@ -388,6 +468,9 @@ def send_reminders(db: Session) -> dict:
                         booking.reminder_1h_sent = True
                         sent["client_1"] += 1
                 else:
+                    from app.services.app_counters import record_notify_dedup_hit
+
+                    record_notify_dedup_hit(db)
                     booking.reminder_1h_sent = True
             if specialist_chat_id and not booking.specialist_reminder_1h_sent:
                 if _send_telegram(specialist_chat_id, format_specialist_reminder_message(booking, h2), specialist_bot_token):

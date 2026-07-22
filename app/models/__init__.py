@@ -1,5 +1,6 @@
 from app.models.auth import EmailAddress, EmailVerificationToken, SocialAccount, TelegramLoginRequest, TelegramUiPreference, User
 from app.models.core import (
+    AppCounter,
     Booking,
     Calendar,
     Category,
@@ -7,6 +8,7 @@ from app.models.core import (
     ClientCard,
     Consultant,
     Integration,
+    IntegrationTelegramAudit,
     Service,
     TimeSlot,
 )
@@ -26,5 +28,7 @@ __all__ = [
     "ClientCard",
     "Booking",
     "Integration",
+    "IntegrationTelegramAudit",
+    "AppCounter",
     "Client",
 ]

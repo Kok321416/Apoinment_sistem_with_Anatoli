@@ -6,7 +6,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models import Booking, Calendar, ClientCard, Consultant, Service, TimeSlot
-from app.services.telegram import on_booking_created, on_booking_updated
+from app.services.telegram import on_booking_created, on_booking_updated, notify_booking_rescheduled
 
 
 def normalize_client_phone(raw: str) -> tuple[str, str | None]:
@@ -35,9 +35,26 @@ def find_or_create_client_card(
     client_phone: str,
     client_email: str,
     client_telegram: str,
+    client_user_id: int | None = None,
 ) -> ClientCard:
+    """
+    Find or create a ClientCard for this consultant.
+
+    Phase 9: when client_user_id is set, match by user first and never merge into
+    another card that already belongs to a different client_user_id.
+    """
     card = None
-    if client_phone or client_email or client_telegram:
+    if client_user_id is not None:
+        card = (
+            db.query(ClientCard)
+            .filter(
+                ClientCard.consultant_id == consultant.id,
+                ClientCard.client_user_id == client_user_id,
+            )
+            .first()
+        )
+
+    if not card and (client_phone or client_email or client_telegram):
         conditions = []
         if client_phone:
             conditions.append(ClientCard.phone == client_phone)
@@ -48,14 +65,26 @@ def find_or_create_client_card(
             if tg_norm:
                 conditions.append(ClientCard.telegram.ilike(f"%{tg_norm}%"))
         if conditions:
-            card = (
+            candidates = (
                 db.query(ClientCard)
                 .filter(ClientCard.consultant_id == consultant.id, or_(*conditions))
-                .first()
+                .all()
             )
+            for cand in candidates:
+                # Do not merge into a card owned by another auth user
+                if (
+                    client_user_id is not None
+                    and cand.client_user_id is not None
+                    and cand.client_user_id != client_user_id
+                ):
+                    continue
+                card = cand
+                break
+
     if not card:
         card = ClientCard(
             consultant_id=consultant.id,
+            client_user_id=client_user_id,
             name=client_name or None,
             phone=client_phone or None,
             email=client_email or None,
@@ -66,6 +95,9 @@ def find_or_create_client_card(
         return card
 
     updated = False
+    if client_user_id is not None and card.client_user_id is None:
+        card.client_user_id = client_user_id
+        updated = True
     if client_name and not card.name:
         card.name = client_name
         updated = True
@@ -97,6 +129,9 @@ def create_public_booking(
     client_user_id: int | None = None,
 ) -> tuple[Booking | None, str | None]:
     consultant = calendar.consultant
+    if client_user_id is not None and consultant and consultant.user_id == client_user_id:
+        return None, "Нельзя записаться к самому себе. Выберите другого специалиста или выйдите из аккаунта."
+
     service = (
         db.query(Service)
         .filter(Service.id == service_id, Service.consultant_id == consultant.id, Service.is_active.is_(True))
@@ -187,7 +222,13 @@ def create_public_booking(
             return None, "Это время уже занято или слишком близко к другой записи."
 
     card = find_or_create_client_card(
-        db, consultant, client_name, client_phone, client_email, client_telegram
+        db,
+        consultant,
+        client_name,
+        client_phone,
+        client_email,
+        client_telegram,
+        client_user_id=client_user_id,
     )
     link_token = uuid.uuid4().hex[:24]
     booking = Booking(
@@ -286,11 +327,30 @@ def reschedule_booking(
         if not (end_dt + break_delta <= other_start or start_dt >= other_end + break_delta):
             return "Это время уже занято."
 
+    old_date = booking.booking_date
+    old_time = booking.booking_time
+    old_end = booking.booking_end_time
+
     booking.booking_date = new_date
     booking.booking_time = start_time_obj
     booking.booking_end_time = end_time_obj
     booking.time_slot_id = time_slot.id
+    # Reset reminder flags so new time gets reminders again
+    booking.reminder_24h_sent = False
+    booking.reminder_1h_sent = False
+    booking.specialist_reminder_24h_sent = False
+    booking.specialist_reminder_1h_sent = False
     db.commit()
     db.refresh(booking)
     on_booking_updated(db, booking, created=False)
+    try:
+        notify_booking_rescheduled(
+            db,
+            booking,
+            old_date=old_date,
+            old_time=old_time,
+            old_end_time=old_end,
+        )
+    except Exception:
+        pass
     return None

@@ -121,6 +121,8 @@ class ClientCard(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     consultant_id: Mapped[int] = mapped_column(ForeignKey("consultants.id"))
+    # Dual-role Phase 9: prefer this over blind phone/email merge when set
+    client_user_id: Mapped[int | None] = mapped_column(ForeignKey("auth_user.id"), nullable=True, index=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     email: Mapped[str | None] = mapped_column(String(254), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
@@ -131,6 +133,31 @@ class ClientCard(Base):
 
     consultant = relationship("Consultant", back_populates="client_cards")
     bookings = relationship("Booking", back_populates="client_card")
+
+
+class IntegrationTelegramAudit(Base):
+    """Audit trail for Integration.telegram_chat_id changes (Phase 9)."""
+
+    __tablename__ = "integration_telegram_audit"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    integration_id: Mapped[int] = mapped_column(ForeignKey("integrations.id"), index=True)
+    consultant_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    old_chat_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    new_chat_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source: Mapped[str] = mapped_column(String(64), default="unknown")
+    actor_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AppCounter(Base):
+    """Simple persistent counters (e.g. notify dedup hits)."""
+
+    __tablename__ = "app_counters"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class Booking(Base):

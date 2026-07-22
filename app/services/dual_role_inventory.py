@@ -11,6 +11,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import Booking, Consultant, Integration, SocialAccount, User
+from app.services.app_counters import DEDUP_HITS_KEY, get_counter
 
 
 def _norm_chat(value: Any) -> str | None:
@@ -120,12 +121,41 @@ def collect_dual_role_inventory(db: Session) -> dict[str, Any]:
     bookings_tg_total = len(bookings_with_tg)
     bookings_tg_without_user = bookings_tg_total - linkable
 
+    # Dual users: have Consultant profile AND client signal (client bookings or TG SocialAccount)
+    consultant_user_ids = {
+        int(r[0])
+        for r in db.query(Consultant.user_id).filter(Consultant.user_id.isnot(None)).all()
+        if r[0] is not None
+    }
+    client_user_ids: set[int] = set()
+    if has_client_user_col:
+        client_user_ids |= {
+            int(r[0])
+            for r in db.query(Booking.client_user_id).filter(Booking.client_user_id.isnot(None)).distinct().all()
+            if r[0] is not None
+        }
+    client_user_ids |= {
+        int(r[0])
+        for r in db.query(SocialAccount.user_id).filter(SocialAccount.provider == "telegram").all()
+        if r[0] is not None
+    }
+    dual_user_ids = sorted(consultant_user_ids & client_user_ids)
+
+    dedup_hits = 0
+    try:
+        dedup_hits = get_counter(db, DEDUP_HITS_KEY)
+    except Exception:
+        dedup_hits = 0
+
     return {
         "users_total": users_total,
         "consultants_total": consultants_total,
         "consultants_with_user": consultants_with_user,
         "orphan_users_count": orphan_users_count,
         "orphan_user_ids_sample": orphan_user_ids,
+        "dual_users_count": len(dual_user_ids),
+        "dual_user_ids_sample": dual_user_ids[:30],
+        "notify_dedup_hits": dedup_hits,
         "integrations_with_chat": len(chat_rows),
         "shared_integration_chats_count": len(shared_chats),
         "shared_integration_chats_sample": {
@@ -148,11 +178,14 @@ def collect_dual_role_inventory(db: Session) -> dict[str, Any]:
 
 def format_inventory_report(data: dict[str, Any]) -> str:
     lines = [
-        "=== Dual-role inventory (Phase 0, read-only) ===",
+        "=== Dual-role inventory (Phase 0/9, read-only) ===",
         f"Users total: {data['users_total']}",
         f"Consultants total: {data['consultants_total']} (with user_id: {data['consultants_with_user']})",
         f"Orphan users (no Consultant): {data['orphan_users_count']}",
         f"  sample ids: {data['orphan_user_ids_sample']}",
+        f"Dual users (consultant + client signal): {data['dual_users_count']}",
+        f"  sample ids: {data['dual_user_ids_sample']}",
+        f"Notify dedup hits (persisted): {data['notify_dedup_hits']}",
         f"Integrations with telegram_chat_id: {data['integrations_with_chat']}",
         f"SHARED integration chats: {data['shared_integration_chats_count']}",
         f"  sample: {data['shared_integration_chats_sample']}",

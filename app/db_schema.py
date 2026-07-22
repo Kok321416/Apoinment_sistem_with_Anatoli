@@ -202,6 +202,13 @@ def _apply_app_schema_patches() -> None:
     except Exception:
         logger.exception("bookings.client_user_id patch failed")
 
+    # Dual-role Phase 9
+    try:
+        _add_column("consultant_client_cards", "client_user_id", "INTEGER NULL")
+        _add_index("consultant_client_cards", "ix_client_cards_client_user_id", "client_user_id")
+    except Exception:
+        logger.exception("consultant_client_cards.client_user_id patch failed")
+
     _refresh_schema_health()
 
 

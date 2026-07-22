@@ -189,7 +189,9 @@ async def confirm_specialist_telegram(request: Request, db: Session = Depends(ge
             integration.telegram_link_token_created_at = None
             db.commit()
             return JSONResponse({"success": False, "error": "Ссылка истекла"}, status_code=400)
-    ok, err = claim_integration_telegram_chat(db, integration, str(int(telegram_id)))
+    ok, err = claim_integration_telegram_chat(
+        db, integration, str(int(telegram_id)), source="bot_connect_spec"
+    )
     if not ok:
         return JSONResponse({"success": False, "error": err}, status_code=409)
     integration.telegram_link_token = None
