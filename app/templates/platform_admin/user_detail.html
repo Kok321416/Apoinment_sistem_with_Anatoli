@@ -69,6 +69,50 @@
             <button type="submit" class="pa-btn pa-btn--primary" onclick="return confirm('Войти как этот пользователь?');">Войти как</button>
         </form>
         {% endif %}
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="password_reset">
+            <button type="submit" class="pa-btn pa-btn--secondary" onclick="return confirm('Отправить ссылку сброса пароля на email?');">Сброс пароля (email)</button>
+        </form>
+        {% if admin_perms.users_write %}
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="invalidate_sessions">
+            <button type="submit" class="pa-btn pa-btn--ghost" onclick="return confirm('Завершить все сессии пользователя?');">Завершить сессии</button>
+        </form>
+        {% endif %}
     </div>
 </div>
+
+{% if target.is_staff and user.is_superuser %}
+<div class="pa-panel">
+    <h2>Admin RBAC</h2>
+    <p class="pa-muted">Эффективные роли: {{ effective_admin_roles | join(', ') }}</p>
+    {% if admin_roles %}
+    <ul class="pa-list">
+        {% for r in admin_roles %}
+        <li>
+            {{ role_labels.get(r.role, r.role) }}
+            <form method="post" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="revoke_role">
+                <input type="hidden" name="role" value="{{ r.role }}">
+                <button type="submit" class="pa-btn pa-btn--ghost">снять</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    <form method="post" class="pa-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="assign_role">
+        <select name="role" class="pa-input">
+            {% for role in assignable_roles %}
+            <option value="{{ role }}">{{ role_labels.get(role, role) }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="pa-btn pa-btn--secondary">Назначить роль</button>
+    </form>
+</div>
+{% endif %}
 {% endblock %}

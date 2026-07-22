@@ -1,0 +1,54 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Аналитика{% endblock %}
+{% block content %}
+<h1 class="pa-title">Аналитика</h1>
+<p class="pa-muted">DAU / WAU / MAU по событиям входа (Admin A4).</p>
+
+<div class="pa-stats">
+    <div class="pa-stat"><span>{{ metrics.dau }}</span> DAU</div>
+    <div class="pa-stat"><span>{{ metrics.wau }}</span> WAU (7д)</div>
+    <div class="pa-stat"><span>{{ metrics.mau }}</span> MAU (30д)</div>
+    <div class="pa-stat"><span>{{ metrics.signups_today }}</span> регистраций сегодня</div>
+    <div class="pa-stat"><span>{{ metrics.signups_week }}</span> регистраций за 7д</div>
+    <div class="pa-stat"><span>{{ metrics.bookings_week }}</span> записей за 7д</div>
+</div>
+
+<div class="pa-panel">
+    <h2>Активные пользователи (7 дней)</h2>
+    <div class="pa-bars">
+        {% for row in metrics.daily_active %}
+        <div class="pa-bar-row">
+            <span class="pa-bar-label">{{ row.date }}</span>
+            <div class="pa-bar-track"><div class="pa-bar-fill" style="width: {{ (row.value * 100 / (metrics.wau or 1))|round }}%;"></div></div>
+            <span class="pa-bar-value">{{ row.value }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="pa-panel">
+    <h2>Регистрации (7 дней)</h2>
+    <div class="pa-bars">
+        {% for row in metrics.daily_signups %}
+        <div class="pa-bar-row">
+            <span class="pa-bar-label">{{ row.date }}</span>
+            <div class="pa-bar-track"><div class="pa-bar-fill pa-bar-fill--alt" style="width: {{ (row.value * 100 / (metrics.signups_week or 1))|round }}%;"></div></div>
+            <span class="pa-bar-value">{{ row.value }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="pa-panel">
+    <h2>Записи (7 дней)</h2>
+    <div class="pa-bars">
+        {% for row in metrics.daily_bookings %}
+        <div class="pa-bar-row">
+            <span class="pa-bar-label">{{ row.date }}</span>
+            <div class="pa-bar-track"><div class="pa-bar-fill" style="width: {{ (row.value * 100 / (metrics.bookings_week or 1))|round }}%;"></div></div>
+            <span class="pa-bar-value">{{ row.value }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

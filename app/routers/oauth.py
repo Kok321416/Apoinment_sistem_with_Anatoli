@@ -118,7 +118,7 @@ async def telegram_complete_login(complete_token: str, request: Request, db: Ses
     user = db.get(User, req.user_id)
     if not user:
         return RedirectResponse("/login/", status_code=302)
-    login_user(request, user)
+    login_user(request, user, db)
     request.session["show_telegram_welcome"] = True
     consume_completed_login(db, req)
     return RedirectResponse(safe_next_url(req.next_url), status_code=302)
@@ -196,7 +196,7 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
                 return RedirectResponse("/register/?error=yandex_failed", status_code=302)
             return RedirectResponse("/login/?error=yandex_failed", status_code=302)
 
-        login_user(request, user)
+        login_user(request, user, db)
         if process == "connect":
             request.session["integrations_success"] = "Яндекс привязан."
         return RedirectResponse(next_url, status_code=302)
@@ -281,6 +281,45 @@ async def set_password_page(request: Request, db: Session = Depends(get_db)):
             next_url = safe_next_url(request.query_params.get("next"))
             return RedirectResponse(next_url, status_code=302)
     return templates.TemplateResponse("password_set.html", page_context(request, db, user, error=error))
+
+
+@router.get("/password/reset/")
+@router.post("/password/reset/")
+async def password_reset_page(request: Request, db: Session = Depends(get_db)):
+    from app.auth.passwords import hash_password
+    from app.services.password_reset import consume_reset_token, get_valid_reset_token
+
+    token = (request.query_params.get("token") or "").strip()
+    error = None
+    if request.method == "POST":
+        form = await request.form()
+        token = (form.get("token") or token or "").strip()
+        p1 = form.get("password1", "")
+        p2 = form.get("password2", "")
+        row = get_valid_reset_token(db, token)
+        if not row:
+            error = "Ссылка недействительна или истекла."
+        elif p1 != p2:
+            error = "Пароли не совпадают"
+        elif len(p1) < 8:
+            error = "Пароль должен быть не менее 8 символов"
+        else:
+            db_user = db.get(User, row.user_id)
+            if not db_user:
+                error = "Пользователь не найден."
+            else:
+                db_user.password = hash_password(p1)
+                consume_reset_token(db, row)
+                db.commit()
+                return RedirectResponse("/login/?success=password_reset", status_code=302)
+    elif not token:
+        error = "Укажите ссылку из письма."
+    elif not get_valid_reset_token(db, token):
+        error = "Ссылка недействительна или истекла."
+    return templates.TemplateResponse(
+        "password_reset.html",
+        page_context(request, db, None, error=error, token=token),
+    )
 
 
 @router.get("/social/connections/")

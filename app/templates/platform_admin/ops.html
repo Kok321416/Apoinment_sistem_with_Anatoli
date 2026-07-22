@@ -1,0 +1,112 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Ops{% endblock %}
+{% block content %}
+<h1 class="pa-title">Ops</h1>
+<p class="pa-muted">Здоровье схемы, dual-role inventory, backup (Admin A5).</p>
+
+<div class="pa-stats">
+    <div class="pa-stat"><span>{% if snap.schema.ready %}OK{% else %}WARN{% endif %}</span> schema</div>
+    <div class="pa-stat"><span>{{ snap.db_kind }}</span> БД</div>
+    <div class="pa-stat"><span>{{ snap.inventory.dual_users_count }}</span> dual users</div>
+    <div class="pa-stat"><span>{{ snap.inventory.notify_dedup_hits }}</span> dedup hits</div>
+</div>
+
+<div class="pa-panel">
+    <h2>Система</h2>
+    <ul class="pa-list">
+        <li>site_url: {{ snap.site_url }}</li>
+        <li>platform_admin: {{ snap.platform_admin_enabled }}</li>
+        <li>notify_dedup: {{ snap.notify_dedup }}</li>
+        <li>schema degraded: {{ snap.schema.degraded }}</li>
+        {% if snap.schema.issues %}
+        <li>issues: {{ snap.schema.issues|join(', ') }}</li>
+        {% endif %}
+        <li>support: <a href="mailto:{{ snap.support_email }}">{{ snap.support_email }}</a></li>
+    </ul>
+</div>
+
+<div class="pa-panel">
+    <h2>Deploy checklist (Telegram + dual-role)</h2>
+    <table class="pa-table">
+        <thead><tr><th>Пункт</th><th>Статус</th><th>Подсказка</th></tr></thead>
+        <tbody>
+        {% for item in snap.deploy_checklist %}
+        <tr>
+            <td>{{ item.label }}</td>
+            <td>
+                {% if item.status == 'ok' %}<span class="pa-ok">ok</span>
+                {% elif item.status == 'fail' %}<span class="pa-alert--err">fail</span>
+                {% elif item.status == 'warn' %}warn
+                {% else %}manual{% endif %}
+            </td>
+            <td class="pa-muted">{{ item.hint }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p class="pa-hint">Подробнее: PROMPTS/TELEGRAM_ADMIN_OPS.md</p>
+</div>
+
+<div class="pa-panel">
+    <h2>Production readiness</h2>
+    <p class="pa-muted">
+        CLI: <code>python -m app.commands.prod_readiness</code>
+        {% if snap.readiness.ok %}<span class="pa-ok">PASS</span>{% else %}<span class="pa-alert--err">FAIL</span>{% endif %}
+        (ok={{ snap.readiness.ok_count }}, warn={{ snap.readiness.warn_count }}, fail={{ snap.readiness.fail_count }})
+    </p>
+    <table class="pa-table">
+        <thead><tr><th>Check</th><th>Level</th><th>Message</th></tr></thead>
+        <tbody>
+        {% for c in snap.readiness.checks %}
+        <tr>
+            <td>{{ c.id }}</td>
+            <td>{{ c.level }}</td>
+            <td>{{ c.message }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="pa-panel">
+    <h2>Dual-role inventory</h2>
+    <pre class="pa-pre">{{ snap.inventory_report }}</pre>
+</div>
+
+<div class="pa-panel">
+    <h2>Backup</h2>
+    <p class="pa-muted">Папка: {{ snap.backups_dir }}</p>
+    {% if user.is_superuser %}
+    <form method="post" class="pa-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="backup">
+        <button type="submit" class="pa-btn pa-btn--primary" onclick="return confirm('Создать backup БД?');">Создать backup</button>
+    </form>
+    {% else %}
+    <p class="pa-muted">Создание backup доступно только superuser.</p>
+    {% endif %}
+    {% if snap.recent_backups %}
+    <table class="pa-table" style="margin-top:1rem;">
+        <thead><tr><th>Файл</th><th>KB</th><th>Время</th></tr></thead>
+        <tbody>
+        {% for b in snap.recent_backups %}
+        <tr><td>{{ b.name }}</td><td>{{ b.size_kb }}</td><td>{{ b.mtime }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+
+<div class="pa-panel">
+    <h2>Экспорт CSV</h2>
+    <div class="pa-actions">
+        <a class="pa-btn pa-btn--secondary" href="/platform-admin/export/users.csv">users.csv</a>
+        <a class="pa-btn pa-btn--secondary" href="/platform-admin/export/bookings.csv">bookings.csv</a>
+    </div>
+</div>
+
+<div class="pa-panel pa-card--muted">
+    <h2>Поддержка / Billing</h2>
+    <p class="pa-muted">Тикеты: <a href="/platform-admin/support/">/platform-admin/support/</a> · <a href="/support/">/support/</a>. Биллинг: stub (оплата не подключена).</p>
+</div>
+{% endblock %}

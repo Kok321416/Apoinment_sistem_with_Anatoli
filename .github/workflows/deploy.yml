@@ -113,6 +113,9 @@ jobs:
           SMTP_FROM_NAME=${{ secrets.SMTP_FROM_NAME || 'Все клиенты здесь' }}
           SITE_BRAND_NAME=${{ secrets.SITE_BRAND_NAME || 'Все клиенты здесь' }}
           SMTP_USE_SSL=${{ secrets.SMTP_USE_SSL || 'true' }}
+          NOTIFY_DEDUP=${{ secrets.NOTIFY_DEDUP || 'true' }}
+          PLATFORM_ADMIN_ENABLED=${{ secrets.PLATFORM_ADMIN_ENABLED || 'true' }}
+          BROADCAST_REQUIRE_DRY_RUN=${{ secrets.BROADCAST_REQUIRE_DRY_RUN || 'true' }}
           EOF
 
           # Ensure predictable PATH in non-interactive SSH

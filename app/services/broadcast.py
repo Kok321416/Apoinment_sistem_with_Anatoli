@@ -46,6 +46,7 @@ JOB_RUNNING = "running"
 JOB_COMPLETED = "completed"
 JOB_PARTIAL = "partial"
 JOB_FAILED = "failed"
+JOB_CANCELLED = "cancelled"
 
 REC_PENDING = "pending"
 REC_SENT = "sent"
@@ -224,6 +225,31 @@ def create_broadcast_job(
     return job, None
 
 
+def cancel_broadcast_job(db: Session, job_id: int) -> tuple[TelegramBroadcastJob | None, str | None]:
+    job = db.get(TelegramBroadcastJob, job_id)
+    if not job:
+        return None, "Job не найден"
+    if job.status not in (JOB_QUEUED, JOB_RUNNING):
+        return None, "Остановить можно только queued/running job"
+    job.status = JOB_CANCELLED
+    job.finished_at = datetime.utcnow()
+    job.error = (job.error or "cancelled by admin")[:500]
+    pending = (
+        db.query(TelegramBroadcastRecipient)
+        .filter(
+            TelegramBroadcastRecipient.job_id == job.id,
+            TelegramBroadcastRecipient.status == REC_PENDING,
+        )
+        .all()
+    )
+    for rec in pending:
+        rec.status = REC_SKIPPED
+        rec.error = "job cancelled"
+    db.commit()
+    db.refresh(job)
+    return job, None
+
+
 def send_telegram_with_retry(chat_id: str, text: str, *, retries: int = 3) -> tuple[bool, str | None]:
     settings = get_settings()
     token = settings.telegram_bot_token
@@ -274,6 +300,9 @@ def process_broadcast_jobs(
     )
     for job in jobs:
         stats["jobs"] += 1
+        db.refresh(job)
+        if job.status == JOB_CANCELLED:
+            continue
         if job.status == JOB_QUEUED:
             job.status = JOB_RUNNING
             job.started_at = datetime.utcnow()
@@ -290,6 +319,9 @@ def process_broadcast_jobs(
             .all()
         )
         for rec in pending:
+            db.refresh(job)
+            if job.status == JOB_CANCELLED:
+                break
             from app.services.telegram_copy import format_broadcast_message
 
             ok, err = send_telegram_with_retry(rec.chat_id, format_broadcast_message(job.text))

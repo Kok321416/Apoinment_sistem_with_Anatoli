@@ -1,0 +1,38 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Поддержка{% endblock %}
+{% block content %}
+<h1 class="pa-title">Поддержка</h1>
+<p class="pa-muted">Тикеты с публичной формы /support/</p>
+
+<form method="get" class="pa-inline-form">
+    <label class="pa-label">Статус
+        <select class="pa-input" name="status">
+            <option value="">все</option>
+            {% for st in statuses %}
+            <option value="{{ st }}" {% if status_filter == st %}selected{% endif %}>{{ status_labels[st] }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label class="pa-label">Поиск
+        <input class="pa-input" type="text" name="q" value="{{ q }}" placeholder="email / тема">
+    </label>
+    <button type="submit" class="pa-btn pa-btn--secondary">Фильтр</button>
+</form>
+
+<table class="pa-table">
+    <thead><tr><th>#</th><th>Тема</th><th>Email</th><th>Статус</th><th>Обновлён</th></tr></thead>
+    <tbody>
+    {% for t in tickets %}
+    <tr>
+        <td><a href="/platform-admin/support/{{ t.id }}/">#{{ t.id }}</a></td>
+        <td>{{ t.subject }}</td>
+        <td>{{ t.contact_email }}</td>
+        <td>{{ status_labels.get(t.status, t.status) }}</td>
+        <td>{{ t.updated_at }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="pa-muted">Тикетов пока нет</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

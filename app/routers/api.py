@@ -91,7 +91,7 @@ async def api_login(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"error": "Неверный логин/пароль"}, status_code=401)
     if not user.is_active:
         return JSONResponse({"error": "Подтвердите почту. Проверьте письмо."}, status_code=403)
-    login_user(request, user)
+    login_user(request, user, db)
     return {"message": "OK", "email": user.email}
 
 
@@ -325,7 +325,7 @@ async def api_telegram_webapp_auth(request: Request, db: Session = Depends(get_d
     user = find_or_create_user_from_webapp(db, tg_user)
     if not user:
         return JSONResponse({"success": False, "error": "User not found"}, status_code=400)
-    login_user(request, user)
+    login_user(request, user, db)
     has_c = user_has_consultant(db, user.id)
     if mode in VALID_MODES:
         set_active_mode(request, mode, has_consultant=has_c)

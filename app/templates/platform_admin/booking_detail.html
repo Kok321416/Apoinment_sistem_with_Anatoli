@@ -1,0 +1,57 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Запись #{{ booking.id }}{% endblock %}
+{% block content %}
+<p><a href="/platform-admin/bookings/">&larr; Записи</a> · <a href="/platform-admin/bookings/calendar/">Календарь</a></p>
+<h1 class="pa-title">Запись #{{ booking.id }}</h1>
+<p class="pa-muted">{{ booking.booking_date }} {{ booking.booking_time }} · {{ status_labels.get(booking.status, booking.status) }}</p>
+
+<div class="pa-panel">
+    <h2>Клиент</h2>
+    <ul class="pa-list">
+        <li>{{ booking.client_name }}</li>
+        <li>Телефон: {{ booking.client_phone or '-' }}</li>
+        <li>Email: {{ booking.client_email or '-' }}</li>
+        <li>Telegram: {{ booking.client_telegram or booking.telegram_id or '-' }}</li>
+        <li>client_user_id: {% if booking.client_user_id %}<a href="/platform-admin/users/{{ booking.client_user_id }}/">#{{ booking.client_user_id }}</a>{% else %}-{% endif %}</li>
+    </ul>
+</div>
+
+<div class="pa-panel">
+    <h2>Услуга и специалист</h2>
+    <ul class="pa-list">
+        <li>Услуга: {% if booking.service %}{{ booking.service.name }}{% else %}-{% endif %}</li>
+        <li>Календарь: {% if booking.calendar %}<a href="/platform-admin/calendars/{{ booking.calendar.id }}/week/">{{ booking.calendar.name }}</a>{% else %}-{% endif %}</li>
+        <li>Специалист: {% if booking.calendar and booking.calendar.consultant %}<a href="/platform-admin/specialists/{{ booking.calendar.consultant.id }}/">#{{ booking.calendar.consultant.id }} {{ booking.calendar.consultant.first_name }}</a>{% else %}-{% endif %}</li>
+    </ul>
+    {% if booking.notes %}
+    <h3>Заметки</h3>
+    <p class="pa-muted">{{ booking.notes }}</p>
+    {% endif %}
+</div>
+
+<div class="pa-panel">
+    <h2>Сменить статус</h2>
+    <form method="post" class="pa-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="set_status">
+        <select name="status" class="pa-input">
+            {% for st in statuses %}
+            <option value="{{ st }}" {% if booking.status == st %}selected{% endif %}>{{ status_labels[st] }}</option>
+            {% endfor %}
+        </select>
+        <label class="pa-label" style="display:inline;"><input type="checkbox" name="notify" value="1" checked> TG notify</label>
+        <button type="submit" class="pa-btn pa-btn--primary">Сохранить</button>
+    </form>
+</div>
+
+<div class="pa-panel">
+    <h2>Перенести</h2>
+    <form method="post" class="pa-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="reschedule">
+        <input class="pa-input" type="date" name="new_date" value="{{ booking.booking_date }}" required>
+        <input class="pa-input" type="time" name="new_time" value="{{ booking.booking_time.strftime('%H:%M') }}" required>
+        <button type="submit" class="pa-btn pa-btn--secondary">Перенести</button>
+    </form>
+</div>
+{% endblock %}

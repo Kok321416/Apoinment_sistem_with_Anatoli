@@ -3,7 +3,7 @@ import os
 import uuid
 from datetime import date, datetime
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
@@ -519,6 +519,8 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
     error = success = None
     if request.query_params.get("verified") == "1":
         success = "Почта подтверждена. Теперь можно войти."
+    if request.query_params.get("success") == "password_reset":
+        success = "Пароль обновлён. Войдите с новым паролем."
     if request.query_params.get("error") == "telegram_expired":
         error = "Ссылка входа через Телеграм истекла. Попробуйте снова."
     yandex_errors = {
@@ -548,38 +550,140 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
             if not email or not password:
                 error = "Заполните все поля"
             else:
-                db_user = db.query(User).filter(User.username == email).first()
-                if not db_user or not verify_password(password, db_user.password):
-                    error = "Неверная почта или пароль"
-                    try:
-                        from app.services.admin_audit import write_admin_audit
+                from app.services.rate_limit import check_rate_limit
 
-                        write_admin_audit(
-                            db,
-                            actor_user_id=None,
-                            action="login_failed",
-                            entity="user",
-                            entity_id=str(db_user.id) if db_user else None,
-                            payload={"email": (email or "")[:120]},
-                            request=request,
-                        )
-                        db.commit()
-                    except Exception:
-                        try:
-                            db.rollback()
-                        except Exception:
-                            pass
-                elif not db_user.is_active:
-                    error = "Подтвердите почту. Проверьте письмо или отправьте его повторно ниже."
+                ip = request.client.host if request.client else "0.0.0.0"
+                fwd = request.headers.get("x-forwarded-for")
+                if fwd:
+                    ip = fwd.split(",")[0].strip()
+                if not check_rate_limit(f"login:{ip}", max_calls=15, window_sec=300):
+                    error = "Слишком много попыток входа. Подождите несколько минут."
                 else:
-                    login_user(request, db_user)
-                    post_next = safe_next_url(form.get("next") or request.query_params.get("next"))
-                    return RedirectResponse(post_next, status_code=302)
+                    db_user = db.query(User).filter(User.username == email).first()
+                    if not db_user or not verify_password(password, db_user.password):
+                        error = "Неверная почта или пароль"
+                        try:
+                            from app.services.admin_audit import write_admin_audit
+
+                            write_admin_audit(
+                                db,
+                                actor_user_id=None,
+                                action="login_failed",
+                                entity="user",
+                                entity_id=str(db_user.id) if db_user else None,
+                                payload={"email": (email or "")[:120]},
+                                request=request,
+                            )
+                            db.commit()
+                        except Exception:
+                            try:
+                                db.rollback()
+                            except Exception:
+                                pass
+                    elif not db_user.is_active:
+                        error = "Подтвердите почту. Проверьте письмо или отправьте его повторно ниже."
+                    else:
+                        post_next = safe_next_url(form.get("next") or request.query_params.get("next"))
+                        from app.services.admin_totp import needs_admin_2fa
+
+                        if needs_admin_2fa(db, db_user):
+                            request.session["pending_2fa_user_id"] = db_user.id
+                            request.session["pending_2fa_next"] = post_next
+                            return RedirectResponse(
+                                f"/login/2fa/?next={quote(post_next, safe='')}",
+                                status_code=302,
+                            )
+                        login_user(request, db_user, db)
+                        return RedirectResponse(post_next, status_code=302)
     return templates.TemplateResponse("login.html", page_context(
         request, db, user, error=error, success=success,
         resend_email=request.query_params.get("email", ""),
         next_url=next_url,
     ))
+
+
+@router.get("/login/2fa/")
+@router.post("/login/2fa/")
+async def login_2fa_page(request: Request, db: Session = Depends(get_db)):
+    from app.services.admin_totp import verify_admin_2fa_login
+
+    pending_id = request.session.get("pending_2fa_user_id")
+    if not pending_id:
+        return RedirectResponse("/login/", status_code=302)
+    if get_current_user(request, db):
+        return RedirectResponse(safe_next_url(request.query_params.get("next")), status_code=302)
+
+    error = None
+    next_url = safe_next_url(request.query_params.get("next") or request.session.get("pending_2fa_next"))
+    if request.method == "POST":
+        form = await request.form()
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности (CSRF). Обновите страницу."
+        else:
+            code = (form.get("code") or "").strip()
+            db_user = db.get(User, int(pending_id))
+            if not db_user or not verify_admin_2fa_login(db, db_user.id, code):
+                error = "Неверный код"
+            else:
+                request.session.pop("pending_2fa_user_id", None)
+                request.session.pop("pending_2fa_next", None)
+                login_user(request, db_user, db)
+                post_next = safe_next_url(form.get("next") or next_url)
+                return RedirectResponse(post_next, status_code=302)
+
+    return templates.TemplateResponse(
+        "login_2fa.html",
+        page_context(request, db, None, error=error, next_url=next_url),
+    )
+
+
+@router.get("/support/")
+@router.post("/support/")
+async def support_page(request: Request, db: Session = Depends(get_db)):
+    from app.services.platform_support import create_support_ticket
+
+    user = get_current_user(request, db)
+    success = error = None
+    form_name = form_email = form_subject = form_body = ""
+    if user:
+        form_email = user.email or user.username
+        form_name = user.get_full_name()
+    if request.method == "POST":
+        form = await request.form()
+        form_name = (form.get("contact_name") or "").strip()
+        form_email = (form.get("contact_email") or "").strip()
+        form_subject = (form.get("subject") or "").strip()
+        form_body = (form.get("body") or "").strip()
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности. Обновите страницу."
+        else:
+            ticket, err = create_support_ticket(
+                db,
+                subject=form_subject,
+                body=form_body,
+                contact_email=form_email,
+                contact_name=form_name,
+                user_id=user.id if user else None,
+            )
+            if err:
+                error = err
+            else:
+                success = f"Обращение #{ticket.id} принято. Ответ придёт на {form_email}."
+                form_subject = form_body = ""
+    return templates.TemplateResponse(
+        "support.html",
+        page_context(
+            request,
+            db,
+            user,
+            success=success,
+            error=error,
+            form_name=form_name,
+            form_email=form_email,
+            form_subject=form_subject,
+            form_body=form_body,
+        ),
+    )
 
 
 @router.post("/logout/")

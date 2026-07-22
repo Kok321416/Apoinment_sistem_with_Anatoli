@@ -1,6 +1,6 @@
 # План: Admin Platform - центр управления «Все клиенты здесь»
 
-Статус: A0 + A1 + A2 (Dashboard KPI, Users, Errors, impersonate) реализованы при `PLATFORM_ADMIN_ENABLED`. Дальше A3+.
+Статус: A0-A8 при `PLATFORM_ADMIN_ENABLED`. Оплата и ЮKassa - **отложено**.
 
 Это **не** «ещё одна страница в кабинете специалиста».  
 Это внутренний **платформенный** продукт для владельца сервиса: пользователи, записи, платежи, Telegram, ошибки, безопасность.
@@ -42,10 +42,10 @@
 | Пользователи | A2 | поиск, карточка, block/reset |
 | Специалисты | A2 | обёртка над Consultant + stats |
 | Клиенты | A3 | агрегация ClientCard + client_user_id |
-| Записи | A3 | список + статусы; calendar UI позже |
+| Записи | A3 + A3b | список + статусы; week calendar view |
 | Календари | A3 | read + disable |
 | Услуги | A4 | |
-| Подписки / Платежи / Промокоды | A5+ | когда billing появится в домене |
+| Подписки / Платежи / Промокоды | **отложено** | ЮKassa и назначение подписок - когда появится продуктовая оплата |
 | Email | A4 | лог исходящих + retry |
 | **Telegram** | **A1** | **первый killer-feature после foundation** |
 | Аналитика / Метрики | A4 | |
@@ -159,7 +159,7 @@ Dashboard KPI (read-only SQL): users total, new today, consultants, bookings tod
 - Календари: список, ссылка на public slug
 - Безопасность: failed logins (если логируем), active admin sessions list
 
-Calendar drag&drop Google-level - **не A3**, отдельный подэпик A3b.
+Calendar drag&drop Google-level - backlog. **A3b (week view)** - `/platform-admin/bookings/calendar/`.
 
 ---
 
@@ -172,11 +172,57 @@ Calendar drag&drop Google-level - **не A3**, отдельный подэпик
 
 ---
 
-### A5+ - Billing, Support, Backups, Enterprise
+### A5 - Ops, Audit, Backup, Export
 
-Подписки, платежи, промокоды, MRR/ARR, support inbox, manual backup trigger, saved views, WebSocket live - когда домен биллинга и поддержки реально существует в коде.
+- Audit log UI (`admin_audit_log`)
+- Ops: schema health, dual-role inventory, backup trigger (superuser)
+- CSV export users/bookings
+- Rate limit на broadcast enqueue и email resend
+- Billing/support inbox - когда появится домен
 
-До тех пор в меню можно показать disabled «скоро» или скрыть.
+**Support polish (done):**
+- Password reset: admin action + `/accounts/password/reset/?token=…` + email template
+- Booking detail: `/platform-admin/bookings/{id}/` (status + TG notify)
+- Ops deploy checklist: auto prod_readiness + manual Telegram/E2E items
+
+---
+
+### A5+ - Billing, Support, Enterprise
+
+- [x] Support inbox: `/support/` + `/platform-admin/support/`
+- [x] Billing stub: `/platform-admin/billing/`
+- [x] RBAC schema `admin_role_assignments` + UI на карточке staff user (superuser)
+- [x] 2FA TOTP для staff: Security → enable, login `/login/2fa/`
+- [x] Stop broadcast job UI
+- [x] Calendar drag-and-drop (week view)
+
+**A6 (done):**
+- RBAC enforcement на роутах + nav по правам
+- Email по тикетам support (создание + ответ staff)
+- Dry-run gate перед enqueue (30 мин, BROADCAST_REQUIRE_DRY_RUN)
+- Billing stub: модели `billing_plans`, `user_subscriptions`, UI тарифов (без провайдера)
+
+---
+
+### A7 - отложено: платежи
+
+Не делаем, пока нет продуктовой оплаты:
+- ЮKassa / webhook / чеки
+- Назначение подписок пользователям из админки
+- Finance-роль в UI
+
+Оставляем только stub `/platform-admin/billing/` для учёта тарифов вручную (опционально).
+
+**Следующий приоритет (без оплаты):**
+- [x] Ctrl+K глобальный поиск в админке (`/platform-admin/api/search/`)
+- [x] Завершение cookie-сессий (`session_version` + кнопка на карточке user)
+- [x] Live KPI refresh на dashboard (60 сек, `/platform-admin/api/kpi/`)
+
+### A8 - RBAC polish + live SSE
+
+- [x] SSE stream KPI (`/platform-admin/api/kpi/stream/`, fallback на polling)
+- [x] Home redirect по роли (developer → errors, support без broadcast → support)
+- [x] Ctrl+K shortcuts и карточки dashboard фильтруются по `admin_perms`
 
 ---
 
@@ -198,14 +244,16 @@ v1: только Super Admin + Administrator. Остальные роли - sche
 
 ## 6. Безопасность (обязательный чеклист)
 
-- [ ] CSRF на всех POST админки
-- [ ] Rate limit на login admin и broadcast send
-- [ ] Audit на impersonate start/stop
-- [ ] Нет plaintext паролей; reset через token email
-- [ ] Секреты в UI замаскированы
-- [ ] Broadcast dry-run обязателен перед first send на prod
-- [ ] Platform admin не доступен из публичной навигации
-- [ ] 2FA для admin (желательно до открытия рассылок на всю базу)
+- [x] CSRF на всех POST админки
+- [x] Rate limit на broadcast send и email resend (in-process)
+- [x] Rate limit на login (15/5 мин по IP)
+- [x] Audit на impersonate start/stop
+- [x] Audit log UI (`/platform-admin/audit/`)
+- [x] Нет plaintext паролей; reset через token email
+- [x] Секреты в UI замаскированы
+- [x] Broadcast dry-run обязателен перед first send на prod
+- [x] Platform admin не доступен из публичной навигации (прямой URL `/platform-admin/`, тест `test_public_templates_hide_platform_admin_nav`)
+- [x] 2FA для admin (TOTP, Security + /login/2fa/)
 
 ---
 

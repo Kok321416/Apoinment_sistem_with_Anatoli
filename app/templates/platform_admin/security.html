@@ -1,0 +1,82 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Безопасность{% endblock %}
+{% block content %}
+<h1 class="pa-title">Безопасность</h1>
+<p class="pa-muted">Неудачные входы и события из audit log. Сессии cookie-based: список активных сессий недоступен, но их можно завершить с карточки пользователя.</p>
+
+<div class="pa-panel">
+    <h2>Сессии пользователей</h2>
+    <p class="pa-muted">При «Завершить сессии» на карточке user увеличивается <code>session_version</code> - все старые cookie перестают работать. Действие пишется в audit log.</p>
+    <p class="pa-muted">Путь: <strong>Пользователи</strong> → карточка → «Завершить сессии» (нужно право users:write).</p>
+</div>
+
+<div class="pa-panel">
+    <h2>2FA (TOTP)</h2>
+    {% if totp_enabled %}
+    <p class="pa-muted">Двухфакторная аутентификация включена для входа в админку.</p>
+    {% if user.is_superuser %}
+    <form method="post" class="pa-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="disable_2fa">
+        <input class="pa-input" name="code" placeholder="Текущий код" maxlength="6" required>
+        <button type="submit" class="pa-btn pa-btn--ghost">Отключить 2FA</button>
+    </form>
+    {% endif %}
+    {% else %}
+    <p class="pa-muted">Отсканируйте секрет в Google Authenticator / 1Password.</p>
+    <p><code>{{ totp_secret }}</code></p>
+    <p class="pa-hint"><a href="{{ totp_uri }}">otpauth:// ссылка</a></p>
+    <form method="post" class="pa-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="enable_2fa">
+        <input class="pa-input" name="code" placeholder="Код из приложения" maxlength="6" required>
+        <button type="submit" class="pa-btn pa-btn--primary">Включить 2FA</button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="pa-panel">
+    <h2>Неудачные входы</h2>
+    {% if failed_logins %}
+    <table class="pa-table">
+        <thead><tr><th>ID</th><th>Время</th><th>IP</th><th>User</th><th>Payload</th></tr></thead>
+        <tbody>
+        {% for row in failed_logins %}
+        <tr>
+            <td>{{ row.id }}</td>
+            <td>{{ row.created_at }}</td>
+            <td>{{ row.ip or '-' }}</td>
+            <td>{% if row.entity_id %}<a href="/platform-admin/users/{{ row.entity_id }}/">#{{ row.entity_id }}</a>{% else %}-{% endif %}</td>
+            <td><code style="font-size:0.8rem;">{{ row.payload_json or '-' }}</code></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="pa-muted">Пока нет записей login_failed.</p>
+    {% endif %}
+</div>
+
+<div class="pa-panel">
+    <h2>События безопасности</h2>
+    {% if security_events %}
+    <table class="pa-table">
+        <thead><tr><th>ID</th><th>Время</th><th>Action</th><th>Actor</th><th>Entity</th><th>IP</th></tr></thead>
+        <tbody>
+        {% for row in security_events %}
+        <tr>
+            <td>{{ row.id }}</td>
+            <td>{{ row.created_at }}</td>
+            <td>{{ row.action }}</td>
+            <td>{% if row.actor_user_id %}<a href="/platform-admin/users/{{ row.actor_user_id }}/">#{{ row.actor_user_id }}</a>{% else %}-{% endif %}</td>
+            <td>{{ row.entity }} {{ row.entity_id or '' }}</td>
+            <td>{{ row.ip or '-' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="pa-muted">Событий нет.</p>
+    {% endif %}
+</div>
+{% endblock %}

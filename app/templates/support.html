@@ -1,0 +1,41 @@
+{% extends "layouts/base.html" %}
+{% block meta_tags %}
+{% set page_title = "Поддержка — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+{% block body %}
+{% include "components/landing_header.html" %}
+<main id="main" class="section" tabindex="-1">
+    <div class="container container--narrow">
+        <h1 class="text-h1">Поддержка</h1>
+        <p class="text-body">Опишите проблему - мы ответим на email в течение 1-2 рабочих дней.</p>
+        {% if success %}
+        <div class="alert alert--success" role="status">{{ success }}</div>
+        {% endif %}
+        {% if error %}
+        <div class="alert alert--error" role="alert">{{ error }}</div>
+        {% endif %}
+        <form method="post" class="card card--static" style="padding:1.5rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-field">
+                <label class="form-field__label" for="contact_name">Имя</label>
+                <input class="input" id="contact_name" name="contact_name" value="{{ form_name }}" maxlength="150">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="contact_email">Email</label>
+                <input class="input" id="contact_email" name="contact_email" type="email" required value="{{ form_email }}" maxlength="254">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="subject">Тема</label>
+                <input class="input" id="subject" name="subject" required value="{{ form_subject }}" maxlength="255">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="body">Сообщение</label>
+                <textarea class="input" id="body" name="body" rows="6" required>{{ form_body }}</textarea>
+            </div>
+            <button type="submit" class="btn btn--primary">Отправить</button>
+        </form>
+    </div>
+</main>
+{% include "components/landing_footer.html" %}
+{% endblock %}

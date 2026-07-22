@@ -57,10 +57,19 @@ def get_session_user_id(request: Request) -> int | None:
     return request.session.get("user_id")
 
 
-def login_user(request: Request, user: User) -> None:
+def login_user(request: Request, user: User, db: Session | None = None) -> None:
     if "session" in request.scope:
         request.session["user_id"] = user.id
+        request.session["session_version"] = int(getattr(user, "session_version", 0) or 0)
         request.session.pop("impersonator_id", None)
+    if db is not None:
+        from datetime import datetime
+
+        from app.services.platform_activity import record_user_activity
+
+        user.last_login = datetime.utcnow()
+        record_user_activity(db, user.id, source="login")
+        db.commit()
 
 
 def start_impersonation(request: Request, *, admin_user_id: int, target_user_id: int) -> None:
@@ -103,6 +112,8 @@ def logout_user(request: Request) -> None:
     request.session.pop("yandex_connect_user_id", None)
     request.session.pop("integrations_success", None)
     request.session.pop("integrations_error", None)
+    request.session.pop("pending_2fa_user_id", None)
+    request.session.pop("pending_2fa_next", None)
 
 
 def get_current_user(request: Request, db: Session) -> AuthUser | None:
@@ -110,4 +121,14 @@ def get_current_user(request: Request, db: Session) -> AuthUser | None:
     if not user_id:
         return None
     user = db.get(User, user_id)
+    if not user or not user.is_active:
+        return None
+    if "session" in request.scope:
+        expected = int(getattr(user, "session_version", 0) or 0)
+        stored = request.session.get("session_version")
+        if stored is None:
+            if expected != 0:
+                return None
+        elif int(stored) != expected:
+            return None
     return user_from_model(user)

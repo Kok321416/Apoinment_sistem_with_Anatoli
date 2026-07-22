@@ -1,0 +1,55 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Настройки{% endblock %}
+{% block content %}
+<h1 class="pa-title">Настройки и интеграции</h1>
+<p class="pa-muted">Read-only снимок .env. Секреты замаскированы. Изменения только через серверный конфиг.</p>
+
+<div class="pa-panel">
+    <h2>Интеграции</h2>
+    <table class="pa-table">
+        <thead><tr><th>Сервис</th><th>Статус</th><th>Детали</th></tr></thead>
+        <tbody>
+        <tr>
+            <td>SMTP</td>
+            <td>{% if integrations.smtp.configured %}<span class="pa-ok">OK</span>{% else %}<span class="pa-muted">не настроен</span>{% endif %}</td>
+            <td>{{ integrations.smtp.host }}:{{ integrations.smtp.port }} · {{ integrations.smtp.user }}</td>
+        </tr>
+        <tr>
+            <td>Telegram Bot</td>
+            <td>{% if integrations.telegram.configured %}<span class="pa-ok">OK</span>{% else %}<span class="pa-muted">нет токена</span>{% endif %}</td>
+            <td>@{{ integrations.telegram.username }} · token {{ integrations.telegram.token or '-' }}</td>
+        </tr>
+        <tr>
+            <td>Bot API secret</td>
+            <td>{% if integrations.telegram.bot_api_configured %}<span class="pa-ok">OK</span>{% else %}<span class="pa-muted">нет</span>{% endif %}</td>
+            <td>{{ integrations.telegram.bot_api_secret or '-' }}</td>
+        </tr>
+        <tr>
+            <td>Google OAuth</td>
+            <td>{% if integrations.google_oauth.configured %}<span class="pa-ok">OK</span>{% else %}<span class="pa-muted">нет</span>{% endif %}</td>
+            <td>client_id {{ integrations.google_oauth.client_id }}</td>
+        </tr>
+        <tr>
+            <td>Yandex OAuth</td>
+            <td>{% if integrations.yandex_oauth.configured %}<span class="pa-ok">OK</span>{% else %}<span class="pa-muted">нет</span>{% endif %}</td>
+            <td>client_id {{ integrations.yandex_oauth.client_id }}</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="pa-panel">
+    <h2>Флаги платформы</h2>
+    <table class="pa-table">
+        <thead><tr><th>Переменная</th><th>Значение</th></tr></thead>
+        <tbody>
+        {% for f in flags %}
+        <tr>
+            <td><code>{{ f.key }}</code>{% if f.secret %} <span class="pa-muted">secret</span>{% endif %}</td>
+            <td>{{ f.value }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

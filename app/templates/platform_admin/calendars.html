@@ -1,0 +1,57 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Календари{% endblock %}
+{% block content %}
+<h1 class="pa-title">Календари</h1>
+<form method="get" class="pa-inline-form">
+    <label class="pa-label">consultant_id
+        <input class="pa-input" type="text" name="consultant_id" value="{{ consultant_id }}" placeholder="id">
+    </label>
+    <label class="pa-label">Active
+        <select class="pa-input" name="active">
+            <option value="" {% if not active_filter %}selected{% endif %}>все</option>
+            <option value="1" {% if active_filter == '1' %}selected{% endif %}>только активные</option>
+            <option value="0" {% if active_filter == '0' %}selected{% endif %}>отключённые</option>
+        </select>
+    </label>
+    <label class="pa-label">Поиск
+        <input class="pa-input" type="search" name="q" value="{{ q }}" placeholder="id, название">
+    </label>
+    <button type="submit" class="pa-btn pa-btn--secondary">Фильтр</button>
+</form>
+
+{% if calendars %}
+<table class="pa-table">
+    <thead>
+    <tr><th>ID</th><th>Название</th><th>Специалист</th><th>Записей</th><th>Active</th><th>Публичная</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for row in calendars %}
+    {% set cal = row.calendar %}
+    <tr>
+        <td>{{ cal.id }}</td>
+        <td>{{ cal.name }}</td>
+        <td>{% if row.consultant %}<a href="/platform-admin/specialists/{{ row.consultant.id }}/">#{{ row.consultant.id }}</a>{% else %}-{% endif %}</td>
+        <td>{{ row.bookings_count }}</td>
+        <td>{% if cal.is_active %}да{% else %}нет{% endif %}</td>
+        <td><a href="{{ row.booking_url }}" target="_blank" rel="noopener">запись</a> · <a href="/platform-admin/calendars/{{ cal.id }}/week/">неделя</a></td>
+        <td>
+            <form method="post" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="calendar_id" value="{{ cal.id }}">
+                {% if cal.is_active %}
+                <input type="hidden" name="action" value="disable">
+                <button type="submit" class="pa-btn pa-btn--ghost" onclick="return confirm('Отключить календарь?');">off</button>
+                {% else %}
+                <input type="hidden" name="action" value="enable">
+                <button type="submit" class="pa-btn pa-btn--secondary">on</button>
+                {% endif %}
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="pa-muted">Календарей не найдено.</p>
+{% endif %}
+{% endblock %}

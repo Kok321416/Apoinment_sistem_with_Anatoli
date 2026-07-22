@@ -1,4 +1,4 @@
-from app.models.auth import EmailAddress, EmailVerificationToken, SocialAccount, TelegramLoginRequest, TelegramUiPreference, User
+from app.models.auth import EmailAddress, EmailVerificationToken, PasswordResetToken, SocialAccount, TelegramLoginRequest, TelegramUiPreference, User
 from app.models.core import (
     AppCounter,
     Booking,
@@ -12,13 +12,27 @@ from app.models.core import (
     Service,
     TimeSlot,
 )
-from app.models.platform import AdminAuditLog, PlatformErrorLog, TelegramBroadcastJob, TelegramBroadcastRecipient
+from app.models.platform import (
+    AdminAuditLog,
+    AdminRoleAssignment,
+    AdminTwoFactor,
+    BillingPlan,
+    EmailDeliveryLog,
+    PlatformErrorLog,
+    PlatformUserActivity,
+    SupportTicket,
+    SupportTicketMessage,
+    TelegramBroadcastJob,
+    TelegramBroadcastRecipient,
+    UserSubscription,
+)
 
 __all__ = [
     "User",
     "SocialAccount",
     "EmailAddress",
     "EmailVerificationToken",
+    "PasswordResetToken",
     "TelegramLoginRequest",
     "TelegramUiPreference",
     "Category",
@@ -33,7 +47,15 @@ __all__ = [
     "AppCounter",
     "Client",
     "AdminAuditLog",
+    "AdminRoleAssignment",
+    "AdminTwoFactor",
+    "BillingPlan",
+    "EmailDeliveryLog",
+    "PlatformUserActivity",
+    "SupportTicket",
+    "SupportTicketMessage",
     "TelegramBroadcastJob",
     "TelegramBroadcastRecipient",
+    "UserSubscription",
     "PlatformErrorLog",
 ]

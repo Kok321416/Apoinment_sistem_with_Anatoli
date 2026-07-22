@@ -1,0 +1,41 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Клиенты{% endblock %}
+{% block content %}
+<h1 class="pa-title">Клиенты платформы</h1>
+<p class="pa-muted">Агрегация ClientCard и client_user_id (Admin A3).</p>
+<form method="get" class="pa-inline-form">
+    <label class="pa-label">Поиск
+        <input class="pa-input" type="search" name="q" value="{{ q }}" placeholder="имя, email, телефон, user id">
+    </label>
+    <button type="submit" class="pa-btn pa-btn--secondary">Найти</button>
+</form>
+
+{% if clients %}
+<table class="pa-table">
+    <thead>
+    <tr><th>Имя</th><th>User</th><th>Email</th><th>Телефон</th><th>Карточек</th><th>Записей</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for row in clients %}
+    <tr>
+        <td>{{ row.name }}</td>
+        <td>{% if row.client_user_id %}#{{ row.client_user_id }}{% else %}-{% endif %}</td>
+        <td>{{ row.email or '-' }}</td>
+        <td>{{ row.phone or '-' }}</td>
+        <td>{{ row.cards_count }}</td>
+        <td>{{ row.bookings_count }}</td>
+        <td>
+            {% if row.client_user_id %}
+            <a href="/platform-admin/clients/user/{{ row.client_user_id }}/">открыть</a>
+            {% elif row.client_card_id %}
+            <a href="/platform-admin/clients/card/{{ row.client_card_id }}/">открыть</a>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="pa-muted">Никого не найдено.</p>
+{% endif %}
+{% endblock %}

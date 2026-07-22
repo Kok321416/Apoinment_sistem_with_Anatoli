@@ -1,0 +1,48 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Тикет #{{ ticket.id }}{% endblock %}
+{% block content %}
+<p><a href="/platform-admin/support/">&larr; Поддержка</a></p>
+<h1 class="pa-title">#{{ ticket.id }} · {{ ticket.subject }}</h1>
+<p class="pa-muted">
+    {{ ticket.contact_email }}
+    {% if ticket_user %}· user <a href="/platform-admin/users/{{ ticket_user.id }}/">#{{ ticket_user.id }}</a>{% endif %}
+    · {{ status_labels.get(ticket.status, ticket.status) }}
+</p>
+
+<div class="pa-panel">
+    <h2>Переписка</h2>
+    {% for m in messages %}
+    <div class="pa-msg {% if m.is_staff_reply %}pa-msg--staff{% endif %}">
+        <div class="pa-msg__meta">
+            {% if m.is_staff_reply %}Support{% else %}Клиент{% endif %}
+            · {{ m.created_at }}
+        </div>
+        <div class="pa-msg__body">{{ m.body }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pa-panel">
+    <h2>Ответ</h2>
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="reply">
+        <textarea class="pa-input" name="body" rows="5" required></textarea>
+        <button type="submit" class="pa-btn pa-btn--primary">Отправить ответ</button>
+    </form>
+</div>
+
+<div class="pa-panel">
+    <h2>Статус</h2>
+    <form method="post" class="pa-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="set_status">
+        <select name="status" class="pa-input">
+            {% for st in statuses %}
+            <option value="{{ st }}" {% if ticket.status == st %}selected{% endif %}>{{ status_labels[st] }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="pa-btn pa-btn--secondary">Сохранить</button>
+    </form>
+</div>
+{% endblock %}

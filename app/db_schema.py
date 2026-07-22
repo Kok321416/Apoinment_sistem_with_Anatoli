@@ -216,6 +216,11 @@ def _apply_app_schema_patches() -> None:
         logger.exception("auth_user.notify_broadcast patch failed")
 
     try:
+        _add_column("auth_user", "session_version", "INTEGER NOT NULL DEFAULT 0")
+    except Exception:
+        logger.exception("auth_user.session_version patch failed")
+
+    try:
         from app.models import platform as platform_models
 
         Base.metadata.create_all(
@@ -225,6 +230,14 @@ def _apply_app_schema_patches() -> None:
                 platform_models.TelegramBroadcastJob.__table__,
                 platform_models.TelegramBroadcastRecipient.__table__,
                 platform_models.PlatformErrorLog.__table__,
+                platform_models.EmailDeliveryLog.__table__,
+                platform_models.PlatformUserActivity.__table__,
+                platform_models.SupportTicket.__table__,
+                platform_models.SupportTicketMessage.__table__,
+                platform_models.AdminRoleAssignment.__table__,
+                platform_models.AdminTwoFactor.__table__,
+                platform_models.BillingPlan.__table__,
+                platform_models.UserSubscription.__table__,
             ],
         )
     except Exception:
@@ -290,6 +303,7 @@ def ensure_email_auth_schema() -> None:
             tables=[
                 auth_models.EmailAddress.__table__,
                 auth_models.EmailVerificationToken.__table__,
+                auth_models.PasswordResetToken.__table__,
             ],
         )
     except Exception:

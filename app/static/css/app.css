@@ -27,7 +27,10 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: var(--space-md);
+    flex: 1;
+    min-width: 0;
 }
 
 .app-header__nav {
@@ -40,17 +43,83 @@
 .app-header__user {
     text-align: right;
     margin-right: var(--space-sm);
+    min-width: 0;
+    max-width: min(17.5rem, 42vw);
+    padding-right: var(--space-xs);
 }
 
 .app-header__name {
     font-size: var(--font-size-body-sm);
     font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .app-header__account {
-    font-size: var(--font-size-caption);
+    font-size: 0.6875rem;
+    line-height: 1.25;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-header__mode {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-xs);
+    margin-top: var(--space-xs);
+}
+
+.app-header__mode-label {
+    font-size: 0.75rem;
     color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.app-mode-toggle {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xs);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.app-mode-toggle__form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.app-mode-toggle__btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-family: inherit;
+    line-height: 1.25;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.app-mode-toggle__btn.is-active {
+    background: rgba(73, 209, 255, 0.22);
+    color: var(--accent-secondary);
+    font-weight: var(--font-weight-semibold);
+    cursor: default;
+}
+
+.app-mode-toggle__btn:not(.is-active):hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
 }
 
 .app-main {

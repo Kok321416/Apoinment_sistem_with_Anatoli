@@ -1,0 +1,48 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Специалист #{{ card.consultant.id }}{% endblock %}
+{% block content %}
+<p><a href="/platform-admin/specialists/">&larr; Специалисты</a></p>
+<h1 class="pa-title">Специалист #{{ card.consultant.id }}</h1>
+<p class="pa-muted">{{ card.consultant.first_name }} {{ card.consultant.last_name }} · {{ card.consultant.email }}</p>
+
+<div class="pa-stats">
+    <div class="pa-stat"><span>{{ card.stats.clients_count }}</span> карточек клиентов</div>
+    <div class="pa-stat"><span>{{ card.stats.bookings_total }}</span> записей</div>
+    <div class="pa-stat"><span>{{ card.stats.bookings_cancelled }}</span> отмен</div>
+    <div class="pa-stat"><span>{{ card.stats.cancel_rate_pct }}%</span> cancel rate</div>
+</div>
+
+<div class="pa-panel">
+    <h2>Профиль</h2>
+    <ul class="pa-list">
+        <li>Телефон: {{ card.consultant.phone or '-' }}</li>
+        <li>Telegram: {{ card.consultant.telegram_nickname or '-' }}</li>
+        <li>User ID: {% if card.consultant.user_id %}<a href="/platform-admin/users/{{ card.consultant.user_id }}/">{{ card.consultant.user_id }}</a>{% else %}-{% endif %}</li>
+        <li>Публичная страница: <a href="{{ public_url }}" target="_blank" rel="noopener">{{ public_url }}</a></li>
+    </ul>
+</div>
+
+{% if card.consultant.calendars %}
+<div class="pa-panel">
+    <h2>Календари</h2>
+    <table class="pa-table">
+        <thead><tr><th>ID</th><th>Название</th><th>Active</th><th></th></tr></thead>
+        <tbody>
+        {% for cal in card.consultant.calendars %}
+        <tr>
+            <td>{{ cal.id }}</td>
+            <td>{{ cal.name }}</td>
+            <td>{% if cal.is_active %}да{% else %}нет{% endif %}</td>
+            <td><a href="/platform-admin/calendars/?q={{ cal.id }}">в админке</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="pa-actions">
+    <a class="pa-btn pa-btn--secondary" href="/platform-admin/bookings/?consultant_id={{ card.consultant.id }}">Записи</a>
+    <a class="pa-btn pa-btn--ghost" href="/platform-admin/calendars/?consultant_id={{ card.consultant.id }}">Календари</a>
+</div>
+{% endblock %}

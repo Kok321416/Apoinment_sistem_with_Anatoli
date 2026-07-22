@@ -1,0 +1,44 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<h1 class="pa-title">Audit log</h1>
+<p class="pa-muted">Действия админов и системные события (login_failed и др.).</p>
+
+<form method="get" class="pa-inline-form">
+    <label class="pa-label">Action
+        <select class="pa-input" name="action">
+            <option value="">все</option>
+            {% for a in actions %}
+            <option value="{{ a }}" {% if action_filter == a %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label class="pa-label">Поиск
+        <input class="pa-input" type="search" name="q" value="{{ q }}" placeholder="action, entity, actor id">
+    </label>
+    <button type="submit" class="pa-btn pa-btn--secondary">Фильтр</button>
+</form>
+
+{% if audit_rows %}
+<table class="pa-table">
+    <thead>
+    <tr><th>ID</th><th>Время</th><th>Actor</th><th>Action</th><th>Entity</th><th>IP</th><th>Payload</th></tr>
+    </thead>
+    <tbody>
+    {% for row in audit_rows %}
+    <tr>
+        <td>{{ row.id }}</td>
+        <td>{{ row.created_at }}</td>
+        <td>{% if row.actor_user_id %}<a href="/platform-admin/users/{{ row.actor_user_id }}/">#{{ row.actor_user_id }}</a>{% else %}-{% endif %}</td>
+        <td>{{ row.action }}</td>
+        <td>{{ row.entity or '' }} {{ row.entity_id or '' }}</td>
+        <td>{{ row.ip or '-' }}</td>
+        <td><code style="font-size:0.75rem;">{{ (row.payload_json or '-')[:120] }}</code></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="pa-muted">Записей нет.</p>
+{% endif %}
+{% endblock %}

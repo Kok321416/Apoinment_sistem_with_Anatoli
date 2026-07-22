@@ -1,0 +1,101 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Календарь записей{% endblock %}
+{% block head_extra %}
+<style>.pa-main { max-width: 1180px; }</style>
+<script src="/static/js/admin-week-drag.js?v=1" defer></script>
+<style>
+.pa-week__col.is-drop-target { outline: 1px dashed var(--accent-secondary, #4aa8ff); }
+.pa-week__event.is-dragging { opacity: 0.55; }
+</style>
+{% endblock %}
+{% block content %}
+<h1 class="pa-title">Календарь записей</h1>
+<p class="pa-muted">
+    Неделя {{ week.week_label }}
+    {% if calendar_name %}· {{ calendar_name }}{% endif %}
+    · {{ week.total_events }} записей
+</p>
+
+<div class="pa-actions" style="margin-bottom:1rem;">
+    <a class="pa-btn pa-btn--ghost" href="/platform-admin/bookings/calendar/?week={{ week.prev_week }}&consultant_id={{ consultant_id }}&calendar_id={{ calendar_id }}&status={{ status_filter }}">← Неделя</a>
+    <a class="pa-btn pa-btn--secondary" href="/platform-admin/bookings/calendar/?consultant_id={{ consultant_id }}&calendar_id={{ calendar_id }}&status={{ status_filter }}">Сегодня</a>
+    <a class="pa-btn pa-btn--ghost" href="/platform-admin/bookings/calendar/?week={{ week.next_week }}&consultant_id={{ consultant_id }}&calendar_id={{ calendar_id }}&status={{ status_filter }}">Неделя →</a>
+    <a class="pa-btn pa-btn--ghost" href="/platform-admin/bookings/?consultant_id={{ consultant_id }}&status={{ status_filter }}">Список</a>
+</div>
+
+<form method="get" class="pa-inline-form">
+    <input type="hidden" name="week" value="{{ week.week_start }}">
+    <label class="pa-label">Статус
+        <select class="pa-input" name="status">
+            <option value="">все</option>
+            {% for st in statuses %}
+            <option value="{{ st }}" {% if status_filter == st %}selected{% endif %}>{{ status_labels[st] }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label class="pa-label">consultant_id
+        <input class="pa-input" type="text" name="consultant_id" value="{{ consultant_id }}">
+    </label>
+    <label class="pa-label">calendar_id
+        <input class="pa-input" type="text" name="calendar_id" value="{{ calendar_id }}">
+    </label>
+    <button type="submit" class="pa-btn pa-btn--secondary">Фильтр</button>
+</form>
+
+<div class="pa-week">
+    <div class="pa-week__head">
+        <div class="pa-week__corner"></div>
+        {% for day in week.days %}
+        <div class="pa-week__day-head {% if day.is_today %}is-today{% endif %}">
+            <span class="pa-week__dow">{{ day.label }}</span>
+            <span class="pa-week__dom">{{ day.day_num }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="pa-week__body">
+        <div class="pa-week__times">
+            {% for h in week.hours %}
+            <div class="pa-week__time">{{ "%02d:00" % h }}</div>
+            {% endfor %}
+        </div>
+        <div class="pa-week__cols">
+            {% for day in week.days %}
+            <div class="pa-week__col {% if day.is_today %}is-today{% endif %}" data-date="{{ day.date }}">
+                {% for h in week.hours %}
+                <div class="pa-week__slot"></div>
+                {% endfor %}
+                {% for ev in day.events %}
+                <a
+                    class="pa-week__event {% if ev.cancelled %}is-cancelled{% endif %}"
+                    href="/platform-admin/bookings/{{ ev.id }}/"
+                    data-booking-id="{{ ev.id }}"
+                    data-time="{{ ev.time_hm }}"
+                    style="top: {{ ev.top_pct }}%; height: {{ ev.height_pct }}%; border-left-color: {{ ev.color }};"
+                    title="#{{ ev.id }} {{ ev.client_name }} · {{ ev.status_label }}"
+                >
+                    <span class="pa-week__event-time">{{ ev.time_label }}</span>
+                    <span class="pa-week__event-name">{{ ev.client_name }}</span>
+                    <span class="pa-week__event-meta">{{ ev.service_name }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<form id="paRescheduleForm" method="post" hidden
+      data-grid-start="{{ week.grid_start_hour }}"
+      data-grid-end="{{ week.grid_end_hour }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="reschedule">
+    <input type="hidden" name="booking_id" value="">
+    <input type="hidden" name="new_date" value="">
+    <input type="hidden" name="new_time" value="">
+    <input type="hidden" name="week" value="{{ week.week_start }}">
+    <input type="hidden" name="consultant_id" value="{{ consultant_id }}">
+    <input type="hidden" name="calendar_id" value="{{ calendar_id }}">
+    <input type="hidden" name="status" value="{{ status_filter }}">
+</form>
+<p class="pa-hint">Перетащите запись на другой день/слот (шаг 30 мин) или кликните для карточки.</p>
+{% endblock %}

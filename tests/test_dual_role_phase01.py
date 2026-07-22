@@ -44,12 +44,17 @@ def test_schema_patch_adds_client_user_id():
             )
         )
 
-    schema_mod.engine = engine
-    schema_mod._SCHEMA_PATCHES_ATTEMPTED = False
-    ensure_app_schema()
-
-    cols = {c["name"] for c in inspect(engine).get_columns("bookings")}
-    assert "client_user_id" in cols
+    old_engine = schema_mod.engine
+    old_attempted = schema_mod._SCHEMA_PATCHES_ATTEMPTED
+    try:
+        schema_mod.engine = engine
+        schema_mod._SCHEMA_PATCHES_ATTEMPTED = False
+        ensure_app_schema()
+        cols = {c["name"] for c in inspect(engine).get_columns("bookings")}
+        assert "client_user_id" in cols
+    finally:
+        schema_mod.engine = old_engine
+        schema_mod._SCHEMA_PATCHES_ATTEMPTED = old_attempted
 
 
 def test_inventory_detects_orphan_shared_and_dual():

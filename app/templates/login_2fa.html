@@ -1,0 +1,24 @@
+{% extends "layouts/auth.html" %}
+{% block meta_tags %}
+{% set page_title = "Код 2FA — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+{% block auth_content %}
+<div class="auth-card card card--static animate-fade-in-up">
+    <h1 class="text-h1 auth-card__title">Двухфакторная проверка</h1>
+    <p class="text-body-sm text-muted auth-card__lead">Введите 6-значный код из приложения-аутентификатора.</p>
+    {% if error %}
+    <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% endif %}
+    <form method="post" class="auth-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <div class="form-field">
+            <label class="form-field__label" for="code">Код</label>
+            <input class="input" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autofocus>
+        </div>
+        <button type="submit" class="btn btn--primary btn--block">Продолжить</button>
+    </form>
+    <p class="form-field__hint mt-xl"><a href="/login/" class="link-accent">Вернуться ко входу</a></p>
+</div>
+{% endblock %}

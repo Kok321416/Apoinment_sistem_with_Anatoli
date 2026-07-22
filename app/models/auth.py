@@ -22,6 +22,8 @@ class User(Base):
     date_joined: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     # Phase 10: opt-in for platform Telegram broadcasts (default off)
     notify_broadcast: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Bump to invalidate all cookie sessions (Admin A7)
+    session_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     consultant = relationship("Consultant", back_populates="user", uselist=False)
     social_accounts = relationship("SocialAccount", back_populates="user")
@@ -65,6 +67,19 @@ class EmailVerificationToken(Base):
     used: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user = relationship("User", backref="verification_tokens")
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("auth_user.id"), index=True)
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    user = relationship("User", backref="password_reset_tokens")
 
 
 class TelegramLoginRequest(Base):

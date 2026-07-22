@@ -2,28 +2,79 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <h1 class="pa-title">Dashboard</h1>
-<p class="pa-muted">KPI платформы (Admin A2).</p>
+<p class="pa-muted">KPI в реальном времени (SSE, ~30 сек). Поиск: <kbd>Ctrl+K</kbd>.</p>
 
-<div class="pa-stats">
-    <div class="pa-stat"><span>{{ kpi.users_total }}</span> пользователей</div>
-    <div class="pa-stat"><span>{{ kpi.users_new_today }}</span> новых сегодня</div>
-    <div class="pa-stat"><span>{{ kpi.consultants_total }}</span> специалистов</div>
-    <div class="pa-stat"><span>{{ kpi.bookings_today }}</span> записей сегодня</div>
-    <div class="pa-stat"><span>{{ kpi.errors_new }}</span> ошибок new</div>
+<div class="pa-stats" id="paKpiLive">
+    <div class="pa-stat"><span data-kpi="users_total">{{ kpi.users_total }}</span> пользователей</div>
+    <div class="pa-stat"><span data-kpi="users_new_today">{{ kpi.users_new_today }}</span> новых сегодня</div>
+    <div class="pa-stat"><span data-kpi="consultants_total">{{ kpi.consultants_total }}</span> специалистов</div>
+    <div class="pa-stat"><span data-kpi="bookings_today">{{ kpi.bookings_today }}</span> записей сегодня</div>
+    <div class="pa-stat"><span data-kpi="errors_new">{{ kpi.errors_new }}</span> ошибок new</div>
 </div>
 
 <div class="pa-cards">
+    {% if admin_perms.users %}
     <a class="pa-card" href="/platform-admin/users/">
         <h2>Пользователи</h2>
         <p>Поиск, блок, opt-in, impersonate (superuser).</p>
     </a>
+    {% endif %}
+    {% if admin_perms.telegram %}
     <a class="pa-card" href="/platform-admin/telegram/">
         <h2>Telegram</h2>
         <p>Рассылки и шаблоны.</p>
     </a>
+    {% endif %}
+    {% if admin_perms.specialists %}
+    <a class="pa-card" href="/platform-admin/specialists/">
+        <h2>Специалисты</h2>
+        <p>Статистика клиентов, записей, cancel rate.</p>
+    </a>
+    {% endif %}
+    {% if admin_perms.clients %}
+    <a class="pa-card" href="/platform-admin/clients/">
+        <h2>Клиенты</h2>
+        <p>ClientCard + client_user_id.</p>
+    </a>
+    {% endif %}
+    {% if admin_perms.bookings %}
+    <a class="pa-card" href="/platform-admin/bookings/">
+        <h2>Записи</h2>
+        <p>Фильтры, статусы, недельный календарь.</p>
+    </a>
+    {% endif %}
+    {% if admin_perms.calendars %}
+    <a class="pa-card" href="/platform-admin/calendars/">
+        <h2>Календари</h2>
+        <p>Публичные ссылки, вкл/выкл.</p>
+    </a>
+    {% endif %}
+    {% if admin_perms.errors %}
     <a class="pa-card" href="/platform-admin/errors/">
         <h2>Ошибки</h2>
         <p>5xx / traceback, статусы new / fixed.</p>
     </a>
+    {% endif %}
+    {% if admin_perms.security %}
+    <a class="pa-card" href="/platform-admin/security/">
+        <h2>Безопасность</h2>
+        <p>Failed logins, audit события, 2FA.</p>
+    </a>
+    {% endif %}
+    {% if admin_perms.support %}
+    <a class="pa-card" href="/platform-admin/support/">
+        <h2>Поддержка</h2>
+        <p>Тикеты с /support/.</p>
+    </a>
+    {% endif %}
+    {% if admin_perms.ops %}
+    <a class="pa-card" href="/platform-admin/ops/">
+        <h2>Ops</h2>
+        <p>Health, dual inventory, backup.</p>
+    </a>
+    {% endif %}
 </div>
+{% endblock %}
+{% block body_extra %}
+<script src="/static/js/admin-kpi-live.js?v=2" defer></script>
 {% endblock %}

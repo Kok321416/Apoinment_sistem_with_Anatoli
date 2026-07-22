@@ -1,0 +1,65 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Клиент{% endblock %}
+{% block content %}
+<p><a href="/platform-admin/clients/">&larr; Клиенты</a></p>
+<h1 class="pa-title">Клиент</h1>
+
+{% if detail.user %}
+<p class="pa-muted">User #{{ detail.user.id }} · {{ detail.user.email or detail.user.username }}</p>
+<div class="pa-panel">
+    <h2>Аккаунт</h2>
+    <ul class="pa-list">
+        <li>{{ detail.user.first_name }} {{ detail.user.last_name }}</li>
+        <li><a href="/platform-admin/users/{{ detail.user.id }}/">Карточка пользователя</a></li>
+    </ul>
+</div>
+{% elif detail.card %}
+<p class="pa-muted">Карточка #{{ detail.card.id }} без привязки к User</p>
+<div class="pa-panel">
+    <h2>Карточка</h2>
+    <ul class="pa-list">
+        <li>{{ detail.card.name or '-' }}</li>
+        <li>Специалист: <a href="/platform-admin/specialists/{{ detail.card.consultant_id }}/">#{{ detail.card.consultant_id }}</a></li>
+    </ul>
+</div>
+{% endif %}
+
+{% if detail.cards %}
+<div class="pa-panel">
+    <h2>ClientCard ({{ detail.cards|length }})</h2>
+    <table class="pa-table">
+        <thead><tr><th>ID</th><th>Специалист</th><th>Имя</th><th>Телефон</th></tr></thead>
+        <tbody>
+        {% for c in detail.cards %}
+        <tr>
+            <td>{{ c.id }}</td>
+            <td><a href="/platform-admin/specialists/{{ c.consultant_id }}/">#{{ c.consultant_id }}</a></td>
+            <td>{{ c.name or '-' }}</td>
+            <td>{{ c.phone or '-' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if detail.bookings %}
+<div class="pa-panel">
+    <h2>Последние записи</h2>
+    <table class="pa-table">
+        <thead><tr><th>ID</th><th>Дата</th><th>Время</th><th>Статус</th><th>Услуга</th></tr></thead>
+        <tbody>
+        {% for b in detail.bookings %}
+        <tr>
+            <td><a href="/platform-admin/bookings/?q={{ b.id }}">#{{ b.id }}</a></td>
+            <td>{{ b.booking_date }}</td>
+            <td>{{ b.booking_time }}</td>
+            <td>{{ b.status }}</td>
+            <td>{% if b.service %}{{ b.service.name }}{% else %}-{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

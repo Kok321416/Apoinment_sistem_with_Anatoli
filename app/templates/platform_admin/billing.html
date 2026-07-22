@@ -1,0 +1,61 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Биллинг{% endblock %}
+{% block content %}
+<h1 class="pa-title">Биллинг</h1>
+<p class="pa-muted">{{ snap.message }}</p>
+
+<div class="pa-kpi-grid">
+    <div class="pa-kpi"><span class="pa-kpi__label">Тарифы</span><span class="pa-kpi__value">{{ snap.plans_total }}</span></div>
+    <div class="pa-kpi"><span class="pa-kpi__label">Активные тарифы</span><span class="pa-kpi__value">{{ snap.active_plans }}</span></div>
+    <div class="pa-kpi"><span class="pa-kpi__label">Подписки</span><span class="pa-kpi__value">{{ snap.active_subscriptions }}</span></div>
+    <div class="pa-kpi"><span class="pa-kpi__label">MRR (₽)</span><span class="pa-kpi__value">{{ snap.mrr_rub }}</span></div>
+</div>
+
+{% if user.is_superuser %}
+<div class="pa-panel">
+    <h2>Новый тариф</h2>
+    <form method="post" class="pa-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="create_plan">
+        <input class="pa-input" name="code" placeholder="code" required maxlength="32">
+        <input class="pa-input" name="name" placeholder="Название" required maxlength="120">
+        <input class="pa-input" name="price_rub" type="number" min="0" placeholder="Цена ₽" required>
+        <select class="pa-input" name="interval">
+            <option value="month">месяц</option>
+            <option value="year">год</option>
+        </select>
+        <button type="submit" class="pa-btn pa-btn--primary">Создать</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="pa-panel">
+    <h2>Тарифы</h2>
+    <table class="pa-table">
+        <thead><tr><th>code</th><th>Название</th><th>Цена</th><th>Интервал</th><th>Статус</th><th></th></tr></thead>
+        <tbody>
+        {% for p in plans %}
+        <tr>
+            <td>{{ p.code }}</td>
+            <td>{{ p.name }}</td>
+            <td>{{ p.price_rub }} ₽</td>
+            <td>{{ p.interval }}</td>
+            <td>{% if p.is_active %}active{% else %}off{% endif %}</td>
+            <td>
+                {% if user.is_superuser %}
+                <form method="post" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="action" value="toggle_plan">
+                    <input type="hidden" name="plan_id" value="{{ p.id }}">
+                    <button type="submit" class="pa-btn pa-btn--ghost">{% if p.is_active %}выкл{% else %}вкл{% endif %}</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="pa-muted">Тарифов нет</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

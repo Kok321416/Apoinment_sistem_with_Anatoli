@@ -329,15 +329,21 @@ def test_calendars_query_after_schema_patch():
             "VALUES (1, 'Main', '#7d5cff', 1, datetime('now'), datetime('now'), 0, 24, 0, 24, 1)"
         ))
 
-    schema_mod.engine = engine
-    schema_mod._SCHEMA_PATCHES_ATTEMPTED = False
-    ensure_app_schema()
-    db = sessionmaker(bind=engine)()
-    calendars = db.query(Calendar).all()
-    assert len(calendars) == 1
-    assert calendars[0].name == "Main"
-    assert calendars[0].disabled_weekdays == ""
-    db.close()
+    old_engine = schema_mod.engine
+    old_attempted = schema_mod._SCHEMA_PATCHES_ATTEMPTED
+    try:
+        schema_mod.engine = engine
+        schema_mod._SCHEMA_PATCHES_ATTEMPTED = False
+        ensure_app_schema()
+        db = sessionmaker(bind=engine)()
+        calendars = db.query(Calendar).all()
+        assert len(calendars) == 1
+        assert calendars[0].name == "Main"
+        assert calendars[0].disabled_weekdays == ""
+        db.close()
+    finally:
+        schema_mod.engine = old_engine
+        schema_mod._SCHEMA_PATCHES_ATTEMPTED = old_attempted
 
 
 def test_schema_patch_adds_disabled_weekdays():
@@ -351,13 +357,18 @@ def test_schema_patch_adds_disabled_weekdays():
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE calendars DROP COLUMN disabled_weekdays"))
 
-    schema_mod.engine = engine
-    schema_mod._SCHEMA_PATCHES_ATTEMPTED = False
-    ensure_app_schema()
-
-    insp = inspect(engine)
-    cols = {c["name"] for c in insp.get_columns("calendars")}
-    assert "disabled_weekdays" in cols
+    old_engine = schema_mod.engine
+    old_attempted = schema_mod._SCHEMA_PATCHES_ATTEMPTED
+    try:
+        schema_mod.engine = engine
+        schema_mod._SCHEMA_PATCHES_ATTEMPTED = False
+        ensure_app_schema()
+        insp = inspect(engine)
+        cols = {c["name"] for c in insp.get_columns("calendars")}
+        assert "disabled_weekdays" in cols
+    finally:
+        schema_mod.engine = old_engine
+        schema_mod._SCHEMA_PATCHES_ATTEMPTED = old_attempted
 
 
 def test_services_catalog_dashboard():
@@ -448,17 +459,21 @@ def test_services_schema_patch_legacy_table():
             )
         )
 
-    schema_mod.engine = engine
-    for column, ddl in (
-        ("calendar_id", "INTEGER NULL"),
-        ("color", "VARCHAR(7) NOT NULL DEFAULT '#7d5cff'"),
-        ("icon", "VARCHAR(50) NULL"),
-        ("sort_order", "INTEGER NOT NULL DEFAULT 0"),
-        ("created_at", "DATETIME NULL"),
-        ("updated_at", "DATETIME NULL"),
-    ):
-        _add_column("services", column, ddl)
-        assert _column_exists("services", column)
+    old_engine = schema_mod.engine
+    try:
+        schema_mod.engine = engine
+        for column, ddl in (
+            ("calendar_id", "INTEGER NULL"),
+            ("color", "VARCHAR(7) NOT NULL DEFAULT '#7d5cff'"),
+            ("icon", "VARCHAR(50) NULL"),
+            ("sort_order", "INTEGER NOT NULL DEFAULT 0"),
+            ("created_at", "DATETIME NULL"),
+            ("updated_at", "DATETIME NULL"),
+        ):
+            _add_column("services", column, ddl)
+            assert _column_exists("services", column)
+    finally:
+        schema_mod.engine = old_engine
 
 
 def test_services_page_renders_without_db_catalog_query(monkeypatch):

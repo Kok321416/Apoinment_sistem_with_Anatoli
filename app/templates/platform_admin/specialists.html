@@ -1,0 +1,38 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Специалисты{% endblock %}
+{% block content %}
+<h1 class="pa-title">Специалисты</h1>
+<form method="get" class="pa-inline-form">
+    <label class="pa-label">Поиск
+        <input class="pa-input" type="search" name="q" value="{{ q }}" placeholder="имя, email, id">
+    </label>
+    <button type="submit" class="pa-btn pa-btn--secondary">Найти</button>
+</form>
+
+{% if specialists %}
+<table class="pa-table">
+    <thead>
+    <tr>
+        <th>ID</th><th>Имя</th><th>Email</th><th>Клиенты</th><th>Записи</th><th>Отмена %</th><th></th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for row in specialists %}
+    {% set c = row.consultant %}
+    {% set s = row.stats %}
+    <tr>
+        <td>{{ c.id }}</td>
+        <td>{{ c.first_name }} {{ c.last_name }}</td>
+        <td>{{ c.email }}</td>
+        <td>{{ s.clients_count }}</td>
+        <td>{{ s.bookings_total }}</td>
+        <td>{{ s.cancel_rate_pct }}%</td>
+        <td><a href="/platform-admin/specialists/{{ c.id }}/">открыть</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="pa-muted">Никого не найдено.</p>
+{% endif %}
+{% endblock %}
