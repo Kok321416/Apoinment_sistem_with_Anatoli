@@ -17,19 +17,40 @@ def user_has_consultant(db: Session, user_id: int) -> bool:
     return db.query(Consultant.id).filter(Consultant.user_id == user_id).first() is not None
 
 
+def get_cached_has_consultant(request: Request, db: Session, user_id: int) -> bool:
+    """Prefer session flag to avoid Consultant EXISTS on every page render."""
+    if "session" in request.scope and "has_consultant" in request.session:
+        return bool(request.session.get("has_consultant"))
+    has_c = user_has_consultant(db, user_id)
+    if "session" in request.scope:
+        request.session["has_consultant"] = has_c
+    return has_c
+
+
 def default_mode_for_user(db: Session, user_id: int) -> str:
     return MODE_SPECIALIST if user_has_consultant(db, user_id) else MODE_CLIENT
 
 
-def get_active_mode(request: Request, db: Session, user_id: int | None) -> str:
+def get_active_mode(
+    request: Request,
+    db: Session,
+    user_id: int | None,
+    *,
+    has_consultant: bool | None = None,
+) -> str:
     if not user_id or "session" not in request.scope:
         return MODE_CLIENT
     raw = (request.session.get("active_mode") or "").strip().lower()
     if raw in VALID_MODES:
-        if raw == MODE_SPECIALIST and not user_has_consultant(db, user_id):
-            return MODE_CLIENT
+        if raw == MODE_SPECIALIST:
+            if has_consultant is None:
+                has_consultant = get_cached_has_consultant(request, db, user_id)
+            if not has_consultant:
+                return MODE_CLIENT
         return raw
-    mode = default_mode_for_user(db, user_id)
+    if has_consultant is None:
+        has_consultant = get_cached_has_consultant(request, db, user_id)
+    mode = MODE_SPECIALIST if has_consultant else MODE_CLIENT
     request.session["active_mode"] = mode
     return mode
 
@@ -42,6 +63,7 @@ def set_active_mode(request: Request, mode: str, *, has_consultant: bool) -> str
         mode = MODE_CLIENT
     if "session" in request.scope:
         request.session["active_mode"] = mode
+        request.session["has_consultant"] = bool(has_consultant)
     return mode
 
 

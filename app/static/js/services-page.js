@@ -26,11 +26,17 @@
         });
 
         document.getElementById('btn-new-service').addEventListener('click', () => {
-            if (!catalog) return;
+            if (!catalog) {
+                if (typeof showToast === 'function') showToast('Каталог ещё загружается…');
+                return;
+            }
             drawer.openCreate(catalog.calendars, catalog.templates);
         });
         document.getElementById('btn-empty-create').addEventListener('click', () => {
-            if (!catalog) return;
+            if (!catalog) {
+                if (typeof showToast === 'function') showToast('Каталог ещё загружается…');
+                return;
+            }
             drawer.openCreate(catalog.calendars, catalog.templates);
         });
 

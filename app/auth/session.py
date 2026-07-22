@@ -63,6 +63,12 @@ def login_user(request: Request, user: User, db: Session | None = None) -> None:
         request.session["session_version"] = int(getattr(user, "session_version", 0) or 0)
         request.session["has_usable_password"] = has_usable_password(user.password)
         request.session.pop("impersonator_id", None)
+        if db is not None:
+            from app.models import Consultant
+
+            request.session["has_consultant"] = (
+                db.query(Consultant.id).filter(Consultant.user_id == user.id).first() is not None
+            )
     clear_request_user_cache(request)
     if db is not None:
         from datetime import datetime
@@ -110,6 +116,7 @@ def logout_user(request: Request) -> None:
     request.session.pop("impersonator_id", None)
     request.session.pop("active_mode", None)
     request.session.pop("has_usable_password", None)
+    request.session.pop("has_consultant", None)
     request.session.pop("register_fio", None)
     request.session.pop("register_phone", None)
     request.session.pop("google_calendar_oauth_state", None)

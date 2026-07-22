@@ -111,42 +111,33 @@
         });
     }
 
-    async function init() {
-        var page = document.getElementById('profile-page');
-        if (!page) return;
-        var csrf = page.dataset.csrf || '';
-        var api = new ProfileApi(csrf);
-        window.profilePage = { applyData: applyData };
-        window.profileCompletionMeta = loadJson('profile-completion-meta') || {};
-
-        var initialData = loadJson('profile-initial-data');
-        if (initialData) {
-            applyData(initialData);
+    function absoluteLink(raw) {
+        if (!raw) return '';
+        if (raw.startsWith('/')) {
+            return window.location.protocol + '//' + window.location.host + raw;
         }
+        return raw;
+    }
 
-        if (window.profileCompletion) {
-            profileCompletion.bindChecklistNavigation();
+    function shareOrCopy(button) {
+        var link = absoluteLink(button.getAttribute('data-link'));
+        if (!link) return;
+        if (navigator.share) {
+            navigator.share({ title: document.title || 'Профиль', url: link, text: link }).catch(function () {
+                if (typeof copyBookingLink === 'function') copyBookingLink(button);
+            });
+            return;
         }
+        if (typeof copyBookingLink === 'function') copyBookingLink(button);
+    }
 
-        try {
-            var data = await api.getData();
-            applyData(data);
-        } catch (e) {
-            console.error('[profile] API load failed, using server-rendered data:', e);
-            if (window.profileCompletion && window.profilePreview) {
-                profileCompletion.updateLive(window.profileCompletionMeta);
-            }
-        }
-
-        if (window.profilePreview) profilePreview.bind();
-        if (window.initProfileAutosave) initProfileAutosave(api);
-
+    function bindUi(api) {
         document.getElementById('btn-copy-link') && document.getElementById('btn-copy-link').addEventListener('click', function () {
             if (typeof copyBookingLink === 'function') copyBookingLink(this);
         });
 
         document.getElementById('btn-share-profile') && document.getElementById('btn-share-profile').addEventListener('click', function () {
-            if (typeof copyBookingLink === 'function') copyBookingLink(this);
+            shareOrCopy(this);
         });
 
         document.getElementById('btn-toggle-qr') && document.getElementById('btn-toggle-qr').addEventListener('click', function () {
@@ -186,6 +177,44 @@
                     input.dispatchEvent(new Event('change'));
                 }
             });
+        }
+
+        if (window.profilePreview) profilePreview.bind();
+        if (window.initProfileAutosave && api) initProfileAutosave(api);
+    }
+
+    async function init() {
+        var page = document.getElementById('profile-page');
+        if (!page) return;
+        var csrf = page.dataset.csrf || '';
+        var api = new ProfileApi(csrf);
+        window.profilePage = { applyData: applyData };
+        window.profileCompletionMeta = loadJson('profile-completion-meta') || {};
+
+        var initialData = loadJson('profile-initial-data');
+        if (initialData) {
+            applyData(initialData);
+        }
+
+        if (window.profileCompletion) {
+            profileCompletion.bindChecklistNavigation();
+        }
+
+        // Bind share/copy/UI immediately - do not wait for a second API round-trip.
+        bindUi(api);
+
+        // Background refresh only when SSR payload is missing.
+        if (initialData) {
+            return;
+        }
+        try {
+            var data = await api.getData();
+            applyData(data);
+        } catch (e) {
+            console.error('[profile] API load failed, using server-rendered data:', e);
+            if (window.profileCompletion && window.profilePreview) {
+                profileCompletion.updateLive(window.profileCompletionMeta);
+            }
         }
     }
 

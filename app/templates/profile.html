@@ -184,7 +184,7 @@
                         <a href="{{ public_booking_url }}" class="btn btn--ghost btn--sm" target="_blank" rel="noopener">Открыть</a>
                     </div>
                     <div class="share-qr mt-lg" id="share-qr" hidden>
-                        <img src="/profile/qrcode" alt="QR-код профиля" width="220" height="220" loading="lazy">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&amp;data={{ public_booking_url|urlencode }}" alt="QR-код профиля" width="220" height="220" loading="lazy" decoding="async">
                         <p class="form-field__hint">Отсканируйте, чтобы открыть профиль на телефоне</p>
                     </div>
                     {% else %}
@@ -341,7 +341,7 @@
 <script src="/static/js/profile-preview.js?v=4" defer></script>
 <script src="/static/js/profile-autosave.js?v=2" defer></script>
 <script src="/static/js/profile-tabs.js?v=2" defer></script>
-<script src="/static/js/profile-page.js?v=3" defer></script>
+<script src="/static/js/profile-page.js?v=4" defer></script>
 <script src="/static/js/avatar-crop.js?v=4" defer></script>
 <script type="application/json" id="profile-completion-meta">{{ profile_completion_meta | tojson }}</script>
 <script type="application/json" id="profile-initial-data">{{ profile_initial_data | tojson }}</script>

@@ -523,6 +523,9 @@ async def become_specialist_page(request: Request, db: Session = Depends(get_db)
                     db, user, fio=fio, phone=phone, email=user.email or None
                 )
                 db.commit()
+                if "session" in request.scope:
+                    request.session["has_consultant"] = True
+                    request.session["active_mode"] = "specialist"
                 return RedirectResponse("/dashboard/", status_code=302)
             except IntegrityError:
                 db.rollback()

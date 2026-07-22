@@ -20,7 +20,6 @@ from app.content.landing_copy import (
     footer_with_context,
 )
 from app.security.csrf import ensure_csrf_token
-from app.models import Consultant, EmailAddress, User
 
 settings = get_settings()
 
@@ -162,47 +161,22 @@ templates.env.filters["booking_status"] = booking_status_label
 
 
 def build_header_context(db, user) -> dict:
-    if not user or db is None:
+    """Header labels from AuthUser only - no extra MySQL on every page."""
+    if not user:
         return {"header_consultant_name": "", "header_account_display": ""}
     try:
         name = ""
-        consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
-        if consultant:
-            parts = [
-                consultant.first_name or "",
-                consultant.middle_name or "",
-                consultant.last_name or "",
-            ]
-            name = " ".join(p for p in parts if p).strip()
-        if not name:
-            db_user = db.get(User, user.id)
-            if db_user:
-                name = f"{db_user.first_name or ''} {db_user.last_name or ''}".strip()
-        if not name and hasattr(user, "get_full_name"):
+        if hasattr(user, "get_full_name"):
             name = (user.get_full_name() or "").strip()
-
-        account = ""
-        primary = (
-            db.query(EmailAddress)
-            .filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True))
-            .first()
-        )
-        if primary and primary.email:
-            account = primary.email
-        if not account and user.email:
-            account = user.email
+        account = (user.email or "").strip()
         if not account and "@" in (user.username or ""):
             account = user.username
-        if not account and consultant and consultant.email:
-            account = consultant.email
-
         top = account or user.username or ""
         bottom = name
         if bottom and bottom.lower() == top.lower():
             bottom = ""
         if not bottom:
             bottom = "Специалист"
-
         return {
             "header_consultant_name": bottom,
             "header_account_display": top,
@@ -221,13 +195,13 @@ def _session_pop(request, key: str, default=False):
 
 
 def page_context(request, db, user=None, **extra):
-    from app.services.active_mode import get_active_mode, user_has_consultant
+    from app.services.active_mode import get_active_mode, get_cached_has_consultant
 
     has_consultant = False
     active_mode = "client"
     if user is not None and db is not None:
-        has_consultant = user_has_consultant(db, user.id)
-        active_mode = get_active_mode(request, db, user.id)
+        has_consultant = get_cached_has_consultant(request, db, user.id)
+        active_mode = get_active_mode(request, db, user.id, has_consultant=has_consultant)
     ctx = {
         "request": request,
         "user": user,

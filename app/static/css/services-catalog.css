@@ -594,7 +594,6 @@
 
 .is-loading {
     opacity: 0.6;
-    pointer-events: none;
 }
 
 @media (max-width: 1100px) {
