@@ -7,10 +7,36 @@
             <div class="app-header__user">
                 <div class="app-header__account">{{ header_account_display }}</div>
                 <div class="app-header__name">{{ header_consultant_name }}</div>
+                {% if show_mode_switcher %}
+                <div class="app-header__mode text-body-sm" style="margin-top:0.25rem;">
+                    Режим:
+                    {% if active_mode == 'specialist' %}
+                    <strong>специалист</strong>
+                    <form method="POST" action="/account/mode/" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="mode" value="client">
+                        <input type="hidden" name="next" value="/dashboard/">
+                        <button type="submit" class="btn btn--ghost btn--sm">Клиент</button>
+                    </form>
+                    {% else %}
+                    <strong>клиент</strong>
+                    <form method="POST" action="/account/mode/" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="mode" value="specialist">
+                        <input type="hidden" name="next" value="/dashboard/">
+                        <button type="submit" class="btn btn--ghost btn--sm">Специалист</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
             <nav class="app-header__nav" aria-label="Действия кабинета">
                 <a href="/" class="btn btn--ghost btn--sm">На главную страницу</a>
+                {% if active_mode == 'client' or not has_consultant %}
+                <a href="/my-bookings/" class="btn btn--secondary btn--sm">Мои записи</a>
+                {% else %}
                 <a href="/integrations/" class="btn btn--secondary btn--sm">Интеграции</a>
+                {% endif %}
                 <form method="POST" action="/logout/">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn btn--secondary btn--sm">Выход</button>

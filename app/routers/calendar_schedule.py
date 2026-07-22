@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.session import get_current_user
 from app.database import get_db
-from app.deps import get_consultant
+from app.deps import require_specialist_mode
 from app.models import Calendar, TimeSlot, User
 from app.security.csrf import validate_csrf_token
 from app.services.calendar_schedule import (
@@ -49,7 +49,7 @@ def _require_calendar(request: Request, db: Session, calendar_id: int) -> tuple[
     user = get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    consultant = get_consultant(db, user)
+    consultant = require_specialist_mode(request, db, user)
     calendar = (
         db.query(Calendar)
         .filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id)

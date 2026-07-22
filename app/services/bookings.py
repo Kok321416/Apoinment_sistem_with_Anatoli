@@ -94,6 +94,7 @@ def create_public_booking(
     client_phone: str,
     client_email: str,
     client_telegram: str,
+    client_user_id: int | None = None,
 ) -> tuple[Booking | None, str | None]:
     consultant = calendar.consultant
     service = (
@@ -194,6 +195,7 @@ def create_public_booking(
         time_slot_id=time_slot.id,
         calendar_id=calendar.id,
         client_card_id=card.id,
+        client_user_id=client_user_id,
         booking_date=booking_date,
         booking_time=start_time_obj,
         booking_end_time=end_time_obj,

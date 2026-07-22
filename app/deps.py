@@ -29,6 +29,17 @@ def get_consultant(db: Session, user: AuthUser) -> Consultant:
     return consultant
 
 
+def require_specialist_mode(request: Request, db: Session, user: AuthUser) -> Consultant:
+    """Specialist cabinet routes: need Consultant + active_mode=specialist."""
+    from app.services.active_mode import MODE_SPECIALIST, get_active_mode
+
+    consultant = get_consultant(db, user)
+    mode = get_active_mode(request, db, user.id)
+    if mode != MODE_SPECIALIST:
+        raise HTTPException(status_code=302, headers={"Location": "/dashboard/?need_mode=specialist"})
+    return consultant
+
+
 def find_consultant(db: Session, user: AuthUser | None) -> Consultant | None:
     if not user:
         return None

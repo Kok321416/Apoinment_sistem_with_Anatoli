@@ -1,0 +1,39 @@
+{% extends "layouts/app.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Мои записи — " ~ site_brand_name %}
+{% set meta_description = "Записи клиента — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block app_content %}
+<h1 class="text-h1 app-main__title">Мои записи</h1>
+<p class="text-body text-muted mt-md">Записи, где вы клиент. Подтвердите Telegram после записи, чтобы получать напоминания.</p>
+
+<div class="mt-xl">
+    <a href="/book/" class="btn btn--primary">Записаться</a>
+    <a href="/dashboard/" class="btn btn--ghost">В кабинет</a>
+</div>
+
+{% if bookings %}
+<ul class="stack mt-3xl" style="list-style:none;padding:0;max-width:40rem;">
+    {% for b in bookings %}
+    <li class="card card--static" style="padding:var(--space-lg);">
+        <div class="text-body"><strong>{{ b.booking_date.strftime('%d.%m.%Y') if b.booking_date else '—' }}</strong>
+            · {{ b.booking_time.strftime('%H:%M') if b.booking_time else '—' }}{% if b.booking_end_time %}–{{ b.booking_end_time.strftime('%H:%M') }}{% endif %}
+        </div>
+        <div class="text-body-sm mt-sm">{{ b.service.name if b.service else 'Услуга' }}</div>
+        <div class="text-body-sm text-muted">
+            {% if b.calendar and b.calendar.consultant %}
+            {{ b.calendar.consultant.first_name }} {{ b.calendar.consultant.last_name }}
+            · {{ b.calendar.name }}
+            {% endif %}
+        </div>
+        <div class="text-body-sm mt-sm">Статус: {{ b.status | booking_status }}</div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="text-body mt-3xl text-muted">Пока нет записей. Запишитесь к специалисту по публичной ссылке или через «Записаться».</p>
+{% endif %}
+{% endblock %}

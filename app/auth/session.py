@@ -58,6 +58,7 @@ def logout_user(request: Request) -> None:
     if "session" not in request.scope:
         return
     request.session.pop("user_id", None)
+    request.session.pop("active_mode", None)
     request.session.pop("register_fio", None)
     request.session.pop("register_phone", None)
     request.session.pop("google_calendar_oauth_state", None)

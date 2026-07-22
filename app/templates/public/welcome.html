@@ -21,7 +21,7 @@
     <form method="POST" action="/s/{{ consultant.public_slug }}/welcome/?next={{ next_url|urlencode }}" class="stack" id="clientWelcomeForm">
         <div class="form-field">
             <label class="form-field__label" for="client_name">Имя</label>
-            <input class="input" id="client_name" name="name" required autocomplete="name" placeholder="Как к вам обращаться">
+            <input class="input" id="client_name" name="name" required autocomplete="name" placeholder="Как к вам обращаться" value="{{ prefill_name or '' }}">
         </div>
         <div class="form-field">
             <label class="form-field__label" for="client_phone">Телефон</label>
@@ -43,7 +43,7 @@
 
         <div class="form-field" id="emailBlock">
             <label class="form-field__label" for="client_email">Почта</label>
-            <input class="input" id="client_email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
+            <input class="input" id="client_email" name="email" type="email" autocomplete="email" placeholder="you@example.com" value="{{ prefill_email or '' }}">
         </div>
         <div class="form-field is-hidden" id="telegramBlock">
             <label class="form-field__label" for="client_telegram">Ник в Телеграм</label>

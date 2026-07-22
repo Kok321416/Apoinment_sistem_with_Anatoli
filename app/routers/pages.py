@@ -17,7 +17,7 @@ from app.auth.passwords import hash_password, verify_password
 from app.auth.session import get_current_user, login_user, logout_user
 from app.config import get_settings
 from app.database import get_db
-from app.deps import get_consultant, normalize_phone, normalize_url
+from app.deps import get_consultant, normalize_phone, normalize_url, require_specialist_mode
 from app.models import (
     Booking,
     Calendar,
@@ -228,13 +228,63 @@ async def dashboard_page(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    from app.services.consultant_onboarding import find_consultant_for_user
+    from app.services.active_mode import MODE_SPECIALIST, get_active_mode, user_has_consultant
 
-    consultant = find_consultant_for_user(db, user.id)
-    ctx = page_context(request, db, user, has_consultant=bool(consultant))
-    if not consultant:
-        return templates.TemplateResponse("app/dashboard_client.html", ctx)
-    return templates.TemplateResponse("app/dashboard.html", ctx)
+    has_c = user_has_consultant(db, user.id)
+    mode = get_active_mode(request, db, user.id)
+    need_mode = request.query_params.get("need_mode") == "specialist"
+    ctx = page_context(
+        request,
+        db,
+        user,
+        need_mode_specialist=need_mode,
+    )
+    if has_c and mode == MODE_SPECIALIST:
+        return templates.TemplateResponse("app/dashboard.html", ctx)
+    return templates.TemplateResponse("app/dashboard_client.html", ctx)
+
+
+@router.post("/account/mode/")
+async def set_account_mode(request: Request, db: Session = Depends(get_db)):
+    user = _require_user(request, db)
+    if not user:
+        return _login_redirect(request)
+    from app.services.active_mode import set_active_mode, user_has_consultant
+
+    form = await request.form()
+    if not _form_csrf_ok(request, form):
+        return RedirectResponse("/dashboard/", status_code=302)
+    mode = (form.get("mode") or "").strip()
+    set_active_mode(request, mode, has_consultant=user_has_consultant(db, user.id))
+    next_url = safe_next_url(form.get("next") or request.query_params.get("next") or "/dashboard/")
+    return RedirectResponse(next_url, status_code=302)
+
+
+@router.get("/my-bookings/")
+async def my_bookings_page(request: Request, db: Session = Depends(get_db)):
+    user = _require_user(request, db)
+    if not user:
+        return _login_redirect(request)
+    from app.services.active_mode import MODE_CLIENT, list_client_bookings, set_active_mode, user_has_consultant
+
+    set_active_mode(request, MODE_CLIENT, has_consultant=user_has_consultant(db, user.id))
+    bookings = list_client_bookings(db, user.id)
+    # eager load for template
+    if bookings:
+        bookings = (
+            db.query(Booking)
+            .options(
+                joinedload(Booking.service),
+                joinedload(Booking.calendar).joinedload(Calendar.consultant),
+            )
+            .filter(Booking.id.in_([b.id for b in bookings]))
+            .order_by(Booking.booking_date.desc(), Booking.booking_time.desc())
+            .all()
+        )
+    return templates.TemplateResponse(
+        "app/my_bookings.html",
+        page_context(request, db, user, bookings=bookings),
+    )
 
 
 @router.get("/home/")
@@ -506,7 +556,7 @@ async def calendars_page(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    consultant = get_consultant(db, user)
+    consultant = require_specialist_mode(request, db, user)
     success = error = None
     if request.method == "POST":
         form = await request.form()
@@ -594,7 +644,7 @@ async def calendar_detail(request: Request, calendar_id: int, db: Session = Depe
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    consultant = get_consultant(db, user)
+    consultant = require_specialist_mode(request, db, user)
     calendar = db.query(Calendar).filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id).first()
     if not calendar:
         return RedirectResponse("/calendars/", status_code=302)
@@ -663,7 +713,7 @@ async def calendar_settings(request: Request, calendar_id: int, db: Session = De
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    consultant = get_consultant(db, user)
+    consultant = require_specialist_mode(request, db, user)
     calendar = db.query(Calendar).filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id).first()
     if not calendar:
         return RedirectResponse("/calendars/", status_code=302)
@@ -690,7 +740,7 @@ async def services_page(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    consultant = get_consultant(db, user)
+    consultant = require_specialist_mode(request, db, user)
     success = error = None
     if request.method == "POST":
         form = await request.form()
@@ -836,7 +886,7 @@ async def specialist_bookings(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    consultant = get_consultant(db, user)
+    consultant = require_specialist_mode(request, db, user)
     calendars = db.query(Calendar).filter(Calendar.consultant_id == consultant.id).all()
     cal_ids = [c.id for c in calendars]
     if cal_ids:
@@ -981,7 +1031,7 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    consultant = get_consultant(db, user)
+    consultant = require_specialist_mode(request, db, user)
     success = error = None
     if request.method == "POST":
         form = await request.form()
@@ -1105,7 +1155,7 @@ async def client_cards_list(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    consultant = get_consultant(db, user)
+    consultant = require_specialist_mode(request, db, user)
     success = error = None
     if request.method == "POST":
         form = await request.form()
@@ -1152,7 +1202,7 @@ async def client_card_detail(request: Request, card_id: int, db: Session = Depen
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    consultant = get_consultant(db, user)
+    consultant = require_specialist_mode(request, db, user)
     card = db.query(ClientCard).filter(ClientCard.id == card_id, ClientCard.consultant_id == consultant.id).first()
     if not card:
         return RedirectResponse("/clients/", status_code=302)
@@ -1200,7 +1250,7 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    consultant = get_consultant(db, user)
+    consultant = require_specialist_mode(request, db, user)
     integration = db.query(Integration).filter(Integration.consultant_id == consultant.id).first()
     if not integration:
         integration = Integration(consultant_id=consultant.id)
@@ -1381,7 +1431,7 @@ async def connect_telegram_app(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    consultant = get_consultant(db, user)
+    consultant = require_specialist_mode(request, db, user)
     integration = db.query(Integration).filter(Integration.consultant_id == consultant.id).first()
     if not integration:
         integration = Integration(consultant_id=consultant.id)

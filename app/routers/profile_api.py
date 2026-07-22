@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.auth.session import get_current_user
 from app.config import get_settings
 from app.database import get_db
-from app.deps import get_consultant, normalize_url
+from app.deps import normalize_url, require_specialist_mode
 from app.models import EmailAddress, SocialAccount
 from app.security.csrf import validate_csrf_token
 from app.services.profile_hub import apply_profile_fields, build_profile_payload
@@ -28,8 +28,8 @@ def _csrf_ok(request: Request, token: str | None) -> bool:
     return validate_csrf_token(request, token)
 
 
-def _profile_context(db: Session, user):
-    consultant = get_consultant(db, user)
+def _profile_context(request: Request, db: Session, user):
+    consultant = require_specialist_mode(request, db, user)
     connected = {sa.provider for sa in db.query(SocialAccount).filter(SocialAccount.user_id == user.id).all()}
     primary = db.query(EmailAddress).filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True)).first()
     from app.services.yandex_auth import yandex_oauth_configured
@@ -69,7 +69,7 @@ async def get_profile_data(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    return JSONResponse(_profile_context(db, user))
+    return JSONResponse(_profile_context(request, db, user))
 
 
 @router.put("/profile/data")
@@ -88,7 +88,7 @@ async def update_profile_data(body: ProfileUpdateBody, request: Request, db: Ses
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Почта уже используется другим аккаунтом")
-    return JSONResponse({"message": "Профиль сохранён", "data": _profile_context(db, user)})
+    return JSONResponse({"message": "Профиль сохранён", "data": _profile_context(request, db, user)})
 
 
 @router.post("/profile/avatar")
@@ -110,7 +110,7 @@ async def upload_avatar(
     if err:
         raise HTTPException(status_code=400, detail=err)
     db.commit()
-    return JSONResponse({"message": "Фото обновлено", "data": _profile_context(db, user)})
+    return JSONResponse({"message": "Фото обновлено", "data": _profile_context(request, db, user)})
 
 
 @router.get("/profile/preview")
@@ -118,7 +118,7 @@ async def get_profile_preview(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    data = _profile_context(db, user)
+    data = _profile_context(request, db, user)
     return JSONResponse(data["preview"])
 
 
@@ -127,7 +127,7 @@ async def get_profile_completion(request: Request, db: Session = Depends(get_db)
     user = get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    data = _profile_context(db, user)
+    data = _profile_context(request, db, user)
     return JSONResponse(data["completeness"])
 
 
@@ -136,7 +136,7 @@ async def profile_qrcode(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    data = _profile_context(db, user)
+    data = _profile_context(request, db, user)
     url = data["profile"]["public_url"]
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={quote(url, safe='')}"
     return RedirectResponse(qr_url, status_code=302)

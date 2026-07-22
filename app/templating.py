@@ -221,6 +221,13 @@ def _session_pop(request, key: str, default=False):
 
 
 def page_context(request, db, user=None, **extra):
+    from app.services.active_mode import get_active_mode, user_has_consultant
+
+    has_consultant = False
+    active_mode = "client"
+    if user is not None:
+        has_consultant = user_has_consultant(db, user.id)
+        active_mode = get_active_mode(request, db, user.id)
     ctx = {
         "request": request,
         "user": user,
@@ -235,6 +242,9 @@ def page_context(request, db, user=None, **extra):
         "yandex_metrika_id": settings.yandex_metrika_id,
         "yandex_oauth_enabled": yandex_oauth_configured(),
         "admin_telegram_username": settings.admin_telegram_username,
+        "has_consultant": has_consultant,
+        "active_mode": active_mode,
+        "show_mode_switcher": bool(user and has_consultant),
         **build_header_context(db, user),
         **extra,
     }

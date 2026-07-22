@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.auth.session import get_current_user
 from app.config import get_settings
 from app.database import get_db
 from app.models import Calendar, Consultant, Service, TimeSlot
@@ -148,16 +149,19 @@ async def specialist_welcome(request: Request, slug: str, db: Session = Depends(
         else:
             error = "Выберите способ связи: почта или Телеграм"
 
+    auth_user = get_current_user(request, db)
     return templates.TemplateResponse(
         "public/welcome.html",
         page_context(
             request,
             db,
-            None,
+            auth_user,
             consultant=consultant,
             next_url=next_url,
             error=error,
             bot_username=(settings.telegram_bot_username or "").lstrip("@"),
+            prefill_name=(auth_user.get_full_name() if auth_user else "") or request.session.get("pc_name", ""),
+            prefill_email=(auth_user.email if auth_user else "") or request.session.get("pc_email", ""),
         ),
     )
 
@@ -287,6 +291,7 @@ async def specialist_calendar_book(
         booking_time = (form.get("booking_time") or "").strip()
         booking_end = (form.get("booking_end_time") or "").strip()
         if not error:
+            auth_user = get_current_user(request, db)
             booking, err = create_public_booking(
                 db,
                 calendar,
@@ -298,6 +303,7 @@ async def specialist_calendar_book(
                 request.session.get("pc_phone", ""),
                 request.session.get("pc_email", ""),
                 request.session.get("pc_telegram", ""),
+                client_user_id=(auth_user.id if auth_user else None),
             )
             if err:
                 error = err
