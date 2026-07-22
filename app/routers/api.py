@@ -45,6 +45,9 @@ async def api_register(request: Request, db: Session = Depends(get_db)):
     data = await request.json()
     email = data.get("email")
     password = data.get("password")
+    role = (data.get("role") or "specialist").strip().lower()
+    if settings.force_consultant_on_signup:
+        role = "specialist"
     if db.query(User).filter(User.username == email).first():
         return JSONResponse({"error": "Уже зарегистрирован"}, status_code=400)
     user = User(
@@ -56,22 +59,14 @@ async def api_register(request: Request, db: Session = Depends(get_db)):
     )
     db.add(user)
     db.flush()
-    category = db.query(Category).filter(Category.name_category == "Общая").first()
-    if not category:
-        category = Category(name_category="Общая")
-        db.add(category)
-        db.flush()
-    consultant = Consultant(
-        user_id=user.id,
-        first_name="",
-        last_name="",
-        middle_name="",
-        email=email,
-        phone="",
-        telegram_nickname="",
-        category_of_specialist_id=category.id,
-    )
-    db.add(consultant)
+    consultant_id = None
+    if role != "client":
+        from app.services.consultant_onboarding import create_consultant_for_user
+
+        fio = (data.get("fio") or "").strip() or email
+        phone = (data.get("phone") or "").strip() or "+70000000000"
+        consultant = create_consultant_for_user(db, user, fio=fio, phone=phone, email=email)
+        consultant_id = consultant.id
     ensure_email_address(db, user, email, verified=False)
     if not send_user_verification_email(db, user):
         db.rollback()
@@ -79,7 +74,8 @@ async def api_register(request: Request, db: Session = Depends(get_db)):
     return JSONResponse({
         "message": "Вам на почту отправлено письмо. Введите 6-значный код на странице подтверждения.",
         "user_id": user.id,
-        "consultant_id": consultant.id,
+        "consultant_id": consultant_id,
+        "role": role if role == "client" else "specialist",
         "email": email,
         "verify_url": f"/accounts/verify-email/?email={email}",
     }, status_code=201)

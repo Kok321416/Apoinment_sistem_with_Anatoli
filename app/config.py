@@ -53,6 +53,12 @@ class Settings:
     admin_telegram_username: str = os.getenv("ADMIN_TELEGRAM_USERNAME", "andrievskypsy")
     # Dual-role Phase 3 scaffold: when true, skip duplicate TG sends to same chat_id
     notify_dedup: bool = (os.getenv("NOTIFY_DEDUP", "") or "").strip().lower() in ("1", "true", "yes")
+    # Dual-role Phase 5 rollback: force Consultant on every signup (old behavior)
+    force_consultant_on_signup: bool = (os.getenv("FORCE_CONSULTANT_ON_SIGNUP", "") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
     # SMTP для писем подтверждения email
     smtp_host: str = os.getenv("SMTP_HOST", "")

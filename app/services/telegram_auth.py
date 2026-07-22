@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 
 from app.auth.passwords import hash_password
 from app.deps import normalize_phone
-from app.models import Category, Consultant, Integration, SocialAccount, TelegramLoginRequest, User
-from app.services.bookings import parse_fio
+from app.config import get_settings
+from app.models import Consultant, SocialAccount, TelegramLoginRequest, User
+from app.services.consultant_onboarding import apply_user_names_from_fio, create_consultant_for_user
 
 LOGIN_TTL_MINUTES = 15
 
@@ -88,6 +89,16 @@ def _maybe_update_consultant_nickname(db: Session, user: User, username: str) ->
         consultant.telegram_nickname = username
 
 
+def _wants_specialist_profile(process: str, register_fio: str | None, register_phone: str | None) -> bool:
+    settings = get_settings()
+    if settings.force_consultant_on_signup:
+        return bool(register_fio and register_phone)
+    if process == "signup_client":
+        return False
+    # Legacy signup / login with register fields = specialist
+    return bool(register_fio and register_phone)
+
+
 def _find_or_create_user_for_telegram(
     db: Session,
     telegram_id: str,
@@ -95,12 +106,14 @@ def _find_or_create_user_for_telegram(
     first_name: str,
     register_fio: str | None,
     register_phone: str | None,
+    *,
+    process: str = "login",
 ) -> User:
     """
     Login/signup via Telegram.
 
     Phase 4: does NOT write Integration.telegram_chat_id.
-    Specialist notifications are linked only via Integrations UI / connect_spec_*.
+    Phase 5: specialist profile only when signup (not signup_client) or FORCE_CONSULTANT_ON_SIGNUP.
     """
     social = db.query(SocialAccount).filter(
         SocialAccount.provider == "telegram",
@@ -110,6 +123,12 @@ def _find_or_create_user_for_telegram(
         user = db.get(User, social.user_id)
         if user:
             _maybe_update_consultant_nickname(db, user, username)
+            if _wants_specialist_profile(process, register_fio, register_phone):
+                create_consultant_for_user(
+                    db, user, fio=register_fio or "", phone=register_phone or "", email=user.email
+                )
+            elif register_fio:
+                apply_user_names_from_fio(user, register_fio)
             return user
 
     uname = f"telegram_{telegram_id}"
@@ -133,28 +152,13 @@ def _find_or_create_user_for_telegram(
             first_name=first_name,
         )
 
-    if register_fio and register_phone and not db.query(Consultant).filter(Consultant.user_id == user.id).first():
-        fn, ln, mn = parse_fio(register_fio)
-        category = db.query(Category).filter(Category.name_category == "Общая").first()
-        if not category:
-            category = Category(name_category="Общая")
-            db.add(category)
-            db.flush()
-        consultant = Consultant(
-            user_id=user.id,
-            first_name=fn,
-            last_name=ln,
-            middle_name=mn,
-            email=user.email or "",
-            phone=register_phone,
-            telegram_nickname=username or "",
-            category_of_specialist_id=category.id,
+    if _wants_specialist_profile(process, register_fio, register_phone):
+        create_consultant_for_user(
+            db, user, fio=register_fio or "", phone=register_phone or "", email=user.email
         )
-        db.add(consultant)
-        db.flush()
-        # Stub only - notifications require explicit connect_spec / Integrations
-        db.add(Integration(consultant_id=consultant.id))
     else:
+        if register_fio:
+            apply_user_names_from_fio(user, register_fio)
         _maybe_update_consultant_nickname(db, user, username)
 
     _ensure_social_account(
@@ -214,6 +218,7 @@ def confirm_login_via_bot(
             first_name,
             req.register_fio,
             req.register_phone,
+            process=req.process or "login",
         )
 
     req.telegram_id = tg_id

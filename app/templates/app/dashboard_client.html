@@ -1,0 +1,40 @@
+{% extends "layouts/app.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Кабинет клиента — " ~ site_brand_name %}
+{% set meta_description = "Личный кабинет — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block app_content %}
+<h2 class="text-h1 app-main__title animate-fade-in-up">Кабинет клиента</h2>
+<p class="text-body text-muted mt-md">Вы вошли как клиент. Можно записаться к специалисту или открыть профиль специалиста, если принимаете записи.</p>
+
+<div class="app-nav-grid reveal-stagger mt-3xl">
+    <a href="/book/" class="app-nav-card">
+        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
+            <img src="/static/svg/icons/clock.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+        </span>
+        <h3 class="app-nav-card__title">Записаться</h3>
+        <p class="app-nav-card__desc">Выбрать специалиста и свободное окно</p>
+    </a>
+    <a href="/tg/" class="app-nav-card">
+        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
+            <img src="/static/svg/icons/telegram.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+        </span>
+        <h3 class="app-nav-card__title">Открыть в Telegram</h3>
+        <p class="app-nav-card__desc">Мини-приложение сервиса</p>
+    </a>
+    <a href="/become-specialist/" class="app-nav-card">
+        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
+            <img src="/static/svg/icons/profile.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+        </span>
+        <h3 class="app-nav-card__title">Стать специалистом</h3>
+        <p class="app-nav-card__desc">Включить кабинет, календари и приём записей</p>
+    </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/motion-reveal.js?v=1" defer></script>
+{% endblock %}

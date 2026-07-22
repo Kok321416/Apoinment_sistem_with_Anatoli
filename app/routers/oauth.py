@@ -57,14 +57,17 @@ async def telegram_login_page(request: Request, db: Session = Depends(get_db)):
             return RedirectResponse(next_url, status_code=302)
         register_fio = request.session.pop("register_fio", None)
         register_phone = request.session.pop("register_phone", None)
-        if process == "signup" and register_fio and register_phone:
+        if process in ("signup", "signup_client") and register_fio and register_phone:
             req = create_login_request(
                 db,
                 next_url=next_url,
-                process="signup",
+                process=process,
                 register_fio=register_fio,
                 register_phone=register_phone,
             )
+        elif process == "signup":
+            # Missing fio/phone - fall through to plain login request after session check above
+            req = create_login_request(db, next_url=next_url, process="login")
         else:
             req = create_login_request(db, next_url=next_url, process="login")
 
@@ -137,7 +140,7 @@ async def yandex_login(request: Request, db: Session = Depends(get_db)):
     else:
         if user:
             return RedirectResponse(next_url, status_code=302)
-        if process == "signup":
+        if process in ("signup", "signup_client"):
             register_fio = (request.session.get("register_fio") or "").strip()
             register_phone = normalize_phone(request.session.get("register_phone"))
             if not register_fio or not register_phone:
@@ -176,7 +179,7 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
             return RedirectResponse("/login/?error=yandex_profile", status_code=302)
 
         register_fio = register_phone = None
-        if process == "signup":
+        if process in ("signup", "signup_client"):
             register_fio = (request.session.pop("register_fio", None) or "").strip() or None
             register_phone = normalize_phone(request.session.pop("register_phone", None)) or None
 
@@ -189,7 +192,7 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
             connect_user_id=connect_user_id,
         )
         if err or not user:
-            if process == "signup":
+            if process in ("signup", "signup_client"):
                 return RedirectResponse("/register/?error=yandex_failed", status_code=302)
             return RedirectResponse("/login/?error=yandex_failed", status_code=302)
 

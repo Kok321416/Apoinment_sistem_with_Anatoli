@@ -131,24 +131,15 @@ def _create_consultant_from_register(
     email: str,
     yandex_id: str,
 ) -> None:
-    if db.query(Consultant).filter(Consultant.user_id == user.id).first():
-        return
-    first_name, last_name, middle_name = parse_fio(register_fio)
-    category = db.query(Category).filter(Category.name_category == "Общая").first()
-    if not category:
-        category = Category(name_category="Общая")
-        db.add(category)
-        db.flush()
-    db.add(Consultant(
-        user_id=user.id,
-        first_name=first_name,
-        last_name=last_name,
-        middle_name=middle_name,
+    from app.services.consultant_onboarding import create_consultant_for_user
+
+    create_consultant_for_user(
+        db,
+        user,
+        fio=register_fio,
+        phone=register_phone,
         email=_unique_consultant_email(db, email, user, yandex_id),
-        phone=normalize_phone(register_phone),
-        telegram_nickname="",
-        category_of_specialist_id=category.id,
-    ))
+    )
 
 
 def _create_yandex_user(
@@ -242,18 +233,26 @@ def complete_yandex_oauth(
             db.commit()
             return user, None
 
-        if process == "signup":
+        if process in ("signup", "signup_client"):
             if not register_fio or not register_phone:
                 return None, "Укажите ФИО и телефон перед регистрацией через Яндекс"
             user = _create_yandex_user(db, yandex_id, extra)
-            _create_consultant_from_register(
-                db,
-                user,
-                register_fio,
-                register_phone,
-                extra["default_email"],
-                yandex_id,
-            )
+            from app.config import get_settings
+            from app.services.consultant_onboarding import apply_user_names_from_fio
+
+            force = get_settings().force_consultant_on_signup
+            as_specialist = force or process == "signup"
+            if as_specialist:
+                _create_consultant_from_register(
+                    db,
+                    user,
+                    register_fio,
+                    register_phone,
+                    extra["default_email"],
+                    yandex_id,
+                )
+            else:
+                apply_user_names_from_fio(user, register_fio)
             db.commit()
             return user, None
 

@@ -1,0 +1,30 @@
+{% extends "layouts/app.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Стать специалистом — " ~ site_brand_name %}
+{% set meta_description = "Подключить профиль специалиста — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block app_content %}
+<h1 class="text-h1 app-main__title">Стать специалистом</h1>
+<p class="text-body text-muted mt-md">Один аккаунт останется вашим. Добавим профиль специалиста: календари, услуги и записи клиентов.</p>
+
+{% if error %}
+<div class="alert alert--error mt-xl" role="alert">{{ error }}</div>
+{% endif %}
+
+<form method="POST" action="/become-specialist/" class="stack mt-3xl" style="max-width: 28rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-field">
+        <label class="form-field__label" for="fio">ФИО</label>
+        <input class="input" type="text" id="fio" name="fio" required minlength="5" value="{{ fio or '' }}" autocomplete="name">
+    </div>
+    <div class="form-field">
+        <label class="form-field__label" for="phone">Телефон</label>
+        <input class="input" type="tel" id="phone" name="phone" required value="{{ phone or '' }}" autocomplete="tel" placeholder="+7...">
+    </div>
+    <button type="submit" class="btn btn--primary">Создать профиль специалиста</button>
+    <a href="/dashboard/" class="btn btn--ghost">Позже</a>
+</form>
+{% endblock %}

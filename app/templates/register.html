@@ -11,7 +11,7 @@
 <div class="auth-card card card--static animate-fade-in-up">
     <h1 class="text-h1 auth-card__title">Регистрация</h1>
     <p class="text-body-sm text-muted auth-card__lead">
-        Укажите ФИО и телефон, затем выберите способ входа. Телеграм для уведомлений можно подключить позже в разделе «Интеграции».
+        Один аккаунт на человека. Выберите роль: клиент (запись) или специалист (приём клиентов). Телеграм-уведомления специалисту подключаются отдельно в «Интеграциях».
     </p>
 
     {% if error %}
@@ -23,6 +23,20 @@
         <input type="hidden" name="auth_method" id="auth_method" value="email">
 
         <div class="stack">
+            <div class="form-field">
+                <span class="form-field__label" id="roleLabel">Кто вы</span>
+                <div class="auth-methods auth-methods--grid" role="radiogroup" aria-labelledby="roleLabel">
+                    <label class="auth-role{% if account_role != 'client' %} is-selected{% endif %}" data-role="specialist">
+                        <input type="radio" name="account_role" value="specialist"{% if account_role != 'client' %} checked{% endif %}>
+                        <span>Специалист</span>
+                    </label>
+                    <label class="auth-role{% if account_role == 'client' %} is-selected{% endif %}" data-role="client">
+                        <input type="radio" name="account_role" value="client"{% if account_role == 'client' %} checked{% endif %}>
+                        <span>Клиент</span>
+                    </label>
+                </div>
+            </div>
+
             <div class="form-field">
                 <label class="form-field__label" for="fio">ФИО</label>
                 <input
@@ -147,6 +161,17 @@ if (fioEl) {
     });
 }
     var labels = document.querySelectorAll('.auth-method:not(.auth-method--disabled)');
+
+    document.querySelectorAll('[data-role]').forEach(function(label) {
+        label.addEventListener('click', function() {
+            var role = label.getAttribute('data-role');
+            document.querySelectorAll('[data-role]').forEach(function(el) {
+                el.classList.toggle('is-selected', el.getAttribute('data-role') === role);
+            });
+            var radio = label.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        });
+    });
 
     function setMethod(method) {
         authMethod.value = method;

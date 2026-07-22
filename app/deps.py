@@ -24,8 +24,15 @@ def require_user(request: Request, db: Session = Depends(get_db)) -> AuthUser:
 def get_consultant(db: Session, user: AuthUser) -> Consultant:
     consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
     if not consultant:
-        raise HTTPException(status_code=302, headers={"Location": "/"})
+        # Phase 5: soft gate - offer become-specialist instead of bouncing to landing
+        raise HTTPException(status_code=302, headers={"Location": "/become-specialist/"})
     return consultant
+
+
+def find_consultant(db: Session, user: AuthUser | None) -> Consultant | None:
+    if not user:
+        return None
+    return db.query(Consultant).filter(Consultant.user_id == user.id).first()
 
 
 def normalize_url(value: str | None) -> str | None:

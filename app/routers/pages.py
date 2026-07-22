@@ -228,7 +228,13 @@ async def dashboard_page(request: Request, db: Session = Depends(get_db)):
     user = _require_user(request, db)
     if not user:
         return _login_redirect(request)
-    return templates.TemplateResponse("app/dashboard.html", page_context(request, db, user))
+    from app.services.consultant_onboarding import find_consultant_for_user
+
+    consultant = find_consultant_for_user(db, user.id)
+    ctx = page_context(request, db, user, has_consultant=bool(consultant))
+    if not consultant:
+        return templates.TemplateResponse("app/dashboard_client.html", ctx)
+    return templates.TemplateResponse("app/dashboard.html", ctx)
 
 
 @router.get("/home/")
@@ -281,6 +287,9 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
     if user:
         return RedirectResponse("/dashboard/", status_code=302)
     error = fio = phone = email = None
+    account_role = (request.query_params.get("as") or "specialist").strip().lower()
+    if account_role not in ("client", "specialist"):
+        account_role = "specialist"
     register_errors = {
         "yandex_signup": "Сначала укажите ФИО и телефон, затем выберите Яндекс.",
         "yandex_failed": "Не удалось завершить регистрацию через Яндекс. Попробуйте снова или выберите другой способ входа.",
@@ -292,6 +301,14 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         fio = (form.get("fio") or "").strip()
         phone = normalize_phone(form.get("phone"))
         auth_method = form.get("auth_method", "email")
+        account_role = (form.get("account_role") or "specialist").strip().lower()
+        if account_role not in ("client", "specialist"):
+            account_role = "specialist"
+        if settings.force_consultant_on_signup:
+            account_role = "specialist"
+        as_specialist = account_role == "specialist"
+        tg_process = "signup" if as_specialist else "signup_client"
+        ya_process = "signup" if as_specialist else "signup_client"
         if not _form_csrf_ok(request, form):
             error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
         elif not fio or not phone:
@@ -304,13 +321,16 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                 request.session["register_fio"] = fio
                 request.session["register_phone"] = phone
                 return RedirectResponse(
-                    f"/accounts/yandex/login/?{urlencode({'process': 'signup', 'next': '/dashboard/'})}",
+                    f"/accounts/yandex/login/?{urlencode({'process': ya_process, 'next': '/dashboard/'})}",
                     status_code=302,
                 )
         elif auth_method == "telegram":
             request.session["register_fio"] = fio
             request.session["register_phone"] = phone
-            return RedirectResponse(f"/accounts/telegram/login/?{urlencode({'process': 'signup', 'next': '/dashboard/'})}", status_code=302)
+            return RedirectResponse(
+                f"/accounts/telegram/login/?{urlencode({'process': tg_process, 'next': '/dashboard/'})}",
+                status_code=302,
+            )
         else:
             email = (form.get("email") or "").strip().lower()
             password = form.get("password", "")
@@ -321,27 +341,33 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                 error = "Пароли не совпадают"
             elif db.query(User).filter(User.username == email).first():
                 error = "Пользователь с такой почтой уже зарегистрирован"
-            elif db.query(Consultant).filter(Consultant.email == email).first():
+            elif as_specialist and db.query(Consultant).filter(Consultant.email == email).first():
                 error = "Эта почта уже используется другим специалистом"
             else:
                 try:
-                    first_name, last_name, middle_name = parse_fio(fio)
+                    from app.services.consultant_onboarding import (
+                        apply_user_names_from_fio,
+                        create_consultant_for_user,
+                    )
+
+                    first_name, last_name, _middle = parse_fio(fio)
                     new_user = User(
-                        username=email, email=email, password=hash_password(password),
-                        is_active=False, date_joined=datetime.utcnow(),
+                        username=email,
+                        email=email,
+                        password=hash_password(password),
+                        first_name=first_name or "",
+                        last_name=last_name or "",
+                        is_active=False,
+                        date_joined=datetime.utcnow(),
                     )
                     db.add(new_user)
                     db.flush()
-                    category = db.query(Category).filter(Category.name_category == "Общая").first()
-                    if not category:
-                        category = Category(name_category="Общая")
-                        db.add(category)
-                        db.flush()
-                    db.add(Consultant(
-                        user_id=new_user.id, first_name=first_name, last_name=last_name,
-                        middle_name=middle_name, email=email, phone=phone,
-                        telegram_nickname="", category_of_specialist_id=category.id,
-                    ))
+                    if as_specialist:
+                        create_consultant_for_user(
+                            db, new_user, fio=fio, phone=phone, email=email
+                        )
+                    else:
+                        apply_user_names_from_fio(new_user, fio)
                     ensure_email_address(db, new_user, email, verified=False)
                     if not send_user_verification_email(db, new_user):
                         db.rollback()
@@ -364,7 +390,49 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         fio=fio or "",
         phone=phone or "",
         email=email or "",
+        account_role=account_role,
     ))
+
+
+@router.get("/become-specialist/")
+@router.post("/become-specialist/")
+async def become_specialist_page(request: Request, db: Session = Depends(get_db)):
+    user = _require_user(request, db)
+    if not user:
+        return _login_redirect(request)
+    from app.services.consultant_onboarding import create_consultant_for_user, find_consultant_for_user
+
+    if find_consultant_for_user(db, user.id):
+        return RedirectResponse("/dashboard/", status_code=302)
+    error = None
+    fio = f"{user.last_name or ''} {user.first_name or ''}".strip()
+    phone = ""
+    if request.method == "POST":
+        form = await request.form()
+        fio = (form.get("fio") or "").strip()
+        phone = normalize_phone(form.get("phone"))
+        if not _form_csrf_ok(request, form):
+            error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
+        elif not fio or not phone:
+            error = "Укажите ФИО и номер телефона"
+        else:
+            try:
+                create_consultant_for_user(
+                    db, user, fio=fio, phone=phone, email=user.email or None
+                )
+                db.commit()
+                return RedirectResponse("/dashboard/", status_code=302)
+            except IntegrityError:
+                db.rollback()
+                error = "Не удалось создать профиль специалиста. Возможно, почта уже занята."
+            except Exception:
+                logger.exception("become-specialist failed for user %s", user.id)
+                db.rollback()
+                error = "Не удалось создать профиль. Попробуйте позже."
+    return templates.TemplateResponse(
+        "app/become_specialist.html",
+        page_context(request, db, user, error=error, fio=fio, phone=phone),
+    )
 
 
 @router.get("/login/")

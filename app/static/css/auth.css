@@ -109,6 +109,34 @@
     pointer-events: none;
 }
 
+.auth-role {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--surface-200);
+    cursor: pointer;
+    transition: border-color 200ms ease, background 200ms ease, transform 200ms ease;
+}
+
+.auth-role:hover {
+    border-color: var(--border-strong);
+}
+
+.auth-role.is-selected {
+    border-color: var(--accent-primary);
+    background: var(--glass-light);
+}
+
+.auth-role input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .auth-email-block {
     display: none;
 }
