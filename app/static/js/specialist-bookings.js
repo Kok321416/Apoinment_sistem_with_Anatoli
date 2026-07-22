@@ -43,30 +43,93 @@
 
         var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
         var grid = document.getElementById('calGridFull');
-        if (!grid) return;
-
-        grid.innerHTML = '';
-        var dayCount = 0;
-        for (var i = 0; i < startDay; i++) {
-            var dPrev = daysPrev - startDay + i + 1;
-            var dateStrPrev = prevYear + '-' + String(prevMonth).padStart(2, '0') + '-' + String(dPrev).padStart(2, '0');
-            grid.appendChild(makeDayCell(dateStrPrev, dPrev, true));
-            dayCount++;
+        if (grid) {
+            grid.innerHTML = '';
+            var dayCount = 0;
+            for (var i = 0; i < startDay; i++) {
+                var dPrev = daysPrev - startDay + i + 1;
+                var dateStrPrev = prevYear + '-' + String(prevMonth).padStart(2, '0') + '-' + String(dPrev).padStart(2, '0');
+                grid.appendChild(makeDayCell(dateStrPrev, dPrev, true));
+                dayCount++;
+            }
+            for (var d = 1; d <= daysInMonth; d++) {
+                var dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                var cell = makeDayCell(dateStr, d, false);
+                if (dateStr === todayStr) cell.classList.add('today');
+                grid.appendChild(cell);
+                dayCount++;
+            }
+            var rest = (7 - (dayCount % 7)) % 7;
+            var nextMonth = month === 12 ? 1 : month + 1;
+            var nextYear = month === 12 ? year + 1 : year;
+            for (var j = 1; j <= rest; j++) {
+                var dateStrNext = nextYear + '-' + String(nextMonth).padStart(2, '0') + '-' + String(j).padStart(2, '0');
+                grid.appendChild(makeDayCell(dateStrNext, j, true));
+            }
         }
+        renderMobileList();
+    }
+
+    var statusLabels = {
+        confirmed: 'Подтверждена',
+        pending: 'Ожидает',
+        completed: 'Завершена',
+        cancelled: 'Отменена'
+    };
+
+    function formatDayHeading(dateStr) {
+        var parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        var weekdays = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+        return Number(parts[2]) + ' ' + monthNames[Number(parts[1]) - 1].toLowerCase() + ', ' + weekdays[d.getDay()];
+    }
+
+    function eventAttrs(ev) {
+        var timeStr = ev.time || '';
+        if (ev.end_time) timeStr += ' - ' + ev.end_time;
+        return 'class="cal-event ' + (ev.status || '') + '" data-id="' + ev.id + '" data-status="' + escapeAttr(ev.status || '') + '" data-calendar-id="' + (ev.calendar_id || '') + '" data-service-id="' + (ev.service_id || '') + '" data-client_name="' + escapeAttr(ev.client_name) + '" data-client_phone="' + escapeAttr(ev.client_phone) + '" data-client_email="' + escapeAttr(ev.client_email || '') + '" data-client_telegram="' + escapeAttr(ev.client_telegram || '') + '" data-time="' + escapeAttr(timeStr) + '" data-service="' + escapeAttr(ev.service || '') + '"';
+    }
+
+    function renderMobileList() {
+        var list = document.getElementById('calMobileList');
+        if (!list) return;
+        var year = current.year;
+        var month = current.month;
+        var daysInMonth = new Date(year, month, 0).getDate();
+        var html = [];
+        var hasAny = false;
         for (var d = 1; d <= daysInMonth; d++) {
             var dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-            var cell = makeDayCell(dateStr, d, false);
-            if (dateStr === todayStr) cell.classList.add('today');
-            grid.appendChild(cell);
-            dayCount++;
+            var events = (eventsByDate[dateStr] || []).slice();
+            if (!events.length) continue;
+            hasAny = true;
+            events.sort(function (a, b) {
+                return String(a.time || '').localeCompare(String(b.time || ''));
+            });
+            html.push('<section class="cal-mobile-day">');
+            html.push('<h3 class="cal-mobile-day__title">' + formatDayHeading(dateStr) + '</h3>');
+            html.push('<ul class="cal-mobile-day__list">');
+            events.forEach(function (ev) {
+                var status = (ev.status || '').toLowerCase();
+                var label = statusLabels[status] || (ev.status || '');
+                var timeStr = ev.time || '';
+                if (ev.end_time) timeStr += ' - ' + ev.end_time;
+                html.push('<li><button type="button" ' + eventAttrs(ev) + '>');
+                html.push('<span class="cal-mobile-event__time">' + escapeAttr(timeStr) + '</span>');
+                html.push('<span class="cal-mobile-event__main">');
+                html.push('<span class="cal-mobile-event__name">' + escapeAttr(ev.client_name || '—') + '</span>');
+                if (ev.service) html.push('<span class="cal-mobile-event__service">' + escapeAttr(ev.service) + '</span>');
+                html.push('</span>');
+                if (label) html.push('<span class="cal-mobile-event__status">' + escapeAttr(label) + '</span>');
+                html.push('</button></li>');
+            });
+            html.push('</ul></section>');
         }
-        var rest = (7 - (dayCount % 7)) % 7;
-        var nextMonth = month === 12 ? 1 : month + 1;
-        var nextYear = month === 12 ? year + 1 : year;
-        for (var j = 1; j <= rest; j++) {
-            var dateStrNext = nextYear + '-' + String(nextMonth).padStart(2, '0') + '-' + String(j).padStart(2, '0');
-            grid.appendChild(makeDayCell(dateStrNext, j, true));
+        if (!hasAny) {
+            html.push('<p class="cal-mobile-list__empty">В этом месяце записей нет</p>');
         }
+        list.innerHTML = html.join('');
     }
 
     function makeDayCell(dateStr, dayNum, otherMonth) {
@@ -84,9 +147,7 @@
         }
         html += '<div class="day-events">';
         events.forEach(function (ev) {
-            var timeStr = ev.time;
-            if (ev.end_time) timeStr += ' – ' + ev.end_time;
-            html += '<div class="cal-event ' + (ev.status || '') + '" data-id="' + ev.id + '" data-status="' + escapeAttr(ev.status || '') + '" data-calendar-id="' + (ev.calendar_id || '') + '" data-service-id="' + (ev.service_id || '') + '" data-client_name="' + escapeAttr(ev.client_name) + '" data-client_phone="' + escapeAttr(ev.client_phone) + '" data-client_email="' + escapeAttr(ev.client_email || '') + '" data-client_telegram="' + escapeAttr(ev.client_telegram || '') + '" data-time="' + escapeAttr(timeStr) + '" data-service="' + escapeAttr(ev.service || '') + '">' + (ev.time || '') + ' ' + (ev.client_name || '') + '</div>';
+            html += '<div ' + eventAttrs(ev) + '>' + (ev.time || '') + ' ' + (ev.client_name || '') + '</div>';
         });
         html += '</div>';
         cell.innerHTML = html;
@@ -172,13 +233,14 @@
         if (calPrevFull) calPrevFull.onclick = goPrev;
         if (calNextFull) calNextFull.onclick = goNext;
 
-        var calGridFullEl = document.getElementById('calGridFull');
-        if (calGridFullEl) {
-            calGridFullEl.addEventListener('click', function (e) {
-                var el = e.target.closest('.cal-event');
-                if (el) showPopover(e, el);
-            });
+        function onCalEventClick(e) {
+            var el = e.target.closest('.cal-event');
+            if (el) showPopover(e, el);
         }
+        var calGridFullEl = document.getElementById('calGridFull');
+        if (calGridFullEl) calGridFullEl.addEventListener('click', onCalEventClick);
+        var calMobileListEl = document.getElementById('calMobileList');
+        if (calMobileListEl) calMobileListEl.addEventListener('click', onCalEventClick);
 
         document.addEventListener('click', function (e) {
             if (!e.target.closest('.cal-event') && !e.target.closest('#eventPopover')) hidePopover();

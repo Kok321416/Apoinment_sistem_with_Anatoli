@@ -445,12 +445,94 @@
     min-height: 100px;
 }
 
+.cal-mobile-list {
+    display: none;
+}
+
+.cal-mobile-list__empty {
+    margin: 0;
+    padding: var(--space-xl) 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-body-sm);
+}
+
+.cal-mobile-day {
+    margin-bottom: var(--space-lg);
+}
+
+.cal-mobile-day:last-child {
+    margin-bottom: 0;
+}
+
+.cal-mobile-day__title {
+    margin: 0 0 var(--space-sm);
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-secondary);
+    text-transform: capitalize;
+}
+
+.cal-mobile-day__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.cal-mobile-list .cal-event {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    width: 100%;
+    min-height: 44px;
+    padding: var(--space-md) var(--space-lg);
+    border: none;
+    border-radius: var(--radius-sm);
+    text-align: left;
+    white-space: normal;
+    overflow: visible;
+    font-size: var(--font-size-body-sm);
+    line-height: 1.35;
+}
+
+.cal-mobile-event__time {
+    flex: 0 0 4.5rem;
+    font-weight: var(--font-weight-semibold);
+}
+
+.cal-mobile-event__main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cal-mobile-event__name {
+    font-weight: var(--font-weight-medium);
+}
+
+.cal-mobile-event__service {
+    opacity: 0.85;
+    font-size: var(--font-size-caption);
+}
+
+.cal-mobile-event__status {
+    flex: 0 0 auto;
+    margin-left: auto;
+    font-size: var(--font-size-caption);
+    opacity: 0.9;
+}
+
 @media (min-width: 900px) {
     .bookings-page.is-calendar-view .calendar-day {
         min-height: 120px;
     }
 
-    .cal-event {
+    .calendar-grid .cal-event {
         font-size: 11px;
         padding: 3px var(--space-sm);
     }
@@ -467,21 +549,22 @@
         min-width: 44px;
     }
 
-    .calendar-day {
-        min-height: 44px;
+    .booking-calendar-full-wrap .calendar-weekdays,
+    .booking-calendar-full-wrap .calendar-grid {
+        display: none;
     }
 
-    .bookings-page.is-calendar-view .calendar-grid {
-        min-height: 240px;
-        max-height: 55vh;
+    .cal-mobile-list {
+        display: block;
+        max-height: 60vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: var(--space-sm) 0;
     }
 
-    .bookings-page.is-calendar-view .calendar-day {
-        min-height: 56px;
-    }
-
-    .cal-event {
-        font-size: 9px;
+    .bookings-page.is-calendar-view .booking-calendar-full-wrap .calendar-grid {
+        min-height: 0;
+        max-height: none;
     }
 
     .booking-card__actions {

@@ -1,0 +1,361 @@
+/*
+ * Shared hub shell styles (calendars / bookings / clients / profile / services).
+ * Page-specific CSS loads after this file and only keeps unique rules.
+ */
+
+/* Hub card surface (overrides glass .card from components on hub pages) */
+.calendars-page .card,
+.bookings-page .card,
+.clients-page .card,
+.profile-page .card,
+.services-page .card,
+.calendars-hero.card,
+.bookings-hero.card,
+.clients-hero.card,
+.profile-hero.card {
+    background: var(--surface-200);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.calendars-page,
+.bookings-page,
+.clients-page,
+.profile-page,
+.services-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xl);
+}
+
+/* Hero */
+.calendars-hero,
+.bookings-hero,
+.clients-hero,
+.profile-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 0;
+    border-color: rgba(125, 92, 255, 0.2);
+}
+
+.calendars-hero__glow,
+.bookings-hero__glow,
+.clients-hero__glow,
+.profile-hero__glow {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(40px);
+}
+
+.calendars-hero__glow--purple,
+.bookings-hero__glow--purple,
+.clients-hero__glow--purple,
+.profile-hero__glow--purple {
+    width: 260px;
+    height: 260px;
+    top: -70px;
+    left: -30px;
+    background: var(--gradient-glow-purple);
+}
+
+.calendars-hero__glow--cyan,
+.bookings-hero__glow--cyan,
+.clients-hero__glow--cyan,
+.profile-hero__glow--cyan {
+    width: 200px;
+    height: 200px;
+    bottom: -50px;
+    right: 8%;
+    background: var(--gradient-glow-cyan);
+}
+
+.calendars-hero__inner,
+.bookings-hero__inner,
+.clients-hero__inner,
+.profile-hero__inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-xl);
+    padding: var(--space-3xl);
+    background: linear-gradient(135deg, rgba(125, 92, 255, 0.14), rgba(59, 130, 246, 0.08));
+}
+
+.calendars-hero__main,
+.bookings-hero__main,
+.clients-hero__main,
+.profile-hero__main {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xl);
+    min-width: 0;
+}
+
+.calendars-hero__icon,
+.bookings-hero__icon,
+.clients-hero__icon,
+.profile-hero__icon {
+    font-size: 2.5rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.calendars-hero__title,
+.bookings-hero__title,
+.clients-hero__title,
+.profile-hero__title {
+    margin: 0 0 var(--space-xs);
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
+}
+
+.calendars-hero__desc,
+.bookings-hero__desc,
+.clients-hero__desc,
+.profile-hero__desc {
+    margin: 0 0 var(--space-sm);
+    color: var(--text-secondary);
+    font-size: var(--font-size-body-sm);
+    max-width: 36rem;
+}
+
+.calendars-hero__actions,
+.bookings-hero__actions,
+.clients-hero__actions,
+.profile-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+/* KPI / dashboard cards */
+.calendars-dashboard,
+.bookings-dashboard,
+.clients-dashboard,
+.profile-dashboard,
+.services-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-md);
+}
+
+.calendars-dash-card,
+.bookings-dash-card,
+.clients-dash-card,
+.dashboard-card,
+.stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    min-height: 110px;
+    padding: var(--space-xl);
+    border-radius: var(--radius-md);
+    background: var(--surface-200);
+    border: 1px solid var(--border-default);
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    min-width: 0;
+}
+
+.calendars-dash-card:hover,
+.bookings-dash-card:hover,
+.clients-dash-card:hover,
+.dashboard-card:hover,
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-strong);
+}
+
+.calendars-dash-card__value,
+.bookings-dash-card__value,
+.clients-dash-card__value,
+.dashboard-card__value,
+.stat-card__value {
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    font-weight: var(--font-weight-bold);
+    line-height: 1;
+    overflow-wrap: anywhere;
+}
+
+.calendars-dash-card__label,
+.bookings-dash-card__label,
+.clients-dash-card__label,
+.dashboard-card__label,
+.stat-card__label {
+    font-size: var(--font-size-body-sm);
+    color: var(--text-muted);
+}
+
+.calendars-dash-card--accent .calendars-dash-card__value,
+.bookings-dash-card--accent .bookings-dash-card__value,
+.clients-dash-card--accent .clients-dash-card__value,
+.dashboard-card--accent .dashboard-card__value,
+.stat-card--accent .stat-card__value { color: var(--accent-primary); }
+
+.calendars-dash-card--info .calendars-dash-card__value,
+.bookings-dash-card--info .bookings-dash-card__value,
+.clients-dash-card--info .clients-dash-card__value,
+.dashboard-card--info .dashboard-card__value,
+.stat-card--info .stat-card__value { color: var(--accent-secondary); }
+
+.calendars-dash-card--success .calendars-dash-card__value,
+.bookings-dash-card--success .bookings-dash-card__value,
+.clients-dash-card--success .clients-dash-card__value,
+.dashboard-card--success .dashboard-card__value,
+.stat-card--success .stat-card__value { color: var(--accent-success); }
+
+.calendars-dash-card--warning .calendars-dash-card__value,
+.bookings-dash-card--warning .bookings-dash-card__value,
+.clients-dash-card--warning .clients-dash-card__value,
+.dashboard-card--warning .dashboard-card__value,
+.stat-card--warning .stat-card__value { color: var(--accent-warning); }
+
+/* Main + sidebar */
+.calendars-layout,
+.bookings-layout,
+.clients-layout,
+.profile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) min(17.5rem, 100%);
+    gap: var(--space-2xl);
+    align-items: start;
+}
+
+.calendars-layout > *,
+.bookings-layout > *,
+.clients-layout > *,
+.profile-layout > * {
+    min-width: 0;
+}
+
+/* Toolbar */
+.calendars-toolbar,
+.bookings-toolbar,
+.clients-toolbar,
+.services-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-lg) var(--space-xl);
+    margin-bottom: var(--space-xl);
+}
+
+.calendars-toolbar__search,
+.bookings-toolbar__search,
+.clients-toolbar__search,
+.services-toolbar__search {
+    position: relative;
+    flex: 1 1 220px;
+    min-width: 0;
+}
+
+.calendars-toolbar__search-icon,
+.bookings-toolbar__search-icon,
+.clients-toolbar__search-icon,
+.services-toolbar__search-icon {
+    position: absolute;
+    left: var(--space-md);
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.875rem;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.calendars-toolbar__search .input,
+.bookings-toolbar__search .input,
+.clients-toolbar__search .input,
+.services-toolbar__search .input {
+    padding-left: 2.25rem;
+    width: 100%;
+}
+
+.calendars-toolbar__filters,
+.bookings-toolbar__filters,
+.clients-toolbar__filters,
+.services-toolbar__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+/* Empty states */
+.calendars-empty,
+.bookings-empty,
+.clients-empty,
+.services-empty {
+    text-align: center;
+    padding: var(--space-4xl) var(--space-2xl);
+}
+
+.calendars-empty__title,
+.bookings-empty__title,
+.clients-empty__title,
+.services-empty__title {
+    margin: 0 0 var(--space-sm);
+    font-size: var(--font-size-h3);
+}
+
+.calendars-empty__text,
+.bookings-empty__text,
+.clients-empty__text,
+.services-empty__text {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-body-sm);
+}
+
+/* Shared responsive collapses */
+@media (max-width: 1024px) {
+    .calendars-layout,
+    .bookings-layout,
+    .clients-layout,
+    .profile-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .calendars-dashboard,
+    .bookings-dashboard,
+    .clients-dashboard,
+    .profile-dashboard,
+    .services-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .calendars-hero__inner,
+    .bookings-hero__inner,
+    .clients-hero__inner,
+    .profile-hero__inner {
+        padding: var(--space-2xl);
+    }
+
+    .calendars-dash-card:hover,
+    .bookings-dash-card:hover,
+    .clients-dash-card:hover,
+    .dashboard-card:hover,
+    .stat-card:hover {
+        transform: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .calendars-dashboard,
+    .bookings-dashboard,
+    .clients-dashboard,
+    .profile-dashboard,
+    .services-stats {
+        grid-template-columns: 1fr;
+    }
+}

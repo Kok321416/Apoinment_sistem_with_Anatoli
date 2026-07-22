@@ -9,8 +9,9 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=23">
-<link rel="stylesheet" href="/static/css/bookings-hub.css?v=1">
-<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=16">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=1">
+<link rel="stylesheet" href="/static/css/bookings-hub.css?v=2">
+<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=17">
 {% endblock %}
 
 {% block app_content %}
@@ -153,6 +154,7 @@
                         <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
                     </div>
                     <div class="calendar-grid" id="calGridFull"></div>
+                    <div class="cal-mobile-list" id="calMobileList" aria-label="Записи месяца"></div>
                     <div class="calendar-legend">
                         <span><span class="legend-dot confirmed"></span> Подтверждена</span>
                         <span><span class="legend-dot pending"></span> Ожидает</span>
@@ -245,6 +247,6 @@
 
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
-<script src="/static/js/specialist-bookings.js?v=3" defer></script>
+<script src="/static/js/specialist-bookings.js?v=4" defer></script>
 <script type="application/json" id="bookings-hub-data">{{ hub_payload | tojson }}</script>
 {% endblock %}
