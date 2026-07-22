@@ -46,6 +46,12 @@ class Settings:
     yandex_oauth_client_id: str = (os.getenv("YANDEX_OAUTH_CLIENT_ID", "") or "").strip()
     yandex_oauth_client_secret: str = (os.getenv("YANDEX_OAUTH_CLIENT_SECRET", "") or "").strip()
 
+    # VK ID OAuth (login) + community token (messages)
+    vk_oauth_client_id: str = (os.getenv("VK_OAUTH_CLIENT_ID", "") or "").strip()
+    vk_oauth_client_secret: str = (os.getenv("VK_OAUTH_CLIENT_SECRET", "") or "").strip()
+    vk_group_id: str = (os.getenv("VK_GROUP_ID", "") or "").strip()
+    vk_group_access_token: str = (os.getenv("VK_GROUP_ACCESS_TOKEN", "") or "").strip()
+
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_bot_username: str = os.getenv("TELEGRAM_BOT_USERNAME", "")
     # Separate secret for bot -> API calls (recommended; do not reuse TELEGRAM_BOT_TOKEN in new setups)

@@ -221,6 +221,12 @@ def _apply_app_schema_patches() -> None:
         logger.exception("auth_user.session_version patch failed")
 
     try:
+        _add_column("bookings", "vk_user_id", "BIGINT NULL")
+        _add_index("bookings", "ix_bookings_vk_user_id", "vk_user_id")
+    except Exception:
+        logger.exception("bookings.vk_user_id patch failed")
+
+    try:
         from app.models import platform as platform_models
 
         Base.metadata.create_all(

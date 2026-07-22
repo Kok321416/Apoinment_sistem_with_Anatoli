@@ -60,7 +60,10 @@
 
     {% if booking.telegram_id %}
     <p class="booking-notice booking-notice--success mt-3xl">Сообщение о записи отправлено вам в Телеграм.</p>
-    {% elif booking.link_token and telegram_bot_username %}
+    {% elif booking.vk_user_id %}
+    <p class="booking-notice booking-notice--success mt-3xl">Сообщение о записи отправлено вам в VK{% if vk_allow_messages_url %} (если не пришло - разрешите сообщения от <a href="{{ vk_allow_messages_url }}" target="_blank" rel="noopener">сообщества</a>){% endif %}.</p>
+    {% endif %}
+    {% if booking.link_token and telegram_bot_username and not booking.telegram_id %}
     <div class="card card--static mt-3xl">
         <h3 class="text-h3">Уведомления в Телеграм</h3>
         <p class="text-body-sm text-muted">Подтвердите Телеграм - придёт сообщение о записи и напоминания перед консультацией.</p>
@@ -72,6 +75,20 @@
         </div>
         <p class="form-field__hint mt-lg">Необязательно - запись уже сохранена.</p>
         <p class="text-body-sm text-success" id="telegramSuccessNote" hidden>Готово! Проверьте Телеграм.</p>
+    </div>
+    {% endif %}
+    {% if booking.link_token and vk_oauth_enabled and not booking.vk_user_id and not booking.telegram_id %}
+    <div class="card card--static mt-3xl">
+        <h3 class="text-h3">Уведомления в VK</h3>
+        <p class="text-body-sm text-muted">Привяжите VK - сообщение о записи и напоминания придут в личные сообщения сообщества.</p>
+        <div class="stack mt-lg">
+            <a href="/accounts/vk/login/?process=link_booking&link_token={{ booking.link_token }}&next={{ (back_url or '/')|urlencode }}" class="btn btn--primary">Привязать VK</a>
+            {% if vk_allow_messages_url %}
+            <a href="{{ vk_allow_messages_url }}" class="btn btn--secondary" target="_blank" rel="noopener">Разрешить сообщения сообщества</a>
+            {% endif %}
+        </div>
+        <p class="form-field__hint mt-lg">Необязательно - запись уже сохранена. Если сообщения не открываются, сначала напишите сообществу любое слово.</p>
+        <p class="text-body-sm text-success" id="vkSuccessNote" hidden>Готово! Проверьте сообщения VK.</p>
     </div>
     {% endif %}
     {% if back_url %}
@@ -93,6 +110,16 @@
     }
     if (window.location.search.indexOf('telegram=confirmed') !== -1) {
         var note = document.getElementById('telegramSuccessNote');
+        if (note) note.hidden = false;
+    }
+})();
+</script>
+{% endif %}
+{% if booking.link_token and vk_oauth_enabled %}
+<script>
+(function() {
+    if (window.location.search.indexOf('vk=confirmed') !== -1) {
+        var note = document.getElementById('vkSuccessNote');
         if (note) note.hidden = false;
     }
 })();

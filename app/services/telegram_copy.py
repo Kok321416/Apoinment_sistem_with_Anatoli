@@ -154,8 +154,14 @@ def format_new_booking_message_for_specialist(booking: Booking) -> str:
     )
 
 
-def format_client_booked_message(booking: Booking) -> str:
+def format_client_booked_message(booking: Booking, *, channel: str = "telegram") -> str:
     info = booking_base_info(booking)
+    if channel == "email":
+        footer = "Напоминания придут на эту почту перед консультацией."
+    elif channel == "vk":
+        footer = "Напоминания придут сюда в сообщениях VK перед консультацией."
+    else:
+        footer = "Напоминания придут сюда перед консультацией."
     return (
         f"✅ <b>Ваша запись подтверждена</b>\n\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
@@ -163,7 +169,7 @@ def format_client_booked_message(booking: Booking) -> str:
         f"🕐 Время: {info['slot']}\n"
         f"👤 Специалист: {info['consultant_name']}\n"
         f"📍 Место: {info['calendar_name']}\n\n"
-        f"Напоминания придут сюда перед консультацией."
+        f"{footer}"
     )
 
 

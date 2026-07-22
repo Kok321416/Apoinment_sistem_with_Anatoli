@@ -231,6 +231,9 @@ def create_public_booking(
         client_user_id=client_user_id,
     )
     link_token = uuid.uuid4().hex[:24]
+    from app.services.vk_auth import resolve_vk_user_id_for_user
+
+    vk_user_id = resolve_vk_user_id_for_user(db, client_user_id)
     booking = Booking(
         service_id=service.id,
         time_slot_id=time_slot.id,
@@ -246,6 +249,7 @@ def create_public_booking(
         client_email=client_email or "",
         status="pending",
         link_token=link_token,
+        vk_user_id=vk_user_id,
     )
     db.add(booking)
     db.commit()

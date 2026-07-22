@@ -1,0 +1,194 @@
+/* Telegram Mini App + narrow phone shell */
+
+html.tg-webapp,
+body.tg-webapp {
+    --tg-safe-top: env(safe-area-inset-top, 0px);
+    --tg-safe-right: env(safe-area-inset-right, 0px);
+    --tg-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --tg-safe-left: env(safe-area-inset-left, 0px);
+    background: var(--tg-bg, var(--bg-900));
+    color: var(--tg-text, var(--text-primary));
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body.tg-webapp {
+    min-height: 100dvh;
+    min-height: var(--tg-viewport-stable-height, 100dvh);
+    padding-top: var(--tg-safe-top);
+    padding-bottom: var(--tg-safe-bottom);
+    padding-left: var(--tg-safe-left);
+    padding-right: var(--tg-safe-right);
+}
+
+body.tg-webapp .app-shell,
+body.tg-webapp .booking-page,
+body.tg-webapp.tg-hub-page {
+    min-height: 100dvh;
+    min-height: var(--tg-viewport-stable-height, 100dvh);
+}
+
+body.tg-webapp .app-header {
+    top: 0;
+    padding-top: 0;
+}
+
+body.tg-webapp .app-main {
+    padding-block: var(--space-2xl);
+}
+
+body.tg-webapp .app-footer-mini {
+    padding-bottom: calc(var(--space-2xl) + var(--tg-safe-bottom));
+}
+
+/* Full-height Mini App hub (/tg/) */
+.tg-hub-page {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--bg-900);
+}
+
+.tg-hub {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 480px;
+    min-height: 100dvh;
+    min-height: var(--tg-viewport-stable-height, 100dvh);
+    margin: 0 auto;
+    padding: max(1rem, var(--tg-safe-top, 0px)) 1rem max(1.25rem, var(--tg-safe-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.tg-hub__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.tg-hub__logo {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+}
+
+.tg-hub__title {
+    margin: 0;
+    font-size: 1.35rem;
+    line-height: 1.25;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.tg-hub__mode {
+    display: inline-flex;
+    align-self: flex-start;
+    margin: 0;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    border-radius: 999px;
+    background: rgba(125, 92, 255, 0.18);
+    color: var(--accent-secondary);
+}
+
+.tg-hub__switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.tg-hub__switch a {
+    text-align: center;
+    padding: 0.7rem 0.75rem;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 1px solid var(--border-default);
+    color: var(--text-secondary);
+    background: var(--glass-medium);
+}
+
+.tg-hub__switch a.is-active {
+    border-color: rgba(73, 209, 255, 0.45);
+    color: var(--text-primary);
+    background: rgba(73, 209, 255, 0.16);
+}
+
+.tg-hub__text {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.tg-hub__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: auto;
+}
+
+.tg-hub__actions .btn {
+    width: 100%;
+    min-height: 48px;
+    text-align: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.tg-hub__hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.tg-hub__card-link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1rem 1.1rem;
+    border-radius: 16px;
+    border: 1px solid var(--border-default);
+    background: var(--glass-medium);
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
+.tg-hub__card-link--primary {
+    border: none;
+    background: var(--gradient-primary);
+    box-shadow: var(--shadow-glow);
+}
+
+.tg-hub__card-link--primary .tg-hub__card-title,
+.tg-hub__card-link--primary .tg-hub__card-desc {
+    color: var(--text-on-accent);
+}
+
+.tg-hub__card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.tg-hub__card-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+@media (min-width: 481px) {
+    .tg-hub {
+        max-width: 420px;
+        justify-content: center;
+        padding-block: 2rem;
+    }
+
+    .tg-hub__actions {
+        margin-top: 1.5rem;
+    }
+}

@@ -7,89 +7,87 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/booking.css?v=17">
-<style>
-.tg-launch {
-    max-width: 480px;
-    margin: 2rem auto;
-    padding: 1.5rem;
-}
-.tg-launch__title { margin: 0 0 0.5rem; font-size: 1.5rem; }
-.tg-launch__mode {
-    display: inline-block;
-    margin: 0 0 1rem;
-    padding: 0.25rem 0.6rem;
-    font-size: 0.85rem;
-    border-radius: 6px;
-    background: rgba(125, 92, 255, 0.15);
-    color: var(--text-secondary, #9ca3af);
-}
-.tg-launch__text { color: var(--text-secondary, #9ca3af); margin: 0 0 1.25rem; }
-.tg-launch__actions { display: flex; flex-direction: column; gap: 0.75rem; }
-.tg-launch__actions .btn { width: 100%; text-align: center; }
-.tg-launch__switch {
-    display: flex;
-    gap: 0.5rem;
-    margin: 0 0 1.25rem;
-}
-.tg-launch__switch a {
-    flex: 1;
-    text-align: center;
-    padding: 0.5rem 0.75rem;
-    border-radius: 8px;
-    text-decoration: none;
-    font-size: 0.9rem;
-    border: 1px solid rgba(156, 163, 175, 0.35);
-    color: var(--text-secondary, #9ca3af);
-}
-.tg-launch__switch a.is-active {
-    border-color: var(--tg-button, #7d5cff);
-    color: var(--text-primary, #fff);
-    background: rgba(125, 92, 255, 0.2);
-}
-.tg-launch__hint { margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary, #9ca3af); }
-</style>
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=1">
 {% endblock %}
 
+{% block body_class %}tg-hub-page{% endblock %}
+
 {% block body %}
-<div class="tg-launch card card--static" data-tg-hub="1" data-tg-authed="{{ '1' if user and user.is_authenticated else '0' }}">
-    <h1 class="tg-launch__title">Все клиенты здесь</h1>
+<div class="tg-hub" data-tg-hub="1" data-tg-authed="{{ '1' if user and user.is_authenticated else '0' }}">
+    <div class="tg-hub__brand">
+        <img class="tg-hub__logo" src="/static/svg/logo.svg" alt="" width="40" height="40" decoding="async">
+        <h1 class="tg-hub__title">{{ site_brand_name }}</h1>
+    </div>
+
     {% if user and user.is_authenticated %}
-    <span class="tg-launch__mode">
+    <span class="tg-hub__mode">
         {% if tg_mode == tg_mode_specialist %}Режим: специалист{% else %}Режим: клиент{% endif %}
     </span>
+
     {% if tg_show_mode_switcher %}
-    <div class="tg-launch__switch" role="group" aria-label="Режим">
+    <div class="tg-hub__switch" role="group" aria-label="Режим">
         <a href="/tg/?mode=client" class="{% if tg_mode == tg_mode_client %}is-active{% endif %}">Клиент</a>
         <a href="/tg/?mode=specialist" class="{% if tg_mode == tg_mode_specialist %}is-active{% endif %}">Специалист</a>
     </div>
     {% endif %}
-    <p class="tg-launch__text">Выберите действие:</p>
-    <div class="tg-launch__actions">
+
+    <p class="tg-hub__text">Выберите действие:</p>
+
+    <div class="tg-hub__actions">
         {% if tg_mode == tg_mode_specialist and tg_has_consultant %}
-        <a class="btn btn--primary" href="/dashboard/">Кабинет специалиста</a>
-        <a class="btn btn--secondary" href="/calendars/">Календари</a>
-        <a class="btn btn--ghost" href="/my-bookings/">Мои записи (как клиент)</a>
+        <a class="tg-hub__card-link tg-hub__card-link--primary" href="/dashboard/">
+            <span class="tg-hub__card-title">Кабинет специалиста</span>
+            <span class="tg-hub__card-desc">Профиль, записи и инструменты</span>
+        </a>
+        <a class="tg-hub__card-link" href="/calendars/">
+            <span class="tg-hub__card-title">Календари</span>
+            <span class="tg-hub__card-desc">Окна приёма и расписание</span>
+        </a>
+        <a class="tg-hub__card-link" href="/my-bookings/">
+            <span class="tg-hub__card-title">Мои записи</span>
+            <span class="tg-hub__card-desc">Как клиент</span>
+        </a>
         {% else %}
-        <a class="btn btn--primary" href="/book/">Записаться</a>
-        <a class="btn btn--secondary" href="/my-bookings/">Мои записи</a>
+        <a class="tg-hub__card-link tg-hub__card-link--primary" href="/book/">
+            <span class="tg-hub__card-title">Записаться</span>
+            <span class="tg-hub__card-desc">Выбрать специалиста и время</span>
+        </a>
+        <a class="tg-hub__card-link" href="/my-bookings/">
+            <span class="tg-hub__card-title">Мои записи</span>
+            <span class="tg-hub__card-desc">Ближайшие и история</span>
+        </a>
         {% if tg_has_consultant %}
-        <a class="btn btn--ghost" href="/tg/?mode=specialist">Кабинет специалиста</a>
+        <a class="tg-hub__card-link" href="/tg/?mode=specialist">
+            <span class="tg-hub__card-title">Кабинет специалиста</span>
+            <span class="tg-hub__card-desc">Переключить режим</span>
+        </a>
         {% else %}
-        <a class="btn btn--ghost" href="/become-specialist/">Стать специалистом</a>
+        <a class="tg-hub__card-link" href="/become-specialist/">
+            <span class="tg-hub__card-title">Стать специалистом</span>
+            <span class="tg-hub__card-desc">Включить приём клиентов</span>
+        </a>
         {% endif %}
         {% endif %}
     </div>
     {% else %}
-    <p class="tg-launch__text">
-        Вы открыли сервис внутри Telegram. Запись доступна сразу; для «Моих записей» и кабинета войдите через Телеграм.
+    <p class="tg-hub__text">
+        Сервис открыт внутри Telegram. Можно сразу записаться. Для «Моих записей» и кабинета войдите через Телеграм.
     </p>
-    <div class="tg-launch__actions">
-        <a class="btn btn--primary" href="/book/">Записаться</a>
-        <a class="btn btn--secondary" href="/login/?next=/tg/">Войти</a>
-        <a class="btn btn--ghost" href="/">На главную</a>
+    <div class="tg-hub__actions">
+        <a class="tg-hub__card-link tg-hub__card-link--primary" href="/book/">
+            <span class="tg-hub__card-title">Записаться</span>
+            <span class="tg-hub__card-desc">Без лишних шагов</span>
+        </a>
+        <a class="tg-hub__card-link" href="/login/?next=/tg/">
+            <span class="tg-hub__card-title">Войти</span>
+            <span class="tg-hub__card-desc">Через Телеграм или почту</span>
+        </a>
+        <a class="tg-hub__card-link" href="/">
+            <span class="tg-hub__card-title">На главную</span>
+            <span class="tg-hub__card-desc">Сайт в браузере</span>
+        </a>
     </div>
-    <p class="tg-launch__hint" id="tg-auth-hint" hidden>Входим через Telegram…</p>
+    <p class="tg-hub__hint" id="tg-auth-hint" hidden>Входим через Telegram…</p>
     {% endif %}
 </div>
 {% endblock %}

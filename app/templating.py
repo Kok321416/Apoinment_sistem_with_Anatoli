@@ -7,6 +7,7 @@ from app.branding import auth_provider_label, booking_status_label
 from app.config import get_settings
 from app.deps import blank_field
 from app.services.yandex_auth import yandex_oauth_configured
+from app.services.vk_auth import vk_group_write_url, vk_messaging_configured, vk_oauth_configured
 from app.content.landing_copy import (
     CTA_BLOCK,
     FEATURES,
@@ -263,6 +264,8 @@ def page_context(request, db, user=None, **extra):
         "support_email": settings.support_email,
         "yandex_metrika_id": settings.yandex_metrika_id,
         "yandex_oauth_enabled": yandex_oauth_configured(),
+        "vk_oauth_enabled": vk_oauth_configured(),
+        "vk_allow_messages_url": vk_group_write_url() if vk_messaging_configured() else None,
         "admin_telegram_username": settings.admin_telegram_username,
         "has_consultant": has_consultant,
         "active_mode": active_mode,

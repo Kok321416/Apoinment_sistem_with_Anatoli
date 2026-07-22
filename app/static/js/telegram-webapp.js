@@ -14,6 +14,40 @@
         return "";
     }
 
+    function applyViewport(tg) {
+        var root = document.documentElement;
+        try {
+            var h = tg.viewportStableHeight || tg.viewportHeight;
+            if (h) {
+                root.style.setProperty("--tg-viewport-stable-height", h + "px");
+            }
+        } catch (e) {}
+    }
+
+    function applyTheme(tg) {
+        var root = document.documentElement;
+        var tp = tg.themeParams || {};
+        if (tg.colorScheme === "dark") {
+            root.setAttribute("data-tg-theme", "dark");
+        } else {
+            root.setAttribute("data-tg-theme", "light");
+        }
+        if (tp.bg_color) root.style.setProperty("--tg-bg", tp.bg_color);
+        if (tp.secondary_bg_color) root.style.setProperty("--tg-bg-secondary", tp.secondary_bg_color);
+        if (tp.button_color) root.style.setProperty("--tg-button", tp.button_color);
+        if (tp.button_text_color) root.style.setProperty("--tg-button-text", tp.button_text_color);
+        if (tp.text_color) root.style.setProperty("--tg-text", tp.text_color);
+        if (tp.hint_color) root.style.setProperty("--tg-hint", tp.hint_color);
+        try {
+            if (typeof tg.setHeaderColor === "function") {
+                tg.setHeaderColor(tp.bg_color || "#0b0d12");
+            }
+            if (typeof tg.setBackgroundColor === "function") {
+                tg.setBackgroundColor(tp.bg_color || "#0b0d12");
+            }
+        } catch (e) {}
+    }
+
     function tryWebappAuth(tg) {
         var hub = document.querySelector("[data-tg-hub]");
         if (!hub) return;
@@ -57,6 +91,24 @@
             });
     }
 
+    function wireBackButton(tg) {
+        if (!tg.BackButton) return;
+        var path = window.location.pathname || "/";
+        var isHub = path === "/tg/" || path === "/tg";
+        if (isHub) {
+            tg.BackButton.hide();
+            return;
+        }
+        tg.BackButton.show();
+        tg.BackButton.onClick(function () {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = "/tg/";
+            }
+        });
+    }
+
     function boot() {
         var tg = window.Telegram && window.Telegram.WebApp;
         if (!tg) return;
@@ -64,29 +116,27 @@
         try {
             tg.ready();
             tg.expand();
+            if (typeof tg.disableVerticalSwipes === "function") {
+                try {
+                    tg.disableVerticalSwipes();
+                } catch (e) {}
+            }
+
             document.documentElement.classList.add("tg-webapp");
             document.body.classList.add("tg-webapp");
 
-            if (tg.colorScheme === "dark") {
-                document.documentElement.setAttribute("data-tg-theme", "dark");
+            applyTheme(tg);
+            applyViewport(tg);
+            if (typeof tg.onEvent === "function") {
+                tg.onEvent("viewportChanged", function () {
+                    applyViewport(tg);
+                });
+                tg.onEvent("themeChanged", function () {
+                    applyTheme(tg);
+                });
             }
 
-            if (tg.themeParams) {
-                var root = document.documentElement;
-                if (tg.themeParams.bg_color) {
-                    root.style.setProperty("--tg-bg", tg.themeParams.bg_color);
-                }
-                if (tg.themeParams.button_color) {
-                    root.style.setProperty("--tg-button", tg.themeParams.button_color);
-                }
-                if (tg.themeParams.text_color) {
-                    root.style.setProperty("--tg-text", tg.themeParams.text_color);
-                }
-            }
-
-            if (tg.BackButton) {
-                tg.BackButton.hide();
-            }
+            wireBackButton(tg);
 
             window.__TG_WEBAPP__ = {
                 initData: tg.initData || "",

@@ -395,6 +395,8 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
     register_errors = {
         "yandex_signup": "Сначала укажите ФИО и телефон, затем выберите Яндекс.",
         "yandex_failed": "Не удалось завершить регистрацию через Яндекс. Попробуйте снова или выберите другой способ входа.",
+        "vk_signup": "Сначала укажите ФИО и телефон, затем выберите VK.",
+        "vk_failed": "Не удалось завершить регистрацию через VK. Попробуйте снова или выберите другой способ входа.",
     }
     if request.query_params.get("error") in register_errors:
         error = register_errors[request.query_params.get("error")]
@@ -411,6 +413,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         as_specialist = account_role == "specialist"
         tg_process = "signup" if as_specialist else "signup_client"
         ya_process = "signup" if as_specialist else "signup_client"
+        vk_process = "signup" if as_specialist else "signup_client"
         if not _form_csrf_ok(request, form):
             error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
         elif not fio or not phone:
@@ -424,6 +427,17 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                 request.session["register_phone"] = phone
                 return RedirectResponse(
                     f"/accounts/yandex/login/?{urlencode({'process': ya_process, 'next': '/dashboard/'})}",
+                    status_code=302,
+                )
+        elif auth_method == "vk":
+            from app.services.vk_auth import vk_oauth_configured
+            if not vk_oauth_configured():
+                error = "Вход через VK не настроен на сервере."
+            else:
+                request.session["register_fio"] = fio
+                request.session["register_phone"] = phone
+                return RedirectResponse(
+                    f"/accounts/vk/login/?{urlencode({'process': vk_process, 'next': '/dashboard/'})}",
                     status_code=302,
                 )
         elif auth_method == "telegram":
@@ -569,8 +583,18 @@ async def login_page(request: Request):
             "yandex_profile": "Не удалось получить профиль Яндекса.",
             "yandex_failed": "Не удалось войти через Яндекс. Зарегистрируйтесь или используйте другой способ входа.",
         }
+        vk_errors = {
+            "vk_denied": "Вход через VK отменён.",
+            "vk_config": "Вход через VK не настроен на сервере.",
+            "vk_state": "Ошибка безопасности при входе через VK. Попробуйте снова.",
+            "vk_token": "Не удалось получить токен VK. Попробуйте снова.",
+            "vk_profile": "Не удалось получить профиль VK.",
+            "vk_failed": "Не удалось войти через VK. Зарегистрируйтесь или используйте другой способ входа.",
+        }
         if request.query_params.get("error") in yandex_errors:
             error = yandex_errors[request.query_params.get("error")]
+        elif request.query_params.get("error") in vk_errors:
+            error = vk_errors[request.query_params.get("error")]
         if request.method == "POST":
             assert db is not None
             form = await request.form()
@@ -1264,16 +1288,27 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
                         db.delete(acc)
                     db.commit()
                     success = "Яндекс отвязан. Можно привязать другой аккаунт."
+            elif action == "disconnect_vk_login":
+                ok, msg = can_disconnect_social(db, user, "vk")
+                if not ok:
+                    error = msg
+                else:
+                    for acc in db.query(SocialAccount).filter(
+                        SocialAccount.user_id == user.id, SocialAccount.provider == "vk"
+                    ).all():
+                        db.delete(acc)
+                    db.commit()
+                    success = "VK отвязан. Можно привязать другой аккаунт."
             elif action == "disconnect_email_login":
                 rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
                 has_social = db.query(SocialAccount).filter(
                     SocialAccount.user_id == user.id,
-                    SocialAccount.provider.in_(("telegram", "yandex")),
+                    SocialAccount.provider.in_(("telegram", "yandex", "vk")),
                 ).first()
                 if not rows or not any(r.verified for r in rows):
                     error = "Подтверждённая почта не привязана."
                 elif not user.has_usable_password and not has_social:
-                    error = "Нельзя отвязать почту: сначала привяжите Телеграм, Яндекс или задайте пароль."
+                    error = "Нельзя отвязать почту: сначала привяжите Телеграм, Яндекс, VK или задайте пароль."
                 else:
                     for row in rows:
                         row.verified = False
@@ -1581,12 +1616,12 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
             rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
             has_social = db.query(SocialAccount).filter(
                 SocialAccount.user_id == user.id,
-                SocialAccount.provider.in_(("telegram", "yandex")),
+                SocialAccount.provider.in_(("telegram", "yandex", "vk")),
             ).first()
             if not rows or not any(r.verified for r in rows):
                 error = "Подтверждённая почта не привязана."
             elif not user.has_usable_password and not has_social:
-                error = "Нельзя отвязать почту: сначала привяжите Телеграм, Яндекс или задайте пароль."
+                error = "Нельзя отвязать почту: сначала привяжите Телеграм, Яндекс, VK или задайте пароль."
             else:
                 for row in rows:
                     row.verified = False
@@ -1617,6 +1652,17 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
                     db.delete(acc)
                 db.commit()
                 success = "Яндекс для входа отвязан. Можно привязать другой аккаунт."
+        elif action == "disconnect_vk_login":
+            ok, msg = can_disconnect_social(db, user, "vk")
+            if not ok:
+                error = msg
+            else:
+                for acc in db.query(SocialAccount).filter(
+                    SocialAccount.user_id == user.id, SocialAccount.provider == "vk"
+                ).all():
+                    db.delete(acc)
+                db.commit()
+                success = "VK для входа отвязан. Можно привязать другой аккаунт."
 
     primary = db.query(EmailAddress).filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True)).first()
     telegram_login_connected = bool(
@@ -1629,7 +1675,13 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
             SocialAccount.user_id == user.id, SocialAccount.provider == "yandex"
         ).first()
     )
+    vk_login_connected = bool(
+        db.query(SocialAccount).filter(
+            SocialAccount.user_id == user.id, SocialAccount.provider == "vk"
+        ).first()
+    )
     from app.services.yandex_auth import yandex_oauth_configured
+    from app.services.vk_auth import vk_oauth_configured
     return templates.TemplateResponse("integrations.html", page_context(
         request, db, user, integration=integration, success=success, error=error,
         email_address=primary.email if primary else (consultant.email or user.email or ""),
@@ -1637,7 +1689,9 @@ async def integrations_page(request: Request, db: Session = Depends(get_db)):
         email_pending=email_pending,
         telegram_login_connected=telegram_login_connected,
         yandex_login_connected=yandex_login_connected,
+        vk_login_connected=vk_login_connected,
         yandex_oauth_enabled=yandex_oauth_configured(),
+        vk_oauth_enabled=vk_oauth_configured(),
     ))
 
 

@@ -2,8 +2,8 @@
     <div class="container app-header__inner">
         {% set href = '/dashboard/' %}
         {% include "components/logo.html" %}
+        {% if user and user.is_authenticated %}
         <div class="app-header__actions">
-            {% if user and user.is_authenticated %}
             <div class="app-header__user">
                 <div class="app-header__account" title="{{ header_account_display }}">{{ header_account_display }}</div>
                 <div class="app-header__name" title="{{ header_consultant_name }}">{{ header_consultant_name }}</div>
@@ -32,8 +32,8 @@
                 </div>
                 {% endif %}
             </div>
-            <nav class="app-header__nav" aria-label="Действия кабинета">
-                <a href="/" class="btn btn--ghost btn--sm">На главную страницу</a>
+            <nav class="app-header__nav app-header__nav--desktop" aria-label="Действия кабинета">
+                <a href="/" class="btn btn--ghost btn--sm">На главную</a>
                 {% if active_mode == 'client' or not has_consultant %}
                 <a href="/my-bookings/" class="btn btn--secondary btn--sm">Мои записи</a>
                 {% else %}
@@ -44,7 +44,58 @@
                     <button type="submit" class="btn btn--secondary btn--sm">Выход</button>
                 </form>
             </nav>
-            {% endif %}
+            <details class="app-header__menu">
+                <summary class="app-header__menu-btn" aria-label="Меню">Меню</summary>
+                <div class="app-header__menu-panel">
+                    <div class="app-header__menu-user">
+                        <div class="app-header__name">{{ header_consultant_name }}</div>
+                        <div class="app-header__account">{{ header_account_display }}</div>
+                    </div>
+                    {% if show_mode_switcher %}
+                    <div class="app-header__mode app-header__mode--menu">
+                        <span class="app-header__mode-label">Режим:</span>
+                        <div class="app-mode-toggle" role="group" aria-label="Режим кабинета">
+                            {% if active_mode == 'specialist' %}
+                            <span class="app-mode-toggle__btn is-active" aria-current="true">Специалист</span>
+                            <form method="POST" action="/account/mode/" class="app-mode-toggle__form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="mode" value="client">
+                                <input type="hidden" name="next" value="/dashboard/">
+                                <button type="submit" class="app-mode-toggle__btn">Клиент</button>
+                            </form>
+                            {% else %}
+                            <form method="POST" action="/account/mode/" class="app-mode-toggle__form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="mode" value="specialist">
+                                <input type="hidden" name="next" value="/dashboard/">
+                                <button type="submit" class="app-mode-toggle__btn">Специалист</button>
+                            </form>
+                            <span class="app-mode-toggle__btn is-active" aria-current="true">Клиент</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    <nav class="app-header__menu-nav" aria-label="Меню кабинета">
+                        <a href="/dashboard/">Кабинет</a>
+                        <a href="/">На главную</a>
+                        {% if active_mode == 'client' or not has_consultant %}
+                        <a href="/my-bookings/">Мои записи</a>
+                        <a href="/book/">Записаться</a>
+                        {% else %}
+                        <a href="/calendars/">Календари</a>
+                        <a href="/services/">Услуги</a>
+                        <a href="/booking/">Записи</a>
+                        <a href="/integrations/">Интеграции</a>
+                        {% endif %}
+                        <a href="/tg/">Telegram Mini App</a>
+                        <form method="POST" action="/logout/">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="app-header__menu-logout">Выход</button>
+                        </form>
+                    </nav>
+                </div>
+            </details>
         </div>
+        {% endif %}
     </div>
 </header>

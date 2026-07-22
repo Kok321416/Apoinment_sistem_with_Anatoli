@@ -134,7 +134,7 @@
 
 .app-nav-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
     gap: var(--space-2xl);
 }
 
@@ -177,15 +177,161 @@
     line-height: var(--line-height-body-lg);
 }
 
+.app-header__menu {
+    display: none;
+}
+
 @media (max-width: 768px) {
-    .app-header__user {
+    .app-header__user,
+    .app-header__nav--desktop {
         display: none;
     }
 
     .app-header__inner {
-        flex-wrap: wrap;
-        padding-block: var(--space-md);
+        flex-wrap: nowrap;
+        gap: var(--space-md);
+        padding-block: var(--space-sm);
+        min-height: 56px;
     }
+
+    .app-header__actions {
+        flex: 0 0 auto;
+        justify-content: flex-end;
+    }
+
+    .app-header__menu {
+        position: relative;
+        display: block;
+    }
+
+    .app-main {
+        padding-block: var(--space-2xl);
+    }
+
+    .app-nav-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-lg);
+    }
+
+    .app-nav-card {
+        padding: var(--space-2xl);
+    }
+
+    .app-section {
+        padding: var(--space-2xl);
+    }
+
+    .app-list-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .app-page-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-md);
+        margin-bottom: var(--space-2xl);
+    }
+
+    .app-main__title {
+        font-size: clamp(1.35rem, 5vw, 1.75rem);
+        text-align: left;
+        margin-bottom: var(--space-2xl);
+    }
+
+    .app-footer-mini {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: var(--space-sm) var(--space-md);
+        padding-inline: var(--space-lg);
+    }
+
+    .app-footer-mini a {
+        margin: 0;
+    }
+}
+
+.app-header__menu-btn {
+    list-style: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0.45rem 0.85rem;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border-default);
+    background: var(--glass-medium);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-semibold);
+}
+
+.app-header__menu-btn::-webkit-details-marker {
+    display: none;
+}
+
+.app-header__menu[open] .app-header__menu-btn {
+    border-color: rgba(73, 209, 255, 0.4);
+    color: var(--accent-secondary);
+}
+
+.app-header__menu-panel {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    z-index: calc(var(--z-sticky) + 5);
+    width: min(18rem, calc(100vw - 1.5rem));
+    padding: var(--space-lg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--glass-heavy);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(var(--blur-md));
+    -webkit-backdrop-filter: blur(var(--blur-md));
+}
+
+.app-header__menu-user {
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.app-header__mode--menu {
+    justify-content: flex-start;
+    margin: 0 0 var(--space-md);
+}
+
+.app-header__menu-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.app-header__menu-nav a,
+.app-header__menu-logout {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.7rem 0.65rem;
+    border-radius: var(--radius-xs);
+    text-decoration: none;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.app-header__menu-nav a:hover,
+.app-header__menu-logout:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.app-header__menu-logout {
+    color: var(--accent-danger);
+    margin-top: 0.25rem;
 }
 
 /* Internal pages */
@@ -237,7 +383,7 @@
 
 .app-list-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
     gap: var(--space-2xl);
 }
 

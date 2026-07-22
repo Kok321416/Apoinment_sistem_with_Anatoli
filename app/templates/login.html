@@ -28,14 +28,24 @@
                 <span>Телеграм</span>
             </a>
             {% endif %}
+            {% if vk_oauth_enabled %}
+            <a href="/accounts/vk/login/?next={{ next_url | urlencode }}" class="auth-method auth-method--vk">
+                {{ auth_provider_icon('vk') }}
+                <span>VK</span>
+            </a>
+            {% endif %}
             <a href="/accounts/yandex/login/?next={{ next_url | urlencode }}" class="auth-method auth-method--yandex">
                 {{ auth_provider_icon('yandex') }}
                 <span>Яндекс</span>
             </a>
         </div>
         <p class="form-field__hint">
-            {% if telegram_bot_username %}
+            {% if telegram_bot_username and vk_oauth_enabled %}
+            Телеграм откроет бота, VK и Яндекс - страницу входа.
+            {% elif telegram_bot_username %}
             Телеграм откроет бота, Яндекс — страницу входа Яндекс ID.
+            {% elif vk_oauth_enabled %}
+            Откроется страница входа через VK ID или Яндекс ID.
             {% else %}
             Откроется страница входа через Яндекс ID.
             {% endif %}

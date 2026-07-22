@@ -8,21 +8,39 @@
 
 @media (max-width: 768px) {
     :root {
-        --container-padding: var(--space-xl);
-        --header-height: 64px;
+        --container-padding: var(--space-lg);
+        --header-height: 56px;
         --btn-height: var(--btn-height-sm);
         --orb-size-purple: 280px;
         --orb-size-cyan: 240px;
     }
 
+    html,
+    body {
+        overflow-x: hidden;
+        max-width: 100%;
+    }
+
+    .container {
+        padding-inline: var(--container-padding);
+    }
+
     .section {
         padding-block: var(--space-6xl);
+    }
+
+    .cluster {
+        gap: var(--space-md);
     }
 }
 
 @media (max-width: 480px) {
     :root {
-        --container-padding: var(--space-lg);
+        --container-padding: var(--space-md);
         --space-8xl: var(--space-6xl);
+    }
+
+    .btn {
+        min-height: 44px;
     }
 }

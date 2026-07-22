@@ -90,6 +90,11 @@
     color: #ff6b52;
 }
 
+.auth-method--vk {
+    border-color: rgba(0, 119, 255, 0.45);
+    color: #4c9bff;
+}
+
 .auth-method__icon {
     width: 20px;
     height: 20px;

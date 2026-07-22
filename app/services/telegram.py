@@ -97,6 +97,25 @@ def send_telegram_to_client(telegram_id: int, text: str) -> bool:
     return _send_telegram(telegram_id, text)
 
 
+def _notify_client_fallback(
+    booking: Booking,
+    *,
+    send_vk,
+    send_email,
+) -> None:
+    """Prefer VK messages, then email, when Telegram is not linked."""
+    if getattr(booking, "vk_user_id", None):
+        try:
+            if send_vk():
+                return
+        except Exception:
+            logger.exception("VK client notify failed")
+    try:
+        send_email()
+    except Exception:
+        logger.exception("Email client notify failed")
+
+
 def notify_booking_status_changed(db: Session, booking: Booking, old_status: str | None = None) -> None:
     new_status = booking.status or ""
     if not new_status or new_status == "completed":
@@ -113,6 +132,15 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
         if client_chat and not skip_client:
             text_client = format_booking_status_changed_client(booking, new_status, old_status)
             send_telegram_async(client_chat, text_client)
+        elif not client_chat:
+            from app.services.booking_email import notify_client_status_email
+            from app.services.vk_messages import notify_client_status_vk
+
+            _notify_client_fallback(
+                booking,
+                send_vk=lambda: notify_client_status_vk(booking, new_status, old_status),
+                send_email=lambda: notify_client_status_email(booking, new_status, old_status),
+            )
         if specialist_chat_id:
             text_spec = format_booking_status_changed_specialist(booking, new_status, old_status)
             send_telegram_async(specialist_chat_id, text_spec, specialist_token)
@@ -141,6 +169,19 @@ def notify_booking_rescheduled(
             send_telegram_async(
                 client_chat,
                 format_booking_rescheduled_client(
+                    booking, old_date=old_date, old_time=old_time, old_end_time=old_end_time
+                ),
+            )
+        elif not client_chat:
+            from app.services.booking_email import notify_client_reschedule_email
+            from app.services.vk_messages import notify_client_reschedule_vk
+
+            _notify_client_fallback(
+                booking,
+                send_vk=lambda: notify_client_reschedule_vk(
+                    booking, old_date=old_date, old_time=old_time, old_end_time=old_end_time
+                ),
+                send_email=lambda: notify_client_reschedule_email(
                     booking, old_date=old_date, old_time=old_time, old_end_time=old_end_time
                 ),
             )
@@ -182,6 +223,15 @@ def on_booking_created(db: Session, booking: Booking) -> None:
                 record_notify_dedup_hit(db)
             else:
                 send_telegram_async(booking.telegram_id, format_client_booked_message(booking))
+        else:
+            from app.services.booking_email import notify_client_via_email_if_no_telegram
+            from app.services.vk_messages import notify_client_booked_vk
+
+            _notify_client_fallback(
+                booking,
+                send_vk=lambda: notify_client_booked_vk(booking),
+                send_email=lambda: notify_client_via_email_if_no_telegram(booking),
+            )
     except Exception:
         logger.exception("on_booking_created client notify failed")
     try:
@@ -247,39 +297,65 @@ def send_reminders(db: Session) -> dict:
         in_second = (h2 * 60 - win) <= delta_minutes <= (h2 * 60 + win)
 
         if in_first:
-            if booking.telegram_id and not booking.reminder_24h_sent:
-                skip_client = notify_dedup_enabled() and same_telegram_chat(
-                    booking.telegram_id, specialist_chat_id
-                )
-                if not skip_client:
-                    if send_telegram_to_client(booking.telegram_id, format_reminder_message(booking, h1)):
+            if not booking.reminder_24h_sent:
+                if booking.telegram_id:
+                    skip_client = notify_dedup_enabled() and same_telegram_chat(
+                        booking.telegram_id, specialist_chat_id
+                    )
+                    if not skip_client:
+                        if send_telegram_to_client(booking.telegram_id, format_reminder_message(booking, h1)):
+                            booking.reminder_24h_sent = True
+                            sent["client_24"] += 1
+                    else:
+                        from app.services.app_counters import record_notify_dedup_hit
+
+                        record_notify_dedup_hit(db)
+                        # Mark sent so we do not retry forever when dedup skips duplicate
+                        booking.reminder_24h_sent = True
+                else:
+                    from app.services.booking_email import notify_client_reminder_email
+                    from app.services.vk_messages import notify_client_reminder_vk
+
+                    delivered = False
+                    if booking.vk_user_id:
+                        delivered = notify_client_reminder_vk(booking, h1)
+                    if not delivered:
+                        delivered = notify_client_reminder_email(booking, h1)
+                    if delivered:
                         booking.reminder_24h_sent = True
                         sent["client_24"] += 1
-                else:
-                    from app.services.app_counters import record_notify_dedup_hit
-
-                    record_notify_dedup_hit(db)
-                    # Mark sent so we do not retry forever when dedup skips duplicate
-                    booking.reminder_24h_sent = True
             if specialist_chat_id and not booking.specialist_reminder_24h_sent:
                 if _send_telegram(specialist_chat_id, format_specialist_reminder_message(booking, h1), specialist_bot_token):
                     booking.specialist_reminder_24h_sent = True
                     sent["spec_24"] += 1
 
         if in_second:
-            if booking.telegram_id and not booking.reminder_1h_sent:
-                skip_client = notify_dedup_enabled() and same_telegram_chat(
-                    booking.telegram_id, specialist_chat_id
-                )
-                if not skip_client:
-                    if send_telegram_to_client(booking.telegram_id, format_reminder_message(booking, h2)):
+            if not booking.reminder_1h_sent:
+                if booking.telegram_id:
+                    skip_client = notify_dedup_enabled() and same_telegram_chat(
+                        booking.telegram_id, specialist_chat_id
+                    )
+                    if not skip_client:
+                        if send_telegram_to_client(booking.telegram_id, format_reminder_message(booking, h2)):
+                            booking.reminder_1h_sent = True
+                            sent["client_1"] += 1
+                    else:
+                        from app.services.app_counters import record_notify_dedup_hit
+
+                        record_notify_dedup_hit(db)
+                        booking.reminder_1h_sent = True
+                else:
+                    from app.services.booking_email import notify_client_reminder_email
+                    from app.services.vk_messages import notify_client_reminder_vk
+
+                    delivered = False
+                    if booking.vk_user_id:
+                        delivered = notify_client_reminder_vk(booking, h2)
+                    if not delivered:
+                        delivered = notify_client_reminder_email(booking, h2)
+                    if delivered:
                         booking.reminder_1h_sent = True
                         sent["client_1"] += 1
-                else:
-                    from app.services.app_counters import record_notify_dedup_hit
-
-                    record_notify_dedup_hit(db)
-                    booking.reminder_1h_sent = True
             if specialist_chat_id and not booking.specialist_reminder_1h_sent:
                 if _send_telegram(specialist_chat_id, format_specialist_reminder_message(booking, h2), specialist_bot_token):
                     booking.specialist_reminder_1h_sent = True

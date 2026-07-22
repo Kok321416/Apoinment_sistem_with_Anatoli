@@ -80,6 +80,13 @@
                         {{ auth_provider_icon('yandex') }}
                         <span>Яндекс</span>
                     </label>
+                    {% if vk_oauth_enabled %}
+                    <label class="auth-method auth-method--vk" data-method="vk">
+                        <input type="radio" name="auth_radio" value="vk">
+                        {{ auth_provider_icon('vk') }}
+                        <span>VK</span>
+                    </label>
+                    {% endif %}
                     <label class="auth-method is-selected" data-method="email">
                         <input type="radio" name="auth_radio" value="email" checked>
                         <span>Почта и пароль</span>
@@ -107,6 +114,7 @@
             <button type="submit" class="btn btn--primary" id="submit-btn">Зарегистрироваться</button>
             <p class="form-field__hint" id="telegram-hint" hidden>Нажатие кнопки откроет бота Телеграм для подтверждения регистрации.</p>
             <p class="form-field__hint" id="yandex-hint" hidden>Нажатие кнопки откроет страницу входа через Яндекс ID.</p>
+            <p class="form-field__hint" id="vk-hint" hidden>Нажатие кнопки откроет страницу входа через VK ID.</p>
         </div>
     </form>
 
@@ -189,11 +197,15 @@ if (fioEl) {
             submitBtn.textContent = 'Перейти к входу через Телеграм';
         } else if (method === 'yandex') {
             submitBtn.textContent = 'Перейти к входу через Яндекс';
+        } else if (method === 'vk') {
+            submitBtn.textContent = 'Перейти к входу через VK';
         } else {
             submitBtn.textContent = 'Зарегистрироваться';
         }
         document.getElementById('telegram-hint').hidden = method !== 'telegram';
         document.getElementById('yandex-hint').hidden = method !== 'yandex';
+        var vkHint = document.getElementById('vk-hint');
+        if (vkHint) vkHint.hidden = method !== 'vk';
     }
 
     labels.forEach(function(label) {
@@ -223,6 +235,7 @@ if (fioEl) {
 
         if (authMethod.value === 'telegram') return;
         if (authMethod.value === 'yandex') return;
+        if (authMethod.value === 'vk') return;
 
         if (!isValidEmail(emailInput.value)) {
             e.preventDefault();

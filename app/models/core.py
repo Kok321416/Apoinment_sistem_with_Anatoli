@@ -183,6 +183,7 @@ class Booking(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     link_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     telegram_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    vk_user_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     reminder_24h_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     reminder_1h_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     specialist_reminder_24h_sent: Mapped[bool] = mapped_column(Boolean, default=False)

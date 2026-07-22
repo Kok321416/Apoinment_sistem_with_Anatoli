@@ -24,6 +24,16 @@ from app.services.yandex_auth import (
     fetch_yandex_profile,
     yandex_oauth_configured,
 )
+from app.services.vk_auth import (
+    build_authorize_url as build_vk_authorize_url,
+    complete_vk_oauth,
+    exchange_code_for_token as exchange_vk_code_for_token,
+    fetch_vk_profile,
+    generate_pkce_pair,
+    vk_group_write_url,
+    vk_messaging_configured,
+    vk_oauth_configured,
+)
 from app.templating import page_context, templates
 from app.utils.safe_redirect import safe_next_url
 
@@ -206,6 +216,152 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/register/?error=yandex_failed", status_code=302)
 
 
+@router.get("/vk/login/")
+async def vk_login(request: Request, db: Session = Depends(get_db)):
+    if not vk_oauth_configured():
+        return RedirectResponse("/login/?error=vk_config", status_code=302)
+
+    user = get_current_user(request, db)
+    process = request.query_params.get("process", "login")
+    next_url = safe_next_url(request.query_params.get("next"))
+
+    if process == "connect":
+        if not user:
+            return RedirectResponse(f"/login/?next={quote(next_url, safe='')}", status_code=302)
+        request.session["vk_connect_user_id"] = user.id
+    elif process == "link_booking":
+        link_token = (request.query_params.get("link_token") or "").strip()
+        if not link_token:
+            return RedirectResponse("/", status_code=302)
+        request.session["vk_link_booking_token"] = link_token
+    else:
+        if user:
+            return RedirectResponse(next_url, status_code=302)
+        if process in ("signup", "signup_client"):
+            register_fio = (request.session.get("register_fio") or "").strip()
+            register_phone = normalize_phone(request.session.get("register_phone"))
+            if not register_fio or not register_phone:
+                return RedirectResponse("/register/?error=vk_signup", status_code=302)
+
+    state = secrets.token_urlsafe(32)
+    code_verifier, code_challenge = generate_pkce_pair()
+    request.session["vk_oauth_state"] = state
+    request.session["vk_oauth_process"] = process
+    request.session["vk_oauth_next"] = next_url
+    request.session["vk_code_verifier"] = code_verifier
+    return RedirectResponse(build_vk_authorize_url(state=state, code_challenge=code_challenge), status_code=302)
+
+
+@router.get("/vk/callback/")
+async def vk_callback(request: Request, db: Session = Depends(get_db)):
+    try:
+        if request.query_params.get("error"):
+            return RedirectResponse("/login/?error=vk_denied", status_code=302)
+
+        # VK ID may return flat params or JSON payload=
+        code = request.query_params.get("code")
+        state = request.query_params.get("state")
+        device_id = request.query_params.get("device_id") or ""
+        payload_raw = request.query_params.get("payload")
+        if payload_raw and (not code or not state):
+            try:
+                payload = json.loads(payload_raw)
+                code = code or payload.get("code")
+                state = state or payload.get("state")
+                device_id = device_id or (payload.get("device_id") or "")
+            except Exception:
+                logger.exception("Failed to parse VK payload")
+
+        expected_state = request.session.pop("vk_oauth_state", None)
+        process = request.session.pop("vk_oauth_process", "login")
+        next_url = safe_next_url(request.session.pop("vk_oauth_next", "/"))
+        connect_user_id = request.session.pop("vk_connect_user_id", None)
+        code_verifier = request.session.pop("vk_code_verifier", None)
+        link_token = request.session.pop("vk_link_booking_token", None)
+
+        if (
+            not code
+            or not state
+            or not expected_state
+            or not code_verifier
+            or not secrets.compare_digest(state, expected_state)
+        ):
+            return RedirectResponse("/login/?error=vk_state", status_code=302)
+
+        if not device_id:
+            return RedirectResponse("/login/?error=vk_token", status_code=302)
+
+        token_data = exchange_vk_code_for_token(
+            code=code,
+            code_verifier=code_verifier,
+            device_id=device_id,
+            state=state,
+        )
+        access_token = (token_data or {}).get("access_token")
+        if not access_token:
+            return RedirectResponse("/login/?error=vk_token", status_code=302)
+
+        profile = fetch_vk_profile(access_token)
+        if not profile and token_data.get("user_id"):
+            profile = {"user_id": token_data["user_id"]}
+        if not profile:
+            return RedirectResponse("/login/?error=vk_profile", status_code=302)
+
+        if process == "link_booking" and link_token:
+            from app.models import Booking
+            from app.services.vk_messages import notify_client_booked_vk
+
+            booking = db.query(Booking).filter(Booking.link_token == link_token).first()
+            if not booking:
+                return RedirectResponse("/?error=vk_booking", status_code=302)
+            vk_id = str(profile.get("user_id") or profile.get("id") or "").strip()
+            try:
+                booking.vk_user_id = int(vk_id)
+            except (TypeError, ValueError):
+                return RedirectResponse("/login/?error=vk_profile", status_code=302)
+            db.commit()
+            db.refresh(booking)
+            notify_client_booked_vk(booking)
+            write_url = vk_group_write_url() if vk_messaging_configured() else None
+            # Prefer returning to booking success if we know calendar; else dashboard
+            redirect = next_url if next_url and next_url != "/" else "/"
+            if write_url:
+                # After OAuth, ask user to allow community messages
+                request.session["vk_allow_messages_hint"] = write_url
+            return RedirectResponse(f"{redirect}?vk=confirmed", status_code=302)
+
+        register_fio = register_phone = None
+        if process in ("signup", "signup_client"):
+            register_fio = (request.session.pop("register_fio", None) or "").strip() or None
+            register_phone = normalize_phone(request.session.pop("register_phone", None)) or None
+
+        user, err, _vk_id = complete_vk_oauth(
+            db,
+            process=process,
+            profile=profile,
+            register_fio=register_fio,
+            register_phone=register_phone,
+            connect_user_id=connect_user_id,
+        )
+        if err or not user:
+            if process in ("signup", "signup_client"):
+                return RedirectResponse("/register/?error=vk_failed", status_code=302)
+            return RedirectResponse("/login/?error=vk_failed", status_code=302)
+
+        login_user(request, user, db)
+        if process == "connect":
+            request.session["integrations_success"] = "VK привязан."
+            if vk_messaging_configured():
+                write_url = vk_group_write_url()
+                if write_url:
+                    request.session["vk_allow_messages_hint"] = write_url
+        return RedirectResponse(next_url, status_code=302)
+    except Exception:
+        logger.exception("Unhandled VK OAuth callback error")
+        db.rollback()
+        return RedirectResponse("/login/?error=vk_failed", status_code=302)
+
+
 @router.get("/confirm-email/{token}/")
 async def confirm_email(request: Request, token: str, db: Session = Depends(get_db)):
     from app.services.email_verification import verify_email_token
@@ -359,16 +515,27 @@ async def social_connections(request: Request, db: Session = Depends(get_db)):
                     db.delete(acc)
                 db.commit()
                 success = "Яндекс отвязан."
+        elif action == "disconnect_vk":
+            ok, msg = can_disconnect_social(db, user, "vk")
+            if not ok:
+                error = msg
+            else:
+                for acc in db.query(SocialAccount).filter(
+                    SocialAccount.user_id == user.id, SocialAccount.provider == "vk"
+                ).all():
+                    db.delete(acc)
+                db.commit()
+                success = "VK отвязан."
         elif action == "disconnect_email":
             rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
             has_social = db.query(SocialAccount).filter(
                 SocialAccount.user_id == user.id,
-                SocialAccount.provider.in_(("telegram", "yandex")),
+                SocialAccount.provider.in_(("telegram", "yandex", "vk")),
             ).first()
             if not rows or not any(r.verified for r in rows):
                 error = "Подтверждённая почта не привязана."
             elif not user.has_usable_password and not has_social:
-                error = "Нельзя отвязать почту: сначала привяжите Телеграм, Яндекс или задайте пароль."
+                error = "Нельзя отвязать почту: сначала привяжите Телеграм, Яндекс, VK или задайте пароль."
             else:
                 for row in rows:
                     row.verified = False
@@ -381,7 +548,9 @@ async def social_connections(request: Request, db: Session = Depends(get_db)):
         social_accounts=accounts,
         has_telegram=any(a.provider == "telegram" for a in accounts),
         has_yandex=any(a.provider == "yandex" for a in accounts),
+        has_vk=any(a.provider == "vk" for a in accounts),
         yandex_oauth_enabled=yandex_oauth_configured(),
+        vk_oauth_enabled=vk_oauth_configured(),
         email_address=primary.email if primary else (user.email or ""),
         email_verified=bool(primary and primary.verified),
         success=success,

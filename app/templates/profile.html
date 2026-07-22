@@ -227,6 +227,22 @@
                         <span class="badge badge--ghost mt-sm">Не настроено</span>
                         {% endif %}
                     </div>
+                    <div class="auth-provider-card {% if 'vk' in connected_providers %}is-connected{% endif %}">
+                        <div class="text-h3">VK</div>
+                        {% if 'vk' in connected_providers %}
+                        <span class="badge badge--success mt-sm">Подключен</span>
+                        <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('Отвязать VK?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="action" value="disconnect_vk_login">
+                            <button type="submit" class="btn btn--ghost btn--sm">Отключить</button>
+                        </form>
+                        {% elif vk_oauth_enabled %}
+                        <span class="badge badge--ghost mt-sm">Не подключен</span>
+                        <a href="/accounts/vk/login/?process=connect&next=/profile/" class="btn btn--primary btn--sm mt-lg">Подключить</a>
+                        {% else %}
+                        <span class="badge badge--ghost mt-sm">Не настроено</span>
+                        {% endif %}
+                    </div>
                     <div class="auth-provider-card {% if primary_email_verified %}is-connected{% endif %}">
                         <div class="text-h3">Почта</div>
                         {% if primary_email %}<p class="text-body-sm text-muted mt-sm">{{ primary_email }}</p>{% endif %}

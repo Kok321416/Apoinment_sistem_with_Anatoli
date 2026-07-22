@@ -49,6 +49,22 @@
             <span class="badge badge--ghost mt-sm">Не настроено</span>
             {% endif %}
         </div>
+        <div class="auth-provider-card {% if has_vk %}is-connected{% endif %}">
+            <div class="text-h3">{{ auth_provider_icon('vk') }} VK</div>
+            {% if has_vk %}
+            <span class="badge badge--success mt-sm">Привязан</span>
+            <form method="POST" action="/accounts/social/connections/" class="mt-lg" onsubmit="return confirm('Отвязать VK?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="disconnect_vk">
+                <button type="submit" class="btn btn--ghost btn--sm">Отвязать</button>
+            </form>
+            {% elif vk_oauth_enabled %}
+            <span class="badge badge--ghost mt-sm">Не привязан</span>
+            <a href="/accounts/vk/login/?process=connect&next=/accounts/social/connections/" class="btn btn--primary btn--sm mt-lg">Привязать VK</a>
+            {% else %}
+            <span class="badge badge--ghost mt-sm">Не настроено</span>
+            {% endif %}
+        </div>
         <div class="auth-provider-card {% if email_verified %}is-connected{% endif %}">
             <div class="text-h3">Почта</div>
             {% if email_address %}<p class="text-body-sm text-muted mt-sm">{{ email_address }}</p>{% endif %}

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models import EmailAddress, SocialAccount, User
 
-SOCIAL_PROVIDERS = ("telegram", "yandex")
+SOCIAL_PROVIDERS = ("telegram", "yandex", "vk")
 
 
 def count_other_login_methods(db: Session, user: User, *, exclude_provider: str | None = None) -> int:
@@ -32,7 +32,8 @@ def can_disconnect_social(db: Session, user: User, provider: str) -> tuple[bool,
         SocialAccount.provider == provider,
     ).first()
     if not linked:
-        label = "Яндекс" if provider == "yandex" else "Телеграм"
+        labels = {"yandex": "Яндекс", "telegram": "Телеграм", "vk": "VK"}
+        label = labels.get(provider, provider)
         return False, f"{label} не привязан."
     if count_other_login_methods(db, user, exclude_provider=provider) == 0:
         return False, "Нельзя отвязать: оставьте хотя бы один способ входа (почта, пароль или другой сервис)."
