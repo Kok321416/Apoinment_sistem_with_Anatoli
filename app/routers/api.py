@@ -17,6 +17,7 @@ from app.security.bot_api import verify_bot_request
 from app.services.bookings import parse_fio
 from app.services.email_verification import ensure_email_address, send_user_verification_email
 from app.services.telegram import format_client_booked_message, send_telegram_to_client
+from app.services.dual_role_backfill import resolve_client_user_id_for_telegram
 
 router = APIRouter(prefix="/api", tags=["api"])
 settings = get_settings()
@@ -153,10 +154,14 @@ async def confirm_booking_telegram(request: Request, db: Session = Depends(get_d
     tid = int(telegram_id)
     # Idempotent re-confirm
     if booking.telegram_id and int(booking.telegram_id) == tid:
+        if booking.client_user_id is None:
+            booking.client_user_id = resolve_client_user_id_for_telegram(db, tid)
         booking.link_token = None
         db.commit()
         return {"success": True, "message": "Телеграм уже привязан к записи"}
     booking.telegram_id = tid
+    if booking.client_user_id is None:
+        booking.client_user_id = resolve_client_user_id_for_telegram(db, tid)
     booking.link_token = None
     db.commit()
     db.refresh(booking)
@@ -300,10 +305,14 @@ async def confirm_booking_telegram_browser_api(request: Request, db: Session = D
         return JSONResponse({"success": False, "error": "Ссылка истекла"}, status_code=400)
     tid = int(telegram_id)
     if booking.telegram_id and int(booking.telegram_id) == tid:
+        if booking.client_user_id is None:
+            booking.client_user_id = resolve_client_user_id_for_telegram(db, tid)
         booking.link_token = None
         db.commit()
         return {"success": True, "message": "Телеграм уже привязан, сообщение отправлено"}
     booking.telegram_id = tid
+    if booking.client_user_id is None:
+        booking.client_user_id = resolve_client_user_id_for_telegram(db, tid)
     booking.link_token = None
     username = data.get("username") or ""
     if username and not username.startswith("@"):
