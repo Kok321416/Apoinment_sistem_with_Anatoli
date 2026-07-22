@@ -165,6 +165,16 @@ async def landing_page(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse("landing/index.html", landing_context(request, db, user))
 
 
+@router.get("/tg/")
+async def telegram_mini_app_entry(request: Request, db: Session = Depends(get_db)):
+    """Landing for Telegram Mini App (Menu Button / web_app buttons)."""
+    user = _optional_user(request, db)
+    return templates.TemplateResponse(
+        "public/tg_mini_app.html",
+        page_context(request, db, user),
+    )
+
+
 @router.get("/robots.txt", response_class=PlainTextResponse)
 async def robots_txt():
     base = settings.site_url.rstrip("/")
@@ -175,6 +185,7 @@ async def robots_txt():
         "Allow: /privacy/\n"
         "Allow: /terms/\n"
         "Allow: /book/\n"
+        "Allow: /tg/\n"
         "Disallow: /dashboard/\n"
         "Disallow: /profile/\n"
         "Disallow: /calendars/\n"

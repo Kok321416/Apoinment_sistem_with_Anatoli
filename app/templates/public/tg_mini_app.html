@@ -1,0 +1,40 @@
+{% extends "layouts/base.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Открыть в Telegram — " ~ site_brand_name %}
+{% set meta_description = "Мини-приложение записи в Telegram" %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/booking.css?v=17">
+<style>
+.tg-launch {
+    max-width: 480px;
+    margin: 2rem auto;
+    padding: 1.5rem;
+}
+.tg-launch__title { margin: 0 0 0.75rem; font-size: 1.5rem; }
+.tg-launch__text { color: var(--text-secondary, #9ca3af); margin: 0 0 1.5rem; }
+.tg-launch__actions { display: flex; flex-direction: column; gap: 0.75rem; }
+.tg-launch__actions .btn { width: 100%; text-align: center; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="tg-launch card card--static">
+    <h1 class="tg-launch__title">Все клиенты здесь</h1>
+    <p class="tg-launch__text">
+        Вы открыли сервис внутри Telegram. Выберите действие:
+    </p>
+    <div class="tg-launch__actions">
+        <a class="btn btn--primary" href="/book/">Записаться</a>
+        <a class="btn btn--secondary" href="/login/">Войти в кабинет</a>
+        <a class="btn btn--ghost" href="/">На главную</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% include "components/telegram_webapp.html" %}
+{% endblock %}

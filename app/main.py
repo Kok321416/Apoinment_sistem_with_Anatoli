@@ -88,7 +88,19 @@ async def static_cache_middleware(request: Request, call_next):
 async def security_headers_middleware(request: Request, call_next):
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
+    # Telegram Mini App opens the site inside Telegram WebView / iframe.
+    # DENY would break the in-Telegram web app; allow only Telegram origins.
+    if "x-frame-options" in response.headers:
+        del response.headers["x-frame-options"]
+    csp = response.headers.get("content-security-policy", "")
+    frame_ancestors = (
+        "frame-ancestors 'self' https://web.telegram.org https://telegram.org "
+        "https://*.telegram.org"
+    )
+    if "frame-ancestors" not in csp:
+        response.headers["Content-Security-Policy"] = (
+            f"{csp}; {frame_ancestors}".strip("; ").strip() if csp else frame_ancestors
+        )
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
     if settings.site_url.startswith("https://"):

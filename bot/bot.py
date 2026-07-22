@@ -3,8 +3,8 @@ import json
 import logging
 import threading
 import time
+from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from collections import Counter
 
 import requests
 
@@ -17,38 +17,65 @@ from bot.copy import (
     WELCOME_CLIENT,
     WELCOME_SPECIALIST,
 )
+
 logger = logging.getLogger(__name__)
 settings = get_bot_settings()
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.telegram_bot_token}" if settings.telegram_bot_token else None
 _tg_session = requests.Session()
 _update_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="tg-update")
+_chat_locks: dict[int, threading.Lock] = defaultdict(threading.Lock)
+_chat_locks_guard = threading.Lock()
 
 
 def get_site_url() -> str:
     return settings.site_url
 
 
+def _mini_app_url(path: str = "/tg/") -> str:
+    base = get_site_url().rstrip("/")
+    if not path.startswith("/"):
+        path = "/" + path
+    return f"{base}{path}"
+
+
 def _fetch_site_api(path: str, json_data: dict) -> tuple[bool, dict | None]:
+    # Routes are registered without trailing slash; normalize to avoid redirects.
+    if path != "/" and path.endswith("/"):
+        path = path.rstrip("/")
+    if not path.startswith("/"):
+        path = "/" + path
     status, data = post_site_api(path, json_data)
     if status != 200 or not data:
         return False, None
     return data.get("success") is True, data
 
 
-def send_telegram_message(chat_id, text, reply_markup=None) -> bool:
+def send_telegram_message(chat_id, text, reply_markup=None, *, retries: int = 2) -> bool:
     if not settings.telegram_bot_token:
         logger.error("TELEGRAM_BOT_TOKEN not set")
         return False
     data = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
     if reply_markup:
         data["reply_markup"] = json.dumps(reply_markup)
-    try:
-        response = _tg_session.post(f"{TELEGRAM_API_URL}/sendMessage", json=data, timeout=(5, 10))
-        response.raise_for_status()
-        return True
-    except Exception as e:
-        logger.error("Telegram send error: %s", e)
-        return False
+    last_error = None
+    for attempt in range(retries + 1):
+        try:
+            response = _tg_session.post(f"{TELEGRAM_API_URL}/sendMessage", json=data, timeout=(5, 10))
+            if response.status_code == 429:
+                retry_after = 1
+                try:
+                    retry_after = int((response.json().get("parameters") or {}).get("retry_after") or 1)
+                except Exception:
+                    pass
+                time.sleep(min(retry_after, 5))
+                continue
+            response.raise_for_status()
+            return True
+        except Exception as e:
+            last_error = e
+            time.sleep(0.4 * (attempt + 1))
+    logger.error("Telegram send error: %s", last_error)
+    return False
 
 
 def answer_callback_query(callback_query_id, text=None) -> bool:
@@ -93,9 +120,47 @@ def _get_booking_url() -> str:
     return f"{get_site_url().rstrip('/')}/book/"
 
 
+def _web_app_button(text: str, url: str) -> dict:
+    """Inline button that opens URL as Telegram Mini App."""
+    return {"text": text, "web_app": {"url": url}}
+
+
+def _url_button(text: str, url: str) -> dict:
+    return {"text": text, "url": url}
+
+
 def _send_webapp_button(chat_id):
-    keyboard = {"inline_keyboard": [[{"text": "📱 Открыть запись на консультацию", "url": _get_booking_url()}]]}
-    send_telegram_message(chat_id, "Нажмите кнопку ниже, чтобы перейти на страницу записи:", keyboard)
+    keyboard = {
+        "inline_keyboard": [[
+            _web_app_button("📱 Открыть запись", _mini_app_url("/book/")),
+        ]]
+    }
+    send_telegram_message(
+        chat_id,
+        "Нажмите кнопку ниже — сайт откроется <b>внутри Telegram</b>:",
+        keyboard,
+    )
+
+
+def _lock_for_chat(chat_id: int) -> threading.Lock:
+    with _chat_locks_guard:
+        return _chat_locks[chat_id]
+
+
+def _process_update_ordered(update_data: dict) -> None:
+    chat_id = None
+    try:
+        if "message" in update_data:
+            chat_id = update_data["message"]["chat"]["id"]
+        elif "callback_query" in update_data:
+            chat_id = update_data["callback_query"]["message"]["chat"]["id"]
+    except Exception:
+        chat_id = None
+    if chat_id is None:
+        handle_telegram_update(update_data)
+        return
+    with _lock_for_chat(int(chat_id)):
+        handle_telegram_update(update_data)
 
 
 def handle_telegram_update(update_data: dict) -> None:
@@ -183,7 +248,9 @@ def handle_telegram_update(update_data: dict) -> None:
             elif data.startswith("booklink_"):
                 handle_booking_link_callback(chat_id, user_id, callback_query_id, data.replace("booklink_", "", 1))
             elif data.startswith("spec_confirm_"):
-                handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query_id, data.replace("spec_confirm_", "", 1))
+                handle_specialist_connect_telegram_callback(
+                    chat_id, user_id, callback_query_id, data.replace("spec_confirm_", "", 1)
+                )
             else:
                 answer_callback_query(callback_query_id, "Неизвестная кнопка")
     except Exception as e:
@@ -192,7 +259,7 @@ def handle_telegram_update(update_data: dict) -> None:
 
 def handle_login_via_bot(chat_id):
     site = get_site_url().rstrip("/")
-    keyboard = {"inline_keyboard": [[{"text": "🔐 Войти на сайт", "url": f"{site}/login/"}]]}
+    keyboard = {"inline_keyboard": [[_url_button("🔐 Войти на сайт", f"{site}/login/")]]}
     send_telegram_message(
         chat_id,
         "👋 <b>Вход на сайт через Телеграм</b>\n\n"
@@ -232,7 +299,7 @@ def handle_login_confirm_callback(chat_id, user_id, callback_query_id, token_str
     try:
         if status == 200 and data and data.get("success"):
             complete_url = data.get("complete_url", "")
-            keyboard = {"inline_keyboard": [[{"text": LOGIN_OPEN_SITE, "url": complete_url}]]} if complete_url else None
+            keyboard = {"inline_keyboard": [[_url_button(LOGIN_OPEN_SITE, complete_url)]]} if complete_url else None
             send_telegram_message(
                 chat_id,
                 "✅ <b>Вход подтверждён.</b>\n\n"
@@ -251,12 +318,14 @@ def handle_login_confirm_callback(chat_id, user_id, callback_query_id, token_str
 
 def handle_connect_via_bot(chat_id):
     connect_url = f"{get_site_url().rstrip('/')}/accounts/telegram/login/?process=connect&next=/profile/"
-    keyboard = {"inline_keyboard": [[{"text": CONNECT_SITE, "url": connect_url}]]}
+    keyboard = {"inline_keyboard": [[_url_button(CONNECT_SITE, connect_url)]]}
     send_telegram_message(chat_id, "👋 <b>Подключение Телеграм к аккаунту</b>", keyboard)
 
 
 def handle_specialist_connect_telegram(chat_id, user_id, token_str):
-    keyboard = {"inline_keyboard": [[{"text": "✅ Подтвердить подключение", "callback_data": f"spec_confirm_{token_str}"}]]}
+    keyboard = {
+        "inline_keyboard": [[{"text": "✅ Подтвердить подключение", "callback_data": f"spec_confirm_{token_str}"}]]
+    }
     send_telegram_message(chat_id, "👋 <b>Подключение Телеграм для уведомлений специалиста</b>", keyboard)
 
 
@@ -281,7 +350,12 @@ def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query
 
 
 def handle_booking_link_confirm(chat_id, user_id, token_str):
-    keyboard = {"inline_keyboard": [[{"text": "✅ Подтвердить и получать уведомления", "callback_data": f"booklink_{token_str}"}]]}
+    keyboard = {
+        "inline_keyboard": [[{
+            "text": "✅ Подтвердить и получать уведомления",
+            "callback_data": f"booklink_{token_str}",
+        }]]
+    }
     send_telegram_message(chat_id, "📌 <b>Подтвердите привязку Телеграм к вашей записи</b>", keyboard)
     return True
 
@@ -305,24 +379,31 @@ def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
 
 def handle_start_command(chat_id, user_id, username, first_name):
     admin_username = settings.admin_telegram_username.lstrip("@")
-    booking_url = _get_booking_url()
     name = first_name or "друг"
     keyboard = {
         "inline_keyboard": [
-            [{"text": "📱 Записаться на консультацию", "url": booking_url}],
-            [{"text": "📋 Мои записи", "callback_data": "my_appointments"}, {"text": "📜 История", "callback_data": "history"}],
-            [{"text": "📞 Связаться с администрацией", "url": f"https://t.me/{admin_username}"}, {"text": "❓ Помощь", "callback_data": "help"}],
+            [_web_app_button("📱 Открыть сервис в Telegram", _mini_app_url("/tg/"))],
+            [_web_app_button("📅 Записаться", _mini_app_url("/book/"))],
+            [
+                {"text": "📋 Мои записи", "callback_data": "my_appointments"},
+                {"text": "📜 История", "callback_data": "history"},
+            ],
+            [
+                _url_button("📞 Связаться", f"https://t.me/{admin_username}"),
+                {"text": "❓ Помощь", "callback_data": "help"},
+            ],
         ]
     }
     send_telegram_message(chat_id, WELCOME_CLIENT.format(name=name), keyboard)
     send_telegram_message(chat_id, "Используйте кнопки ниже.", get_client_reply_keyboard())
 
     def _maybe_specialist_menu() -> None:
-        ok, data = _fetch_site_api("/api/telegram/specialist-bookings/", {"telegram_chat_id": str(chat_id)})
+        ok, data = _fetch_site_api("/api/telegram/specialist-bookings", {"telegram_chat_id": str(chat_id)})
         if not (ok and data and data.get("is_specialist")):
             return
         spec_keyboard = {
             "inline_keyboard": [
+                [_web_app_button("📊 Кабинет специалиста", _mini_app_url("/dashboard/"))],
                 [{"text": "📅 Показать 5 ближайших (в чат)", "callback_data": "spec_next"}],
             ]
         }
@@ -340,15 +421,15 @@ def handle_register_command(chat_id):
     site = get_site_url().rstrip("/")
     keyboard = {
         "inline_keyboard": [
-            [{"text": "📝 Перейти на страницу регистрации", "url": f"{site}/register/"}],
-            [{"text": "📱 Записаться (без регистрации)", "url": _get_booking_url()}],
+            [_web_app_button("📝 Регистрация", f"{site}/register/")],
+            [_web_app_button("📱 Записаться без регистрации", _mini_app_url("/book/"))],
         ]
     }
-    send_telegram_message(chat_id, "📝 <b>Регистрация</b>\n\nПерейдите на сайт по кнопке ниже.", keyboard)
+    send_telegram_message(chat_id, "📝 <b>Регистрация</b>\n\nОткроется внутри Telegram.", keyboard)
 
 
 def handle_history_command(chat_id, user_id):
-    ok, data = _fetch_site_api("/api/telegram/client-bookings/", {"telegram_id": user_id})
+    ok, data = _fetch_site_api("/api/telegram/client-bookings", {"telegram_id": user_id})
     if ok and data and data.get("bookings"):
         bookings = data["bookings"]
         names = [b.get("consultant_name") or "Специалист" for b in bookings]
@@ -364,25 +445,28 @@ def handle_history_command(chat_id, user_id):
 
 def handle_contact_admin_command(chat_id):
     admin = settings.admin_telegram_username.lstrip("@")
-    keyboard = {"inline_keyboard": [[{"text": "📞 Написать администрации", "url": f"https://t.me/{admin}"}]]}
+    keyboard = {"inline_keyboard": [[_url_button("📞 Написать администрации", f"https://t.me/{admin}")]]}
     send_telegram_message(chat_id, "По вопросам обращайтесь к администрации:", keyboard)
 
 
 def _send_specialist_webapp(chat_id):
-    url = f"{get_site_url().rstrip('/')}/calendars/"
-    keyboard = {"inline_keyboard": [[{"text": "Открыть на сайте", "url": url}]]}
-    send_telegram_message(chat_id, "📊 Откройте календари на сайте:", keyboard)
+    keyboard = {
+        "inline_keyboard": [[
+            _web_app_button("Открыть календари", _mini_app_url("/calendars/")),
+        ]]
+    }
+    send_telegram_message(chat_id, "📊 Календари откроются внутри Telegram:", keyboard)
 
 
 def handle_manage_accounts_command(chat_id):
     url = f"{get_site_url().rstrip('/')}/accounts/social/connections/"
-    keyboard = {"inline_keyboard": [[{"text": "🔗 Управление аккаунтами", "url": url}]]}
-    send_telegram_message(chat_id, "Управление способами входа на сайте:", keyboard)
+    keyboard = {"inline_keyboard": [[_web_app_button("🔗 Управление аккаунтами", url)]]}
+    send_telegram_message(chat_id, "Управление способами входа:", keyboard)
 
 
 def handle_appointments_command(chat_id, user_id):
-    keyboard = {"inline_keyboard": [[{"text": "📱 Записаться", "url": _get_booking_url()}]]}
-    ok, data = _fetch_site_api("/api/telegram/client-bookings/", {"telegram_id": user_id})
+    keyboard = {"inline_keyboard": [[_web_app_button("📱 Записаться", _mini_app_url("/book/"))]]}
+    ok, data = _fetch_site_api("/api/telegram/client-bookings", {"telegram_id": user_id})
     if ok and data and data.get("bookings"):
         status_emoji = {"pending": "⏳", "confirmed": "✅", "completed": "✔️"}
         message = "📋 <b>Ваши записи:</b>\n\n"
@@ -401,15 +485,22 @@ def handle_help_command(chat_id):
     site = get_site_url().rstrip("/")
     keyboard = {
         "inline_keyboard": [
-            [{"text": "📱 Записаться", "url": _get_booking_url()}, {"text": "📋 Мои записи", "callback_data": "my_appointments"}],
-            [{"text": "📝 Регистрация", "url": f"{site}/register/"}, {"text": "📞 Связаться", "url": f"https://t.me/{admin}"}],
+            [
+                _web_app_button("📱 Записаться", _mini_app_url("/book/")),
+                {"text": "📋 Мои записи", "callback_data": "my_appointments"},
+            ],
+            [
+                _web_app_button("📝 Регистрация", f"{site}/register/"),
+                _url_button("📞 Связаться", f"https://t.me/{admin}"),
+            ],
+            [_web_app_button("🏠 Открыть сервис", _mini_app_url("/tg/"))],
         ]
     }
     send_telegram_message(chat_id, HELP_TEXT.format(site_url=site), keyboard)
 
 
 def handle_specialist_next_appointments(chat_id, user_id):
-    ok, data = _fetch_site_api("/api/telegram/specialist-bookings/", {"telegram_chat_id": str(chat_id)})
+    ok, data = _fetch_site_api("/api/telegram/specialist-bookings", {"telegram_chat_id": str(chat_id)})
     if ok and data and data.get("bookings"):
         upcoming = [b for b in data["bookings"] if b.get("is_upcoming")][:5]
         if upcoming:
@@ -450,7 +541,11 @@ def _clear_webhook() -> None:
     if not TELEGRAM_API_URL:
         return
     try:
-        r = _tg_session.post(f"{TELEGRAM_API_URL}/deleteWebhook", json={"drop_pending_updates": False}, timeout=(5, 10))
+        r = _tg_session.post(
+            f"{TELEGRAM_API_URL}/deleteWebhook",
+            json={"drop_pending_updates": False},
+            timeout=(5, 10),
+        )
         if r.ok:
             logger.info("deleteWebhook OK (long polling mode)")
         else:
@@ -459,16 +554,55 @@ def _clear_webhook() -> None:
         logger.warning("deleteWebhook failed: %s", exc)
 
 
+def _setup_menu_button() -> None:
+    """Set chat Menu Button to open Mini App (appears next to message input)."""
+    if not TELEGRAM_API_URL:
+        return
+    menu_url = _mini_app_url("/tg/")
+    try:
+        r = _tg_session.post(
+            f"{TELEGRAM_API_URL}/setChatMenuButton",
+            json={
+                "menu_button": {
+                    "type": "web_app",
+                    "text": "Открыть",
+                    "web_app": {"url": menu_url},
+                }
+            },
+            timeout=(5, 10),
+        )
+        if r.ok and (r.json() or {}).get("ok"):
+            logger.info("setChatMenuButton OK -> %s", menu_url)
+        else:
+            logger.warning("setChatMenuButton failed: %s", r.text[:300])
+    except Exception as exc:
+        logger.warning("setChatMenuButton error: %s", exc)
+
+
+def _warn_security_config() -> None:
+    if not settings.bot_api_secret:
+        logger.warning(
+            "BOT_API_SECRET is empty — bot falls back to X-Bot-Token. "
+            "Set BOT_API_SECRET on server and in GitHub secrets for production."
+        )
+
+
 def run_long_polling() -> None:
     if not settings.telegram_bot_token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN not set")
+    _warn_security_config()
     verify_bot_identity()
     _clear_webhook()
+    _setup_menu_button()
     url = f"{TELEGRAM_API_URL}/getUpdates"
     offset = 0
     error_count = 0
     conflict_count = 0
-    logger.info("Bot started. SITE_URL=%s SITE_INTERNAL_URL=%s", settings.site_url, settings.site_internal_url)
+    logger.info(
+        "Bot started. SITE_URL=%s SITE_INTERNAL_URL=%s",
+        settings.site_url,
+        settings.site_internal_url,
+    )
     while True:
         try:
             response = _tg_session.get(
@@ -497,7 +631,7 @@ def run_long_polling() -> None:
             error_count = 0
             for update in data.get("result", []):
                 offset = update["update_id"] + 1
-                _update_pool.submit(handle_telegram_update, update)
+                _update_pool.submit(_process_update_ordered, update)
         except KeyboardInterrupt:
             break
         except SystemExit:
