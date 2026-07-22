@@ -68,7 +68,11 @@ def _parse_price(raw) -> Decimal | None:
         return None
 
 
-def _catalog(db: Session, consultant_id: int) -> dict:
+def _catalog(db: Session, consultant_id: int, *, bust: bool = False) -> dict:
+    if bust:
+        from app.services.response_cache import invalidate_consultant
+
+        invalidate_consultant(consultant_id)
     return build_catalog_payload(db, consultant_id)
 
 
@@ -156,7 +160,7 @@ async def create_service(body: ServiceCreateBody, request: Request, db: Session 
     db.refresh(service)
     return JSONResponse({
         "service": serialize_service(service, 0),
-        "catalog": _catalog(db, consultant_id),
+        "catalog": _catalog(db, consultant_id, bust=True),
         "message": "Услуга создана",
     })
 
@@ -200,7 +204,7 @@ async def update_service(
     counts = booking_counts(db, [service.id])
     return JSONResponse({
         "service": serialize_service(service, counts.get(service.id, 0)),
-        "catalog": _catalog(db, consultant_id),
+        "catalog": _catalog(db, consultant_id, bust=True),
         "message": "Услуга обновлена",
     })
 
@@ -214,7 +218,7 @@ async def remove_service(service_id: int, request: Request, db: Session = Depend
     ok, msg = delete_service(db, service)
     if not ok:
         raise HTTPException(status_code=400, detail=msg)
-    return JSONResponse({"catalog": _catalog(db, consultant_id), "message": msg or "Услуга удалена"})
+    return JSONResponse({"catalog": _catalog(db, consultant_id, bust=True), "message": msg or "Услуга удалена"})
 
 
 @router.post("/services/{service_id}/duplicate")
@@ -248,7 +252,7 @@ async def duplicate_service(service_id: int, request: Request, db: Session = Dep
     db.refresh(service)
     return JSONResponse({
         "service": serialize_service(service, 0),
-        "catalog": _catalog(db, consultant_id),
+        "catalog": _catalog(db, consultant_id, bust=True),
         "message": "Услуга продублирована",
     })
 
@@ -317,7 +321,7 @@ async def bulk_action(body: BulkBody, request: Request, db: Session = Depends(ge
     else:
         raise HTTPException(status_code=400, detail="Неизвестное действие")
     db.commit()
-    return JSONResponse({"catalog": _catalog(db, consultant_id), "message": "Изменения применены"})
+    return JSONResponse({"catalog": _catalog(db, consultant_id, bust=True), "message": "Изменения применены"})
 
 
 @router.put("/services/reorder")
@@ -329,4 +333,4 @@ async def reorder_services(body: ReorderBody, request: Request, db: Session = De
         service = _get_service(db, consultant_id, service_id)
         service.sort_order = index
     db.commit()
-    return JSONResponse({"catalog": _catalog(db, consultant_id), "message": "Порядок сохранён"})
+    return JSONResponse({"catalog": _catalog(db, consultant_id, bust=True), "message": "Порядок сохранён"})

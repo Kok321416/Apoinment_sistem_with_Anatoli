@@ -13,11 +13,12 @@ from sqlalchemy.orm import Session
 from app.auth.session import get_current_user
 from app.config import get_settings
 from app.database import get_db
-from app.deps import normalize_url, require_specialist_mode
+from app.deps import get_consultant, normalize_url, require_specialist_mode
 from app.models import EmailAddress, SocialAccount
 from app.security.csrf import validate_csrf_token
 from app.services.profile_hub import apply_profile_fields, build_profile_payload
 from app.services.public_client import ensure_public_slug
+from app.services.response_cache import invalidate_profile
 
 router = APIRouter(tags=["profile-api"])
 settings = get_settings()
@@ -88,6 +89,7 @@ async def update_profile_data(body: ProfileUpdateBody, request: Request, db: Ses
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Почта уже используется другим аккаунтом")
+    invalidate_profile(consultant.id, user.id)
     return JSONResponse({"message": "Профиль сохранён", "data": _profile_context(request, db, user)})
 
 
@@ -110,6 +112,7 @@ async def upload_avatar(
     if err:
         raise HTTPException(status_code=400, detail=err)
     db.commit()
+    invalidate_profile(consultant.id, user.id)
     return JSONResponse({"message": "Фото обновлено", "data": _profile_context(request, db, user)})
 
 

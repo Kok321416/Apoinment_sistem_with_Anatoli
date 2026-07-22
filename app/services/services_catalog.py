@@ -220,27 +220,35 @@ def serialize_calendar_option(calendar: Calendar) -> dict:
     return {"id": calendar.id, "name": calendar.name, "color": calendar.color}
 
 
-def build_catalog_payload(db: Session, consultant_id: int) -> dict:
-    services = (
-        db.query(Service)
-        .filter(Service.consultant_id == consultant_id)
-        .order_by(Service.sort_order, Service.name)
-        .all()
-    )
-    calendars = (
-        db.query(Calendar)
-        .filter(Calendar.consultant_id == consultant_id)
-        .order_by(Calendar.name)
-        .all()
-    )
-    counts = booking_counts(db, [s.id for s in services])
-    return {
-        "services": [serialize_service(s, counts.get(s.id, 0)) for s in services],
-        "calendars": [serialize_calendar_option(c) for c in calendars],
-        "dashboard": dashboard_stats(services, calendars),
-        "analytics": analytics_panel(db, services, consultant_id),
-        "templates": SERVICE_TEMPLATES,
-    }
+def build_catalog_payload(db: Session, consultant_id: int, *, use_cache: bool = True) -> dict:
+    from app.services.response_cache import TTL_SEC, catalog_key
+    from app.services.ttl_cache import CACHE
+
+    def _build() -> dict:
+        services = (
+            db.query(Service)
+            .filter(Service.consultant_id == consultant_id)
+            .order_by(Service.sort_order, Service.name)
+            .all()
+        )
+        calendars = (
+            db.query(Calendar)
+            .filter(Calendar.consultant_id == consultant_id)
+            .order_by(Calendar.name)
+            .all()
+        )
+        counts = booking_counts(db, [s.id for s in services])
+        return {
+            "services": [serialize_service(s, counts.get(s.id, 0)) for s in services],
+            "calendars": [serialize_calendar_option(c) for c in calendars],
+            "dashboard": dashboard_stats(services, calendars),
+            "analytics": analytics_panel(db, services, consultant_id),
+            "templates": SERVICE_TEMPLATES,
+        }
+
+    if not use_cache:
+        return _build()
+    return CACHE.get_or_set(catalog_key(consultant_id), _build, ttl=TTL_SEC)
 
 
 def next_sort_order(db: Session, consultant_id: int) -> int:

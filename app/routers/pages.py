@@ -801,6 +801,10 @@ async def calendars_page(request: Request, db: Session = Depends(get_db)):
                         success, error = (msg, None) if ok else (None, msg)
                     else:
                         error = "Календарь не найден"
+    if success:
+        from app.services.response_cache import invalidate_consultant
+
+        invalidate_consultant(consultant.id)
     calendars = (
         db.query(Calendar)
         .filter(Calendar.consultant_id == consultant.id)
@@ -885,6 +889,10 @@ async def calendar_detail(request: Request, calendar_id: int, db: Session = Depe
                     success, error = (msg, None) if ok else (None, msg)
                 else:
                     error = "Временное окно не найдено"
+    if success:
+        from app.services.response_cache import invalidate_calendar
+
+        invalidate_calendar(calendar.id, consultant_id=consultant.id)
     from app.services.public_client import ensure_public_slug, specialist_public_url
 
     slug = ensure_public_slug(db, consultant)
@@ -918,6 +926,9 @@ async def calendar_settings(request: Request, calendar_id: int, db: Session = De
         calendar.reminder_hours_first = _form_int(form, "reminder_hours_first", 24) or 24
         calendar.reminder_hours_second = _form_int(form, "reminder_hours_second", 1) or 1
         db.commit()
+        from app.services.response_cache import invalidate_calendar
+
+        invalidate_calendar(calendar.id, consultant_id=consultant.id)
         return RedirectResponse(f"/calendars/{calendar.id}/", status_code=302)
     return templates.TemplateResponse("calendar_settings_edit.html", page_context(request, db, user, calendar=calendar))
 
@@ -1005,6 +1016,10 @@ async def services_page(request: Request, db: Session = Depends(get_db)):
                     success, error = (msg, None) if ok else (None, msg)
                 else:
                     error = "Услуга не найдена"
+    if success:
+        from app.services.response_cache import invalidate_consultant
+
+        invalidate_consultant(consultant.id)
     return templates.TemplateResponse(
         "services.html",
         page_context(request, db, user, success=success, error=error),
@@ -1295,6 +1310,10 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
                     except Exception as e:
                         db.rollback()
                         error = f"Ошибка при обновлении: {e}"
+    if success:
+        from app.services.response_cache import invalidate_profile
+
+        invalidate_profile(consultant.id, user.id)
     from app.services.public_client import ensure_public_slug, specialist_public_url
     from app.services.profile_hub import completion_meta, completeness, dashboard_stats
 

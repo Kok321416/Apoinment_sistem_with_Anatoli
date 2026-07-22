@@ -300,50 +300,62 @@ def build_profile_payload(
     primary_email_verified: bool,
     has_usable_password: bool,
     yandex_oauth_enabled: bool,
+    use_cache: bool = True,
 ) -> dict:
-    slug = ensure_public_slug(db, consultant)
-    comp = completeness(consultant, db, consultant.id)
-    dash = dashboard_stats(db, consultant.id)
-    dash["completeness"] = comp["percent"]
-    return {
-        "profile": {
-            "id": consultant.id,
-            "first_name": consultant.first_name,
-            "last_name": consultant.last_name,
-            "middle_name": consultant.middle_name or "",
-            "email": consultant.email,
-            "phone": consultant.phone,
-            "telegram_nickname": consultant.telegram_nickname or "",
-            "profile_description": consultant.profile_description or "",
-            "video_link": consultant.video_link or "",
-            "photo_url": profile_photo_src(consultant.profile_photo) if consultant.profile_photo else None,
-            "full_name": full_name(consultant),
-            "specialization": specialization(consultant),
-            "created_at": consultant.created_at.isoformat() if consultant.created_at else None,
-            "updated_at": consultant.updated_at.isoformat() if consultant.updated_at else None,
-            "public_url": specialist_public_url(settings.site_url, slug),
-            "public_slug": slug,
-            **social_links(consultant),
-        },
-        "dashboard": dash,
-        "completeness": comp,
-        "completion_meta": completion_meta(consultant, db, consultant.id),
-        "preview": serialize_preview(consultant, slug, db, consultant.id),
-        "auth": {
-            "connected_providers": sorted(connected_providers),
-            "primary_email": primary_email,
-            "primary_email_verified": primary_email_verified,
-            "has_usable_password": has_usable_password,
-            "yandex_oauth_enabled": yandex_oauth_enabled,
-        },
-        "footer": {
-            "created_at": consultant.created_at.isoformat() if consultant.created_at else None,
-            "updated_at": consultant.updated_at.isoformat() if consultant.updated_at else None,
-            "consultant_id": consultant.id,
-            "timezone": settings.timezone,
-            "profile_version": "v2.0",
-        },
-    }
+    from app.services.response_cache import TTL_SEC, profile_key
+    from app.services.ttl_cache import CACHE
+
+    user_id = int(getattr(user, "id", 0) or 0)
+    providers = frozenset(connected_providers)
+
+    def _build() -> dict:
+        slug = ensure_public_slug(db, consultant)
+        comp = completeness(consultant, db, consultant.id)
+        dash = dashboard_stats(db, consultant.id)
+        dash["completeness"] = comp["percent"]
+        return {
+            "profile": {
+                "id": consultant.id,
+                "first_name": consultant.first_name,
+                "last_name": consultant.last_name,
+                "middle_name": consultant.middle_name or "",
+                "email": consultant.email,
+                "phone": consultant.phone,
+                "telegram_nickname": consultant.telegram_nickname or "",
+                "profile_description": consultant.profile_description or "",
+                "video_link": consultant.video_link or "",
+                "photo_url": profile_photo_src(consultant.profile_photo) if consultant.profile_photo else None,
+                "full_name": full_name(consultant),
+                "specialization": specialization(consultant),
+                "created_at": consultant.created_at.isoformat() if consultant.created_at else None,
+                "updated_at": consultant.updated_at.isoformat() if consultant.updated_at else None,
+                "public_url": specialist_public_url(settings.site_url, slug),
+                "public_slug": slug,
+                **social_links(consultant),
+            },
+            "dashboard": dash,
+            "completeness": comp,
+            "completion_meta": completion_meta(consultant, db, consultant.id),
+            "preview": serialize_preview(consultant, slug, db, consultant.id),
+            "auth": {
+                "connected_providers": sorted(providers),
+                "primary_email": primary_email,
+                "primary_email_verified": primary_email_verified,
+                "has_usable_password": has_usable_password,
+                "yandex_oauth_enabled": yandex_oauth_enabled,
+            },
+            "footer": {
+                "created_at": consultant.created_at.isoformat() if consultant.created_at else None,
+                "updated_at": consultant.updated_at.isoformat() if consultant.updated_at else None,
+                "consultant_id": consultant.id,
+                "timezone": settings.timezone,
+                "profile_version": "v2.0",
+            },
+        }
+
+    if not use_cache or not user_id:
+        return _build()
+    return CACHE.get_or_set(profile_key(consultant.id, user_id), _build, ttl=TTL_SEC)
 
 
 def apply_profile_fields(consultant: Consultant, data: dict, normalize_url_fn) -> None:

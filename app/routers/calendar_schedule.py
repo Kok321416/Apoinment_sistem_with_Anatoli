@@ -71,9 +71,18 @@ def _require_slot(db: Session, calendar: Calendar, slot_id: int) -> TimeSlot:
     return slot
 
 
-def _schedule_response(calendar: Calendar, db: Session) -> dict:
-    grouped = slots_by_day(db, calendar.id)
-    return build_schedule_payload(calendar, grouped)
+def _schedule_response(calendar: Calendar, db: Session, *, bust: bool = False) -> dict:
+    from app.services.response_cache import TTL_SEC, invalidate_calendar, schedule_key
+    from app.services.ttl_cache import CACHE
+
+    if bust:
+        invalidate_calendar(calendar.id, consultant_id=calendar.consultant_id)
+
+    def _build() -> dict:
+        grouped = slots_by_day(db, calendar.id)
+        return build_schedule_payload(calendar, grouped)
+
+    return CACHE.get_or_set(schedule_key(calendar.id), _build, ttl=TTL_SEC)
 
 
 def _commit_db(db: Session) -> None:
@@ -175,7 +184,7 @@ async def create_time_slot(body: TimeSlotCreate, request: Request, db: Session =
 
     return JSONResponse({
         "slot": serialize_slot(slot),
-        "schedule": _schedule_response(calendar, db),
+        "schedule": _schedule_response(calendar, db, bust=True),
         "message": "Окно добавлено",
     })
 
@@ -204,7 +213,7 @@ async def update_time_slot(slot_id: int, body: TimeSlotUpdate, request: Request,
 
     return JSONResponse({
         "slot": serialize_slot(slot),
-        "schedule": _schedule_response(calendar, db),
+        "schedule": _schedule_response(calendar, db, bust=True),
         "message": "Окно обновлено",
     })
 
@@ -222,7 +231,7 @@ async def remove_time_slot(slot_id: int, request: Request, db: Session = Depends
     if not ok:
         raise HTTPException(status_code=400, detail=msg)
     return JSONResponse({
-        "schedule": _schedule_response(calendar, db),
+        "schedule": _schedule_response(calendar, db, bust=True),
         "message": msg or "Окно удалено",
     })
 
@@ -238,7 +247,7 @@ async def copy_day(calendar_id: int, body: CopyDayBody, request: Request, db: Se
     _commit_db(db)
     return JSONResponse({
         "created": created,
-        "schedule": _schedule_response(calendar, db),
+        "schedule": _schedule_response(calendar, db, bust=True),
         "message": "Расписание скопировано",
     })
 
@@ -259,7 +268,7 @@ async def preset_workweek_endpoint(
     _commit_db(db)
     return JSONResponse({
         "created": created,
-        "schedule": _schedule_response(calendar, db),
+        "schedule": _schedule_response(calendar, db, bust=True),
         "message": "Рабочая неделя создана",
     })
 
@@ -275,7 +284,7 @@ async def preset_fulltime_endpoint(
     _commit_db(db)
     return JSONResponse({
         "created": created,
-        "schedule": _schedule_response(calendar, db),
+        "schedule": _schedule_response(calendar, db, bust=True),
         "message": "Режим 24/7 применён",
     })
 
@@ -292,7 +301,7 @@ async def delete_day_slots(calendar_id: int, weekday: int, request: Request, db:
     _commit_db(db)
     return JSONResponse({
         "removed": removed,
-        "schedule": _schedule_response(calendar, db),
+        "schedule": _schedule_response(calendar, db, bust=True),
         "message": "День очищен",
     })
 
@@ -311,7 +320,7 @@ async def patch_day_working(
     grouped = slots_by_day(db, calendar.id)
     return JSONResponse({
         "day": build_day_payload(calendar, grouped, weekday),
-        "schedule": _schedule_response(calendar, db),
+        "schedule": _schedule_response(calendar, db, bust=True),
         "message": "Рабочий день обновлён" if body.is_working else "День отмечен как выходной",
     })
 
@@ -329,7 +338,10 @@ async def update_calendar_settings(
     calendar.reminder_hours_first = body.reminder_hours_first if body.reminder_first_enabled else 0
     calendar.reminder_hours_second = body.reminder_hours_second if body.reminder_second_enabled else 0
     db.commit()
+    from app.services.response_cache import invalidate_calendar
+
+    invalidate_calendar(calendar.id, consultant_id=calendar.consultant_id)
     return JSONResponse({
-        "settings": build_schedule_payload(calendar, slots_by_day(db, calendar.id))["settings"],
+        "settings": _schedule_response(calendar, db)["settings"],
         "message": "Настройки сохранены",
     })
