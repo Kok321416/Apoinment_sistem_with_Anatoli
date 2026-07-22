@@ -249,6 +249,11 @@ def ensure_telegram_login_schema() -> None:
         except Exception:
             logger.exception("telegram_login column %s failed", name)
 
+    try:
+        Base.metadata.create_all(bind=engine, tables=[auth_models.TelegramUiPreference.__table__])
+    except Exception:
+        logger.exception("telegram_ui_preferences create_all failed")
+
 
 def ensure_email_auth_schema() -> None:
     try:

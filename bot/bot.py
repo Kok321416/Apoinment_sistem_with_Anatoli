@@ -14,6 +14,8 @@ from bot.copy import (
     CONNECT_SITE,
     HELP_TEXT,
     LOGIN_OPEN_SITE,
+    MODE_PICK_TEXT,
+    SWITCH_ROLE_HINT,
     WELCOME_CLIENT,
     WELCOME_SPECIALIST,
 )
@@ -92,28 +94,113 @@ def answer_callback_query(callback_query_id, text=None) -> bool:
         return False
 
 
-def get_client_reply_keyboard():
+def get_client_reply_keyboard(*, can_switch: bool = False):
+    rows = [
+        [{"text": "📱 Записаться"}, {"text": "📋 Мои записи"}],
+        [{"text": "📝 Регистрация"}, {"text": "📜 История"}, {"text": "📞 Связаться"}],
+        [{"text": "❓ Помощь"}],
+    ]
+    if can_switch:
+        rows.append([{"text": "🔄 Сменить роль"}])
     return {
-        "keyboard": [
-            [{"text": "📱 Записаться"}, {"text": "📋 Мои записи"}],
-            [{"text": "📝 Регистрация"}, {"text": "📜 История"}, {"text": "📞 Связаться"}],
-            [{"text": "❓ Помощь"}],
-        ],
+        "keyboard": rows,
         "resize_keyboard": True,
         "persistent": True,
     }
 
 
-def get_specialist_reply_keyboard():
+def get_specialist_reply_keyboard(*, can_switch: bool = False):
+    rows = [
+        [{"text": "📅 Ближайшие записи"}, {"text": "📊 Статистика"}],
+        [{"text": "🔗 Управление аккаунтами"}],
+        [{"text": "❓ Помощь"}],
+    ]
+    if can_switch:
+        rows.append([{"text": "🔄 Сменить роль"}])
     return {
-        "keyboard": [
-            [{"text": "📅 Ближайшие записи"}, {"text": "📊 Статистика"}],
-            [{"text": "🔗 Управление аккаунтами"}],
-            [{"text": "❓ Помощь"}],
-        ],
+        "keyboard": rows,
         "resize_keyboard": True,
         "persistent": True,
     }
+
+
+def _mode_picker_keyboard():
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "👤 Я клиент", "callback_data": "mode_client"},
+                {"text": "💼 Я специалист", "callback_data": "mode_specialist"},
+            ]
+        ]
+    }
+
+
+def _fetch_capabilities(chat_id, user_id) -> dict:
+    ok, data = _fetch_site_api(
+        "/api/telegram/capabilities",
+        {"telegram_id": user_id, "telegram_chat_id": str(chat_id)},
+    )
+    if ok and data:
+        return data
+    return {
+        "is_client": True,
+        "is_specialist": False,
+        "dual": False,
+        "mode": "client",
+        "needs_picker": False,
+    }
+
+
+def _set_ui_mode(chat_id, mode: str) -> bool:
+    ok, data = _fetch_site_api(
+        "/api/telegram/ui-mode",
+        {"telegram_chat_id": str(chat_id), "mode": mode},
+    )
+    return bool(ok and data and data.get("success"))
+
+
+def _apply_mode_ui(chat_id, user_id, first_name, mode: str, *, dual: bool):
+    name = first_name or "друг"
+    can_switch = dual
+    if mode == "specialist":
+        spec_keyboard = {
+            "inline_keyboard": [
+                [_web_app_button("📊 Кабинет специалиста", _mini_app_url("/dashboard/"))],
+                [{"text": "📅 Показать 5 ближайших (в чат)", "callback_data": "spec_next"}],
+            ]
+        }
+        send_telegram_message(chat_id, WELCOME_SPECIALIST.format(name=name), spec_keyboard)
+        send_telegram_message(
+            chat_id,
+            "Кнопки специалиста внизу экрана." + (f"\n{SWITCH_ROLE_HINT}" if can_switch else ""),
+            get_specialist_reply_keyboard(can_switch=can_switch),
+        )
+    else:
+        keyboard = {
+            "inline_keyboard": [
+                [_web_app_button("📱 Открыть сервис в Telegram", _mini_app_url("/tg/"))],
+                [_web_app_button("📅 Записаться", _mini_app_url("/book/"))],
+                [
+                    {"text": "📋 Мои записи", "callback_data": "my_appointments"},
+                    {"text": "📜 История", "callback_data": "history"},
+                ],
+            ]
+        }
+        send_telegram_message(chat_id, WELCOME_CLIENT.format(name=name), keyboard)
+        send_telegram_message(
+            chat_id,
+            "Используйте кнопки ниже." + (f"\n{SWITCH_ROLE_HINT}" if can_switch else ""),
+            get_client_reply_keyboard(can_switch=can_switch),
+        )
+
+
+def _keyboard_for_user(chat_id, user_id):
+    caps = _fetch_capabilities(chat_id, user_id)
+    dual = bool(caps.get("dual"))
+    mode = caps.get("mode") or "client"
+    if mode == "specialist" and caps.get("is_specialist"):
+        return get_specialist_reply_keyboard(can_switch=dual)
+    return get_client_reply_keyboard(can_switch=dual)
 
 
 def _get_booking_url() -> str:
@@ -215,8 +302,14 @@ def handle_telegram_update(update_data: dict) -> None:
                 _send_specialist_webapp(chat_id)
             elif text == "🔗 Управление аккаунтами":
                 handle_manage_accounts_command(chat_id)
+            elif text in ("🔄 Сменить роль", "/mode"):
+                handle_switch_role(chat_id, user_id, first_name)
             else:
-                send_telegram_message(chat_id, "Неизвестная команда. Нажмите /help.", get_client_reply_keyboard())
+                send_telegram_message(
+                    chat_id,
+                    "Неизвестная команда. Нажмите /help.",
+                    _keyboard_for_user(chat_id, user_id),
+                )
 
         elif "callback_query" in update_data:
             callback_query = update_data["callback_query"]
@@ -238,6 +331,15 @@ def handle_telegram_update(update_data: dict) -> None:
             elif data == "spec_next":
                 answer_callback_query(callback_query_id)
                 handle_specialist_next_appointments(chat_id, user_id)
+            elif data in ("mode_client", "mode_specialist"):
+                answer_callback_query(callback_query_id)
+                mode = "client" if data == "mode_client" else "specialist"
+                handle_mode_chosen(
+                    chat_id,
+                    user_id,
+                    callback_query.get("from", {}).get("first_name", ""),
+                    mode,
+                )
             elif data.startswith("login_confirm_"):
                 handle_login_confirm_callback(
                     chat_id, user_id, callback_query_id,
@@ -338,7 +440,11 @@ def handle_specialist_connect_telegram_callback(chat_id, user_id, callback_query
     )
     try:
         if status == 200 and data and data.get("success"):
-            send_telegram_message(chat_id, "✅ <b>Телеграм успешно подключён.</b>")
+            send_telegram_message(
+                chat_id,
+                "✅ <b>Телеграм успешно подключён.</b>\n\n"
+                "Нажмите /start или /mode, чтобы выбрать интерфейс специалиста.",
+            )
         else:
             msg = (data or {}).get("error", "Ссылка недействительна.")
             answer_callback_query(callback_query_id, msg[:200])
@@ -378,43 +484,45 @@ def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
 
 
 def handle_start_command(chat_id, user_id, username, first_name):
-    admin_username = settings.admin_telegram_username.lstrip("@")
-    name = first_name or "друг"
-    keyboard = {
-        "inline_keyboard": [
-            [_web_app_button("📱 Открыть сервис в Telegram", _mini_app_url("/tg/"))],
-            [_web_app_button("📅 Записаться", _mini_app_url("/book/"))],
-            [
-                {"text": "📋 Мои записи", "callback_data": "my_appointments"},
-                {"text": "📜 История", "callback_data": "history"},
-            ],
-            [
-                _url_button("📞 Связаться", f"https://t.me/{admin_username}"),
-                {"text": "❓ Помощь", "callback_data": "help"},
-            ],
-        ]
-    }
-    send_telegram_message(chat_id, WELCOME_CLIENT.format(name=name), keyboard)
-    send_telegram_message(chat_id, "Используйте кнопки ниже.", get_client_reply_keyboard())
+    caps = _fetch_capabilities(chat_id, user_id)
+    dual = bool(caps.get("dual"))
+    needs_picker = bool(caps.get("needs_picker"))
+    mode = caps.get("mode")
 
-    def _maybe_specialist_menu() -> None:
-        ok, data = _fetch_site_api("/api/telegram/specialist-bookings", {"telegram_chat_id": str(chat_id)})
-        if not (ok and data and data.get("is_specialist")):
-            return
-        spec_keyboard = {
-            "inline_keyboard": [
-                [_web_app_button("📊 Кабинет специалиста", _mini_app_url("/dashboard/"))],
-                [{"text": "📅 Показать 5 ближайших (в чат)", "callback_data": "spec_next"}],
-            ]
-        }
+    if needs_picker or (dual and not mode):
+        send_telegram_message(chat_id, MODE_PICK_TEXT, _mode_picker_keyboard())
+        return
+
+    if dual and mode in ("client", "specialist"):
+        _apply_mode_ui(chat_id, user_id, first_name, mode, dual=True)
+        return
+
+    if caps.get("is_specialist") and not caps.get("is_client"):
+        _apply_mode_ui(chat_id, user_id, first_name, "specialist", dual=False)
+        return
+
+    _apply_mode_ui(chat_id, user_id, first_name, "client", dual=False)
+
+
+def handle_switch_role(chat_id, user_id, first_name):
+    caps = _fetch_capabilities(chat_id, user_id)
+    if not caps.get("dual"):
         send_telegram_message(
             chat_id,
-            WELCOME_SPECIALIST.format(name=name),
-            spec_keyboard,
+            "Сейчас доступен только один режим. Подключите уведомления специалиста в кабинете → Интеграции "
+            "или запишитесь как клиент, чтобы появился второй режим.",
+            _keyboard_for_user(chat_id, user_id),
         )
-        send_telegram_message(chat_id, "Кнопки специалиста внизу экрана.", get_specialist_reply_keyboard())
+        return
+    send_telegram_message(chat_id, MODE_PICK_TEXT, _mode_picker_keyboard())
 
-    threading.Thread(target=_maybe_specialist_menu, daemon=True).start()
+
+def handle_mode_chosen(chat_id, user_id, first_name, mode: str):
+    if not _set_ui_mode(chat_id, mode):
+        send_telegram_message(chat_id, "Не удалось сохранить режим. Попробуйте /start ещё раз.")
+        return
+    caps = _fetch_capabilities(chat_id, user_id)
+    _apply_mode_ui(chat_id, user_id, first_name, mode, dual=bool(caps.get("dual")))
 
 
 def handle_register_command(chat_id):
@@ -429,7 +537,16 @@ def handle_register_command(chat_id):
 
 
 def handle_history_command(chat_id, user_id):
+    caps = _fetch_capabilities(chat_id, user_id)
+    if not caps.get("is_client"):
+        send_telegram_message(
+            chat_id,
+            "История доступна в режиме клиента.",
+            _keyboard_for_user(chat_id, user_id),
+        )
+        return
     ok, data = _fetch_site_api("/api/telegram/client-bookings", {"telegram_id": user_id})
+    kb = _keyboard_for_user(chat_id, user_id)
     if ok and data and data.get("bookings"):
         bookings = data["bookings"]
         names = [b.get("consultant_name") or "Специалист" for b in bookings]
@@ -437,10 +554,10 @@ def handle_history_command(chat_id, user_id):
         lines = ["📜 <b>К кому вы уже записывались:</b>\n"]
         for name, cnt in by_name.most_common():
             _raz = "раз" if cnt == 1 else ("раза" if 2 <= cnt <= 4 else "раз")
-            lines.append(f"• {name} — {cnt} {_raz}")
-        send_telegram_message(chat_id, "\n".join(lines), get_client_reply_keyboard())
+            lines.append(f"• {name} - {cnt} {_raz}")
+        send_telegram_message(chat_id, "\n".join(lines), kb)
         return
-    send_telegram_message(chat_id, "У вас пока нет записей.", get_client_reply_keyboard())
+    send_telegram_message(chat_id, "У вас пока нет записей.", kb)
 
 
 def handle_contact_admin_command(chat_id):
@@ -465,6 +582,14 @@ def handle_manage_accounts_command(chat_id):
 
 
 def handle_appointments_command(chat_id, user_id):
+    caps = _fetch_capabilities(chat_id, user_id)
+    if not caps.get("is_client"):
+        send_telegram_message(
+            chat_id,
+            "Раздел «Мои записи» доступен в режиме клиента. Нажмите «Сменить роль» или /mode.",
+            _keyboard_for_user(chat_id, user_id),
+        )
+        return
     keyboard = {"inline_keyboard": [[_web_app_button("📱 Записаться", _mini_app_url("/book/"))]]}
     ok, data = _fetch_site_api("/api/telegram/client-bookings", {"telegram_id": user_id})
     if ok and data and data.get("bookings"):
@@ -473,7 +598,7 @@ def handle_appointments_command(chat_id, user_id):
         for b in data["bookings"][:15]:
             em = status_emoji.get(b.get("status"), "📅")
             message += f"{em} <b>{b.get('date', '')} {b.get('time', '')}</b>\n"
-            message += f"👤 {b.get('consultant_name', '—')}\n"
+            message += f"👤 {b.get('consultant_name', '-')}\n"
             message += f"💼 {b.get('service_name', 'Консультация')}\n\n"
         send_telegram_message(chat_id, message, keyboard)
         return
@@ -500,17 +625,26 @@ def handle_help_command(chat_id):
 
 
 def handle_specialist_next_appointments(chat_id, user_id):
+    caps = _fetch_capabilities(chat_id, user_id)
+    if not caps.get("is_specialist"):
+        send_telegram_message(
+            chat_id,
+            "Ближайшие записи специалиста доступны после подключения Телеграм в кабинете → Интеграции.",
+            _keyboard_for_user(chat_id, user_id),
+        )
+        return
     ok, data = _fetch_site_api("/api/telegram/specialist-bookings", {"telegram_chat_id": str(chat_id)})
+    kb = _keyboard_for_user(chat_id, user_id)
     if ok and data and data.get("bookings"):
         upcoming = [b for b in data["bookings"] if b.get("is_upcoming")][:5]
         if upcoming:
             text = "📅 <b>5 ближайших записей:</b>\n\n"
             for b in upcoming:
-                text += f"• <b>{b.get('date', '')} {b.get('time', '')}</b> — {b.get('client_name', '—')}\n"
+                text += f"• <b>{b.get('date', '')} {b.get('time', '')}</b> - {b.get('client_name', '-')}\n"
                 text += f"  Услуга: {b.get('service_name', 'Консультация')}\n\n"
-            send_telegram_message(chat_id, text)
+            send_telegram_message(chat_id, text, kb)
             return
-    send_telegram_message(chat_id, "📭 Ближайших записей нет.")
+    send_telegram_message(chat_id, "📭 Ближайших записей нет.", kb)
 
 
 def verify_bot_identity() -> None:

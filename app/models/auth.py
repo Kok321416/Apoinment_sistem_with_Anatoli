@@ -82,3 +82,13 @@ class TelegramLoginRequest(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class TelegramUiPreference(Base):
+    """Bot UI mode per Telegram chat (dual-role Phase 7)."""
+
+    __tablename__ = "telegram_ui_preferences"
+
+    chat_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    mode: Mapped[str] = mapped_column(String(20), default="client")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

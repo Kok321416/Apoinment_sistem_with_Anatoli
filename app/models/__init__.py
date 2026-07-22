@@ -1,4 +1,4 @@
-from app.models.auth import EmailAddress, EmailVerificationToken, SocialAccount, TelegramLoginRequest, User
+from app.models.auth import EmailAddress, EmailVerificationToken, SocialAccount, TelegramLoginRequest, TelegramUiPreference, User
 from app.models.core import (
     Booking,
     Calendar,
@@ -17,6 +17,7 @@ __all__ = [
     "EmailAddress",
     "EmailVerificationToken",
     "TelegramLoginRequest",
+    "TelegramUiPreference",
     "Category",
     "Consultant",
     "Calendar",

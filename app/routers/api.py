@@ -270,6 +270,40 @@ async def api_telegram_specialist_bookings(request: Request, db: Session = Depen
     return {"success": True, "bookings": items[:30], "is_specialist": True}
 
 
+@router.post("/telegram/capabilities")
+async def api_telegram_capabilities(request: Request, db: Session = Depends(get_db)):
+    body = await request.body()
+    if not verify_bot_request(request, body):
+        return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
+    data = json.loads(body)
+    from app.services.telegram_capabilities import resolve_capabilities
+
+    return resolve_capabilities(
+        db,
+        telegram_id=data.get("telegram_id"),
+        telegram_chat_id=data.get("telegram_chat_id"),
+    )
+
+
+@router.post("/telegram/ui-mode")
+async def api_telegram_ui_mode(request: Request, db: Session = Depends(get_db)):
+    body = await request.body()
+    if not verify_bot_request(request, body):
+        return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
+    data = json.loads(body)
+    from app.services.telegram_capabilities import get_ui_mode, set_ui_mode
+
+    chat_id = data.get("telegram_chat_id") or data.get("chat_id")
+    mode = data.get("mode")
+    if mode:
+        ok, err = set_ui_mode(db, str(chat_id or ""), str(mode))
+        if not ok:
+            return JSONResponse({"success": False, "error": err}, status_code=400)
+        return {"success": True, "mode": mode}
+    stored = get_ui_mode(db, str(chat_id or ""))
+    return {"success": True, "mode": stored}
+
+
 def _verify_telegram_widget_hash(payload: dict, received_hash: str) -> bool:
     bot_token = settings.telegram_bot_token
     if not bot_token or not received_hash:
