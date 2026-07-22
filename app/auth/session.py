@@ -117,6 +117,8 @@ def logout_user(request: Request) -> None:
     request.session.pop("active_mode", None)
     request.session.pop("has_usable_password", None)
     request.session.pop("has_consultant", None)
+    request.session.pop("header_consultant_name", None)
+    request.session.pop("header_account_display", None)
     request.session.pop("register_fio", None)
     request.session.pop("register_phone", None)
     request.session.pop("google_calendar_oauth_state", None)

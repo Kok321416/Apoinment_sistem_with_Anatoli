@@ -90,6 +90,9 @@ async def update_profile_data(body: ProfileUpdateBody, request: Request, db: Ses
         db.rollback()
         raise HTTPException(status_code=400, detail="Почта уже используется другим аккаунтом")
     invalidate_profile(consultant.id, user.id)
+    from app.templating import clear_header_cache
+
+    clear_header_cache(request)
     return JSONResponse({"message": "Профиль сохранён", "data": _profile_context(request, db, user)})
 
 
@@ -113,6 +116,9 @@ async def upload_avatar(
         raise HTTPException(status_code=400, detail=err)
     db.commit()
     invalidate_profile(consultant.id, user.id)
+    from app.templating import clear_header_cache
+
+    clear_header_cache(request)
     return JSONResponse({"message": "Фото обновлено", "data": _profile_context(request, db, user)})
 
 

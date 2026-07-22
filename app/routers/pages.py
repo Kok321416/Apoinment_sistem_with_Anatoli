@@ -1312,8 +1312,10 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
                         error = f"Ошибка при обновлении: {e}"
     if success:
         from app.services.response_cache import invalidate_profile
+        from app.templating import clear_header_cache
 
         invalidate_profile(consultant.id, user.id)
+        clear_header_cache(request)
     from app.services.public_client import ensure_public_slug, specialist_public_url
     from app.services.profile_hub import completion_meta, completeness, dashboard_stats
 

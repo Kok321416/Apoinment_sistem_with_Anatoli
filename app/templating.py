@@ -160,23 +160,64 @@ templates.env.filters["auth_provider"] = auth_provider_label
 templates.env.filters["booking_status"] = booking_status_label
 
 
-def build_header_context(db, user) -> dict:
-    """Header labels from AuthUser only - no extra MySQL on every page."""
+def build_header_context(db, user, request=None) -> dict:
+    """Header labels: AuthUser first, then Consultant FIO (cached in session)."""
     if not user:
         return {"header_consultant_name": "", "header_account_display": ""}
     try:
+        if request is not None and "session" in getattr(request, "scope", {}):
+            cached_name = request.session.get("header_consultant_name")
+            cached_account = request.session.get("header_account_display")
+            if cached_name is not None and cached_account is not None:
+                return {
+                    "header_consultant_name": cached_name,
+                    "header_account_display": cached_account,
+                }
+
+        from app.models import Consultant, EmailAddress
+
         name = ""
         if hasattr(user, "get_full_name"):
             name = (user.get_full_name() or "").strip()
+
         account = (user.email or "").strip()
         if not account and "@" in (user.username or ""):
             account = user.username
+
+        consultant = None
+        if db is not None and (not name or not account):
+            consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
+
+        if not name and consultant:
+            parts = [
+                consultant.first_name or "",
+                consultant.middle_name or "",
+                consultant.last_name or "",
+            ]
+            name = " ".join(p for p in parts if p).strip()
+
+        if not account and db is not None:
+            primary = (
+                db.query(EmailAddress)
+                .filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True))
+                .first()
+            )
+            if primary and primary.email:
+                account = primary.email
+        if not account and consultant and consultant.email:
+            account = consultant.email
+
         top = account or user.username or ""
         bottom = name
         if bottom and bottom.lower() == top.lower():
             bottom = ""
         if not bottom:
             bottom = "Специалист"
+
+        if request is not None and "session" in getattr(request, "scope", {}):
+            request.session["header_consultant_name"] = bottom
+            request.session["header_account_display"] = top
+
         return {
             "header_consultant_name": bottom,
             "header_account_display": top,
@@ -186,6 +227,13 @@ def build_header_context(db, user) -> dict:
             "header_consultant_name": "Специалист",
             "header_account_display": getattr(user, "username", "") or "",
         }
+
+
+def clear_header_cache(request) -> None:
+    if request is None or "session" not in getattr(request, "scope", {}):
+        return
+    request.session.pop("header_consultant_name", None)
+    request.session.pop("header_account_display", None)
 
 
 def _session_pop(request, key: str, default=False):
@@ -221,7 +269,7 @@ def page_context(request, db, user=None, **extra):
         "show_mode_switcher": bool(user and has_consultant),
         "impersonator_id": None,
         "load_telegram_webapp": False,
-        **build_header_context(db, user),
+        **build_header_context(db, user, request),
         **extra,
     }
     if "session" in getattr(request, "scope", {}):
