@@ -37,6 +37,8 @@
             this.container = container;
             this.onDaySelect = options.onDaySelect;
             this.onSlotUpdate = options.onSlotUpdate;
+            this.onSlotSelect = options.onSlotSelect;
+            this.onSlotDelete = options.onSlotDelete;
             this.selectedDay = options.selectedDay || 0;
             this.schedule = null;
             this._drag = null;
@@ -116,24 +118,37 @@
             el.dataset.day = String(day);
             el.style.top = slot.top + '%';
             el.style.height = slot.height + '%';
+            el.title = slot.start + ' – ' + slot.end + ' · клик: изменить';
             el.innerHTML =
                 '<span class="week-slot__resize week-slot__resize--top" data-edge="top"></span>' +
                 '<span class="week-slot__label">' + slot.start + '<br>' + slot.end + '</span>' +
+                '<button type="button" class="week-slot__delete" data-slot-id="' + slot.id + '" title="Удалить окно" aria-label="Удалить окно ' + slot.start + '–' + slot.end + '">×</button>' +
                 '<span class="week-slot__resize week-slot__resize--bottom" data-edge="bottom"></span>';
 
             el.addEventListener('click', (event) => {
+                if (event.target.closest('.week-slot__delete') || event.target.closest('.week-slot__resize')) {
+                    return;
+                }
                 event.stopPropagation();
                 this.selectDay(day);
+                if (this.onSlotSelect) {
+                    this.onSlotSelect(day, slot);
+                }
             });
+
+            const deleteBtn = el.querySelector('.week-slot__delete');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (this.onSlotDelete) {
+                        this.onSlotDelete(slot.id, day);
+                    }
+                });
+            }
 
             el.querySelectorAll('.week-slot__resize').forEach((handle) => {
                 handle.addEventListener('pointerdown', (event) => this._startResize(event, slot, handle.dataset.edge));
-            });
-
-            el.addEventListener('pointerdown', (event) => {
-                if (event.target.closest('.week-slot__resize')) {
-                    return;
-                }
             });
 
             return el;

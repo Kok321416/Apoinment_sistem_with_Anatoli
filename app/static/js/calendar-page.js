@@ -65,9 +65,10 @@
                 weekGrid.selectedDay = selectedDay;
                 weekGrid.render(schedule);
             }
-            if (dayData) {
+            const day = dayData || (schedule.week && schedule.week[selectedDay]);
+            if (day && dayEditor) {
                 editorLoading.hidden = true;
-                dayEditor.renderDay(dayData);
+                dayEditor.renderDay(day);
             }
         }
 
@@ -88,11 +89,35 @@
 
                 weekGrid = new CalendarWeekGrid(gridEl, {
                     selectedDay: selectedDay,
-                    onDaySelect: async (day) => {
+                    onDaySelect: (day) => {
                         selectedDay = day;
                         weekGrid.selectedDay = day;
-                        const dayData = schedule.week[day];
-                        dayEditor.renderDay(dayData);
+                        if (!lastSchedule || !lastSchedule.week) {
+                            return;
+                        }
+                        dayEditor.renderDay(lastSchedule.week[day]);
+                    },
+                    onSlotSelect: (day, slot) => {
+                        selectedDay = day;
+                        weekGrid.selectedDay = day;
+                        if (!lastSchedule || !lastSchedule.week) {
+                            return;
+                        }
+                        dayEditor.renderDay(lastSchedule.week[day]);
+                        dayEditor.editSlot(slot.id);
+                    },
+                    onSlotDelete: async (slotId, day) => {
+                        if (!window.confirm('Удалить это окно?')) {
+                            return;
+                        }
+                        try {
+                            selectedDay = day;
+                            const data = await api.deleteSlot(slotId);
+                            showToast(data.message || 'Окно удалено');
+                            await applySchedule(data.schedule, data.schedule.week[day]);
+                        } catch (error) {
+                            showToast(error.message, 'error');
+                        }
                     },
                     onSlotUpdate: async (slotId, start, end) => {
                         try {

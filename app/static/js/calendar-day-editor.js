@@ -12,6 +12,9 @@
         }
 
         renderDay(dayData) {
+            if (!dayData) {
+                return;
+            }
             if (this.selectedDay !== dayData.day) {
                 this._editingSlotId = null;
             }
@@ -21,11 +24,22 @@
             this._render();
         }
 
+        editSlot(slotId) {
+            this._editingSlotId = parseInt(slotId, 10);
+            this._render();
+            const card = this.container.querySelector('.slot-card[data-slot-id="' + slotId + '"]');
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                card.classList.add('slot-card--focus');
+            }
+        }
+
         _render() {
             this.container.innerHTML = this._template(this.dayData);
             this._bindEvents();
             if (this._editingSlotId) {
-                const slot = this.dayData.slots.find((s) => s.id === this._editingSlotId);
+                const slots = this._slotsList(this.dayData);
+                const slot = slots.find((s) => s.id === this._editingSlotId);
                 const startSelect = this.container.querySelector('.edit-start');
                 const endSelect = this.container.querySelector('.edit-end');
                 if (slot && startSelect && endSelect) {
@@ -37,10 +51,24 @@
             }
         }
 
+        _slotsList(dayData) {
+            if (!dayData) {
+                return [];
+            }
+            if (Array.isArray(dayData.slots) && dayData.slots.length) {
+                return dayData.slots;
+            }
+            if (Array.isArray(dayData.all_slots) && dayData.all_slots.length) {
+                return dayData.all_slots;
+            }
+            return Array.isArray(dayData.slots) ? dayData.slots : [];
+        }
+
         _template(dayData) {
-            const slotsHtml = dayData.slots.length
-                ? dayData.slots.map((slot) => this._slotCard(slot)).join('')
-                : '<p class="day-editor__empty">Нет временных окон</p>';
+            const slots = this._slotsList(dayData);
+            const slotsHtml = slots.length
+                ? slots.map((slot) => this._slotCard(slot)).join('')
+                : '<p class="day-editor__empty">Нет временных окон. Добавьте окно ниже или кликните по слоту в сетке.</p>';
 
             return (
                 '<div class="day-editor">' +

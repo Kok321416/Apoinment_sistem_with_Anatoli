@@ -238,6 +238,40 @@
     z-index: 10;
 }
 
+.week-slot__delete {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    z-index: 3;
+    width: 20px;
+    height: 20px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.week-slot:hover .week-slot__delete,
+.week-slot:focus-within .week-slot__delete {
+    opacity: 1;
+}
+
+.week-slot__delete:hover,
+.week-slot__delete:focus-visible {
+    background: rgba(255, 92, 122, 0.95);
+    outline: none;
+}
+
+.slot-card--focus {
+    border-color: rgba(74, 168, 255, 0.55);
+    box-shadow: 0 0 0 2px rgba(74, 168, 255, 0.25);
+}
+
 .week-slot__resize {
     position: absolute;
     left: 0;
