@@ -1,0 +1,55 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Ошибки{% endblock %}
+{% block content %}
+<h1 class="pa-title">Ошибки</h1>
+<p class="pa-muted">Неожиданные исключения приложения (Admin A2).</p>
+
+<form method="get" class="pa-inline-form">
+    <label class="pa-label">Статус
+        <select name="status" class="pa-input" onchange="this.form.submit()">
+            <option value="">все</option>
+            {% for s in statuses %}
+            <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+    </label>
+</form>
+
+{% if errors %}
+<table class="pa-table">
+    <thead>
+    <tr><th>ID</th><th>Когда</th><th>Path</th><th>Сообщение</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for e in errors %}
+    <tr>
+        <td>#{{ e.id }}</td>
+        <td>{{ e.created_at }}</td>
+        <td>{{ e.method }} {{ e.path }}</td>
+        <td>{{ e.message }}</td>
+        <td>{{ e.status }}</td>
+        <td>
+            <form method="post" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="error_id" value="{{ e.id }}">
+                <select name="status" class="pa-input" style="width:auto;display:inline-block;">
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if e.status == s %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="pa-btn pa-btn--ghost">OK</button>
+            </form>
+        </td>
+    </tr>
+    {% if e.traceback %}
+    <tr>
+        <td colspan="6"><details class="pa-details"><summary>traceback</summary><pre class="pa-pre">{{ e.traceback }}</pre></details></td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="pa-muted">Пока пусто.</p>
+{% endif %}
+{% endblock %}

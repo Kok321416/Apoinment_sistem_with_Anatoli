@@ -50,3 +50,21 @@ class TelegramBroadcastRecipient(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class PlatformErrorLog(Base):
+    """Captured 5xx / unexpected exceptions for Admin A2."""
+
+    __tablename__ = "platform_error_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    status: Mapped[str] = mapped_column(String(20), default="new", index=True)
+    path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    method: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    message: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    traceback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

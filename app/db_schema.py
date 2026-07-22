@@ -224,6 +224,7 @@ def _apply_app_schema_patches() -> None:
                 platform_models.AdminAuditLog.__table__,
                 platform_models.TelegramBroadcastJob.__table__,
                 platform_models.TelegramBroadcastRecipient.__table__,
+                platform_models.PlatformErrorLog.__table__,
             ],
         )
     except Exception:

@@ -3,9 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Admin{% endblock %} — {{ site_brand_name }}</title>
+    <title>{% block title %}Admin{% endblock %} - {{ site_brand_name }}</title>
     <link rel="stylesheet" href="/static/css/tokens.css?v=1">
-    <link rel="stylesheet" href="/static/css/admin-platform.css?v=1">
+    <link rel="stylesheet" href="/static/css/admin-platform.css?v=2">
     {% block head_extra %}{% endblock %}
 </head>
 <body class="pa-body">
@@ -16,7 +16,9 @@
     </div>
     <nav class="pa-nav">
         <a href="/platform-admin/" class="{% if nav == 'dashboard' %}is-active{% endif %}">Dashboard</a>
+        <a href="/platform-admin/users/" class="{% if nav == 'users' %}is-active{% endif %}">Пользователи</a>
         <a href="/platform-admin/telegram/" class="{% if nav == 'telegram' %}is-active{% endif %}">Telegram</a>
+        <a href="/platform-admin/errors/" class="{% if nav == 'errors' %}is-active{% endif %}">Ошибки</a>
         <a href="/dashboard/">Кабинет</a>
         <a href="/">Сайт</a>
     </nav>

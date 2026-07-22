@@ -1,0 +1,34 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Пользователи{% endblock %}
+{% block content %}
+<h1 class="pa-title">Пользователи</h1>
+<form method="get" class="pa-form" style="margin-bottom:1rem;">
+    <label class="pa-label">Поиск (email, id, имя, telegram uid, телефон)
+        <input class="pa-input" type="search" name="q" value="{{ q }}" placeholder="например @user или 42">
+    </label>
+    <button type="submit" class="pa-btn pa-btn--secondary">Найти</button>
+</form>
+
+{% if users %}
+<table class="pa-table">
+    <thead>
+    <tr><th>ID</th><th>Email / username</th><th>Имя</th><th>Staff</th><th>Active</th><th>Consultant</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for u in users %}
+    <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.email or u.username }}</td>
+        <td>{{ u.first_name }} {{ u.last_name }}</td>
+        <td>{% if u.is_superuser %}super{% elif u.is_staff %}staff{% else %}-{% endif %}</td>
+        <td>{% if u.is_active %}да{% else %}нет{% endif %}</td>
+        <td>{% if u.consultant %}#{{ u.consultant.id }}{% else %}-{% endif %}</td>
+        <td><a href="/platform-admin/users/{{ u.id }}/">открыть</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="pa-muted">Никого не найдено.</p>
+{% endif %}
+{% endblock %}

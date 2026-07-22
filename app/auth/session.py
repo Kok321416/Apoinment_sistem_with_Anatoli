@@ -60,12 +60,39 @@ def get_session_user_id(request: Request) -> int | None:
 def login_user(request: Request, user: User) -> None:
     if "session" in request.scope:
         request.session["user_id"] = user.id
+        request.session.pop("impersonator_id", None)
+
+
+def start_impersonation(request: Request, *, admin_user_id: int, target_user_id: int) -> None:
+    if "session" not in request.scope:
+        return
+    request.session["impersonator_id"] = admin_user_id
+    request.session["user_id"] = target_user_id
+    request.session.pop("active_mode", None)
+
+
+def stop_impersonation(request: Request) -> int | None:
+    """Restore admin session. Returns admin user id or None."""
+    if "session" not in request.scope:
+        return None
+    admin_id = request.session.pop("impersonator_id", None)
+    if admin_id:
+        request.session["user_id"] = admin_id
+        request.session.pop("active_mode", None)
+    return admin_id
+
+
+def get_impersonator_id(request: Request) -> int | None:
+    if "session" not in request.scope:
+        return None
+    return request.session.get("impersonator_id")
 
 
 def logout_user(request: Request) -> None:
     if "session" not in request.scope:
         return
     request.session.pop("user_id", None)
+    request.session.pop("impersonator_id", None)
     request.session.pop("active_mode", None)
     request.session.pop("register_fio", None)
     request.session.pop("register_phone", None)

@@ -1,6 +1,6 @@
 # План: Admin Platform - центр управления «Все клиенты здесь»
 
-Статус: A0 foundation + A1 Telegram Broadcast реализованы (feature flag `PLATFORM_ADMIN_ENABLED`). Дальнейшие фазы A2+ - по плану ниже.
+Статус: A0 + A1 + A2 (Dashboard KPI, Users, Errors, impersonate) реализованы при `PLATFORM_ADMIN_ENABLED`. Дальше A3+.
 
 Это **не** «ещё одна страница в кабинете специалиста».  
 Это внутренний **платформенный** продукт для владельца сервиса: пользователи, записи, платежи, Telegram, ошибки, безопасность.

@@ -245,9 +245,14 @@ def page_context(request, db, user=None, **extra):
         "has_consultant": has_consultant,
         "active_mode": active_mode,
         "show_mode_switcher": bool(user and has_consultant),
+        "impersonator_id": None,
         **build_header_context(db, user),
         **extra,
     }
+    if "session" in getattr(request, "scope", {}):
+        from app.auth.session import get_impersonator_id
+
+        ctx["impersonator_id"] = get_impersonator_id(request)
     return ctx
 
 

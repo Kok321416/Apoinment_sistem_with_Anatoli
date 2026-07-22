@@ -37,9 +37,11 @@ def _ctx(request: Request, db: Session, user, **extra):
 @router.get("/")
 async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
     user = require_platform_admin(request, db)
+    from app.services.platform_admin_users import dashboard_kpi
+
     return templates.TemplateResponse(
         "platform_admin/dashboard.html",
-        _ctx(request, db, user, nav="dashboard"),
+        _ctx(request, db, user, nav="dashboard", kpi=dashboard_kpi(db)),
     )
 
 
@@ -176,4 +178,199 @@ async def admin_telegram_job(request: Request, job_id: int, db: Session = Depend
     return templates.TemplateResponse(
         "platform_admin/telegram_job.html",
         _ctx(request, db, user, nav="telegram", job=job, recipients=recipients),
+    )
+
+
+@router.get("/users/")
+async def admin_users(request: Request, db: Session = Depends(get_db)):
+    user = require_platform_admin(request, db)
+    from app.services.platform_admin_users import search_users
+
+    q = (request.query_params.get("q") or "").strip()
+    rows = search_users(db, q, limit=50)
+    return templates.TemplateResponse(
+        "platform_admin/users.html",
+        _ctx(request, db, user, nav="users", q=q, users=rows),
+    )
+
+
+@router.post("/users/stop-impersonate/")
+async def admin_stop_impersonate(request: Request, db: Session = Depends(get_db)):
+    from app.auth.session import get_impersonator_id, stop_impersonation
+
+    form = await request.form()
+    if not _csrf_ok(request, form):
+        return RedirectResponse("/dashboard/", status_code=302)
+    admin_id = get_impersonator_id(request)
+    if not admin_id:
+        return RedirectResponse("/dashboard/", status_code=302)
+    stop_impersonation(request)
+    write_admin_audit(
+        db,
+        actor_user_id=admin_id,
+        action="impersonate_stop",
+        entity="user",
+        request=request,
+    )
+    db.commit()
+    return RedirectResponse("/platform-admin/users/", status_code=302)
+
+
+@router.get("/users/{user_id}/")
+@router.post("/users/{user_id}/")
+async def admin_user_detail(request: Request, user_id: int, db: Session = Depends(get_db)):
+    admin = require_platform_admin(request, db)
+    from app.auth.session import start_impersonation
+    from app.services.platform_admin_users import user_admin_card
+
+    success = error = None
+    if request.method == "POST":
+        form = await request.form()
+        if not _csrf_ok(request, form):
+            error = "Ошибка безопасности. Обновите страницу."
+        else:
+            action = (form.get("action") or "").strip()
+            target = db.get(User, user_id)
+            if not target:
+                return RedirectResponse("/platform-admin/users/", status_code=302)
+            if action == "block":
+                if target.id == admin.id:
+                    error = "Нельзя заблокировать себя."
+                else:
+                    target.is_active = False
+                    write_admin_audit(
+                        db,
+                        actor_user_id=admin.id,
+                        action="user_block",
+                        entity="user",
+                        entity_id=str(target.id),
+                        request=request,
+                    )
+                    db.commit()
+                    success = "Пользователь заблокирован."
+            elif action == "unblock":
+                target.is_active = True
+                write_admin_audit(
+                    db,
+                    actor_user_id=admin.id,
+                    action="user_unblock",
+                    entity="user",
+                    entity_id=str(target.id),
+                    request=request,
+                )
+                db.commit()
+                success = "Пользователь разблокирован."
+            elif action == "broadcast_on":
+                target.notify_broadcast = True
+                write_admin_audit(
+                    db,
+                    actor_user_id=admin.id,
+                    action="user_broadcast_on",
+                    entity="user",
+                    entity_id=str(target.id),
+                    request=request,
+                )
+                db.commit()
+                success = "notify_broadcast включён."
+            elif action == "broadcast_off":
+                target.notify_broadcast = False
+                write_admin_audit(
+                    db,
+                    actor_user_id=admin.id,
+                    action="user_broadcast_off",
+                    entity="user",
+                    entity_id=str(target.id),
+                    request=request,
+                )
+                db.commit()
+                success = "notify_broadcast выключен."
+            elif action == "impersonate":
+                if not admin.is_superuser:
+                    error = "Impersonate только для superuser."
+                elif not target.is_active:
+                    error = "Нельзя войти как заблокированный пользователь."
+                elif target.id == admin.id:
+                    error = "Уже вы."
+                else:
+                    write_admin_audit(
+                        db,
+                        actor_user_id=admin.id,
+                        action="impersonate_start",
+                        entity="user",
+                        entity_id=str(target.id),
+                        request=request,
+                    )
+                    db.commit()
+                    start_impersonation(request, admin_user_id=admin.id, target_user_id=target.id)
+                    return RedirectResponse("/dashboard/", status_code=302)
+            else:
+                error = "Неизвестное действие"
+
+    card = user_admin_card(db, user_id)
+    if not card:
+        return RedirectResponse("/platform-admin/users/", status_code=302)
+    return templates.TemplateResponse(
+        "platform_admin/user_detail.html",
+        _ctx(
+            request,
+            db,
+            admin,
+            nav="users",
+            card=card,
+            target=card["user"],
+            success=success,
+            error=error,
+        ),
+    )
+
+
+@router.get("/errors/")
+@router.post("/errors/")
+async def admin_errors(request: Request, db: Session = Depends(get_db)):
+    user = require_platform_admin(request, db)
+    from app.services.platform_errors import ERROR_STATUSES, list_errors, set_error_status
+
+    success = error = None
+    status_filter = (request.query_params.get("status") or "").strip() or None
+    if request.method == "POST":
+        form = await request.form()
+        if not _csrf_ok(request, form):
+            error = "Ошибка безопасности."
+        else:
+            try:
+                eid = int(form.get("error_id") or 0)
+            except (TypeError, ValueError):
+                eid = 0
+            new_status = (form.get("status") or "").strip()
+            row = set_error_status(db, eid, new_status) if eid else None
+            if row:
+                write_admin_audit(
+                    db,
+                    actor_user_id=user.id,
+                    action="error_status",
+                    entity="platform_error_log",
+                    entity_id=str(row.id),
+                    payload={"status": new_status},
+                    request=request,
+                )
+                db.commit()
+                success = f"Ошибка #{row.id}: {row.status}"
+            else:
+                error = "Не удалось обновить статус."
+            status_filter = new_status if new_status in ERROR_STATUSES else status_filter
+
+    rows = list_errors(db, status=status_filter, limit=50)
+    return templates.TemplateResponse(
+        "platform_admin/errors.html",
+        _ctx(
+            request,
+            db,
+            user,
+            nav="errors",
+            errors=rows,
+            status_filter=status_filter or "",
+            statuses=sorted(ERROR_STATUSES),
+            success=success,
+            error=error,
+        ),
     )

@@ -112,6 +112,30 @@ async def security_headers_middleware(request: Request, call_next):
 
 
 @app.middleware("http")
+async def platform_error_capture_middleware(request: Request, call_next):
+    """Admin A2: persist unexpected exceptions (not HTTPException)."""
+    from fastapi import HTTPException
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
+    try:
+        return await call_next(request)
+    except (HTTPException, StarletteHTTPException):
+        raise
+    except Exception as exc:
+        try:
+            from app.auth.session import get_session_user_id
+            from app.services.platform_errors import record_exception
+
+            uid = None
+            if "session" in request.scope:
+                uid = get_session_user_id(request)
+            record_exception(request, exc, user_id=uid)
+        except Exception:
+            logger.exception("platform_error_capture failed")
+        raise
+
+
+@app.middleware("http")
 async def password_required_middleware(request: Request, call_next):
     from app.auth.session import get_current_user, get_session_user_id
     from app.database import SessionLocal

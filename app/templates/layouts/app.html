@@ -12,6 +12,15 @@
 </head>
 <body class="app-shell">
     {% include "components/skip_link.html" %}
+    {% if impersonator_id %}
+    <div class="impersonate-banner" role="alert" style="background:#ff5c7a;color:#fff;padding:0.6rem 1rem;text-align:center;">
+        Режим «войти как» (admin #{{ impersonator_id }}).
+        <form method="POST" action="/platform-admin/users/stop-impersonate/" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" style="margin-left:0.5rem;cursor:pointer;">Выйти из impersonate</button>
+        </form>
+    </div>
+    {% endif %}
     {% include "components/app_header.html" %}
     <main id="main" class="app-main" tabindex="-1">
         <div class="container">

@@ -551,6 +551,24 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
                 db_user = db.query(User).filter(User.username == email).first()
                 if not db_user or not verify_password(password, db_user.password):
                     error = "Неверная почта или пароль"
+                    try:
+                        from app.services.admin_audit import write_admin_audit
+
+                        write_admin_audit(
+                            db,
+                            actor_user_id=None,
+                            action="login_failed",
+                            entity="user",
+                            entity_id=str(db_user.id) if db_user else None,
+                            payload={"email": (email or "")[:120]},
+                            request=request,
+                        )
+                        db.commit()
+                    except Exception:
+                        try:
+                            db.rollback()
+                        except Exception:
+                            pass
                 elif not db_user.is_active:
                     error = "Подтвердите почту. Проверьте письмо или отправьте его повторно ниже."
                 else:

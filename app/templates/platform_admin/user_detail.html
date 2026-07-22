@@ -1,0 +1,74 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}User #{{ target.id }}{% endblock %}
+{% block content %}
+<p><a href="/platform-admin/users/">&larr; Пользователи</a></p>
+<h1 class="pa-title">User #{{ target.id }}</h1>
+<p class="pa-muted">{{ target.email or target.username }} · joined {{ target.date_joined }}</p>
+
+<div class="pa-panel">
+    <h2>Профиль</h2>
+    <ul class="pa-list">
+        <li>Имя: {{ target.first_name }} {{ target.last_name }}</li>
+        <li>Active: {% if target.is_active %}да{% else %}нет{% endif %}</li>
+        <li>Staff / super: {{ target.is_staff }} / {{ target.is_superuser }}</li>
+        <li>notify_broadcast: {{ target.notify_broadcast }}</li>
+        <li>Записей как клиент: {{ card.bookings_as_client }}</li>
+        <li>Пароль: {% if target.password %}задан (hash скрыт){% else %}нет{% endif %}</li>
+    </ul>
+    {% if card.consultant %}
+    <h3>Consultant #{{ card.consultant.id }}</h3>
+    <ul class="pa-list">
+        <li>{{ card.consultant.first_name }} {{ card.consultant.last_name }}</li>
+        <li>phone: {{ card.consultant.phone or '-' }}</li>
+        <li>email: {{ card.consultant.email or '-' }}</li>
+    </ul>
+    {% endif %}
+    {% if card.social %}
+    <h3>Social</h3>
+    <ul class="pa-list">
+        {% for s in card.social %}
+        <li>{{ s.provider }}: {{ s.uid }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+
+<div class="pa-panel">
+    <h2>Действия</h2>
+    <div class="pa-actions">
+        {% if target.is_active %}
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="block">
+            <button type="submit" class="pa-btn pa-btn--ghost" onclick="return confirm('Заблокировать?');">Заблокировать</button>
+        </form>
+        {% else %}
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="unblock">
+            <button type="submit" class="pa-btn pa-btn--secondary">Разблокировать</button>
+        </form>
+        {% endif %}
+        {% if target.notify_broadcast %}
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="broadcast_off">
+            <button type="submit" class="pa-btn pa-btn--ghost">Выключить broadcast</button>
+        </form>
+        {% else %}
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="broadcast_on">
+            <button type="submit" class="pa-btn pa-btn--secondary">Включить broadcast</button>
+        </form>
+        {% endif %}
+        {% if user.is_superuser and target.is_active and target.id != user.id %}
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="impersonate">
+            <button type="submit" class="pa-btn pa-btn--primary" onclick="return confirm('Войти как этот пользователь?');">Войти как</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

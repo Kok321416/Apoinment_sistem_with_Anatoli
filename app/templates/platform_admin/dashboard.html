@@ -2,19 +2,28 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <h1 class="pa-title">Dashboard</h1>
-<p class="pa-muted">Платформенная админка (A0). Полный KPI - в следующих фазах.</p>
+<p class="pa-muted">KPI платформы (Admin A2).</p>
+
+<div class="pa-stats">
+    <div class="pa-stat"><span>{{ kpi.users_total }}</span> пользователей</div>
+    <div class="pa-stat"><span>{{ kpi.users_new_today }}</span> новых сегодня</div>
+    <div class="pa-stat"><span>{{ kpi.consultants_total }}</span> специалистов</div>
+    <div class="pa-stat"><span>{{ kpi.bookings_today }}</span> записей сегодня</div>
+    <div class="pa-stat"><span>{{ kpi.errors_new }}</span> ошибок new</div>
+</div>
+
 <div class="pa-cards">
+    <a class="pa-card" href="/platform-admin/users/">
+        <h2>Пользователи</h2>
+        <p>Поиск, блок, opt-in, impersonate (superuser).</p>
+    </a>
     <a class="pa-card" href="/platform-admin/telegram/">
         <h2>Telegram</h2>
-        <p>Статистика подключений и рассылки (Broadcast).</p>
+        <p>Рассылки и шаблоны.</p>
     </a>
-    <div class="pa-card pa-card--muted">
-        <h2>Пользователи</h2>
-        <p>Скоро (A2)</p>
-    </div>
-    <div class="pa-card pa-card--muted">
-        <h2>Логи / ошибки</h2>
-        <p>Скоро (A2)</p>
-    </div>
+    <a class="pa-card" href="/platform-admin/errors/">
+        <h2>Ошибки</h2>
+        <p>5xx / traceback, статусы new / fixed.</p>
+    </a>
 </div>
 {% endblock %}
