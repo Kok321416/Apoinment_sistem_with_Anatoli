@@ -127,7 +127,7 @@ def format_reminder_message(booking: Booking, hours_ahead: int) -> str:
     info = _booking_base_info(booking)
     label = _hours_label(hours_ahead)
     return (
-        f"📅 <b>Напоминание о консультации</b>\n\n"
+        f"📅 <b>Ваша запись: напоминание</b>\n\n"
         f"Через {label} у вас запланирована консультация:\n\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
         f"📅 Дата: {info['date_str']}\n"
@@ -157,7 +157,7 @@ def format_new_booking_message_for_specialist(booking: Booking) -> str:
     contact_str = "\n".join(contact) if contact else "—"
     status_note = "\n⏳ Данные ждут подтверждения (клиент может подтвердить Телеграм на странице после записи)."
     return (
-        f"🆕 <b>Новая запись</b>\n\n"
+        f"🆕 <b>К вам новая запись</b>\n\n"
         f"👤 Клиент: {booking.client_name or '—'}\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
         f"📅 Дата: {info['date_str']}\n"
@@ -171,7 +171,7 @@ def format_new_booking_message_for_specialist(booking: Booking) -> str:
 def format_client_booked_message(booking: Booking) -> str:
     info = _booking_base_info(booking)
     return (
-        f"✅ <b>Вы записаны</b>\n\n"
+        f"✅ <b>Ваша запись подтверждена</b>\n\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
         f"📅 Дата: {info['date_str']}\n"
         f"🕐 Время: {info['slot']}\n"
@@ -191,7 +191,7 @@ def format_specialist_reminder_message(booking: Booking, hours_ahead: int) -> st
     contact_str = ", ".join(client_contact) if client_contact else "—"
     label = _hours_label(hours_ahead)
     return (
-        f"📅 <b>Напоминание: консультация через {label}</b>\n\n"
+        f"📅 <b>К вам запись: напоминание через {label}</b>\n\n"
         f"👤 Клиент: {booking.client_name or '—'}\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
         f"📅 Дата: {info['date_str']}\n"
@@ -218,7 +218,7 @@ def format_booking_status_changed_client(booking: Booking, new_status: str, old_
     else:
         status_line = f"Статус: <b>{new_label}</b>"
     return (
-        f"📋 <b>Изменение записи</b>\n\n"
+        f"📋 <b>Ваша запись: изменение статуса</b>\n\n"
         f"{status_line}\n\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
         f"📅 Дата: {info['date_str']}\n"
@@ -243,7 +243,7 @@ def format_booking_status_changed_specialist(booking: Booking, new_status: str, 
         contact.append(booking.client_telegram)
     contact_str = ", ".join(contact) if contact else "—"
     return (
-        f"📋 <b>Запись обновлена</b>\n\n"
+        f"📋 <b>К вам запись: статус обновлён</b>\n\n"
         f"👤 Клиент: {booking.client_name or '—'}\n"
         f"{status_line}\n\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
