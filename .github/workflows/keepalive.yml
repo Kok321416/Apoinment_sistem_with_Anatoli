@@ -1,0 +1,28 @@
+# Keep Passenger worker warm on shared hosting (reg.ru).
+# Without this, idle process sleeps and the next real user waits ~8–15s cold start.
+name: Keep-alive health ping
+
+on:
+  schedule:
+    # Every 5 minutes (UTC). GitHub may delay a few minutes under load.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping production /health
+        env:
+          KEEPALIVE_URL: ${{ vars.KEEPALIVE_URL }}
+        run: |
+          set -euo pipefail
+          URL="${KEEPALIVE_URL:-https://allyourclients.ru/health}"
+          echo "Pinging $URL"
+          code=$(curl -fsS -o /dev/null -w "%{http_code}" --connect-timeout 15 --max-time 45 "$URL" || true)
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "Keep-alive ping failed (non-200). Cold start may still occur."
+            exit 1
+          fi
