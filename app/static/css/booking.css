@@ -217,11 +217,15 @@
 
 .booking-cal__day {
     aspect-ratio: 1;
-    display: grid;
-    place-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
     border-radius: var(--radius-sm);
     font-size: var(--font-size-body-sm);
     cursor: pointer;
+    position: relative;
     transition: var(--transition-background), color var(--duration-base) var(--ease-out);
 }
 
@@ -242,8 +246,71 @@
 
 .booking-cal__day.is-selected {
     background: var(--gradient-primary);
-    color: var(--text-on-accent);
-    font-weight: var(--font-weight-semibold);
+    color: #fff;
+}
+
+.booking-cal__day.is-workday {
+    color: #f4f7ff;
+    font-weight: 600;
+}
+
+.booking-cal__day.is-workday:not(.is-selected):not(.is-past) {
+    background: rgba(66, 201, 107, 0.08);
+}
+
+.booking-cal__day-num {
+    line-height: 1;
+}
+
+.booking-cal__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #42c96b;
+    box-shadow: 0 0 0 2px rgba(66, 201, 107, 0.25);
+    flex-shrink: 0;
+}
+
+.booking-cal__day.is-selected .booking-cal__dot {
+    background: #fff;
+    box-shadow: none;
+}
+
+.booking-cal__day.is-past .booking-cal__dot,
+.booking-cal__day.is-other .booking-cal__dot {
+    display: none;
+}
+
+.book-cal-service-label {
+    color: #4aa8ff !important;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.book-cal-panel--service .input:focus {
+    border-color: #4aa8ff;
+    box-shadow: 0 0 0 3px rgba(74, 168, 255, 0.2);
+}
+
+.book-cal-legend {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--text-muted);
+}
+
+.book-cal-legend__dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #42c96b;
+    box-shadow: 0 0 0 3px rgba(66, 201, 107, 0.2);
+    flex-shrink: 0;
+}
+
+.booking-cal__day.is-workday:not(.is-selected):not(.is-past)::after {
+    content: none;
+    display: none;
 }
 
 /* Time slots */
@@ -444,34 +511,17 @@
 
 .book-cal-panel--month .booking-cal__day {
     border: none;
-    background: transparent;
-    color: inherit;
     font: inherit;
     width: 100%;
 }
 
-.booking-cal__day.is-workday:not(.is-selected)::not(.is-past)::after {
-    content: "";
-    display: block;
-    width: 5px;
-    height: 5px;
-    margin-top: 2px;
-    border-radius: 50%;
-    background: var(--accent-success);
+.book-cal-panel--month .booking-cal__day.is-workday:not(.is-selected):not(.is-past) {
+    background: rgba(66, 201, 107, 0.12);
 }
 
-.book-cal-legend {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    color: var(--text-muted);
-}
-
-.book-cal-legend__dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent-success);
+.book-cal-panel--month .booking-cal__day.is-workday:not(.is-selected):not(.is-past)::after {
+    content: none !important;
+    display: none !important;
 }
 
 .book-windows__label {

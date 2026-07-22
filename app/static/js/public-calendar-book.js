@@ -75,7 +75,22 @@
             else if (date.getTime() === today.getTime()) cls += " is-today";
             if (hasWindows(weekdayIndex(date)) && date >= today) cls += " is-workday";
             if (selected && selected === dateStr) cls += " is-selected";
-            html += '<button type="button" class="' + cls + '" data-date="' + dateStr + '">' + d + "</button>";
+            var inner = '<span class="booking-cal__day-num">' + d + "</span>";
+            if (hasWindows(weekdayIndex(date)) && date >= today) {
+                inner += '<span class="booking-cal__dot" aria-hidden="true"></span>';
+            }
+            html +=
+                '<button type="button" class="' +
+                cls +
+                '" data-date="' +
+                dateStr +
+                '"' +
+                (hasWindows(weekdayIndex(date)) && date >= today
+                    ? ' title="Есть окна приёма" aria-label="' + d + ', есть окна приёма"'
+                    : ' aria-label="' + d + '"') +
+                ">" +
+                inner +
+                "</button>";
         }
         var daysEl = document.getElementById("calDays");
         daysEl.innerHTML = html;

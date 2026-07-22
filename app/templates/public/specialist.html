@@ -1,50 +1,241 @@
 {% extends "layouts/booking.html" %}
 
 {% block meta_tags %}
-{% set page_title = (consultant.first_name ~ " " ~ consultant.last_name ~ " — запись") %}
-{% set meta_description = consultant.profile_description or ("Онлайн-запись к специалисту " ~ consultant.first_name) %}
+{% set spec_name_meta = ((consultant.first_name or '') ~ ' ' ~ (consultant.last_name or '')).strip() %}
+{% set og_description = (consultant.profile_description or ('Онлайн-запись к специалисту ' ~ (consultant.first_name or '')))[:180] %}
+{% set page_title = spec_name_meta ~ " — запись" %}
+{% set meta_description = consultant.profile_description or ("Онлайн-запись к специалисту " ~ (consultant.first_name or "")) %}
 {% include "components/meta.html" %}
+<meta property="og:type" content="profile">
+<meta property="og:title" content="{{ spec_name_meta }} — запись">
+<meta property="og:description" content="{{ og_description }}">
+{% if consultant.profile_photo %}
+<meta property="og:image" content="{{ site_url }}{{ consultant.profile_photo|profile_photo_src }}">
+{% endif %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": {{ spec_name_meta|tojson }},
+  "description": {{ og_description|tojson }},
+  "url": {{ (site_url ~ '/s/' ~ consultant.public_slug ~ '/')|tojson }}{% if consultant.profile_photo %},
+  "image": {{ (site_url ~ (consultant.profile_photo|profile_photo_src))|tojson }}{% endif %}
+}
+</script>
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/booking.css?v=18">
+<link rel="stylesheet" href="/static/css/public-specialist.css?v=1">
 {% endblock %}
 
 {% block booking_content %}
-<div class="public-spec">
-    <div class="public-spec__hero">
+{% set spec_name = ((consultant.first_name or '') ~ ' ' ~ (consultant.last_name or '')).strip() %}
+{% set spec_category = (consultant.category.name_category if consultant.category else '') or 'Специалист' %}
+{% set has_social = consultant.social_telegram or consultant.social_vk or consultant.social_instagram or consultant.social_youtube or consultant.social_facebook or consultant.website %}
+{% set has_video = consultant.video_link and consultant.video_link.strip() %}
+
+<nav class="ps-crumbs" aria-label="Хлебные крошки">
+    <a href="/">Главная</a>
+    <span aria-hidden="true">/</span>
+    <span>{{ spec_name or 'Специалист' }}</span>
+</nav>
+
+<section class="ps-hero" id="psHero">
+    <div class="ps-hero__media">
         {% if consultant.profile_photo %}
-        <img class="public-spec__photo" src="{{ consultant.profile_photo|profile_photo_src }}" alt="">
+        <img class="ps-hero__photo" src="{{ consultant.profile_photo|profile_photo_src }}" alt="{{ spec_name }}" width="180" height="180" loading="eager">
         {% else %}
-        <div class="public-spec__photo public-spec__photo--empty">{{ (consultant.first_name or "?")[:1] }}</div>
+        <div class="ps-hero__photo ps-hero__photo--empty" aria-hidden="true">{{ (consultant.first_name or '?')[:1]|upper }}</div>
         {% endif %}
-        <div>
-            <p class="text-caption text-muted mb-sm">Специалист</p>
-            <h1 class="text-h1">{{ consultant.first_name }} {{ consultant.last_name }}</h1>
-            {% if consultant.profile_description %}
-            <p class="text-body text-muted mt-lg text-pre-wrap">{{ consultant.profile_description }}</p>
-            {% endif %}
-            <p class="text-body-sm text-muted mt-lg">Вы вошли как {{ client_name }}{% if client_email %} · {{ client_email }}{% endif %}{% if client_telegram %} · @{{ client_telegram }}{% endif %}
-                · <a class="link-accent" href="/s/{{ consultant.public_slug }}/logout-client/">Сменить данные</a>
-            </p>
+    </div>
+    <div class="ps-hero__body">
+        <div class="ps-hero__badges">
+            <span class="ps-badge">{{ spec_category }}</span>
+            <span class="ps-badge ps-badge--soft">Онлайн</span>
+            <span class="ps-badge ps-badge--ok">Принимает новых клиентов</span>
+        </div>
+        <h1 class="ps-hero__name">{{ spec_name or 'Специалист' }}</h1>
+        {% if consultant.profile_description %}
+        <p class="ps-hero__about">{{ consultant.profile_description }}</p>
+        {% endif %}
+        <div class="ps-hero__cta">
+            <a class="btn btn--primary ps-btn-book" href="#psCalendars">Записаться</a>
+            <div class="ps-trust-mini">
+                <span>Проверенный специалист</span>
+                <span>Онлайн запись</span>
+                <span>Конфиденциально</span>
+            </div>
         </div>
     </div>
+</section>
 
-    <section class="app-section mt-4xl">
-        <h2 class="app-section__title">Календари</h2>
-        <p class="text-body-sm text-muted mb-xl">Выберите календарь, затем услугу и время.</p>
-        {% if calendars_data %}
-        <div class="app-list-grid">
-            {% for item in calendars_data %}
-            {% set calendar = item.calendar %}
-            <a class="app-list-card app-list-card--link" style="--cal-color: {{ calendar.color }};" href="/s/{{ consultant.public_slug }}/c/{{ calendar.id }}/">
-                <div class="app-list-card__head">
-                    <h3 class="app-list-card__title">{{ calendar.name }}</h3>
-                    <span class="badge badge--secondary">{{ item.services_count }} услуг</span>
-                </div>
-                <p class="text-body-sm text-muted mb-0">Открыть услуги и запись →</p>
-            </a>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="booking-empty">У специалиста пока нет активных календарей.</div>
+{% if client_name %}
+<section class="ps-welcome" aria-label="Данные клиента">
+    <div class="ps-welcome__icon" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+    <div class="ps-welcome__text">
+        <p class="ps-welcome__eyebrow">Добро пожаловать</p>
+        <h2 class="ps-welcome__title">Вы записываетесь как</h2>
+        <p class="ps-welcome__name">{{ client_name }}</p>
+        <p class="ps-welcome__meta">
+            {% if client_email %}<span>{{ client_email }}</span>{% endif %}
+            {% if client_telegram %}<span>@{{ client_telegram }}</span>{% endif %}
+        </p>
+    </div>
+    <a class="btn btn--ghost btn--sm" href="/s/{{ consultant.public_slug }}/logout-client/">Изменить данные</a>
+</section>
+{% endif %}
+
+<ol class="ps-steps" aria-label="Этапы записи">
+    <li class="ps-steps__item is-active"><span>1</span> Календарь</li>
+    <li class="ps-steps__item"><span>2</span> Услуга</li>
+    <li class="ps-steps__item"><span>3</span> Время</li>
+    <li class="ps-steps__item"><span>4</span> Подтверждение</li>
+</ol>
+
+<section class="ps-why" aria-labelledby="psWhyTitle">
+    <h2 class="ps-section-title" id="psWhyTitle">Почему выбирают этого специалиста</h2>
+    <div class="ps-why__grid">
+        <article class="ps-why__card">
+            <div class="ps-why__icon" aria-hidden="true">🔒</div>
+            <h3>Конфиденциальность</h3>
+            <p>Данные защищены. Запись только для вас и специалиста.</p>
+        </article>
+        <article class="ps-why__card">
+            <div class="ps-why__icon" aria-hidden="true">⚡</div>
+            <h3>Быстрая запись</h3>
+            <p>Выберите календарь, услугу и свободное окно за минуту.</p>
+        </article>
+        <article class="ps-why__card">
+            <div class="ps-why__icon" aria-hidden="true">📅</div>
+            <h3>Онлайн календарь</h3>
+            <p>Актуальные окна приёма без переписок и ожидания ответа.</p>
+        </article>
+        <article class="ps-why__card">
+            <div class="ps-why__icon" aria-hidden="true">💬</div>
+            <h3>Поддержка Telegram</h3>
+            <p>Уведомления о записи и напоминания в удобном канале.</p>
+        </article>
+    </div>
+</section>
+
+{% if has_video %}
+<section class="ps-video" aria-labelledby="psVideoTitle">
+    <h2 class="ps-section-title" id="psVideoTitle">Видео-приветствие</h2>
+    <div class="ps-video__frame" data-video-url="{{ consultant.video_link }}">
+        <button type="button" class="ps-video__play" id="psVideoPlay" aria-label="Смотреть видео">
+            <span class="ps-video__play-icon" aria-hidden="true"></span>
+            <span>Смотреть</span>
+        </button>
+        <div class="ps-video__embed" id="psVideoEmbed" hidden></div>
+    </div>
+</section>
+{% endif %}
+
+{% if has_social %}
+<section class="ps-social" aria-labelledby="psSocialTitle">
+    <h2 class="ps-section-title" id="psSocialTitle">Социальные сети</h2>
+    <div class="ps-social__row">
+        {% if consultant.social_telegram %}
+        <a class="ps-social__btn ps-social__btn--telegram" href="{{ consultant.social_telegram }}" target="_blank" rel="noopener" title="Telegram" aria-label="Telegram">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        </a>
         {% endif %}
-    </section>
-</div>
+        {% if consultant.social_vk %}
+        <a class="ps-social__btn ps-social__btn--vk" href="{{ consultant.social_vk }}" target="_blank" rel="noopener" title="VK" aria-label="VK">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.391 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.862-.525-2.049-1.727-1.033-1-1.49-1.135-1.744-1.135-.356 0-.458.102-.458.593v1.575c0 .424-.135.678-1.253.678-1.846 0-3.896-1.118-5.335-3.202C4.624 10.857 4 8.657 4 8.096c0-.254.102-.491.593-.491h1.744c.44 0 .61.203.78.677.863 2.49 2.303 4.675 2.896 4.675.22 0 .322-.102.322-.66V9.721c-.068-1.186-.695-1.287-.695-1.71 0-.203.17-.407.44-.407h2.744c.373 0 .508.203.508.643v3.49c0 .372.17.508.271.508.22 0 .407-.136.813-.542 1.254-1.406 2.151-3.574 2.151-3.574.119-.254.322-.491.762-.491h1.744c.525 0 .644.27.525.643-.22 1.017-2.354 4.031-2.354 4.031-.186.305-.254.44 0 .78.186.254.796.779 1.203 1.253.745.847 1.32 1.558 1.473 2.049.17.474-.085.72-.576.72z"/></svg>
+        </a>
+        {% endif %}
+        {% if consultant.social_instagram %}
+        <a class="ps-social__btn ps-social__btn--instagram" href="{{ consultant.social_instagram }}" target="_blank" rel="noopener" title="Instagram" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+        </a>
+        {% endif %}
+        {% if consultant.social_youtube %}
+        <a class="ps-social__btn ps-social__btn--youtube" href="{{ consultant.social_youtube }}" target="_blank" rel="noopener" title="YouTube" aria-label="YouTube">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        </a>
+        {% endif %}
+        {% if consultant.website %}
+        <a class="ps-social__btn ps-social__btn--site" href="{{ consultant.website }}" target="_blank" rel="noopener" title="Сайт" aria-label="Сайт">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </a>
+        {% endif %}
+        {% if consultant.social_facebook %}
+        <a class="ps-social__btn ps-social__btn--facebook" href="{{ consultant.social_facebook }}" target="_blank" rel="noopener" title="Facebook" aria-label="Facebook">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.007 1.792-4.668 4.533-4.668 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.266h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+        </a>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+<section class="ps-calendars" id="psCalendars" aria-labelledby="psCalTitle">
+    <div class="ps-calendars__head">
+        <div>
+            <h2 class="ps-section-title" id="psCalTitle">Календари</h2>
+            <p class="ps-section-sub">Выберите календарь, затем услугу и время. Обычно есть свободные места на этой неделе.</p>
+        </div>
+        {% if calendars_data and calendars_data|length > 1 %}
+        <div class="ps-calendars__tools">
+            <label class="ps-search">
+                <span class="sr-only">Поиск календаря</span>
+                <input type="search" id="psCalSearch" class="input" placeholder="Поиск…" autocomplete="off">
+            </label>
+            <label class="ps-sort">
+                <span class="sr-only">Сортировка</span>
+                <select id="psCalSort" class="input">
+                    <option value="name">По названию</option>
+                    <option value="services">По числу услуг</option>
+                </select>
+            </label>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if calendars_data %}
+    <div class="ps-cal-grid" id="psCalGrid">
+        {% for item in calendars_data %}
+        {% set calendar = item.calendar %}
+        <article
+            class="ps-cal-card"
+            style="--cal-color: {{ calendar.color or '#7D5CFF' }};"
+            data-name="{{ calendar.name|lower }}"
+            data-services="{{ item.services_count }}"
+        >
+            <div class="ps-cal-card__stripe" aria-hidden="true"></div>
+            <div class="ps-cal-card__body">
+                <h3 class="ps-cal-card__title">{{ calendar.name }}</h3>
+                <p class="ps-cal-card__meta">{{ item.services_count }} {{ 'услуга' if item.services_count == 1 else ('услуги' if item.services_count in [2,3,4] else 'услуг') }}</p>
+                <p class="ps-cal-card__hint">Есть свободные окна для записи</p>
+                <a class="btn btn--secondary btn--sm ps-cal-card__btn" href="/s/{{ consultant.public_slug }}/c/{{ calendar.id }}/">Выбрать</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    <p class="ps-cal-empty" id="psCalEmpty" hidden>Ничего не найдено. Измените поиск.</p>
+    {% else %}
+    <div class="ps-empty" role="status">
+        <div class="ps-empty__art" aria-hidden="true"></div>
+        <h3>Пока нет доступных календарей</h3>
+        <p>Попробуйте позже или свяжитесь со специалистом.</p>
+    </div>
+    {% endif %}
+</section>
+
+<aside class="ps-sticky" id="psSticky" hidden>
+    <div class="ps-sticky__inner">
+        <div>
+            <p class="ps-sticky__label">Запись</p>
+            <p class="ps-sticky__name">{{ spec_name }}</p>
+        </div>
+        <a class="btn btn--primary btn--sm" href="#psCalendars">Выбрать календарь</a>
+    </div>
+</aside>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/public-specialist.js?v=1" defer></script>
 {% endblock %}

@@ -6,8 +6,8 @@
     {% include "components/meta.html" %}
     {% endblock %}
     {% block page_css %}
-    <link rel="stylesheet" href="/static/css/booking.css?v=17">
-    {% endblock %}
+    <link rel="stylesheet" href="/static/css/booking.css?v=18">
+{% endblock %}
 </head>
 <body class="booking-page">
     {% include "components/skip_link.html" %}
@@ -19,6 +19,16 @@
     </main>
     <footer class="app-footer-mini" role="contentinfo">
         <a href="/">На главную</a>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <a href="/privacy/">Конфиденциальность</a>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <a href="/terms/">Условия</a>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <a href="mailto:{{ support_email }}">Поддержка</a>
+        {% if telegram_bot_username %}
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <a href="https://t.me/{{ telegram_bot_username }}" target="_blank" rel="noopener">Telegram</a>
+        {% endif %}
         <span class="footer-sep" aria-hidden="true">·</span>
         <span class="footer-brand">{{ site_brand_name }}</span>
     </footer>
