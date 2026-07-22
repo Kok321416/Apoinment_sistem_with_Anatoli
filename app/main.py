@@ -16,13 +16,15 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Appointment System", docs_url="/api/docs" if settings.debug else None)
 
 _session_same_site = settings.session_same_site if settings.session_same_site in ("lax", "strict", "none") else "lax"
+# SameSite=None requires Secure; needed for Telegram Mini App WebView cookies.
+_https_only = settings.site_url.startswith("https://") or _session_same_site == "none"
 
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.secret_key,
     session_cookie=settings.session_cookie,
     max_age=settings.session_max_age,
-    https_only=settings.site_url.startswith("https://"),
+    https_only=_https_only,
     same_site=_session_same_site,
 )
 
@@ -123,6 +125,8 @@ async def password_required_middleware(request: Request, call_next):
         "/media/",
         "/api/",
         "/book/",
+        "/tg/",
+        "/my-bookings/",
         "/health",
     )
     path = request.url.path

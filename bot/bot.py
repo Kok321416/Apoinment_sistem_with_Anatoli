@@ -33,11 +33,15 @@ def get_site_url() -> str:
     return settings.site_url
 
 
-def _mini_app_url(path: str = "/tg/") -> str:
+def _mini_app_url(path: str = "/tg/", *, mode: str | None = None) -> str:
     base = get_site_url().rstrip("/")
     if not path.startswith("/"):
         path = "/" + path
-    return f"{base}{path}"
+    url = f"{base}{path}"
+    if mode in ("client", "specialist"):
+        sep = "&" if "?" in path else "?"
+        url = f"{url}{sep}mode={mode}"
+    return url
 
 
 def _fetch_site_api(path: str, json_data: dict) -> tuple[bool, dict | None]:
@@ -165,7 +169,7 @@ def _apply_mode_ui(chat_id, user_id, first_name, mode: str, *, dual: bool):
     if mode == "specialist":
         spec_keyboard = {
             "inline_keyboard": [
-                [_web_app_button("📊 Кабинет специалиста", _mini_app_url("/dashboard/"))],
+                [_web_app_button("📊 Кабинет специалиста", _mini_app_url("/tg/", mode="specialist"))],
                 [{"text": "📅 Показать 5 ближайших (в чат)", "callback_data": "spec_next"}],
             ]
         }
@@ -178,7 +182,7 @@ def _apply_mode_ui(chat_id, user_id, first_name, mode: str, *, dual: bool):
     else:
         keyboard = {
             "inline_keyboard": [
-                [_web_app_button("📱 Открыть сервис в Telegram", _mini_app_url("/tg/"))],
+                [_web_app_button("📱 Открыть сервис в Telegram", _mini_app_url("/tg/", mode="client"))],
                 [_web_app_button("📅 Записаться", _mini_app_url("/book/"))],
                 [
                     {"text": "📋 Мои записи", "callback_data": "my_appointments"},

@@ -11,6 +11,24 @@
 3. Есть точка входа: `https://allyourclients.ru/tg/`
 4. Сайт разрешает встраивание в Telegram (CSP `frame-ancestors` для `web.telegram.org` / `telegram.org`).
 5. На страницах подключён `telegram-web-app.js` + bootstrap `telegram-webapp.js`.
+6. Hub `/tg/` показывает режим клиент/специалист, кнопки «Записаться» / «Мои записи» / «Кабинет».
+7. URL с режимом: `/tg/?mode=client` или `/tg/?mode=specialist`.
+8. В WebView выполняется тихий вход по `Telegram.WebApp.initData` → `/api/telegram/webapp-auth`.
+9. Cookie сессии: на HTTPS по умолчанию `SameSite=None` + Secure (нужно для iframe Telegram).
+
+## Cookie / сессия в Mini App
+
+В `.env` на проде:
+
+```bash
+SESSION_SAME_SITE=none
+SITE_URL=https://allyourclients.ru
+```
+
+- `none` + HTTPS: cookie уходит в Telegram WebView.
+- Для локального `http://` оставьте `SESSION_SAME_SITE=lax` (иначе браузер отбросит Secure cookie).
+
+Password middleware не редиректит `/tg/` и `/my-bookings/` на «задать пароль», чтобы клиентский поток в WebApp не ломался.
 
 ## Как это выглядит у пользователя
 
@@ -61,13 +79,14 @@ Mini App работает **только по HTTPS** на публичном д
 
 Работает сейчас:
 - Открытие сайта в Telegram WebView
-- Запись клиента, навигация по публичным страницам
-- Кабинет специалиста (если пользователь уже авторизован cookie-сессией)
+- Hub `/tg/` с переключателем режима (если есть кабинет специалиста)
+- Тихий вход по `initData` (создание client User при первом заходе)
+- Запись клиента, «Мои записи»
+- Кабинет специалиста при `?mode=specialist` и сессии
 
-Следующий уровень (Phase 2+):
-- Авторизация через `initData` Telegram (без отдельного логина в WebView)
-- Единый notification outbox
-- Mobile app на том же API
+Дальше (Phase 9+):
+- Self-booking policy, ClientCard merge, reschedule notify
+- Broadcast / platform admin
 
 ## Deploy notes
 

@@ -169,10 +169,34 @@ async def landing_page(request: Request, db: Session = Depends(get_db)):
 @router.get("/tg/")
 async def telegram_mini_app_entry(request: Request, db: Session = Depends(get_db)):
     """Landing for Telegram Mini App (Menu Button / web_app buttons)."""
+    from app.services.active_mode import (
+        MODE_CLIENT,
+        MODE_SPECIALIST,
+        VALID_MODES,
+        get_active_mode,
+        set_active_mode,
+        user_has_consultant,
+    )
+
     user = _optional_user(request, db)
+    mode_q = (request.query_params.get("mode") or "").strip().lower()
+    has_c = bool(user and user_has_consultant(db, user.id))
+    if user and mode_q in VALID_MODES:
+        set_active_mode(request, mode_q, has_consultant=has_c)
+    active = get_active_mode(request, db, user.id) if user else MODE_CLIENT
     return templates.TemplateResponse(
         "public/tg_mini_app.html",
-        page_context(request, db, user),
+        page_context(
+            request,
+            db,
+            user,
+            tg_hub=True,
+            tg_mode=active,
+            tg_has_consultant=has_c,
+            tg_show_mode_switcher=has_c,
+            tg_mode_client=MODE_CLIENT,
+            tg_mode_specialist=MODE_SPECIALIST,
+        ),
     )
 
 

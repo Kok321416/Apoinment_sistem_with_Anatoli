@@ -80,7 +80,12 @@ class Settings:
 
     session_cookie: str = "session"
     session_max_age: int = 60 * 60 * 24 * 14
-    session_same_site: str = (os.getenv("SESSION_SAME_SITE", "lax") or "lax").strip().lower()
+    # none = Telegram Mini App WebView can keep session (requires HTTPS / Secure cookie).
+    # Override with SESSION_SAME_SITE=lax for local http:// testing.
+    session_same_site: str = (
+        os.getenv("SESSION_SAME_SITE")
+        or ("none" if (os.getenv("SITE_URL") or "").strip().lower().startswith("https://") else "lax")
+    ).strip().lower()
 
     @property
     def database_url(self) -> str:

@@ -14,24 +14,83 @@
     margin: 2rem auto;
     padding: 1.5rem;
 }
-.tg-launch__title { margin: 0 0 0.75rem; font-size: 1.5rem; }
-.tg-launch__text { color: var(--text-secondary, #9ca3af); margin: 0 0 1.5rem; }
+.tg-launch__title { margin: 0 0 0.5rem; font-size: 1.5rem; }
+.tg-launch__mode {
+    display: inline-block;
+    margin: 0 0 1rem;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    background: rgba(125, 92, 255, 0.15);
+    color: var(--text-secondary, #9ca3af);
+}
+.tg-launch__text { color: var(--text-secondary, #9ca3af); margin: 0 0 1.25rem; }
 .tg-launch__actions { display: flex; flex-direction: column; gap: 0.75rem; }
 .tg-launch__actions .btn { width: 100%; text-align: center; }
+.tg-launch__switch {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0 0 1.25rem;
+}
+.tg-launch__switch a {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    border: 1px solid rgba(156, 163, 175, 0.35);
+    color: var(--text-secondary, #9ca3af);
+}
+.tg-launch__switch a.is-active {
+    border-color: var(--tg-button, #7d5cff);
+    color: var(--text-primary, #fff);
+    background: rgba(125, 92, 255, 0.2);
+}
+.tg-launch__hint { margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary, #9ca3af); }
 </style>
 {% endblock %}
 
 {% block body %}
-<div class="tg-launch card card--static">
+<div class="tg-launch card card--static" data-tg-hub="1" data-tg-authed="{{ '1' if user and user.is_authenticated else '0' }}">
     <h1 class="tg-launch__title">Все клиенты здесь</h1>
+    {% if user and user.is_authenticated %}
+    <span class="tg-launch__mode">
+        {% if tg_mode == tg_mode_specialist %}Режим: специалист{% else %}Режим: клиент{% endif %}
+    </span>
+    {% if tg_show_mode_switcher %}
+    <div class="tg-launch__switch" role="group" aria-label="Режим">
+        <a href="/tg/?mode=client" class="{% if tg_mode == tg_mode_client %}is-active{% endif %}">Клиент</a>
+        <a href="/tg/?mode=specialist" class="{% if tg_mode == tg_mode_specialist %}is-active{% endif %}">Специалист</a>
+    </div>
+    {% endif %}
+    <p class="tg-launch__text">Выберите действие:</p>
+    <div class="tg-launch__actions">
+        {% if tg_mode == tg_mode_specialist and tg_has_consultant %}
+        <a class="btn btn--primary" href="/dashboard/">Кабинет специалиста</a>
+        <a class="btn btn--secondary" href="/calendars/">Календари</a>
+        <a class="btn btn--ghost" href="/my-bookings/">Мои записи (как клиент)</a>
+        {% else %}
+        <a class="btn btn--primary" href="/book/">Записаться</a>
+        <a class="btn btn--secondary" href="/my-bookings/">Мои записи</a>
+        {% if tg_has_consultant %}
+        <a class="btn btn--ghost" href="/tg/?mode=specialist">Кабинет специалиста</a>
+        {% else %}
+        <a class="btn btn--ghost" href="/become-specialist/">Стать специалистом</a>
+        {% endif %}
+        {% endif %}
+    </div>
+    {% else %}
     <p class="tg-launch__text">
-        Вы открыли сервис внутри Telegram. Выберите действие:
+        Вы открыли сервис внутри Telegram. Запись доступна сразу; для «Моих записей» и кабинета войдите через Телеграм.
     </p>
     <div class="tg-launch__actions">
         <a class="btn btn--primary" href="/book/">Записаться</a>
-        <a class="btn btn--secondary" href="/login/">Войти в кабинет</a>
+        <a class="btn btn--secondary" href="/login/?next=/tg/">Войти</a>
         <a class="btn btn--ghost" href="/">На главную</a>
     </div>
+    <p class="tg-launch__hint" id="tg-auth-hint" hidden>Входим через Telegram…</p>
+    {% endif %}
 </div>
 {% endblock %}
 

@@ -304,6 +304,38 @@ async def api_telegram_ui_mode(request: Request, db: Session = Depends(get_db)):
     return {"success": True, "mode": stored}
 
 
+@router.post("/telegram/webapp-auth")
+async def api_telegram_webapp_auth(request: Request, db: Session = Depends(get_db)):
+    """Login (or create client user) from Telegram Mini App initData."""
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"success": False, "error": "Invalid JSON"}, status_code=400)
+    init_data = (data.get("init_data") or data.get("initData") or "").strip()
+    mode = (data.get("mode") or "").strip().lower()
+    from app.services.active_mode import VALID_MODES, set_active_mode, user_has_consultant
+    from app.services.telegram_webapp_auth import find_or_create_user_from_webapp, validate_webapp_init_data
+
+    parsed = validate_webapp_init_data(init_data)
+    if not parsed:
+        return JSONResponse({"success": False, "error": "Invalid initData"}, status_code=401)
+    tg_user = parsed.get("user") or {}
+    user = find_or_create_user_from_webapp(db, tg_user)
+    if not user:
+        return JSONResponse({"success": False, "error": "User not found"}, status_code=400)
+    login_user(request, user)
+    has_c = user_has_consultant(db, user.id)
+    if mode in VALID_MODES:
+        set_active_mode(request, mode, has_consultant=has_c)
+    return {
+        "success": True,
+        "user_id": user.id,
+        "has_consultant": has_c,
+        "created": False,
+    }
+
+
+
 def _verify_telegram_widget_hash(payload: dict, received_hash: str) -> bool:
     bot_token = settings.telegram_bot_token
     if not bot_token or not received_hash:
