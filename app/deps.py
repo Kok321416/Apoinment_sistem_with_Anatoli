@@ -40,6 +40,21 @@ def require_specialist_mode(request: Request, db: Session, user: AuthUser) -> Co
     return consultant
 
 
+def require_platform_admin(request: Request, db: Session) -> AuthUser:
+    """Admin A0 gate: feature flag + is_staff/is_superuser."""
+    from app.config import get_settings
+
+    settings = get_settings()
+    if not settings.platform_admin_enabled:
+        raise HTTPException(status_code=404, detail="Not found")
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=302, headers={"Location": "/login/?next=/platform-admin/"})
+    if not user.is_platform_admin:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return user
+
+
 def find_consultant(db: Session, user: AuthUser | None) -> Consultant | None:
     if not user:
         return None

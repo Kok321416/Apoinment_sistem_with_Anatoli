@@ -16,6 +16,8 @@ class AuthUser:
     last_name: str
     is_active: bool
     password_hash: str
+    is_staff: bool = False
+    is_superuser: bool = False
 
     @property
     def is_authenticated(self) -> bool:
@@ -24,6 +26,10 @@ class AuthUser:
     @property
     def has_usable_password(self) -> bool:
         return has_usable_password(self.password_hash)
+
+    @property
+    def is_platform_admin(self) -> bool:
+        return bool(self.is_staff or self.is_superuser)
 
     def get_full_name(self) -> str:
         return f"{self.first_name} {self.last_name}".strip()
@@ -40,6 +46,8 @@ def user_from_model(user: User | None) -> AuthUser | None:
         last_name=user.last_name or "",
         is_active=user.is_active,
         password_hash=user.password or "",
+        is_staff=bool(getattr(user, "is_staff", False)),
+        is_superuser=bool(getattr(user, "is_superuser", False)),
     )
 
 

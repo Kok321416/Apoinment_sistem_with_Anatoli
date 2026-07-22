@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Admin{% endblock %} — {{ site_brand_name }}</title>
+    <link rel="stylesheet" href="/static/css/tokens.css?v=1">
+    <link rel="stylesheet" href="/static/css/admin-platform.css?v=1">
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="pa-body">
+<header class="pa-header">
+    <div class="pa-header__brand">
+        <a href="/platform-admin/">{{ site_brand_name }}</a>
+        <span class="pa-badge">Admin</span>
+    </div>
+    <nav class="pa-nav">
+        <a href="/platform-admin/" class="{% if nav == 'dashboard' %}is-active{% endif %}">Dashboard</a>
+        <a href="/platform-admin/telegram/" class="{% if nav == 'telegram' %}is-active{% endif %}">Telegram</a>
+        <a href="/dashboard/">Кабинет</a>
+        <a href="/">Сайт</a>
+    </nav>
+</header>
+<main class="pa-main">
+    {% if success %}<div class="pa-alert pa-alert--ok">{{ success }}</div>{% endif %}
+    {% if error %}<div class="pa-alert pa-alert--err">{{ error }}</div>{% endif %}
+    {% block content %}{% endblock %}
+</main>
+</body>
+</html>

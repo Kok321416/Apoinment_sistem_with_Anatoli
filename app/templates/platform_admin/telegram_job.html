@@ -1,0 +1,21 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Job #{{ job.id }}{% endblock %}
+{% block content %}
+<p><a href="/platform-admin/telegram/">&larr; Telegram</a></p>
+<h1 class="pa-title">Broadcast #{{ job.id }}</h1>
+<p class="pa-muted">{{ job.audience }} · {{ job.status }} · sent {{ job.recipients_sent }} / fail {{ job.recipients_failed }} / total {{ job.recipients_total }}</p>
+<pre class="pa-pre">{{ job.text }}</pre>
+<table class="pa-table">
+    <thead><tr><th>chat_id</th><th>user</th><th>status</th><th>error</th></tr></thead>
+    <tbody>
+    {% for r in recipients %}
+    <tr>
+        <td>{{ r.chat_id }}</td>
+        <td>{{ r.user_id or '-' }}</td>
+        <td>{{ r.status }}</td>
+        <td>{{ r.error or '' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

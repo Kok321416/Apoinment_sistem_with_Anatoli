@@ -12,6 +12,7 @@ from app.models.core import (
     Service,
     TimeSlot,
 )
+from app.models.platform import AdminAuditLog, TelegramBroadcastJob, TelegramBroadcastRecipient
 
 __all__ = [
     "User",
@@ -31,4 +32,7 @@ __all__ = [
     "IntegrationTelegramAudit",
     "AppCounter",
     "Client",
+    "AdminAuditLog",
+    "TelegramBroadcastJob",
+    "TelegramBroadcastRecipient",
 ]

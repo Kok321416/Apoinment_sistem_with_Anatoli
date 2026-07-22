@@ -1,0 +1,20 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1 class="pa-title">Dashboard</h1>
+<p class="pa-muted">Платформенная админка (A0). Полный KPI - в следующих фазах.</p>
+<div class="pa-cards">
+    <a class="pa-card" href="/platform-admin/telegram/">
+        <h2>Telegram</h2>
+        <p>Статистика подключений и рассылки (Broadcast).</p>
+    </a>
+    <div class="pa-card pa-card--muted">
+        <h2>Пользователи</h2>
+        <p>Скоро (A2)</p>
+    </div>
+    <div class="pa-card pa-card--muted">
+        <h2>Логи / ошибки</h2>
+        <p>Скоро (A2)</p>
+    </div>
+</div>
+{% endblock %}

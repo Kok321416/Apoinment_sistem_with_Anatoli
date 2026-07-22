@@ -1,0 +1,89 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Telegram{% endblock %}
+{% block content %}
+<h1 class="pa-title">Telegram Center</h1>
+<p class="pa-muted">
+    Рассылки с дедупом chat_id. Клиенты получают только при <code>notify_broadcast=true</code>.
+    Специалисты - через подключённый Integration.
+</p>
+
+<div class="pa-stats">
+    <div class="pa-stat"><span>{{ stats.integrations_connected }}</span> Integration TG</div>
+    <div class="pa-stat"><span>{{ stats.bookings_with_telegram }}</span> записей с TG</div>
+    <div class="pa-stat"><span>{{ stats.users_broadcast_opt_in }}</span> opt-in</div>
+    <div class="pa-stat"><span>{{ stats.broadcast_jobs_total }}</span> jobs</div>
+</div>
+
+{% if not my_opt_in %}
+<form method="post" class="pa-inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="enable_my_broadcast">
+    <button type="submit" class="pa-btn pa-btn--ghost">Включить рассылки для моего аккаунта</button>
+</form>
+{% else %}
+<p class="pa-ok-line">Ваш аккаунт: opt-in включён.</p>
+{% endif %}
+
+<section class="pa-panel">
+    <h2>Новая рассылка</h2>
+    <form method="post" class="pa-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="pa-label">Аудитория
+            <select name="audience" class="pa-input">
+                {% for key, label in audience_labels.items() %}
+                <option value="{{ key }}" {% if selected_audience == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="pa-label">Текст (HTML как в Telegram)
+            <textarea name="text" class="pa-input pa-textarea" rows="8" maxlength="4000" required>{{ preview_text }}</textarea>
+        </label>
+        <div class="pa-preview">
+            <div class="pa-preview__title">Превью</div>
+            <div class="pa-preview__bubble" id="pa-preview-bubble">{{ preview_text or 'Текст появится здесь…' }}</div>
+        </div>
+        <div class="pa-actions">
+            <button type="submit" name="action" value="dry_run" class="pa-btn pa-btn--secondary">Dry-run</button>
+            <button type="submit" name="action" value="enqueue" class="pa-btn pa-btn--primary"
+                    onclick="return confirm('Поставить рассылку в очередь?');">Отправить / в очередь</button>
+        </div>
+    </form>
+</section>
+
+<section class="pa-panel">
+    <h2>Последние jobs</h2>
+    {% if jobs %}
+    <table class="pa-table">
+        <thead>
+        <tr><th>ID</th><th>Аудитория</th><th>Статус</th><th>Sent/Fail/Total</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for j in jobs %}
+        <tr>
+            <td>#{{ j.id }}</td>
+            <td>{{ j.audience }}</td>
+            <td>{{ j.status }}</td>
+            <td>{{ j.recipients_sent }}/{{ j.recipients_failed }}/{{ j.recipients_total }}</td>
+            <td><a href="/platform-admin/telegram/jobs/{{ j.id }}/">лог</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="pa-muted">Пока нет jobs.</p>
+    {% endif %}
+    <p class="pa-hint">Worker: <code>python -m app.commands.process_broadcasts</code></p>
+</section>
+
+<script>
+(function () {
+    var ta = document.querySelector('textarea[name="text"]');
+    var bubble = document.getElementById('pa-preview-bubble');
+    if (!ta || !bubble) return;
+    function sync() {
+        bubble.textContent = ta.value || 'Текст появится здесь…';
+    }
+    ta.addEventListener('input', sync);
+})();
+</script>
+{% endblock %}

@@ -7,7 +7,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
 from app.database import engine
-from app.routers import api, calendar_schedule, oauth, pages, profile_api, public_specialist, services_api
+from app.routers import api, calendar_schedule, oauth, pages, platform_admin, profile_api, public_specialist, services_api
 
 settings = get_settings()
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
@@ -39,6 +39,7 @@ app.include_router(profile_api.router)
 app.include_router(public_specialist.router)
 app.include_router(api.router)
 app.include_router(oauth.router)
+app.include_router(platform_admin.router)
 
 
 @app.get("/health")
@@ -127,6 +128,7 @@ async def password_required_middleware(request: Request, call_next):
         "/book/",
         "/tg/",
         "/my-bookings/",
+        "/platform-admin/",
         "/health",
     )
     path = request.url.path

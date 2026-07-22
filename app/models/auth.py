@@ -20,6 +20,8 @@ class User(Base):
     is_staff: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     date_joined: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Phase 10: opt-in for platform Telegram broadcasts (default off)
+    notify_broadcast: Mapped[bool] = mapped_column(Boolean, default=False)
 
     consultant = relationship("Consultant", back_populates="user", uselist=False)
     social_accounts = relationship("SocialAccount", back_populates="user")

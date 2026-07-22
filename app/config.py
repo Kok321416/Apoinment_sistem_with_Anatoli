@@ -59,6 +59,12 @@ class Settings:
         "true",
         "yes",
     )
+    # Admin A0: platform admin UI under /platform-admin/
+    platform_admin_enabled: bool = (os.getenv("PLATFORM_ADMIN_ENABLED", "") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
     # SMTP для писем подтверждения email
     smtp_host: str = os.getenv("SMTP_HOST", "")

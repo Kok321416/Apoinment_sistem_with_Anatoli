@@ -209,6 +209,26 @@ def _apply_app_schema_patches() -> None:
     except Exception:
         logger.exception("consultant_client_cards.client_user_id patch failed")
 
+    # Admin A0 / Phase 10
+    try:
+        _add_column("auth_user", "notify_broadcast", "BOOLEAN NOT NULL DEFAULT 0")
+    except Exception:
+        logger.exception("auth_user.notify_broadcast patch failed")
+
+    try:
+        from app.models import platform as platform_models
+
+        Base.metadata.create_all(
+            bind=engine,
+            tables=[
+                platform_models.AdminAuditLog.__table__,
+                platform_models.TelegramBroadcastJob.__table__,
+                platform_models.TelegramBroadcastRecipient.__table__,
+            ],
+        )
+    except Exception:
+        logger.exception("platform admin tables create_all failed")
+
     _refresh_schema_health()
 
 
