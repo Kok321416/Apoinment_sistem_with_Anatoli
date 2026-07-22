@@ -10,7 +10,8 @@
 {% block booking_content %}
 <div class="auth-card card card--static" style="max-width: 480px; margin: 0 auto;">
     <h1 class="text-h1 auth-card__title">Код из письма</h1>
-    <p class="text-body mb-2xl">Вам на почту отправлено письмо. Введите 6-значный код, чтобы получать уведомления о записях.</p>
+    <p class="text-body mb-lg">Вам на почту отправлено письмо. Введите 6-значный код, чтобы получать уведомления о записях.</p>
+    <p class="text-body-sm text-muted mb-2xl">Если письма нет во «Входящих», проверьте папку «Спам» или «Нежелательная почта». Иногда письмо с кодом попадает туда.</p>
 
     {% if error %}<div class="alert alert--error mb-lg" role="alert">{{ error }}</div>{% endif %}
     {% if success %}<div class="alert alert--success mb-lg" role="status">{{ success }}</div>{% endif %}
