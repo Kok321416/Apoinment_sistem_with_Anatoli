@@ -162,11 +162,16 @@ async def password_required_middleware(request: Request, call_next):
         return await call_next(request)
     if not get_session_user_id(request):
         return await call_next(request)
+    # Fast path: most users already have a password (flag set at login).
+    if request.session.get("has_usable_password"):
+        return await call_next(request)
     db = None
     try:
         db = SessionLocal()
         user = get_current_user(request, db)
-        if user and not user.has_usable_password and not path.startswith("/accounts/"):
+        if user and user.has_usable_password:
+            request.session["has_usable_password"] = True
+        elif user and not user.has_usable_password and not path.startswith("/accounts/"):
             next_url = path
             if request.url.query:
                 next_url += f"?{request.url.query}"

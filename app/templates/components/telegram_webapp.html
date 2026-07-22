@@ -1,2 +1,19 @@
-<script src="https://telegram.org/js/telegram-web-app.js" defer></script>
-<script src="/static/js/telegram-webapp.js?v=2" defer></script>
+<script>
+(function () {
+    var need =
+        !!window.TelegramWebviewProxy ||
+        /Telegram/i.test(navigator.userAgent || "") ||
+        !!document.querySelector("[data-tg-hub]");
+    if (!need) return;
+    var s1 = document.createElement("script");
+    s1.src = "https://telegram.org/js/telegram-web-app.js";
+    s1.async = true;
+    s1.onload = function () {
+        var s2 = document.createElement("script");
+        s2.src = "/static/js/telegram-webapp.js?v=3";
+        s2.async = true;
+        document.body.appendChild(s2);
+    };
+    document.body.appendChild(s1);
+})();
+</script>

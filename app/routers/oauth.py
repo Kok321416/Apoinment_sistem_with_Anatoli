@@ -278,6 +278,11 @@ async def set_password_page(request: Request, db: Session = Depends(get_db)):
             db_user = db.get(User, user.id)
             db_user.password = hash_password(p1)
             db.commit()
+            if "session" in request.scope:
+                request.session["has_usable_password"] = True
+            from app.auth.session import clear_request_user_cache
+
+            clear_request_user_cache(request)
             next_url = safe_next_url(request.query_params.get("next"))
             return RedirectResponse(next_url, status_code=302)
     return templates.TemplateResponse("password_set.html", page_context(request, db, user, error=error))

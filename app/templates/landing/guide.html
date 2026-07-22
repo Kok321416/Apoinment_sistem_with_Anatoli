@@ -13,13 +13,13 @@
 
 <main id="main" class="section" tabindex="-1">
     <div class="container container--narrow stack-lg">
-        <div class="stack animate-fade-in-up">
+        <div class="stack">
             <p class="text-caption"><a href="/" class="link-accent">← На главную</a></p>
             <h1 class="text-display">{{ guide.title }}</h1>
             <p class="text-body-lg text-muted">{{ guide.intro }}</p>
         </div>
 
-        <div class="guide-steps reveal-stagger">
+        <div class="guide-steps">
             {% for step in guide.steps %}
             <article class="guide-step card card--static">
                 <div class="guide-step__num">{{ loop.index }}</div>
@@ -32,7 +32,7 @@
             {% endfor %}
         </div>
 
-        <div class="cta-panel card card--static reveal">
+        <div class="cta-panel card card--static">
             <h2 class="text-h2">{{ guide.footer_cta.title }}</h2>
             <div class="cluster cluster--center mt-2xl">
                 <a href="{{ guide.footer_cta.login_href }}" class="btn btn--primary focus-ring">{{ guide.footer_cta.login_label }}</a>
@@ -43,8 +43,4 @@
 </main>
 
 {% include "components/landing_footer.html" %}
-{% endblock %}
-
-{% block scripts %}
-<script src="/static/js/motion-reveal.js?v=1" defer></script>
 {% endblock %}

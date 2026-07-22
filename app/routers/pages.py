@@ -149,6 +149,17 @@ def _optional_user(request: Request, db: Session):
     return get_current_user(request, db)
 
 
+def _session_db_if_logged_in(request: Request):
+    """Open DB only when cookie session has user_id (public pages fast path)."""
+    from app.auth.session import get_session_user_id
+    from app.database import SessionLocal
+
+    if "session" not in request.scope or not get_session_user_id(request):
+        return None, None
+    db = SessionLocal()
+    return db, get_current_user(request, db)
+
+
 def _require_user(request: Request, db: Session):
     user = get_current_user(request, db)
     if not user:
@@ -163,15 +174,8 @@ def _login_redirect(request: Request) -> RedirectResponse:
 @router.get("/")
 async def landing_page(request: Request):
     """Public landing: skip MySQL when guest (no session user) for faster TTFB."""
-    from app.auth.session import get_session_user_id
-    from app.database import SessionLocal
-
-    user = None
-    db = None
+    db, user = _session_db_if_logged_in(request)
     try:
-        if "session" in request.scope and get_session_user_id(request):
-            db = SessionLocal()
-            user = get_current_user(request, db)
         return templates.TemplateResponse(
             "landing/index.html",
             landing_context(request, db, user),
@@ -258,9 +262,13 @@ async def sitemap_xml():
 
 
 @router.get("/guide/")
-async def guide_page(request: Request, db: Session = Depends(get_db)):
-    user = _optional_user(request, db)
-    return templates.TemplateResponse("landing/guide.html", guide_context(request, db, user))
+async def guide_page(request: Request):
+    db, user = _session_db_if_logged_in(request)
+    try:
+        return templates.TemplateResponse("landing/guide.html", guide_context(request, db, user))
+    finally:
+        if db is not None:
+            db.close()
 
 
 @router.get("/dashboard/")
@@ -334,7 +342,7 @@ async def legacy_home_redirect():
 
 @router.get("/privacy/")
 @router.get("/terms/")
-async def legal_pages(request: Request, db: Session = Depends(get_db)):
+async def legal_pages(request: Request):
     from app.content.legal_copy import (
         PRIVACY_INTRO,
         PRIVACY_SECTIONS,
@@ -343,31 +351,35 @@ async def legal_pages(request: Request, db: Session = Depends(get_db)):
         format_legal_sections,
     )
 
-    user = _optional_user(request, db)
-    template = "privacy.html" if request.url.path.startswith("/privacy") else "terms.html"
-    brand = settings.site_brand_name
-    site = settings.site_url.rstrip("/")
-    support = settings.support_email
-    telegram = (settings.admin_telegram_username or "").lstrip("@")
-    ctx = {
-        "brand": brand,
-        "site_url": site,
-        "support_email": support,
-        "telegram": telegram,
-    }
-    return templates.TemplateResponse(
-        template,
-        landing_context(
-            request,
-            db,
-            user,
-            legal_updated="20.07.2026",
-            privacy_intro=PRIVACY_INTRO.format(**ctx),
-            privacy_sections=format_legal_sections(PRIVACY_SECTIONS, **ctx),
-            terms_intro=TERMS_INTRO.format(**ctx),
-            terms_sections=format_legal_sections(TERMS_SECTIONS, **ctx),
-        ),
-    )
+    db, user = _session_db_if_logged_in(request)
+    try:
+        template = "privacy.html" if request.url.path.startswith("/privacy") else "terms.html"
+        brand = settings.site_brand_name
+        site = settings.site_url.rstrip("/")
+        support = settings.support_email
+        telegram = (settings.admin_telegram_username or "").lstrip("@")
+        ctx = {
+            "brand": brand,
+            "site_url": site,
+            "support_email": support,
+            "telegram": telegram,
+        }
+        return templates.TemplateResponse(
+            template,
+            landing_context(
+                request,
+                db,
+                user,
+                legal_updated="20.07.2026",
+                privacy_intro=PRIVACY_INTRO.format(**ctx),
+                privacy_sections=format_legal_sections(PRIVACY_SECTIONS, **ctx),
+                terms_intro=TERMS_INTRO.format(**ctx),
+                terms_sections=format_legal_sections(TERMS_SECTIONS, **ctx),
+            ),
+        )
+    finally:
+        if db is not None:
+            db.close()
 
 
 @router.get("/register/")
@@ -527,95 +539,106 @@ async def become_specialist_page(request: Request, db: Session = Depends(get_db)
 
 @router.get("/login/")
 @router.post("/login/")
-async def login_page(request: Request, db: Session = Depends(get_db)):
-    user = _optional_user(request, db)
-    next_url = safe_next_url(request.query_params.get("next"))
-    if user:
-        return RedirectResponse(next_url, status_code=302)
-    error = success = None
-    if request.query_params.get("verified") == "1":
-        success = "Почта подтверждена. Теперь можно войти."
-    if request.query_params.get("success") == "password_reset":
-        success = "Пароль обновлён. Войдите с новым паролем."
-    if request.query_params.get("error") == "telegram_expired":
-        error = "Ссылка входа через Телеграм истекла. Попробуйте снова."
-    yandex_errors = {
-        "yandex_denied": "Вход через Яндекс отменён.",
-        "yandex_config": "Вход через Яндекс не настроен на сервере.",
-        "yandex_state": "Ошибка безопасности при входе через Яндекс. Попробуйте снова.",
-        "yandex_token": "Не удалось получить токен Яндекса. Попробуйте снова.",
-        "yandex_profile": "Не удалось получить профиль Яндекса.",
-        "yandex_failed": "Не удалось войти через Яндекс. Зарегистрируйтесь или используйте другой способ входа.",
-    }
-    if request.query_params.get("error") in yandex_errors:
-        error = yandex_errors[request.query_params.get("error")]
-    if request.method == "POST":
-        form = await request.form()
-        if not _form_csrf_ok(request, form):
-            error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
-        elif form.get("action") == "resend_verification":
-            email_resend = form.get("email", "")
-            ok, msg = resend_verification_email(db, email_resend)
-            if ok:
-                success = msg
-            else:
-                error = msg
-        else:
-            email = form.get("email")
-            password = form.get("password")
-            if not email or not password:
-                error = "Заполните все поля"
-            else:
-                from app.services.rate_limit import check_rate_limit
+async def login_page(request: Request):
+    from app.database import SessionLocal
 
-                ip = request.client.host if request.client else "0.0.0.0"
-                fwd = request.headers.get("x-forwarded-for")
-                if fwd:
-                    ip = fwd.split(",")[0].strip()
-                if not check_rate_limit(f"login:{ip}", max_calls=15, window_sec=300):
-                    error = "Слишком много попыток входа. Подождите несколько минут."
+    needs_db = request.method == "POST" or (
+        "session" in request.scope and request.session.get("user_id")
+    )
+    db = SessionLocal() if needs_db else None
+    try:
+        user = get_current_user(request, db) if db is not None else None
+        next_url = safe_next_url(request.query_params.get("next"))
+        if user:
+            return RedirectResponse(next_url, status_code=302)
+        error = success = None
+        if request.query_params.get("verified") == "1":
+            success = "Почта подтверждена. Теперь можно войти."
+        if request.query_params.get("success") == "password_reset":
+            success = "Пароль обновлён. Войдите с новым паролем."
+        if request.query_params.get("error") == "telegram_expired":
+            error = "Ссылка входа через Телеграм истекла. Попробуйте снова."
+        yandex_errors = {
+            "yandex_denied": "Вход через Яндекс отменён.",
+            "yandex_config": "Вход через Яндекс не настроен на сервере.",
+            "yandex_state": "Ошибка безопасности при входе через Яндекс. Попробуйте снова.",
+            "yandex_token": "Не удалось получить токен Яндекса. Попробуйте снова.",
+            "yandex_profile": "Не удалось получить профиль Яндекса.",
+            "yandex_failed": "Не удалось войти через Яндекс. Зарегистрируйтесь или используйте другой способ входа.",
+        }
+        if request.query_params.get("error") in yandex_errors:
+            error = yandex_errors[request.query_params.get("error")]
+        if request.method == "POST":
+            assert db is not None
+            form = await request.form()
+            if not _form_csrf_ok(request, form):
+                error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
+            elif form.get("action") == "resend_verification":
+                email_resend = form.get("email", "")
+                ok, msg = resend_verification_email(db, email_resend)
+                if ok:
+                    success = msg
                 else:
-                    db_user = db.query(User).filter(User.username == email).first()
-                    if not db_user or not verify_password(password, db_user.password):
-                        error = "Неверная почта или пароль"
-                        try:
-                            from app.services.admin_audit import write_admin_audit
+                    error = msg
+            else:
+                email = form.get("email")
+                password = form.get("password")
+                if not email or not password:
+                    error = "Заполните все поля"
+                else:
+                    from app.services.rate_limit import check_rate_limit
 
-                            write_admin_audit(
-                                db,
-                                actor_user_id=None,
-                                action="login_failed",
-                                entity="user",
-                                entity_id=str(db_user.id) if db_user else None,
-                                payload={"email": (email or "")[:120]},
-                                request=request,
-                            )
-                            db.commit()
-                        except Exception:
-                            try:
-                                db.rollback()
-                            except Exception:
-                                pass
-                    elif not db_user.is_active:
-                        error = "Подтвердите почту. Проверьте письмо или отправьте его повторно ниже."
+                    ip = request.client.host if request.client else "0.0.0.0"
+                    fwd = request.headers.get("x-forwarded-for")
+                    if fwd:
+                        ip = fwd.split(",")[0].strip()
+                    if not check_rate_limit(f"login:{ip}", max_calls=15, window_sec=300):
+                        error = "Слишком много попыток входа. Подождите несколько минут."
                     else:
-                        post_next = safe_next_url(form.get("next") or request.query_params.get("next"))
-                        from app.services.admin_totp import needs_admin_2fa
+                        db_user = db.query(User).filter(User.username == email).first()
+                        if not db_user or not verify_password(password, db_user.password):
+                            error = "Неверная почта или пароль"
+                            try:
+                                from app.services.admin_audit import write_admin_audit
 
-                        if needs_admin_2fa(db, db_user):
-                            request.session["pending_2fa_user_id"] = db_user.id
-                            request.session["pending_2fa_next"] = post_next
-                            return RedirectResponse(
-                                f"/login/2fa/?next={quote(post_next, safe='')}",
-                                status_code=302,
-                            )
-                        login_user(request, db_user, db)
-                        return RedirectResponse(post_next, status_code=302)
-    return templates.TemplateResponse("login.html", page_context(
-        request, db, user, error=error, success=success,
-        resend_email=request.query_params.get("email", ""),
-        next_url=next_url,
-    ))
+                                write_admin_audit(
+                                    db,
+                                    actor_user_id=None,
+                                    action="login_failed",
+                                    entity="user",
+                                    entity_id=str(db_user.id) if db_user else None,
+                                    payload={"email": (email or "")[:120]},
+                                    request=request,
+                                )
+                                db.commit()
+                            except Exception:
+                                try:
+                                    db.rollback()
+                                except Exception:
+                                    pass
+                        elif not db_user.is_active:
+                            error = "Подтвердите почту. Проверьте письмо или отправьте его повторно ниже."
+                        else:
+                            post_next = safe_next_url(form.get("next") or request.query_params.get("next"))
+                            from app.services.admin_totp import needs_admin_2fa
+
+                            if needs_admin_2fa(db, db_user):
+                                request.session["pending_2fa_user_id"] = db_user.id
+                                request.session["pending_2fa_next"] = post_next
+                                return RedirectResponse(
+                                    f"/login/2fa/?next={quote(post_next, safe='')}",
+                                    status_code=302,
+                                )
+                            login_user(request, db_user, db)
+                            return RedirectResponse(post_next, status_code=302)
+        return templates.TemplateResponse("login.html", page_context(
+            request, db, user, error=error, success=success,
+            resend_email=request.query_params.get("email", ""),
+            next_url=next_url,
+        ))
+    finally:
+        if db is not None:
+            db.close()
 
 
 @router.get("/login/2fa/")

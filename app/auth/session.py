@@ -61,7 +61,9 @@ def login_user(request: Request, user: User, db: Session | None = None) -> None:
     if "session" in request.scope:
         request.session["user_id"] = user.id
         request.session["session_version"] = int(getattr(user, "session_version", 0) or 0)
+        request.session["has_usable_password"] = has_usable_password(user.password)
         request.session.pop("impersonator_id", None)
+    clear_request_user_cache(request)
     if db is not None:
         from datetime import datetime
 
@@ -78,6 +80,8 @@ def start_impersonation(request: Request, *, admin_user_id: int, target_user_id:
     request.session["impersonator_id"] = admin_user_id
     request.session["user_id"] = target_user_id
     request.session.pop("active_mode", None)
+    request.session.pop("has_usable_password", None)
+    clear_request_user_cache(request)
 
 
 def stop_impersonation(request: Request) -> int | None:
@@ -88,6 +92,8 @@ def stop_impersonation(request: Request) -> int | None:
     if admin_id:
         request.session["user_id"] = admin_id
         request.session.pop("active_mode", None)
+        request.session.pop("has_usable_password", None)
+        clear_request_user_cache(request)
     return admin_id
 
 
@@ -103,6 +109,7 @@ def logout_user(request: Request) -> None:
     request.session.pop("user_id", None)
     request.session.pop("impersonator_id", None)
     request.session.pop("active_mode", None)
+    request.session.pop("has_usable_password", None)
     request.session.pop("register_fio", None)
     request.session.pop("register_phone", None)
     request.session.pop("google_calendar_oauth_state", None)
@@ -114,21 +121,39 @@ def logout_user(request: Request) -> None:
     request.session.pop("integrations_error", None)
     request.session.pop("pending_2fa_user_id", None)
     request.session.pop("pending_2fa_next", None)
+    clear_request_user_cache(request)
 
 
 def get_current_user(request: Request, db: Session) -> AuthUser | None:
+    """Resolve session user once per request (cached on request.state)."""
+    state = getattr(request, "state", None)
+    if state is not None and getattr(state, "_auth_user_resolved", False):
+        return getattr(state, "_auth_user", None)
+
     user_id = get_session_user_id(request)
-    if not user_id:
-        return None
-    user = db.get(User, user_id)
-    if not user or not user.is_active:
-        return None
-    if "session" in request.scope:
-        expected = int(getattr(user, "session_version", 0) or 0)
-        stored = request.session.get("session_version")
-        if stored is None:
-            if expected != 0:
-                return None
-        elif int(stored) != expected:
-            return None
-    return user_from_model(user)
+    auth: AuthUser | None = None
+    if user_id:
+        user = db.get(User, user_id)
+        if user and user.is_active:
+            if "session" in request.scope:
+                expected = int(getattr(user, "session_version", 0) or 0)
+                stored = request.session.get("session_version")
+                if stored is None:
+                    if expected == 0:
+                        auth = user_from_model(user)
+                elif int(stored) == expected:
+                    auth = user_from_model(user)
+            else:
+                auth = user_from_model(user)
+
+    if state is not None:
+        state._auth_user_resolved = True
+        state._auth_user = auth
+    return auth
+
+
+def clear_request_user_cache(request: Request) -> None:
+    state = getattr(request, "state", None)
+    if state is not None:
+        state._auth_user_resolved = False
+        state._auth_user = None

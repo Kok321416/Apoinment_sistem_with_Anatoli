@@ -12,10 +12,10 @@
     Чтобы открыть кабинет специалиста, переключите режим в шапке на «Специалист».
 </div>
 {% endif %}
-<h2 class="text-h1 app-main__title animate-fade-in-up">Кабинет клиента</h2>
+<h2 class="text-h1 app-main__title">Кабинет клиента</h2>
 <p class="text-body text-muted mt-md">Вы в режиме клиента. Можно записаться или посмотреть свои записи.{% if has_consultant %} Переключитесь на «Специалист», чтобы управлять календарями.{% endif %}</p>
 
-<div class="app-nav-grid reveal-stagger mt-3xl">
+<div class="app-nav-grid mt-3xl">
     <a href="/book/" class="app-nav-card">
         <span class="icon-tile app-nav-card__icon" aria-hidden="true">
             <img src="/static/svg/icons/clock.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
@@ -47,8 +47,4 @@
     </a>
     {% endif %}
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script src="/static/js/motion-reveal.js?v=1" defer></script>
 {% endblock %}
