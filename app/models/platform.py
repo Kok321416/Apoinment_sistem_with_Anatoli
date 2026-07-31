@@ -151,6 +151,18 @@ class AdminTwoFactor(Base):
     enabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class UserTwoFactor(Base):
+    """Opt-in TOTP 2FA for specialists (and any user who enables it)."""
+
+    __tablename__ = "user_two_factor"
+
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    secret: Mapped[str] = mapped_column(String(64))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    enabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class BillingPlan(Base):
     __tablename__ = "billing_plans"
 

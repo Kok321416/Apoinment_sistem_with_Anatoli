@@ -1,5 +1,6 @@
 # Keep Passenger worker warm on shared hosting (reg.ru).
 # Without this, idle process sleeps and the next real user waits ~8–15s cold start.
+# Also triggers booking reminders (same schedule) via /internal/cron/reminders/.
 name: Keep-alive health ping
 
 on:
@@ -25,4 +26,27 @@ jobs:
           if [ "$code" != "200" ]; then
             echo "Keep-alive ping failed (non-200). Cold start may still occur."
             exit 1
+          fi
+
+      - name: Run booking reminders cron
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BOT_API_SECRET: ${{ secrets.BOT_API_SECRET }}
+          REMINDERS_URL: ${{ vars.REMINDERS_CRON_URL }}
+        run: |
+          set -euo pipefail
+          TOKEN="${CRON_SECRET:-${BOT_API_SECRET:-}}"
+          if [ -z "$TOKEN" ]; then
+            echo "No CRON_SECRET / BOT_API_SECRET in GitHub secrets — skip reminders."
+            exit 0
+          fi
+          URL="${REMINDERS_URL:-https://allyourclients.ru/internal/cron/reminders/}"
+          echo "Calling $URL"
+          curl -fsS -X POST "$URL" \
+            -H "X-Cron-Secret: ${TOKEN}" \
+            --connect-timeout 15 --max-time 90 \
+            -o /tmp/reminders.json -w "HTTP %{http_code}\n" || true
+          if [ -f /tmp/reminders.json ]; then
+            head -c 500 /tmp/reminders.json || true
+            echo
           fi

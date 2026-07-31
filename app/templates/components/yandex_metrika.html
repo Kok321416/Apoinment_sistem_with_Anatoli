@@ -1,9 +1,12 @@
 {% if yandex_metrika_id %}
-<!-- Yandex.Metrika counter (deferred for INP) -->
+<!-- Yandex.Metrika: loads only after analytics consent (Compliance) -->
 <script type="text/javascript">
 (function () {
     var metrikaId = {{ yandex_metrika_id }};
+
     function loadMetrika() {
+        if (window.__aycMetrikaLoaded) return;
+        window.__aycMetrikaLoaded = true;
         (function (m, e, t, r, i, k, a) {
             m[i] = m[i] || function () { (m[i].a = m[i].a || []).push(arguments); };
             m[i].l = 1 * new Date();
@@ -22,15 +25,23 @@
             trackLinks: true
         });
     }
-    if ("requestIdleCallback" in window) {
-        requestIdleCallback(loadMetrika, { timeout: 4000 });
+
+    function maybeLoad() {
+        if (window.aycConsent && window.aycConsent.allowsAnalytics()) {
+            if ("requestIdleCallback" in window) {
+                requestIdleCallback(loadMetrika, { timeout: 4000 });
+            } else {
+                setTimeout(loadMetrika, 800);
+            }
+        }
+    }
+
+    window.addEventListener("ayc-consent-changed", maybeLoad);
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", maybeLoad);
     } else {
-        window.addEventListener("load", function () {
-            setTimeout(loadMetrika, 1500);
-        });
+        maybeLoad();
     }
 })();
 </script>
-<noscript><div><img src="https://mc.yandex.ru/watch/{{ yandex_metrika_id }}" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
-<!-- /Yandex.Metrika counter -->
 {% endif %}

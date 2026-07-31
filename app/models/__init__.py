@@ -25,6 +25,7 @@ from app.models.platform import (
     TelegramBroadcastJob,
     TelegramBroadcastRecipient,
     UserSubscription,
+    UserTwoFactor,
 )
 
 __all__ = [
@@ -49,6 +50,7 @@ __all__ = [
     "AdminAuditLog",
     "AdminRoleAssignment",
     "AdminTwoFactor",
+    "UserTwoFactor",
     "BillingPlan",
     "EmailDeliveryLog",
     "PlatformUserActivity",

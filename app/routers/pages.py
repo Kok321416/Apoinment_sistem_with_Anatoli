@@ -8,7 +8,7 @@ from urllib.parse import quote, urlencode
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
 
-from sqlalchemy import or_, func
+from sqlalchemy import and_, or_, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 from starlette.datastructures import UploadFile
@@ -370,7 +370,7 @@ async def legal_pages(request: Request):
                 request,
                 db,
                 user,
-                legal_updated="20.07.2026",
+                legal_updated="23.07.2026",
                 privacy_intro=PRIVACY_INTRO.format(**ctx),
                 privacy_sections=format_legal_sections(PRIVACY_SECTIONS, **ctx),
                 terms_intro=TERMS_INTRO.format(**ctx),
@@ -390,6 +390,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         next_after = safe_next_url(request.query_params.get("next"), default="/dashboard/")
         return RedirectResponse(next_after, status_code=302)
     error = fio = phone = email = None
+    accept_privacy = False
     account_role = (request.query_params.get("as") or "specialist").strip().lower()
     if account_role not in ("client", "specialist"):
         account_role = "specialist"
@@ -405,6 +406,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         form = await request.form()
         fio = (form.get("fio") or "").strip()
         phone = normalize_phone(form.get("phone"))
+        accept_privacy = form.get("accept_privacy") == "1"
         auth_method = form.get("auth_method", "email")
         account_role = (form.get("account_role") or "specialist").strip().lower()
         if account_role not in ("client", "specialist"):
@@ -418,6 +420,8 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         next_after = safe_next_url(form.get("next") or request.query_params.get("next"), default="/dashboard/")
         if not _form_csrf_ok(request, form):
             error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
+        elif form.get("accept_privacy") != "1":
+            error = "Нужно принять политику конфиденциальности и условия использования."
         elif not fio or not phone:
             error = "Укажите ФИО и номер телефона"
         elif auth_method == "yandex":
@@ -427,6 +431,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
             else:
                 request.session["register_fio"] = fio
                 request.session["register_phone"] = phone
+                request.session["register_accepted_legal"] = True
                 return RedirectResponse(
                     f"/accounts/yandex/login/?{urlencode({'process': ya_process, 'next': next_after})}",
                     status_code=302,
@@ -438,6 +443,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
             else:
                 request.session["register_fio"] = fio
                 request.session["register_phone"] = phone
+                request.session["register_accepted_legal"] = True
                 return RedirectResponse(
                     f"/accounts/vk/login/?{urlencode({'process': vk_process, 'next': next_after})}",
                     status_code=302,
@@ -445,6 +451,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         elif auth_method == "telegram":
             request.session["register_fio"] = fio
             request.session["register_phone"] = phone
+            request.session["register_accepted_legal"] = True
             return RedirectResponse(
                 f"/accounts/telegram/login/?{urlencode({'process': tg_process, 'next': next_after})}",
                 status_code=302,
@@ -513,6 +520,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         phone=phone or "",
         email=email or "",
         account_role=account_role,
+        accept_privacy=accept_privacy,
         next_url=safe_next_url(request.query_params.get("next"), default=""),
     ))
 
@@ -620,12 +628,10 @@ async def login_page(request: Request):
                 if not email or not password:
                     error = "Заполните все поля"
                 else:
+                    from app.security.request_guards import client_ip
                     from app.services.rate_limit import check_rate_limit
 
-                    ip = request.client.host if request.client else "0.0.0.0"
-                    fwd = request.headers.get("x-forwarded-for")
-                    if fwd:
-                        ip = fwd.split(",")[0].strip()
+                    ip = client_ip(request)
                     if not check_rate_limit(f"login:{ip}", max_calls=15, window_sec=300):
                         error = "Слишком много попыток входа. Подождите несколько минут."
                     else:
@@ -653,18 +659,10 @@ async def login_page(request: Request):
                         elif not db_user.is_active:
                             error = "Подтвердите почту. Проверьте письмо или отправьте его повторно ниже."
                         else:
-                            post_next = safe_next_url(form.get("next") or request.query_params.get("next"))
-                            from app.services.admin_totp import needs_admin_2fa
+                            from app.auth.login_flow import finish_login
 
-                            if needs_admin_2fa(db, db_user):
-                                request.session["pending_2fa_user_id"] = db_user.id
-                                request.session["pending_2fa_next"] = post_next
-                                return RedirectResponse(
-                                    f"/login/2fa/?next={quote(post_next, safe='')}",
-                                    status_code=302,
-                                )
-                            login_user(request, db_user, db)
-                            return RedirectResponse(post_next, status_code=302)
+                            post_next = safe_next_url(form.get("next") or request.query_params.get("next"))
+                            return finish_login(request, db_user, db, post_next)
         return templates.TemplateResponse("login.html", page_context(
             request, db, user, error=error, success=success,
             resend_email=request.query_params.get("email", ""),
@@ -678,7 +676,9 @@ async def login_page(request: Request):
 @router.get("/login/2fa/")
 @router.post("/login/2fa/")
 async def login_2fa_page(request: Request, db: Session = Depends(get_db)):
-    from app.services.admin_totp import verify_admin_2fa_login
+    from app.auth.login_flow import verify_login_2fa
+    from app.security.request_guards import client_ip
+    from app.services.rate_limit import check_rate_limit
 
     pending_id = request.session.get("pending_2fa_user_id")
     if not pending_id:
@@ -693,16 +693,20 @@ async def login_2fa_page(request: Request, db: Session = Depends(get_db)):
         if not _form_csrf_ok(request, form):
             error = "Ошибка безопасности (CSRF). Обновите страницу."
         else:
-            code = (form.get("code") or "").strip()
-            db_user = db.get(User, int(pending_id))
-            if not db_user or not verify_admin_2fa_login(db, db_user.id, code):
-                error = "Неверный код"
+            ip = client_ip(request)
+            if not check_rate_limit(f"login-2fa:{ip}", max_calls=20, window_sec=300):
+                error = "Слишком много попыток. Подождите несколько минут."
             else:
-                request.session.pop("pending_2fa_user_id", None)
-                request.session.pop("pending_2fa_next", None)
-                login_user(request, db_user, db)
-                post_next = safe_next_url(form.get("next") or next_url)
-                return RedirectResponse(post_next, status_code=302)
+                code = (form.get("code") or "").strip()
+                db_user = db.get(User, int(pending_id))
+                if not db_user or not verify_login_2fa(db, db_user, code):
+                    error = "Неверный код"
+                else:
+                    request.session.pop("pending_2fa_user_id", None)
+                    request.session.pop("pending_2fa_next", None)
+                    login_user(request, db_user, db)
+                    post_next = safe_next_url(form.get("next") or next_url)
+                    return RedirectResponse(post_next, status_code=302)
 
     return templates.TemplateResponse(
         "login_2fa.html",
@@ -1165,8 +1169,12 @@ async def specialist_bookings(request: Request, db: Session = Depends(get_db)):
                             success = "Запись перенесена"
         if cal_ids:
             mark_past_bookings_completed(db, calendars)
-    today = date.today()
-    now = datetime.now().time()
+    from zoneinfo import ZoneInfo
+
+    tz = ZoneInfo(get_settings().timezone or "Europe/Moscow")
+    now_dt = datetime.now(tz)
+    today = now_dt.date()
+    now = now_dt.time()
     booking_load = (joinedload(Booking.service), joinedload(Booking.calendar))
     if not cal_ids:
         upcoming = []
@@ -1181,13 +1189,19 @@ async def specialist_bookings(request: Request, db: Session = Depends(get_db)):
         )
         past = []
     else:
+        # Upcoming: future pending/confirmed, plus overdue pending (still actionable).
+        # Past: everything that already started except overdue pending (avoid duplicates).
         upcoming = (
             db.query(Booking)
             .options(*booking_load)
             .filter(
                 Booking.calendar_id.in_(cal_ids),
-                Booking.booking_date >= today,
-                Booking.status != "cancelled",
+                Booking.status.in_(["pending", "confirmed"]),
+                or_(
+                    Booking.booking_date > today,
+                    and_(Booking.booking_date == today, Booking.booking_time >= now),
+                    and_(Booking.status == "pending", Booking.booking_date >= today),
+                ),
             )
             .order_by(Booking.booking_date, Booking.booking_time)
             .all()
@@ -1197,7 +1211,14 @@ async def specialist_bookings(request: Request, db: Session = Depends(get_db)):
             .options(*booking_load)
             .filter(
                 Booking.calendar_id.in_(cal_ids),
-                or_(Booking.booking_date < today, (Booking.booking_date == today) & (Booking.booking_time < now)),
+                or_(
+                    Booking.booking_date < today,
+                    and_(
+                        Booking.booking_date == today,
+                        Booking.booking_time < now,
+                        Booking.status != "pending",
+                    ),
+                ),
             )
             .order_by(Booking.booking_date.desc())
             .all()
@@ -1321,6 +1342,22 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
                         row.verified = False
                     db.commit()
                     success = "Почта отвязана. Можно подтвердить ту же или другую почту заново."
+            elif action == "enable_2fa":
+                from app.services.specialist_totp import enable_specialist_2fa
+
+                ok, msg = enable_specialist_2fa(db, user, (form.get("code") or "").strip())
+                if ok:
+                    success = msg
+                else:
+                    error = msg
+            elif action == "disable_2fa":
+                from app.services.specialist_totp import disable_specialist_2fa
+
+                ok, msg = disable_specialist_2fa(db, user, (form.get("code") or "").strip())
+                if ok:
+                    success = msg
+                else:
+                    error = msg
             elif action == "update_profile":
                 consultant.first_name = form.get("first_name", "")
                 consultant.last_name = form.get("last_name", "")
@@ -1384,6 +1421,12 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
     profile_initials = (
         (consultant.first_name or consultant.last_name or "?")[:1].upper()
     )
+    from app.services.specialist_totp import specialist_2fa_enabled, specialist_2fa_provisioning
+
+    totp_enabled = specialist_2fa_enabled(db, user.id)
+    totp_secret = totp_uri = None
+    if not totp_enabled:
+        totp_secret, totp_uri = specialist_2fa_provisioning(db, user)
     return templates.TemplateResponse("profile.html", page_context(
         request, db, user, consultant=consultant, success=success, error=error,
         connected_providers=connected,
@@ -1397,6 +1440,9 @@ async def profile_page(request: Request, db: Session = Depends(get_db)):
         profile_initial_data=profile_initial_data,
         profile_photo_url=profile_photo_url,
         profile_initials=profile_initials,
+        specialist_2fa_enabled=totp_enabled,
+        specialist_2fa_secret=totp_secret,
+        specialist_2fa_uri=totp_uri,
     ))
 
 

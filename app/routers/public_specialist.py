@@ -263,13 +263,21 @@ async def specialist_calendar_book(
     error = None
     if request.method == "POST":
         form = await request.form()
-        try:
-            service_id = int(form.get("service_id") or 0)
-            booking_date = datetime.strptime(form.get("booking_date") or "", "%Y-%m-%d").date()
-        except (TypeError, ValueError):
-            error = "Выберите услугу и дату"
-            booking_date = None
+        from app.security.csrf import validate_csrf_token
+
+        csrf = form.get("csrf_token") or form.get("csrfmiddlewaretoken")
+        if not validate_csrf_token(request, csrf):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
             service_id = 0
+            booking_date = None
+        else:
+            try:
+                service_id = int(form.get("service_id") or 0)
+                booking_date = datetime.strptime(form.get("booking_date") or "", "%Y-%m-%d").date()
+            except (TypeError, ValueError):
+                error = "Выберите услугу и дату"
+                booking_date = None
+                service_id = 0
         booking_time = (form.get("booking_time") or "").strip()
         booking_end = (form.get("booking_end_time") or "").strip()
         if not error:

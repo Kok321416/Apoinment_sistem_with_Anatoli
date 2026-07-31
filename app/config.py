@@ -56,6 +56,8 @@ class Settings:
     telegram_bot_username: str = os.getenv("TELEGRAM_BOT_USERNAME", "")
     # Separate secret for bot -> API calls (recommended; do not reuse TELEGRAM_BOT_TOKEN in new setups)
     bot_api_secret: str = (os.getenv("BOT_API_SECRET", "") or "").strip()
+    # Optional; if empty, BOT_API_SECRET is accepted for /internal/cron/reminders/
+    cron_secret: str = (os.getenv("CRON_SECRET", "") or "").strip()
     admin_telegram_username: str = os.getenv("ADMIN_TELEGRAM_USERNAME", "andrievskypsy")
     # Dual-role Phase 3 scaffold: when true, skip duplicate TG sends to same chat_id
     notify_dedup: bool = (os.getenv("NOTIFY_DEDUP", "") or "").strip().lower() in ("1", "true", "yes")

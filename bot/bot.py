@@ -29,6 +29,16 @@ _chat_locks: dict[int, threading.Lock] = defaultdict(threading.Lock)
 _chat_locks_guard = threading.Lock()
 
 
+def _parse_bot_command(text: str) -> tuple[str, str]:
+    """Split '/start@BotName payload' -> ('/start', 'payload')."""
+    raw = (text or "").strip()
+    if not raw.startswith("/"):
+        return "", raw
+    first, _, rest = raw.partition(" ")
+    cmd = first.split("@", 1)[0].lower()
+    return cmd, rest.strip()
+
+
 def get_site_url() -> str:
     return settings.site_url
 
@@ -264,39 +274,42 @@ def handle_telegram_update(update_data: dict) -> None:
             user_id = message.get("from", {}).get("id")
             first_name = message.get("from", {}).get("first_name", "")
             logger.info("TG bot: message chat_id=%s user_id=%s text=%r", chat_id, user_id, (text or "")[:80])
-            if text == "/start":
-                handle_start_command(chat_id, user_id, username, first_name)
-            elif text.startswith("/start link_"):
-                token_str = text.replace("/start link_", "").strip()
-                if token_str:
-                    handle_booking_link_confirm(chat_id, user_id, token_str)
+            cmd, cmd_arg = _parse_bot_command(text)
+            if cmd == "/start":
+                arg = cmd_arg
+                if arg.startswith("link_"):
+                    token_str = arg.replace("link_", "", 1).strip()
+                    if token_str:
+                        handle_booking_link_confirm(chat_id, user_id, token_str)
+                    else:
+                        handle_start_command(chat_id, user_id, username, first_name)
+                elif arg.startswith("login_"):
+                    token_str = arg.replace("login_", "", 1).strip()
+                    if token_str:
+                        handle_login_token(chat_id, user_id, username, first_name, token_str)
+                    else:
+                        handle_login_via_bot(chat_id)
+                elif arg == "login" or arg.startswith("login"):
+                    handle_login_via_bot(chat_id)
+                elif arg.startswith("connect_spec_"):
+                    token_str = arg.replace("connect_spec_", "", 1).strip()
+                    if token_str:
+                        handle_specialist_connect_telegram(chat_id, user_id, token_str)
+                    else:
+                        handle_connect_via_bot(chat_id)
+                elif arg == "connect" or arg.startswith("connect"):
+                    handle_connect_via_bot(chat_id)
                 else:
                     handle_start_command(chat_id, user_id, username, first_name)
-            elif text.startswith("/start login_"):
-                token_str = text.replace("/start login_", "", 1).strip()
-                if token_str:
-                    handle_login_token(chat_id, user_id, username, first_name, token_str)
-                else:
-                    handle_login_via_bot(chat_id)
-            elif text.startswith("/start login"):
-                handle_login_via_bot(chat_id)
-            elif text.startswith("/start connect_spec_"):
-                token_str = text.replace("/start connect_spec_", "").strip()
-                if token_str:
-                    handle_specialist_connect_telegram(chat_id, user_id, token_str)
-                else:
-                    handle_connect_via_bot(chat_id)
-            elif text.startswith("/start connect"):
-                handle_connect_via_bot(chat_id)
-            elif text in ("/register", "📝 Регистрация"):
+            elif cmd == "/register" or text in ("📝 Регистрация",):
                 handle_register_command(chat_id)
-            elif text in ("/appointments", "📋 Мои записи"):
+            elif cmd == "/appointments" or text in ("📋 Мои записи",):
                 handle_appointments_command(chat_id, user_id)
-            elif text in ("/help", "❓ Помощь"):
+            elif cmd == "/help" or text in ("❓ Помощь",):
                 handle_help_command(chat_id)
-            elif text in ("📜 История", "/history"):
+            elif cmd == "/history" or text in ("📜 История",):
                 handle_history_command(chat_id, user_id)
-            elif text in ("📞 Связаться", "/admin"):
+            elif cmd == "/admin" or text in ("📞 Связаться",):
                 handle_contact_admin_command(chat_id)
             elif text == "📱 Записаться":
                 _send_webapp_button(chat_id)
@@ -306,7 +319,7 @@ def handle_telegram_update(update_data: dict) -> None:
                 _send_specialist_webapp(chat_id)
             elif text == "🔗 Управление аккаунтами":
                 handle_manage_accounts_command(chat_id)
-            elif text in ("🔄 Сменить роль", "/mode"):
+            elif cmd == "/mode" or text in ("🔄 Сменить роль",):
                 handle_switch_role(chat_id, user_id, first_name)
             else:
                 send_telegram_message(
@@ -314,7 +327,6 @@ def handle_telegram_update(update_data: dict) -> None:
                     "Неизвестная команда. Нажмите /help.",
                     _keyboard_for_user(chat_id, user_id),
                 )
-
         elif "callback_query" in update_data:
             callback_query = update_data["callback_query"]
             callback_query_id = callback_query["id"]

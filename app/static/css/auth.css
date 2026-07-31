@@ -170,6 +170,27 @@
     margin-top: var(--space-sm);
 }
 
+.auth-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    font-size: var(--font-size-body-sm);
+    color: var(--text-secondary);
+    line-height: 1.45;
+    cursor: pointer;
+}
+
+.auth-consent input {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.auth-consent a {
+    color: var(--accent-secondary);
+}
+
 .resend-block {
     margin-top: var(--space-3xl);
     padding: var(--space-2xl);

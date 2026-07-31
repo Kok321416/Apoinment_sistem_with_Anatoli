@@ -1,5 +1,6 @@
 {% extends "layouts/app.html" %}
-{% from "components/booking_card.html" import booking_card_crm %}
+{# with context: macros need csrf_token from page_context (otherwise confirm/cancel POST fails CSRF) #}
+{% from "components/booking_card.html" import booking_card_crm with context %}
 
 {% block meta_tags %}
 {% set page_title = "Записи — " ~ site_brand_name %}
@@ -10,8 +11,8 @@
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=23">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=1">
-<link rel="stylesheet" href="/static/css/bookings-hub.css?v=2">
-<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=17">
+<link rel="stylesheet" href="/static/css/bookings-hub.css?v=3">
+<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=18">
 {% endblock %}
 
 {% block app_content %}
@@ -22,7 +23,7 @@
         <div class="bookings-hero__inner">
             <div class="bookings-hero__main">
                 <div class="bookings-hero__icon" aria-hidden="true">📅</div>
-                <div>
+            <div>
                     <h1 class="bookings-hero__title">Записи</h1>
                     <p class="bookings-hero__desc">Все встречи с клиентами в одном месте.</p>
                 </div>
@@ -162,7 +163,6 @@
                         <span><span class="legend-dot cancelled"></span> Отменена</span>
                     </div>
                 </div>
-                <div id="bookingListColPlaceholder"></div>
             </div>
         </div>
 
@@ -218,35 +218,35 @@
 <div id="rescheduleOverlay" class="reschedule-overlay" hidden>
     <div class="reschedule-modal" role="dialog" aria-modal="true" aria-labelledby="rescheduleTitle">
         <h3 id="rescheduleTitle">Перенести консультацию</h3>
-        <form method="POST" id="rescheduleForm">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="action" value="reschedule">
-            <input type="hidden" name="booking_id" id="rescheduleBookingId" value="">
-            <input type="hidden" name="new_date" id="rescheduleNewDate" value="">
-            <input type="hidden" name="new_time" id="rescheduleNewTime" value="">
+                <form method="POST" id="rescheduleForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="action" value="reschedule">
+                    <input type="hidden" name="booking_id" id="rescheduleBookingId" value="">
+                    <input type="hidden" name="new_date" id="rescheduleNewDate" value="">
+                    <input type="hidden" name="new_time" id="rescheduleNewTime" value="">
             <div class="form-field">
                 <label class="form-field__label" for="rescheduleDate">Новая дата</label>
                 <input class="input" type="date" id="rescheduleDate" required>
-            </div>
+                    </div>
             <div class="form-field">
                 <span class="form-field__label" id="rescheduleSlotsLabel">Новое время</span>
                 <div id="rescheduleSlots" role="group" aria-labelledby="rescheduleSlotsLabel"></div>
-            </div>
+                    </div>
             <div class="reschedule-modal__actions">
                 <button type="submit" class="btn btn--primary" id="rescheduleSubmit" disabled>Перенести</button>
                 <button type="button" class="btn btn--ghost" id="rescheduleCancel">Отмена</button>
+                    </div>
+                </form>
             </div>
-        </form>
-    </div>
-</div>
+        </div>
 
 <div id="eventPopover" class="event-popover" role="dialog" aria-live="polite" hidden></div>
-<input type="hidden" id="csrfToken" value="{{ csrf_token }}">
+        <input type="hidden" id="csrfToken" value="{{ csrf_token }}">
 <input type="hidden" id="bookingsTodayIso" value="{{ today.isoformat() }}">
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
-<script src="/static/js/specialist-bookings.js?v=4" defer></script>
+<script src="/static/js/specialist-bookings.js?v=5" defer></script>
 <script type="application/json" id="bookings-hub-data">{{ hub_payload | tojson }}</script>
 {% endblock %}

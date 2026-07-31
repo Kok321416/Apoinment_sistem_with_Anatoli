@@ -26,6 +26,7 @@
     <div class="booking-empty mt-3xl">В этом календаре пока нет активных услуг.</div>
     {% else %}
     <form method="POST" action="/s/{{ slug }}/c/{{ calendar.id }}/" class="book-cal-layout" id="publicBookForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <section class="book-cal-panel book-cal-panel--service">
             <h2 class="book-cal-step"><span class="book-cal-step__num">1</span> Услуга</h2>
             <div class="form-field">

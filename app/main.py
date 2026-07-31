@@ -4,21 +4,29 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.config import get_settings
 from app.database import engine
 from app.routers import api, calendar_schedule, oauth, pages, platform_admin, profile_api, public_specialist, services_api
+from app.security.hardening import AbuseProtectionMiddleware
 
 settings = get_settings()
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Appointment System", docs_url="/api/docs" if settings.debug else None)
+app = FastAPI(
+    title="Appointment System",
+    docs_url="/api/docs" if settings.debug else None,
+    redoc_url="/api/redoc" if settings.debug else None,
+    openapi_url="/api/openapi.json" if settings.debug else None,
+)
 
 _session_same_site = settings.session_same_site if settings.session_same_site in ("lax", "strict", "none") else "lax"
 # SameSite=None requires Secure; needed for Telegram Mini App WebView cookies.
 _https_only = settings.site_url.startswith("https://") or _session_same_site == "none"
 
+# add_middleware: last added = outermost on the request path.
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.secret_key,
@@ -27,6 +35,11 @@ app.add_middleware(
     https_only=_https_only,
     same_site=_session_same_site,
 )
+app.add_middleware(AbuseProtectionMiddleware)
+if not settings.debug and settings.allowed_hosts:
+    # Protect Host-header attacks in production; keep localhost for health probes.
+    _hosts = list(dict.fromkeys([*settings.allowed_hosts, "localhost", "127.0.0.1"]))
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=_hosts)
 
 settings.media_root.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(settings.static_dir)), name="static")
@@ -49,6 +62,39 @@ async def health():
     schema = get_schema_health()
     status = "degraded" if schema.get("degraded") else "ok"
     return {"status": status, "schema": schema}
+
+
+@app.get("/internal/cron/reminders/")
+@app.post("/internal/cron/reminders/")
+async def cron_send_reminders(request: Request):
+    """Run booking reminders. Auth: CRON_SECRET or BOT_API_SECRET via header/query."""
+    import secrets as _secrets
+
+    from fastapi.responses import JSONResponse
+
+    from app.database import SessionLocal
+    from app.services.telegram import send_reminders
+
+    expected = (settings.cron_secret or settings.bot_api_secret or "").strip()
+    if not expected:
+        return JSONResponse({"ok": False, "error": "cron secret not configured"}, status_code=503)
+    got = (
+        (request.headers.get("x-cron-secret") or "").strip()
+        or (request.headers.get("x-bot-api-secret") or "").strip()
+        or (request.query_params.get("token") or "").strip()
+    )
+    if not got or not _secrets.compare_digest(got, expected):
+        return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
+
+    db = SessionLocal()
+    try:
+        sent = send_reminders(db)
+        return {"ok": True, "sent": sent}
+    except Exception as exc:
+        logger.exception("cron reminders failed")
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+    finally:
+        db.close()
 
 
 @app.on_event("startup")
@@ -91,6 +137,7 @@ async def static_cache_middleware(request: Request, call_next):
 async def security_headers_middleware(request: Request, call_next):
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-DNS-Prefetch-Control", "off")
     # Telegram Mini App opens the site inside Telegram WebView / iframe.
     # DENY would break the in-Telegram web app; allow only Telegram origins.
     if "x-frame-options" in response.headers:
@@ -105,7 +152,14 @@ async def security_headers_middleware(request: Request, call_next):
             f"{csp}; {frame_ancestors}".strip("; ").strip() if csp else frame_ancestors
         )
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "geolocation=(), microphone=(), camera=(), payment=(), usb=()",
+    )
+    # Do not cache HTML authenticated shells by default (static/media set their own).
+    path = request.url.path
+    if not path.startswith("/static/") and not path.startswith("/media/"):
+        response.headers.setdefault("Cache-Control", "no-store")
     if settings.site_url.startswith("https://"):
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     return response

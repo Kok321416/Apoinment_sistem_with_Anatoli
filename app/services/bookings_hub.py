@@ -141,13 +141,13 @@ def sidebar_data(upcoming: list[Booking], today: date, now: time) -> dict:
     future = [
         b for b in upcoming
         if b.status in ("pending", "confirmed")
-        and (b.booking_date > today or (b.booking_date == today and b.booking_time >= now))
     ]
     next_booking = None
     if future:
         nb = min(future, key=lambda b: (b.booking_date, b.booking_time))
         start_dt = datetime.combine(nb.booking_date, nb.booking_time)
-        minutes_until = max(0, int((start_dt - datetime.now()).total_seconds() / 60))
+        # Compare in naive local wall-clock; callers pass timezone-local today/now.
+        minutes_until = int((start_dt - datetime.combine(today, now)).total_seconds() / 60)
         next_booking = {
             "id": nb.id,
             "client_name": nb.client_name,

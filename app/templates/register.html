@@ -112,6 +112,16 @@
                 </div>
             </div>
 
+            <div class="form-field">
+                <label class="auth-consent">
+                    <input type="checkbox" name="accept_privacy" value="1" required{% if accept_privacy %} checked{% endif %}>
+                    <span>Я согласен(а) на обработку персональных данных и принимаю
+                        <a href="/privacy/" target="_blank" rel="noopener">политику конфиденциальности</a>
+                        и <a href="/terms/" target="_blank" rel="noopener">условия использования</a>.
+                    </span>
+                </label>
+            </div>
+
             <button type="submit" class="btn btn--primary" id="submit-btn">Зарегистрироваться</button>
             <p class="form-field__hint" id="telegram-hint" hidden>Нажатие кнопки откроет бота Телеграм для подтверждения регистрации.</p>
             <p class="form-field__hint" id="yandex-hint" hidden>Нажатие кнопки откроет страницу входа через Яндекс ID.</p>

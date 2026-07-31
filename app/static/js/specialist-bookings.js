@@ -248,9 +248,6 @@
 
         var viewList = document.getElementById('viewList');
         var viewCalendar = document.getElementById('viewCalendar');
-        var listCol = document.getElementById('bookingListCol');
-        var listPlaceholder = document.getElementById('bookingListColPlaceholder');
-        var layoutList = viewList ? viewList.querySelector('.booking-page-layout') : null;
         var pageContainer = document.getElementById('bookingPageContainer');
 
         document.querySelectorAll('.bookings-segment__btn, .view-switcher-btn').forEach(function (btn) {
@@ -265,13 +262,12 @@
                 if (v === 'calendar') {
                     if (viewList) viewList.classList.remove('is-active');
                     if (viewCalendar) viewCalendar.classList.add('is-active');
-                    if (listPlaceholder && listCol) listPlaceholder.appendChild(listCol);
                     if (pageContainer) pageContainer.classList.add('is-calendar-view');
+                    loadEvents();
                 } else {
                     if (viewCalendar) viewCalendar.classList.remove('is-active');
                     if (viewList) viewList.classList.add('is-active');
                     if (pageContainer) pageContainer.classList.remove('is-calendar-view');
-                    if (listCol && layoutList && listCol.parentNode !== layoutList) layoutList.appendChild(listCol);
                 }
             };
         });
@@ -492,7 +488,11 @@
         var el = document.getElementById('bookings-next-countdown');
         if (!el) return;
         var mins = parseInt(el.getAttribute('data-minutes') || '0', 10);
-        if (mins <= 0) {
+        if (mins < 0) {
+            el.textContent = 'Время прошло';
+            return;
+        }
+        if (mins === 0) {
             el.textContent = 'Скоро начнётся';
             return;
         }

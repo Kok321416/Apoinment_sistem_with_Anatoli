@@ -164,6 +164,11 @@
             })
             .then(function (res) {
                 if (res.ok && res.data && res.data.success) {
+                    if (res.data.requires_2fa && res.data.redirect) {
+                        sessionStorage.removeItem("tg_webapp_auth_done");
+                        window.location.replace(res.data.redirect);
+                        return;
+                    }
                     var url = window.location.pathname + window.location.search;
                     window.location.replace(url);
                 } else if (hint) {

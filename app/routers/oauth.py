@@ -127,10 +127,13 @@ async def telegram_complete_login(complete_token: str, request: Request, db: Ses
     user = db.get(User, req.user_id)
     if not user:
         return RedirectResponse("/login/", status_code=302)
-    login_user(request, user, db)
-    request.session["show_telegram_welcome"] = True
+    from app.auth.login_flow import finish_login
+
     consume_completed_login(db, req)
-    return RedirectResponse(safe_next_url(req.next_url), status_code=302)
+    # Mark welcome only after full login (including 2FA).
+    next_url = safe_next_url(req.next_url)
+    request.session["show_telegram_welcome"] = True
+    return finish_login(request, user, db, next_url)
 
 
 @router.get("/yandex/login/")
@@ -205,10 +208,14 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
                 return RedirectResponse(signup_error_redirect(next_url, "yandex_failed"), status_code=302)
             return RedirectResponse("/login/?error=yandex_failed", status_code=302)
 
-        login_user(request, user, db)
         if process == "connect":
+            login_user(request, user, db)
             request.session["integrations_success"] = "Яндекс привязан."
-        return RedirectResponse(next_url, status_code=302)
+            return RedirectResponse(next_url, status_code=302)
+
+        from app.auth.login_flow import finish_login
+
+        return finish_login(request, user, db, next_url)
     except Exception:
         logger.exception("Unhandled Yandex OAuth callback error")
         db.rollback()
@@ -348,14 +355,18 @@ async def vk_callback(request: Request, db: Session = Depends(get_db)):
                 return RedirectResponse(signup_error_redirect(next_url, "vk_failed"), status_code=302)
             return RedirectResponse("/login/?error=vk_failed", status_code=302)
 
-        login_user(request, user, db)
         if process == "connect":
+            login_user(request, user, db)
             request.session["integrations_success"] = "VK привязан."
             if vk_messaging_configured():
                 write_url = vk_group_write_url()
                 if write_url:
                     request.session["vk_allow_messages_hint"] = write_url
-        return RedirectResponse(next_url, status_code=302)
+            return RedirectResponse(next_url, status_code=302)
+
+        from app.auth.login_flow import finish_login
+
+        return finish_login(request, user, db, next_url)
     except Exception:
         logger.exception("Unhandled VK OAuth callback error")
         db.rollback()
@@ -457,12 +468,20 @@ async def set_password_page(request: Request, db: Session = Depends(get_db)):
 @router.post("/password/reset/")
 async def password_reset_page(request: Request, db: Session = Depends(get_db)):
     from app.auth.passwords import hash_password
+    from app.security.csrf import validate_csrf_token
     from app.services.password_reset import consume_reset_token, get_valid_reset_token
 
     token = (request.query_params.get("token") or "").strip()
     error = None
     if request.method == "POST":
         form = await request.form()
+        csrf = form.get("csrf_token") or form.get("csrfmiddlewaretoken")
+        if not validate_csrf_token(request, csrf):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+            return templates.TemplateResponse(
+                "password_reset.html",
+                page_context(request, db, None, error=error, token=token),
+            )
         token = (form.get("token") or token or "").strip()
         p1 = form.get("password1", "")
         p2 = form.get("password2", "")

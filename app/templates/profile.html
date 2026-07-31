@@ -9,7 +9,7 @@
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=23">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=1">
-<link rel="stylesheet" href="/static/css/profile-hub.css?v=5">
+<link rel="stylesheet" href="/static/css/profile-hub.css?v=6">
 {% endblock %}
 
 {% block app_content %}
@@ -263,6 +263,43 @@
                 {% if not has_usable_password %}
                 <p class="form-field__hint mt-xl"><a href="/accounts/password/set/" class="link-accent">Задать пароль</a> для входа по почте.</p>
                 {% endif %}
+
+                <div class="profile-2fa card mt-2xl" id="profile-2fa">
+                    <h3 class="text-h3">Двухфакторная аутентификация</h3>
+                    <p class="text-body-sm text-muted mt-sm">Опционально. Код из Google Authenticator, Authy или другого TOTP-приложения при каждом входе (почта, Яндекс, VK, Телеграм).</p>
+                    {% if specialist_2fa_enabled %}
+                    <p class="mt-lg"><span class="badge badge--success">Включена</span></p>
+                    <form method="POST" action="/profile/" class="stack mt-lg" onsubmit="return confirm('Отключить 2FA?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="action" value="disable_2fa">
+                        <div class="form-field">
+                            <label class="form-field__label" for="disable_2fa_code">Код из приложения</label>
+                            <input class="input" id="disable_2fa_code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code">
+                        </div>
+                        <button type="submit" class="btn btn--ghost btn--sm">Отключить 2FA</button>
+                    </form>
+                    {% else %}
+                    <ol class="text-body-sm mt-lg stack" style="padding-left: 1.25rem;">
+                        <li>Откройте приложение-аутентификатор и добавьте аккаунт по ссылке или секрету ниже.</li>
+                        <li>Введите появившийся 6-значный код и нажмите «Включить».</li>
+                    </ol>
+                    {% if specialist_2fa_uri %}
+                    <p class="mt-lg"><a class="link-accent" href="{{ specialist_2fa_uri }}">Открыть otpauth:// в приложении</a></p>
+                    {% endif %}
+                    {% if specialist_2fa_secret %}
+                    <p class="form-field__hint mt-sm">Секрет: <code>{{ specialist_2fa_secret }}</code></p>
+                    {% endif %}
+                    <form method="POST" action="/profile/" class="stack mt-lg">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="action" value="enable_2fa">
+                        <div class="form-field">
+                            <label class="form-field__label" for="enable_2fa_code">Код подтверждения</label>
+                            <input class="input" id="enable_2fa_code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code">
+                        </div>
+                        <button type="submit" class="btn btn--primary btn--sm">Включить 2FA</button>
+                    </form>
+                    {% endif %}
+                </div>
             </section>
         </div>
 

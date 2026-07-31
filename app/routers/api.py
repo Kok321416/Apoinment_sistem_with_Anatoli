@@ -42,9 +42,20 @@ def _booking_link_expired(booking: Booking) -> bool:
 
 @router.post("/auth/register")
 async def api_register(request: Request, db: Session = Depends(get_db)):
+    from app.security.request_guards import client_ip
+    from app.services.rate_limit import check_rate_limit
+
+    ip = client_ip(request)
+    if not check_rate_limit(f"api-register:{ip}", max_calls=8, window_sec=600):
+        return JSONResponse({"error": "Слишком много попыток регистрации. Подождите."}, status_code=429)
     data = await request.json()
     email = data.get("email")
     password = data.get("password")
+    if not email or not password or not isinstance(email, str) or not isinstance(password, str):
+        return JSONResponse({"error": "Укажите почту и пароль"}, status_code=400)
+    if len(email) > 254 or len(password) > 256:
+        return JSONResponse({"error": "Некорректные данные"}, status_code=400)
+    email = email.strip().lower()
     role = (data.get("role") or "specialist").strip().lower()
     if settings.force_consultant_on_signup:
         role = "specialist"
@@ -65,6 +76,8 @@ async def api_register(request: Request, db: Session = Depends(get_db)):
 
         fio = (data.get("fio") or "").strip() or email
         phone = (data.get("phone") or "").strip() or "+70000000000"
+        if len(fio) > 255 or len(phone) > 50:
+            return JSONResponse({"error": "Некорректные данные"}, status_code=400)
         consultant = create_consultant_for_user(db, user, fio=fio, phone=phone, email=email)
         consultant_id = consultant.id
     ensure_email_address(db, user, email, verified=False)
@@ -83,15 +96,33 @@ async def api_register(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/auth/login")
 async def api_login(request: Request, db: Session = Depends(get_db)):
+    from app.security.request_guards import client_ip
+    from app.services.rate_limit import check_rate_limit
+
+    ip = client_ip(request)
+    if not check_rate_limit(f"api-login:{ip}", max_calls=15, window_sec=300):
+        return JSONResponse({"error": "Слишком много попыток входа. Подождите."}, status_code=429)
     data = await request.json()
     email = data.get("email")
     password = data.get("password")
-    user = db.query(User).filter(User.username == email).first()
+    if not email or not password or not isinstance(email, str) or not isinstance(password, str):
+        return JSONResponse({"error": "Неверный логин/пароль"}, status_code=401)
+    user = db.query(User).filter(User.username == email.strip().lower()).first()
     if not user or not verify_password(password, user.password):
         return JSONResponse({"error": "Неверный логин/пароль"}, status_code=401)
     if not user.is_active:
         return JSONResponse({"error": "Подтвердите почту. Проверьте письмо."}, status_code=403)
-    login_user(request, user, db)
+    from app.auth.login_flow import finish_login_json
+
+    result = finish_login_json(
+        request,
+        user,
+        db,
+        "/dashboard/",
+        extra={"email": user.email},
+    )
+    if result.get("requires_2fa"):
+        return JSONResponse(result)
     return {"message": "OK", "email": user.email}
 
 
@@ -325,16 +356,26 @@ async def api_telegram_webapp_auth(request: Request, db: Session = Depends(get_d
     user = find_or_create_user_from_webapp(db, tg_user)
     if not user:
         return JSONResponse({"success": False, "error": "User not found"}, status_code=400)
-    login_user(request, user, db)
     has_c = user_has_consultant(db, user.id)
+    from app.auth.login_flow import finish_login_json
+
+    next_url = (data.get("next") or "/tg/").strip() or "/tg/"
+    result = finish_login_json(
+        request,
+        user,
+        db,
+        next_url,
+        extra={
+            "user_id": user.id,
+            "has_consultant": has_c,
+            "created": False,
+        },
+    )
+    if result.get("requires_2fa"):
+        return JSONResponse(result)
     if mode in VALID_MODES:
         set_active_mode(request, mode, has_consultant=has_c)
-    return {
-        "success": True,
-        "user_id": user.id,
-        "has_consultant": has_c,
-        "created": False,
-    }
+    return result
 
 
 

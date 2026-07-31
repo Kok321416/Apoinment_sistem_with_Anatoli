@@ -292,7 +292,7 @@ def send_reminders(db: Session) -> dict:
 
         h1 = booking.calendar.reminder_hours_first if booking.calendar else 24
         h2 = booking.calendar.reminder_hours_second if booking.calendar else 1
-        win = 30
+        win = 45
         in_first = (h1 * 60 - win) <= delta_minutes <= (h1 * 60 + win)
         in_second = (h2 * 60 - win) <= delta_minutes <= (h2 * 60 + win)
 

@@ -259,7 +259,12 @@ def create_public_booking(
 
 
 def mark_past_bookings_completed(db: Session, calendars: list[Calendar]) -> None:
-    now = datetime.now()
+    from zoneinfo import ZoneInfo
+
+    from app.config import get_settings
+
+    tz = ZoneInfo(get_settings().timezone or "Europe/Moscow")
+    now = datetime.now(tz).replace(tzinfo=None)
     calendar_ids = [c.id for c in calendars]
     bookings = (
         db.query(Booking)

@@ -6,7 +6,7 @@
     {% include "components/meta.html" %}
     {% endblock %}
     {% block page_css %}
-    <link rel="stylesheet" href="/static/css/auth.css?v=17">
+    <link rel="stylesheet" href="/static/css/auth.css?v=18">
     {% endblock %}
     {% block head_extra %}{% endblock %}
 </head>
@@ -23,8 +23,10 @@
         <a href="/">На главную</a>
         <a href="/guide/">Как начать</a>
         <a href="/privacy/">Конфиденциальность</a>
+        <a href="/terms/">Условия</a>
     </footer>
     {% endblock %}
+    {% include "components/cookie_consent.html" %}
     {% include "components/yandex_metrika.html" %}
     {% block scripts %}{% endblock %}
 </body>

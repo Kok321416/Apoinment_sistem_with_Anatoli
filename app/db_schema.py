@@ -242,6 +242,7 @@ def _apply_app_schema_patches() -> None:
                 platform_models.SupportTicketMessage.__table__,
                 platform_models.AdminRoleAssignment.__table__,
                 platform_models.AdminTwoFactor.__table__,
+                platform_models.UserTwoFactor.__table__,
                 platform_models.BillingPlan.__table__,
                 platform_models.UserSubscription.__table__,
             ],
