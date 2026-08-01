@@ -18,18 +18,18 @@
   },
   "android": {
     "allowMixedContent": false,
-    "backgroundColor": "#0B0D12"
+    "backgroundColor": "#FFFFFF"
   },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 1500,
       "launchAutoHide": true,
-      "backgroundColor": "#0B0D12",
+      "backgroundColor": "#FFFFFF",
       "showSpinner": false
     },
     "StatusBar": {
-      "style": "DARK",
-      "backgroundColor": "#0B0D12"
+      "style": "LIGHT",
+      "backgroundColor": "#FFFFFF"
     }
   }
 }
