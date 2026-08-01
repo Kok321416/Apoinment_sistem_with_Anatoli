@@ -14,15 +14,19 @@
 {% endif %}
 
 <section class="cabinet-empty" aria-label="Обзор кабинета">
-    <img class="cabinet-empty__logo" src="/static/svg/logo.svg" alt="" width="64" height="64" decoding="async">
-    <h1 class="cabinet-empty__title">{{ site_brand_name }}</h1>
-    <p class="cabinet-empty__lead">Кабинет клиента. Справа откроется нужный раздел, когда выберете его в меню слева.</p>
-    <p class="cabinet-empty__hint text-caption text-muted">
-        {% if has_consultant %}
-        Режим можно сменить на «Специалист» в панели слева.
-        {% else %}
-        Можно записаться или открыть «Мои записи».
-        {% endif %}
-    </p>
+    <div class="cabinet-empty__art" aria-hidden="true"></div>
+    <div class="cabinet-empty__card">
+        <img class="cabinet-empty__logo" src="/static/svg/logo-mark.svg" alt="" width="56" height="56" decoding="async">
+        <h1 class="cabinet-empty__title">{{ site_brand_name }}</h1>
+        <p class="cabinet-empty__lead">Кабинет клиента. Выберите раздел слева или внизу: запись и ваши визиты.</p>
+        <p class="cabinet-empty__hint text-caption">
+            {% if has_consultant %}
+            Режим можно сменить на «Специалист» в панели слева.
+            {% else %}
+            Начните с «Записаться», чтобы выбрать специалиста и время.
+            {% endif %}
+        </p>
+        <a href="/book/" class="btn btn--primary btn--sm cabinet-empty__cta">Записаться</a>
+    </div>
 </section>
 {% endblock %}

@@ -23,9 +23,13 @@
 {% endif %}
 
 <section class="cabinet-empty" aria-label="Обзор кабинета">
-    <img class="cabinet-empty__logo" src="/static/svg/logo.svg" alt="" width="64" height="64" decoding="async">
-    <h1 class="cabinet-empty__title">{{ site_brand_name }}</h1>
-    <p class="cabinet-empty__lead">Кабинет специалиста. Выберите раздел слева: календари, услуги, записи или клиенты.</p>
-    <p class="cabinet-empty__hint text-caption text-muted">Подсказка: начните с «Календари», чтобы открыть окна приёма.</p>
+    <div class="cabinet-empty__art" aria-hidden="true"></div>
+    <div class="cabinet-empty__card">
+        <img class="cabinet-empty__logo" src="/static/svg/logo-mark.svg" alt="" width="56" height="56" decoding="async">
+        <h1 class="cabinet-empty__title">{{ site_brand_name }}</h1>
+        <p class="cabinet-empty__lead">Кабинет специалиста. Выберите раздел слева: календари, услуги, записи или клиенты.</p>
+        <p class="cabinet-empty__hint text-caption">Подсказка: начните с «Календари», чтобы открыть окна приёма.</p>
+        <a href="/calendars/" class="btn btn--primary btn--sm cabinet-empty__cta">Открыть календари</a>
+    </div>
 </section>
 {% endblock %}
