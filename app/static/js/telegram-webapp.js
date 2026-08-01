@@ -259,6 +259,15 @@
             };
 
             tryWebappAuth(tg);
+            // Site/native links point to t.me — inside Mini App stay on the hub.
+            try {
+                document.querySelectorAll("a[data-tg-internal]").forEach(function (a) {
+                    var internal = (a.getAttribute("data-tg-internal") || "").trim();
+                    if (!internal) return;
+                    a.setAttribute("href", internal);
+                    a.removeAttribute("target");
+                });
+            } catch (e) {}
             // Mark auth links so Telegram login returns into Mini App context.
             document.addEventListener(
                 "click",

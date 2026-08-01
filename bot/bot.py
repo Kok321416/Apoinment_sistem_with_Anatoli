@@ -233,6 +233,21 @@ def _url_button(text: str, url: str) -> dict:
     return {"text": text, "url": url}
 
 
+def handle_open_mini_app(chat_id):
+    """Deep link from site/native app: t.me/bot?start=open → Mini App button."""
+    keyboard = {
+        "inline_keyboard": [[
+            _web_app_button("📱 Открыть Mini App", _mini_app_url("/tg/")),
+            _web_app_button("📅 Записаться", _mini_app_url("/book/")),
+        ]]
+    }
+    send_telegram_message(
+        chat_id,
+        "Откройте сервис внутри Telegram - так работает Mini App:",
+        keyboard,
+    )
+
+
 def _send_webapp_button(chat_id):
     keyboard = {
         "inline_keyboard": [[
@@ -302,6 +317,8 @@ def handle_telegram_update(update_data: dict) -> None:
                         handle_connect_via_bot(chat_id)
                 elif arg == "connect" or arg.startswith("connect"):
                     handle_connect_via_bot(chat_id)
+                elif arg in ("open", "miniapp", "app", "tg"):
+                    handle_open_mini_app(chat_id)
                 else:
                     handle_start_command(chat_id, user_id, username, first_name)
             elif cmd == "/register" or text in ("📝 Регистрация",):

@@ -258,6 +258,12 @@ def page_context(request, db, user=None, **extra):
         "user": user,
         "csrf_token": ensure_csrf_token(request),
         "telegram_bot_username": settings.telegram_bot_username,
+        # Outside Telegram (site / Capacitor): open the bot so Mini App starts in Telegram, not in-app /tg/.
+        "telegram_mini_app_launch_url": (
+            f"https://t.me/{settings.telegram_bot_username.lstrip('@')}?start=open"
+            if (settings.telegram_bot_username or "").strip()
+            else "/tg/"
+        ),
         "show_telegram_welcome": _session_pop(request, "show_telegram_welcome", False),
         "url_for": url_for,
         "site_brand_name": settings.site_brand_name,

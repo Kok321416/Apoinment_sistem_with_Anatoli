@@ -1,5 +1,6 @@
 /**
  * Native Capacitor bridge: status bar, back button, auth client=native, deep links.
+ * Opens Telegram (t.me / tg://) outside the WebView so Mini App runs in Telegram.
  */
 (function () {
     "use strict";
@@ -93,6 +94,80 @@
         } catch (e) {}
     }
 
+    function isTelegramExternalHref(href) {
+        if (!href) return false;
+        if (/^tg:\/\//i.test(href)) return true;
+        if (/^https?:\/\/(t\.me|telegram\.me)\//i.test(href)) return true;
+        return false;
+    }
+
+    function isInAppTgHubHref(href) {
+        if (!href) return false;
+        try {
+            if (href.charAt(0) === "/") {
+                return href === "/tg" || href === "/tg/" || href.indexOf("/tg/?") === 0 || href.indexOf("/tg?") === 0;
+            }
+            var u = new URL(href, window.location.origin);
+            if (u.origin !== window.location.origin) return false;
+            return u.pathname === "/tg" || u.pathname === "/tg/";
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function openExternalUrl(url) {
+        try {
+            var App = window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+            if (App && typeof App.openUrl === "function") {
+                App.openUrl({ url: url });
+                return;
+            }
+        } catch (e) {}
+        try {
+            var Browser = window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+            if (Browser && typeof Browser.open === "function") {
+                Browser.open({ url: url });
+                return;
+            }
+        } catch (e2) {}
+        window.open(url, "_blank");
+    }
+
+    function launchTelegramFromMeta() {
+        var meta = document.querySelector('meta[name="ayc-telegram-launch"]');
+        var url = meta && meta.getAttribute("content");
+        if (url) return url;
+        return "";
+    }
+
+    function wireOpenTelegramOutsideWebView() {
+        document.addEventListener(
+            "click",
+            function (e) {
+                var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+                if (!a) return;
+                var href = (a.getAttribute("href") || "").trim();
+                if (!href) return;
+
+                if (isTelegramExternalHref(href)) {
+                    e.preventDefault();
+                    openExternalUrl(href);
+                    return;
+                }
+
+                // /tg/ in native app is the site hub, not Telegram Mini App — open bot instead.
+                if (isInAppTgHubHref(href)) {
+                    var launch = launchTelegramFromMeta() || href;
+                    if (isTelegramExternalHref(launch)) {
+                        e.preventDefault();
+                        openExternalUrl(launch);
+                    }
+                }
+            },
+            true
+        );
+    }
+
     async function boot() {
         if (!isNative()) return;
 
@@ -104,6 +179,7 @@
 
         patchAuthLinks("native");
         wireDeepLinks();
+        wireOpenTelegramOutsideWebView();
 
         try {
             var StatusBar = window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar;

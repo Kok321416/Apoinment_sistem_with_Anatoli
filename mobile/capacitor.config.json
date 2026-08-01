@@ -13,8 +13,7 @@
       "oauth.vk.com",
       "id.vk.ru",
       "telegram.org",
-      "oauth.telegram.org",
-      "t.me"
+      "oauth.telegram.org"
     ]
   },
   "android": {

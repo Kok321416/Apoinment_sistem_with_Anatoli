@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="/static/css/auth.css?v=18">
     {% endblock %}
     {% block head_extra %}{% endblock %}
+    {% if telegram_mini_app_launch_url %}<meta name="ayc-telegram-launch" content="{{ telegram_mini_app_launch_url }}">{% endif %}
 </head>
 <body class="auth-page">
     {% include "components/skip_link.html" %}
@@ -29,6 +30,6 @@
     {% include "components/cookie_consent.html" %}
     {% include "components/yandex_metrika.html" %}
     {% block scripts %}{% endblock %}
-    <script src="/static/js/capacitor-bridge.js?v=2" defer></script>
+    <script src="/static/js/capacitor-bridge.js?v=3" defer></script>
 </body>
 </html>

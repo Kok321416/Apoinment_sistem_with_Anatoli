@@ -87,7 +87,7 @@
                         <a href="/booking/">Записи</a>
                         <a href="/integrations/">Интеграции</a>
                         {% endif %}
-                        <a href="/tg/">Telegram Mini App</a>
+                        <a href="{{ telegram_mini_app_launch_url }}" target="_blank" rel="noopener" data-tg-internal="/tg/">Telegram Mini App</a>
                         <form method="POST" action="/logout/">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="app-header__menu-logout">Выход</button>
