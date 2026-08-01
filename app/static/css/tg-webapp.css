@@ -725,3 +725,54 @@ body.tg-webapp.cabinet-shell .client-drawer__panel {
 body.tg-webapp.cabinet-shell .bkg-card__actions .btn {
     min-height: var(--tg-touch, 44px);
 }
+
+/* TelegramUI-like denser list cells */
+body.tg-webapp .bkg-card {
+    padding: 12px 14px;
+    border-radius: var(--tg-radius-sm, 10px);
+}
+
+body.tg-webapp .bkg-card__title {
+    font-size: 1rem;
+}
+
+body.tg-webapp .bkg-card__meta li {
+    grid-template-columns: 4.75rem minmax(0, 1fr);
+    gap: 8px;
+}
+
+body.tg-webapp .client-card {
+    height: auto;
+    min-height: 0;
+    padding: 14px;
+}
+
+body.tg-webapp .client-card__hover-actions {
+    opacity: 1;
+    transform: none;
+    position: static;
+    margin-bottom: 8px;
+    justify-content: flex-end;
+}
+
+body.tg-webapp .cal-card {
+    padding: 14px;
+}
+
+body.tg-webapp .service-card {
+    padding: 14px;
+}
+
+body.tg-webapp .bookings-status-pills {
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+}
+
+body.tg-webapp .bookings-status-pill {
+    flex: 0 0 auto;
+    min-height: var(--tg-touch, 44px);
+    padding: 8px 12px;
+}

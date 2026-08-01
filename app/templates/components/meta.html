@@ -30,7 +30,15 @@
 <link rel="preload" href="/static/css/main.css?v=21" as="style">
 <link rel="preload" href="/static/svg/logo.svg" as="image" type="image/svg+xml">
 <link rel="stylesheet" href="/static/css/main.css?v=21">
-<link rel="stylesheet" href="/static/css/tg-webapp.css?v=7">
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
+<script>
+(function () {
+    if (!("serviceWorker" in navigator)) return;
+    window.addEventListener("load", function () {
+        navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(function () {});
+    });
+})();
+</script>
 {% block head_extra %}{% endblock %}

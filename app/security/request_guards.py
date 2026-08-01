@@ -8,6 +8,7 @@ _SKIP_PREFIXES = (
     "/static/",
     "/media/",
     "/health",
+    "/sw.js",
     "/internal/cron/",
     "/favicon.ico",
 )

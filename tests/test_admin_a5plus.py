@@ -9,7 +9,8 @@ import app.models  # noqa: F401
 from app.database import Base
 from app.models import SupportTicket, TelegramBroadcastJob, User
 from app.services.admin_rbac import ROLE_SUPPORT, assign_role, effective_roles, has_permission, revoke_role
-from app.services.admin_totp import enable_admin_2fa, generate_totp_secret, totp_at, verify_totp
+from app.services.admin_totp import enable_admin_2fa, generate_totp_secret, verify_totp
+from app.services.totp_crypto import totp_at
 from app.services.broadcast import JOB_CANCELLED, JOB_QUEUED, cancel_broadcast_job, create_broadcast_job
 from app.services.platform_billing import billing_snapshot
 from app.services.platform_support import create_support_ticket, reply_support_ticket

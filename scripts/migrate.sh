@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Database schema is managed by existing MySQL tables (migrated from Django).
-# For new deployments use: alembic upgrade head
+# Database schema: runtime patches via app.db_schema (ensure_all_schema).
+# Alembic is not used in this project.
 set -e
 SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_ABS/.." && pwd)"

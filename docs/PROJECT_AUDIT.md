@@ -5,7 +5,7 @@
 Prod deploy: push в `main` → GitHub Actions → VPS (Passenger + bot systemd)  
 Стек: FastAPI + Jinja2 + MySQL + Telegram bot + Capacitor Android  
 
-**Статус:** P0–P2 выполнены 2026-08-01 (cleanup + archive). P3–P5 ждут отдельного ОК.  
+**Статус:** P0–P4 выполнены 2026-08-01. P5: pytest; merge в `main` - только по отдельному ОК.  
 
 ---
 

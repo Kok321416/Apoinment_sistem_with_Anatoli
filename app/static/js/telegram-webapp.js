@@ -88,11 +88,13 @@
     function applyTheme(tg) {
         var root = document.documentElement;
         var tp = tg.themeParams || {};
-        if (tg.colorScheme === "dark") {
-            root.setAttribute("data-tg-theme", "dark");
-        } else {
-            root.setAttribute("data-tg-theme", "light");
-        }
+        var scheme = tg.colorScheme === "dark" ? "dark" : "light";
+        root.setAttribute("data-tg-theme", scheme);
+        // Align site tokens with Telegram scheme inside Mini App.
+        root.setAttribute("data-theme", scheme);
+        try {
+            localStorage.setItem("ayc-theme", scheme);
+        } catch (e) {}
         if (tp.bg_color) root.style.setProperty("--tg-bg", tp.bg_color);
         if (tp.secondary_bg_color) root.style.setProperty("--tg-bg-secondary", tp.secondary_bg_color);
         if (tp.button_color) root.style.setProperty("--tg-button", tp.button_color);
@@ -101,12 +103,81 @@
         if (tp.hint_color) root.style.setProperty("--tg-hint", tp.hint_color);
         try {
             if (typeof tg.setHeaderColor === "function") {
-                tg.setHeaderColor(tp.bg_color || "#0b0d12");
+                tg.setHeaderColor(tp.bg_color || (scheme === "dark" ? "#0a0a0a" : "#ffffff"));
             }
             if (typeof tg.setBackgroundColor === "function") {
-                tg.setBackgroundColor(tp.bg_color || "#0b0d12");
+                tg.setBackgroundColor(tp.bg_color || (scheme === "dark" ? "#0a0a0a" : "#ffffff"));
             }
         } catch (e) {}
+    }
+
+    function haptic(kind) {
+        var tg = window.Telegram && window.Telegram.WebApp;
+        if (!tg || !tg.HapticFeedback) return;
+        try {
+            var h = tg.HapticFeedback;
+            if (kind === "success" && h.notificationOccurred) h.notificationOccurred("success");
+            else if (kind === "error" && h.notificationOccurred) h.notificationOccurred("error");
+            else if (kind === "medium" && h.impactOccurred) h.impactOccurred("medium");
+            else if (h.impactOccurred) h.impactOccurred("light");
+        } catch (e) {}
+    }
+
+    function wireHaptics() {
+        document.addEventListener(
+            "click",
+            function (e) {
+                var t = e.target && e.target.closest
+                    ? e.target.closest(
+                          ".cabinet-bottom-nav__item, .btn--primary, .btn--success, .bookings-segment__btn, .bookings-quick-pill, .view-toggle__btn, [data-tg-haptic]"
+                      )
+                    : null;
+                if (t) haptic("light");
+            },
+            true
+        );
+    }
+
+    function wireMainButton(tg) {
+        if (!tg.MainButton) return;
+        var el = document.querySelector("[data-tg-main-button]");
+        if (!el) {
+            try {
+                tg.MainButton.hide();
+            } catch (e) {}
+            return;
+        }
+        var text = (el.getAttribute("data-tg-main-button") || el.textContent || "Продолжить").trim();
+        try {
+            tg.MainButton.setText(text.slice(0, 64));
+            if (tg.MainButton.color === undefined && tg.themeParams && tg.themeParams.button_color) {
+                tg.MainButton.color = tg.themeParams.button_color;
+            }
+            tg.MainButton.show();
+            tg.MainButton.onClick(function () {
+                haptic("medium");
+                if (typeof el.click === "function") el.click();
+            });
+        } catch (e) {}
+    }
+
+    function wireBackButton(tg) {
+        if (!tg.BackButton) return;
+        var path = window.location.pathname || "/";
+        var isHub = path === "/tg/" || path === "/tg";
+        if (isHub) {
+            tg.BackButton.hide();
+            return;
+        }
+        tg.BackButton.show();
+        tg.BackButton.onClick(function () {
+            haptic("light");
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = "/tg/";
+            }
+        });
     }
 
     function wireExternalLinks(tg) {
@@ -134,24 +205,6 @@
             },
             true
         );
-    }
-
-    function wireBackButton(tg) {
-        if (!tg.BackButton) return;
-        var path = window.location.pathname || "/";
-        var isHub = path === "/tg/" || path === "/tg";
-        if (isHub) {
-            tg.BackButton.hide();
-            return;
-        }
-        tg.BackButton.show();
-        tg.BackButton.onClick(function () {
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                window.location.href = "/tg/";
-            }
-        });
     }
 
     function tryWebappAuth(tg) {
@@ -228,6 +281,8 @@
             applyViewport(tg);
             wireBackButton(tg);
             wireExternalLinks(tg);
+            wireHaptics();
+            wireMainButton(tg);
 
             setTimeout(function () {
                 applyViewport(tg);
@@ -256,6 +311,7 @@
                 initDataUnsafe: tg.initDataUnsafe || {},
                 version: tg.version || "",
                 platform: tg.platform || "",
+                haptic: haptic,
             };
 
             tryWebappAuth(tg);

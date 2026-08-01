@@ -5,8 +5,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0B0D12",
-  "theme_color": "#0B0D12",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
   "lang": "ru",
   "icons": [
     {
@@ -16,7 +16,7 @@
       "purpose": "any"
     },
     {
-      "src": "/static/svg/logo.svg",
+      "src": "/static/svg/logo-mark.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

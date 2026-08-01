@@ -2,6 +2,10 @@
 
 Not a substitute for edge/WAF DDoS protection, but stops credential stuffing,
 signup spam, and request floods hitting the app workers.
+
+Caveat: buckets are per-process. With uvicorn/gunicorn --workers N each worker
+has its own limits (effective capacity ~ N x max_calls). Shared Redis is a
+follow-up if multi-node or strict global caps are required.
 """
 from __future__ import annotations
 

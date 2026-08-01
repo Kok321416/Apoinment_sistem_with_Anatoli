@@ -68,3 +68,12 @@ scripts/       # migrate / bot / reminders
 - GitHub Actions: `.github/workflows/deploy.yml` (ветка `main`)
 - Web: Passenger (`passenger_wsgi.py`)
 - Напоминания: cron `./scripts/run_reminders.sh`
+
+### Rate limit / workers
+
+In-memory rate limit и response cache работают **в каждом worker отдельно**.
+При `uvicorn --workers 2` эффективный лимит ≈ 2×. Для строгого global cap нужен Redis (пока не подключаем).
+
+### PWA
+
+`manifest.webmanifest` + `/sw.js` (кэш только `/static/*`, без HTML/API).

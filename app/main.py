@@ -64,6 +64,22 @@ async def health():
     return {"status": status, "schema": schema}
 
 
+@app.get("/sw.js")
+async def service_worker():
+    """Root-scoped SW so PWA can cache /static/* without caching HTML/API."""
+    from fastapi.responses import FileResponse
+
+    path = Path(settings.static_dir) / "sw.js"
+    return FileResponse(
+        path,
+        media_type="application/javascript; charset=utf-8",
+        headers={
+            "Service-Worker-Allowed": "/",
+            "Cache-Control": "no-cache",
+        },
+    )
+
+
 @app.get("/internal/cron/reminders/")
 @app.post("/internal/cron/reminders/")
 async def cron_send_reminders(request: Request):
