@@ -90,11 +90,10 @@
         var tp = tg.themeParams || {};
         var scheme = tg.colorScheme === "dark" ? "dark" : "light";
         root.setAttribute("data-tg-theme", scheme);
-        // Align site tokens with Telegram scheme inside Mini App.
+        // Match site tokens to Telegram for this session only.
+        // Do not write localStorage: keep user's ayc_theme preference for web/PWA.
         root.setAttribute("data-theme", scheme);
-        try {
-            localStorage.setItem("ayc-theme", scheme);
-        } catch (e) {}
+        root.style.colorScheme = scheme;
         if (tp.bg_color) root.style.setProperty("--tg-bg", tp.bg_color);
         if (tp.secondary_bg_color) root.style.setProperty("--tg-bg-secondary", tp.secondary_bg_color);
         if (tp.button_color) root.style.setProperty("--tg-button", tp.button_color);
