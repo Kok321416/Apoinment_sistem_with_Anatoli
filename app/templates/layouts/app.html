@@ -6,12 +6,12 @@
     {% include "components/meta.html" %}
     {% endblock %}
     {% block page_css %}
-    <link rel="stylesheet" href="/static/css/app.css?v=27">
+    <link rel="stylesheet" href="/static/css/app.css?v=28">
     {% endblock %}
     {% block head_extra %}{% endblock %}
     {% if telegram_mini_app_launch_url %}<meta name="ayc-telegram-launch" content="{{ telegram_mini_app_launch_url }}">{% endif %}
 </head>
-<body class="app-shell">
+<body class="app-shell cabinet-shell{% if cabinet_nav_active == 'home' %} cabinet-shell--home{% endif %}">
     {% include "components/skip_link.html" %}
     {% if impersonator_id %}
     <div class="impersonate-banner" role="alert" style="background:#ff5c7a;color:#fff;padding:0.6rem 1rem;text-align:center;">
@@ -22,25 +22,38 @@
         </form>
     </div>
     {% endif %}
-    {% include "components/app_header.html" %}
-    <main id="main" class="app-main" tabindex="-1">
-        <div class="container">
-            {% block app_content %}{% endblock %}
+
+    <div class="cabinet-frame">
+        {% include "components/cabinet_sidenav.html" %}
+
+        <div class="cabinet-workspace">
+            <header class="cabinet-workspace__bar">
+                <button type="button" class="cabinet-workspace__menu-btn" id="cabinet-menu-btn" aria-controls="cabinet-sidenav" aria-expanded="false" aria-label="Открыть меню кабинета">
+                    Меню
+                </button>
+                <div class="cabinet-workspace__bar-title">{{ cabinet_section_title | default('Кабинет') }}</div>
+            </header>
+
+            <main id="main" class="cabinet-workspace__main" tabindex="-1">
+                {% block app_content %}{% endblock %}
+            </main>
+
+            {% block app_footer %}
+            <footer class="cabinet-workspace__footer" role="contentinfo">
+                <a href="/privacy/">Конфиденциальность</a>
+                <a href="/terms/">Условия</a>
+                <a href="/guide/">Гайд</a>
+            </footer>
+            {% endblock %}
         </div>
-    </main>
-    {% block app_footer %}
-    <footer class="app-footer-mini" role="contentinfo">
-        <a href="/">На главную страницу</a>
-        <a href="/guide/">Гайд</a>
-        <a href="/privacy/">Конфиденциальность</a>
-        <a href="/terms/">Условия</a>
-    </footer>
-    {% endblock %}
+    </div>
+
     {% include "components/cookie_consent.html" %}
     {% include "components/yandex_metrika.html" %}
     {% include "components/telegram_webapp.html" %}
     {% block scripts %}{% endblock %}
     <script src="/static/js/theme-toggle.js?v=1" defer></script>
+    <script src="/static/js/cabinet-shell.js?v=1" defer></script>
     <script src="/static/js/capacitor-bridge.js?v=3" defer></script>
 </body>
 </html>

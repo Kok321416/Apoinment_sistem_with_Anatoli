@@ -245,6 +245,30 @@ def _session_pop(request, key: str, default=False):
     return request.session.pop(key, default)
 
 
+def _cabinet_nav_from_path(path: str) -> tuple[str, str]:
+    """Return (nav_key, section_title) for cabinet sidenav active state."""
+    p = (path or "/").rstrip("/") + "/"
+    rules = (
+        ("/calendars/", "calendars", "Календари"),
+        ("/services/", "services", "Услуги"),
+        ("/booking/", "bookings", "Записи"),
+        ("/clients/", "clients", "Клиенты"),
+        ("/profile/", "profile", "Профиль"),
+        ("/integrations/", "integrations", "Интеграции"),
+        ("/accounts/social/", "profile", "Профиль"),
+        ("/my-bookings/", "my_bookings", "Мои записи"),
+        ("/book/", "book", "Запись"),
+        ("/become-specialist/", "become", "Стать специалистом"),
+        ("/dashboard/", "home", "Обзор"),
+    )
+    for prefix, key, title in rules:
+        if p.startswith(prefix):
+            return key, title
+    if p in ("/", "//"):
+        return "home", "Обзор"
+    return "home", "Кабинет"
+
+
 def page_context(request, db, user=None, **extra):
     from app.services.active_mode import get_active_mode, get_cached_has_consultant
 
@@ -253,6 +277,7 @@ def page_context(request, db, user=None, **extra):
     if user is not None and db is not None:
         has_consultant = get_cached_has_consultant(request, db, user.id)
         active_mode = get_active_mode(request, db, user.id, has_consultant=has_consultant)
+    nav_key, section_title = _cabinet_nav_from_path(getattr(request.url, "path", "/") or "/")
     ctx = {
         "request": request,
         "user": user,
@@ -280,6 +305,8 @@ def page_context(request, db, user=None, **extra):
         "show_mode_switcher": bool(user and has_consultant),
         "impersonator_id": None,
         "load_telegram_webapp": False,
+        "cabinet_nav_active": nav_key,
+        "cabinet_section_title": section_title,
         **build_header_context(db, user, request),
         **extra,
     }

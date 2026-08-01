@@ -8,43 +8,21 @@
 
 {% block app_content %}
 {% if need_mode_specialist %}
-<div class="alert alert--info" role="alert">
-    Чтобы открыть кабинет специалиста, переключите режим в шапке на «Специалист».
+<div class="alert alert--info cabinet-alert" role="alert">
+    Чтобы открыть кабинет специалиста, переключите режим слева на «Специалист».
 </div>
 {% endif %}
-<h2 class="text-h1 app-main__title">Кабинет клиента</h2>
-<p class="text-body text-muted mt-md">Вы в режиме клиента. Можно записаться или посмотреть свои записи.{% if has_consultant %} Переключитесь на «Специалист», чтобы управлять календарями.{% endif %}</p>
 
-<div class="app-nav-grid mt-3xl">
-    <a href="/book/" class="app-nav-card">
-        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
-            <img src="/static/svg/icons/clock.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
-        </span>
-        <h3 class="app-nav-card__title">Записаться</h3>
-        <p class="app-nav-card__desc">Выбрать специалиста и свободное окно</p>
-    </a>
-    <a href="/my-bookings/" class="app-nav-card">
-        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
-            <img src="/static/svg/icons/calendar.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
-        </span>
-        <h3 class="app-nav-card__title">Мои записи</h3>
-        <p class="app-nav-card__desc">История и ближайшие визиты</p>
-    </a>
-    <a href="{{ telegram_mini_app_launch_url }}" class="app-nav-card" target="_blank" rel="noopener" data-tg-internal="/tg/">
-        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
-            <img src="/static/svg/icons/telegram.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
-        </span>
-        <h3 class="app-nav-card__title">Открыть в Telegram</h3>
-        <p class="app-nav-card__desc">Мини-приложение сервиса</p>
-    </a>
-    {% if not has_consultant %}
-    <a href="/become-specialist/" class="app-nav-card">
-        <span class="icon-tile app-nav-card__icon" aria-hidden="true">
-            <img src="/static/svg/icons/profile.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
-        </span>
-        <h3 class="app-nav-card__title">Стать специалистом</h3>
-        <p class="app-nav-card__desc">Включить кабинет, календари и приём записей</p>
-    </a>
-    {% endif %}
-</div>
+<section class="cabinet-empty" aria-label="Обзор кабинета">
+    <img class="cabinet-empty__logo" src="/static/svg/logo.svg" alt="" width="64" height="64" decoding="async">
+    <h1 class="cabinet-empty__title">{{ site_brand_name }}</h1>
+    <p class="cabinet-empty__lead">Кабинет клиента. Справа откроется нужный раздел, когда выберете его в меню слева.</p>
+    <p class="cabinet-empty__hint text-caption text-muted">
+        {% if has_consultant %}
+        Режим можно сменить на «Специалист» в панели слева.
+        {% else %}
+        Можно записаться или открыть «Мои записи».
+        {% endif %}
+    </p>
+</section>
 {% endblock %}

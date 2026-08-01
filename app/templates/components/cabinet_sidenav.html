@@ -1,0 +1,85 @@
+{# Left cabinet sidenav — Flowbite/Cal.com style. Logo unchanged. #}
+{% set path = request.url.path %}
+{% macro nav_item(key, href, label, icon) -%}
+<a
+    href="{{ href }}"
+    class="cabinet-nav__item{% if cabinet_nav_active == key %} is-active{% endif %}"
+    {% if cabinet_nav_active == key %}aria-current="page"{% endif %}
+>
+    <img class="cabinet-nav__icon" src="/static/svg/icons/{{ icon }}.svg" alt="" width="20" height="20" decoding="async">
+    <span class="cabinet-nav__label">{{ label }}</span>
+</a>
+{%- endmacro %}
+
+<aside class="cabinet-sidenav" id="cabinet-sidenav" aria-label="Кабинет">
+    <div class="cabinet-sidenav__brand">
+        {% set href = '/dashboard/' %}
+        {% include "components/logo.html" %}
+    </div>
+
+    {% if show_mode_switcher %}
+    <div class="cabinet-sidenav__mode" role="group" aria-label="Режим кабинета">
+        {% if active_mode == 'specialist' %}
+        <span class="cabinet-mode__btn is-active" aria-current="true">Специалист</span>
+        <form method="POST" action="/account/mode/" class="cabinet-mode__form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="mode" value="client">
+            <input type="hidden" name="next" value="/dashboard/">
+            <button type="submit" class="cabinet-mode__btn">Клиент</button>
+        </form>
+        {% else %}
+        <form method="POST" action="/account/mode/" class="cabinet-mode__form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="mode" value="specialist">
+            <input type="hidden" name="next" value="/dashboard/">
+            <button type="submit" class="cabinet-mode__btn">Специалист</button>
+        </form>
+        <span class="cabinet-mode__btn is-active" aria-current="true">Клиент</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <nav class="cabinet-nav" aria-label="Разделы кабинета">
+        {{ nav_item('home', '/dashboard/', 'Обзор', 'booking') }}
+        {% if active_mode == 'specialist' and has_consultant %}
+            {{ nav_item('calendars', '/calendars/', 'Календари', 'calendar') }}
+            {{ nav_item('services', '/services/', 'Услуги', 'services') }}
+            {{ nav_item('bookings', '/booking/', 'Записи', 'booking') }}
+            {{ nav_item('clients', '/clients/', 'Клиенты', 'clients') }}
+            {{ nav_item('profile', '/profile/', 'Профиль', 'profile') }}
+            {{ nav_item('integrations', '/integrations/', 'Интеграции', 'integrations') }}
+        {% else %}
+            {{ nav_item('book', '/book/', 'Записаться', 'clock') }}
+            {{ nav_item('my_bookings', '/my-bookings/', 'Мои записи', 'calendar') }}
+            <a
+                href="{{ telegram_mini_app_launch_url }}"
+                class="cabinet-nav__item"
+                target="_blank"
+                rel="noopener"
+                data-tg-internal="/tg/"
+            >
+                <img class="cabinet-nav__icon" src="/static/svg/icons/telegram.svg" alt="" width="20" height="20" decoding="async">
+                <span class="cabinet-nav__label">Telegram Mini App</span>
+            </a>
+            {% if not has_consultant %}
+            {{ nav_item('become', '/become-specialist/', 'Стать специалистом', 'profile') }}
+            {% endif %}
+        {% endif %}
+    </nav>
+
+    <div class="cabinet-sidenav__footer">
+        <div class="cabinet-sidenav__user" title="{{ header_account_display }}">
+            <div class="cabinet-sidenav__user-name">{{ header_consultant_name }}</div>
+            <div class="cabinet-sidenav__user-account">{{ header_account_display }}</div>
+        </div>
+        {% include "components/theme_toggle.html" %}
+        <a href="/" class="cabinet-nav__item cabinet-nav__item--muted">
+            <span class="cabinet-nav__label">На сайт</span>
+        </a>
+        <form method="POST" action="/logout/" class="cabinet-sidenav__logout">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="cabinet-nav__item cabinet-nav__item--danger">Выход</button>
+        </form>
+    </div>
+</aside>
+<div class="cabinet-sidenav__backdrop" id="cabinet-sidenav-backdrop" hidden></div>
