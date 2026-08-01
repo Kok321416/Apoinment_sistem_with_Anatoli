@@ -1,4 +1,4 @@
-# Django
+# Git
 *.log
 logs/
 *.pot
@@ -11,7 +11,7 @@ data.db
 /media
 /staticfiles
 
-# Environment variables
+# Environment
 .env
 .env.local
 .env.*.local
@@ -36,6 +36,20 @@ Thumbs.db
 secrets.json
 *.key
 *.pem
-
-# Telegram Bot Token (если хранится в файле)
 telegram_token.txt
+
+# Local junk / hosting leftovers
+index.php
+.section.php
+template.php
+packaging-*.png
+mobile/debug-screen*
+mobile/tools/
+
+# Python / tooling
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/

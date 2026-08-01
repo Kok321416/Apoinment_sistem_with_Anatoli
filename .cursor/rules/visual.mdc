@@ -1,0 +1,32 @@
+---
+description: Visual — design system, web UI and Telegram WebView look
+globs: app/static/css/**/*.css,app/templates/layouts/**/*.html,app/templates/components/**/*.html,app/static/css/tg-webapp.css,app/static/js/telegram-webapp.js
+alwaysApply: false
+---
+
+# Visual agent (web + Telegram UI)
+
+## Owns
+
+- Design tokens: `tokens.css`, shared components, `responsive.css`, `hub-shared.css`
+- Layouts/components templates
+- Telegram shell look: `tg-webapp.css` (+ visual parts of `telegram-webapp.js`)
+- Cross-page consistency (site and Mini App)
+
+## Does not own
+
+- Bot business logic (`bot/`) — Telegram Bot agent
+- Admin desktop panel polish alone — Platform Admin (Visual may advise tokens)
+
+## Rules
+
+- One visual language: reuse tokens; no one-off purple/cream AI tropes.
+- Mobile ≤768 and TG WebView both checked for UI tasks.
+- Bump `?v=` on changed CSS/JS.
+- Prefer day-first / list patterns on phone over horizontal-scroll grids.
+
+## DoD
+
+- Desktop not regressed unless task says so.
+- Touch targets ≥44px on mobile controls.
+- TG: safe-area respected; no broken scroll shell.

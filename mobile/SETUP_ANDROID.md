@@ -1,60 +1,45 @@
-# Android app setup (before RuStore)
+# Android app setup
 
-## What we built
+## Locked choices
 
-Capacitor shell: package `ru.allyourclients.app`, opens `https://allyourclients.ru` in WebView.
-Same login (email / Telegram / VK / Yandex) and same MySQL as the website.
+- App name: **Все клиенты здесь**
+- Package: **`ru.allyourclients.app`**
+- First test: **emulator** (virtual phone)
 
-## What YOU need to install on this PC (required to build APK)
+## Good news (this PC)
 
-### 1. JDK 17 (not Java 8)
+- Android Studio: `C:\Program Files\Android\Android Studio`
+- SDK (hidden AppData): `C:\Users\Artem\AppData\Local\Android\Sdk`
+- JDK for builds: Temurin **21** at `C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot`
+- Debug APK built: `mobile\android\app\build\outputs\apk\debug\app-debug.apk`
 
-Download Temurin 17: https://adoptium.net/temurin/releases/?version=17  
-Install, then in PowerShell check:
+`java -version` in PowerShell may still show 1.8 - that is OK for now. Builds must use JDK 21 via `JAVA_HOME`.
 
-```powershell
-java -version
-```
+## Create virtual phone (emulator) - do this in Android Studio
 
-Should show 17.x (not 1.8).
+1. Open **Android Studio**.
+2. **More Actions** → **Virtual Device Manager** (or Device Manager icon).
+3. **Create Device** → phone (Pixel 6 / Pixel 7) → Next.
+4. Download a system image: **API 34** or **API 35** (Recommended) → Finish.
+5. Press **Play** on the device card - wait until home screen appears.
 
-### 2. Android Studio
+## Install the APK on the emulator
 
-Download: https://developer.android.com/studio  
-During setup install:
-- Android SDK
-- Android SDK Platform 35
-- Android Virtual Device (optional emulator)
-
-After install, open Android Studio once so SDK path is created, usually:
-`C:\Users\Artem\AppData\Local\Android\Sdk`
-
-### 3. Tell me when ready
-
-Reply with:
-1. `java -version` output
-2. Does folder `C:\Users\Artem\AppData\Local\Android\Sdk` exist? (yes/no)
-3. Phone for test: do you have an Android phone + USB cable? (yes/no)
-
-Then I will run the debug APK build and give you the file to install.
-
-## Build yourself (after Studio is installed)
+After the emulator is running, in PowerShell:
 
 ```powershell
-cd c:\Users\Artem\PycharmProjects\Apoinment_sistem_with_Anatoli\mobile
-npm install
-npx cap sync android
-npx cap open android
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+& "$env:ANDROID_HOME\platform-tools\adb.exe" devices
+& "$env:ANDROID_HOME\platform-tools\adb.exe" install -r "C:\Users\Artem\PycharmProjects\Apoinment_sistem_with_Anatoli\mobile\android\app\build\outputs\apk\debug\app-debug.apk"
 ```
 
-In Android Studio: **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
-APK path roughly: `mobile\android\app\build\outputs\apk\debug\app-debug.apk`
+Or tell me «эмулятор запущен» - I will install the APK from here.
 
-Install on phone: enable «Установка из неизвестных источников» for this APK (test only; RuStore later).
+## Rebuild APK later
 
-## Questions for you (answer when you can)
-
-1. App display name OK: «Все клиенты здесь»?
-2. Package id OK: `ru.allyourclients.app`? (hard to change after RuStore publish)
-3. Prefer first test on **emulator** or **real phone**?
-4. Do you already have a RuStore developer account? (we use it later, not now)
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot"
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+cd C:\Users\Artem\PycharmProjects\Apoinment_sistem_with_Anatoli\mobile\android
+.\gradlew.bat assembleDebug
+```

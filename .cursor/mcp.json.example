@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "<token-with-repo-and-actions-read>"
+      }
+    },
+    "mysql": {
+      "command": "npx",
+      "args": ["-y", "@benborla/mcp-server-mysql"],
+      "env": {
+        "MYSQL_HOST": "127.0.0.1",
+        "MYSQL_PORT": "3306",
+        "MYSQL_USER": "appointment_user",
+        "MYSQL_PASSWORD": "<local-dev-only>",
+        "MYSQL_DATABASE": "appointment_db"
+      }
+    },
+    "docker": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-docker"]
+    }
+  },
+  "_comments": {
+    "browser": "Use Cursor built-in Browser MCP / Playwright for 375px and TG WebView checks — after implementation only.",
+    "mysql_safety": "Agents must use SELECT/SHOW/EXPLAIN only. No INSERT/UPDATE/DELETE/DROP via MCP.",
+    "docker_safety": "Prefer compose logs --tail 200. Do not follow logs unbounded.",
+    "setup": "Copy this file to mcp.json (gitignored) and fill secrets. Never commit mcp.json."
+  }
+}

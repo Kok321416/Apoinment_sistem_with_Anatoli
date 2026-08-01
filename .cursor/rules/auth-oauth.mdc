@@ -1,0 +1,24 @@
+---
+description: Auth, sessions, OAuth, login/register UI
+globs: app/auth/**/*.py,app/routers/oauth.py,app/services/*auth*.py,app/services/login_methods.py,app/services/session_invalidation.py,app/services/email_verification.py,app/services/password_reset.py,app/static/css/auth.css,app/templates/login*.html,app/templates/register.html,app/templates/password_*.html,app/templates/layouts/auth.html,app/templates/public/welcome.html
+alwaysApply: false
+---
+
+# Auth & OAuth agent
+
+## Scope
+
+- Sessions, passwords, OAuth (Google/VK/Yandex), Telegram login, email verify/reset
+- Auth templates + `auth.css`; public welcome gate that mirrors login
+
+## Rules
+
+- Keep social button order and copy consistent across `/login/`, welcome, TG guest.
+- CSRF on all state-changing POSTs.
+- Session cookie: respect SameSite for Mini App (`none` + Secure when needed).
+
+## DoD
+
+- Login methods still reachable; redirect-back preserved.
+- No plaintext secrets in templates/logs.
+- Specialist opt-in 2FA (TOTP) applies to password + OAuth + Telegram when enabled; setup in profile «Вход».

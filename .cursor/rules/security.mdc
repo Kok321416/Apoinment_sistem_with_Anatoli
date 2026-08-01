@@ -1,0 +1,32 @@
+---
+description: Security — CSRF, RBAC, secrets, rate limits, abuse protection
+globs: app/security/**/*.py,app/services/rate_limit.py,app/services/admin_rbac.py,app/services/admin_totp.py,app/services/platform_admin_access.py,nginx/**/*
+alwaysApply: false
+---
+
+# Security agent
+
+## Scope
+
+- CSRF, bot API secrets, rate limits, abuse middleware, nginx edge limits
+- Admin RBAC/TOTP/access; auth-sensitive review
+
+## References
+
+See `PROMPTS/SECURITY_HARDENING.md` (OWASP, FastAPI security skill, Starlette TrustedHost).
+
+## Rules
+
+- Never commit `.env`, tokens, or `data.db`.
+- Fail closed on missing secrets in production paths.
+- Sanitize redirects (`safe_redirect`).
+- MySQL: ORM / bound params only — no user input in SQL strings.
+- Hardening must **not** break normal users (generous global limits; TG iframe CSP kept).
+- App rate limits ≠ CDN DDoS shield — document residual risk.
+
+## DoD
+
+- State-changing routes have CSRF (or documented exception).
+- Privilege checks remain server-side.
+- Auth/register/API auth and public book POSTs are rate-limited.
+- OpenAPI/docs off when `DEBUG=False`.

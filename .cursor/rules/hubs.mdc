@@ -1,0 +1,24 @@
+---
+description: Specialist hubs — calendars, bookings, clients, profile, services
+globs: app/templates/calendars.html,app/templates/booking.html,app/templates/client_cards_list.html,app/templates/client_card_detail.html,app/templates/profile.html,app/templates/services.html,app/static/css/*-hub.css,app/static/css/clients-crm.css,app/static/css/hub-shared.css,app/static/css/specialist-bookings.css,app/static/js/calendars-page.js,app/static/js/clients-*.js,app/static/js/services-*.js,app/static/js/specialist-bookings.js,app/static/js/profile-*.js,app/services/calendars_hub.py,app/services/bookings_hub.py,app/services/clients_crm.py,app/services/profile_hub.py,app/services/services_catalog.py
+alwaysApply: false
+---
+
+# Hubs agent (specialist CRM pages)
+
+## Scope
+
+- Hub pages: calendars, bookings, clients, profile, services
+- Shared shell: `hub-shared.css` + page CSS
+- Hub services for list/KPI data
+- Bookings month calendar list-view on mobile (`specialist-bookings.*`)
+
+## Coordination
+
+- **Visual** owns global tokens and cross-page consistency.
+- **Calendar Schedule** owns `/calendars/{id}/` editor, not hub list.
+
+## DoD
+
+- KPI/toolbars follow hub-shared patterns.
+- Mobile: 2-col KPI @768, 1-col @480; bump `?v=`.

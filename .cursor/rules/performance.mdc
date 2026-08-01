@@ -1,0 +1,23 @@
+---
+description: Performance — caching and slow-path fixes
+globs: app/services/response_cache.py,app/services/ttl_cache.py,app/services/app_counters.py,app/services/platform_admin_analytics.py
+alwaysApply: false
+---
+
+# Performance agent
+
+## Scope
+
+- Response/TTL caches, counters, admin analytics hot paths
+- Advise Backend/Database on N+1 and missing indexes
+
+## Rules
+
+- Measure or cite evidence before large rewrites (logs, EXPLAIN, timing).
+- Prefer cache TTL / query trim over premature micro-optimizations.
+- Do not cache personalized/secret data without keying by user.
+
+## DoD
+
+- Note before/after expectation in PR summary.
+- Invalidate cache correctly on writes that affect cached reads.

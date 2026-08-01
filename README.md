@@ -1,55 +1,70 @@
-# Система онлайн записи консультантов
+# Система онлайн записи — Все клиенты здесь
 
-FastAPI приложение для управления записями на консультации.
+FastAPI + Jinja2 + MySQL + Telegram bot + Capacitor (Android / RuStore).
+
+Prod: https://allyourclients.ru · деплой: push в `main`.
 
 ## Возможности
 
-- Регистрация и авторизация (email, Google, Telegram)
-- Управление календарями и временными окнами
-- Публичная страница записи клиентов
-- Telegram-бот (запись, мои записи, уведомления)
-- Google Calendar синхронизация
-- Напоминания в Telegram (cron)
-
-## Технологии
-
-- FastAPI + Uvicorn
-- SQLAlchemy + MySQL
-- Jinja2 templates
-- Docker & Docker Compose
-- Nginx
+- Кабинет специалиста: календари, услуги, записи, клиенты, профиль
+- Публичная запись клиентов
+- Telegram-бот и Mini App
+- OAuth (Яндекс, VK, Telegram), 2FA
+- Android WebView shell (Capacitor)
 
 ## Быстрый старт
 
 ```bash
 cp env.example .env
-# Заполните .env (TELEGRAM_BOT_TOKEN, SECRET_KEY, DB_*)
+# Заполните .env (SECRET_KEY, DB_*, TELEGRAM_BOT_TOKEN, …)
 
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-В другом терминале:
+Бот (отдельный процесс):
 
 ```bash
 python -m bot.run
 ```
 
+Docker:
+
+```bash
+docker compose up -d
+```
+
+## Тесты
+
+```bash
+python -m pytest tests/ -q
+```
+
 ## Структура
 
 ```
-app/           # FastAPI приложение
-  main.py      # Точка входа
-  routers/     # HTTP маршруты
-  models/      # SQLAlchemy модели
-  services/    # Бизнес-логика
-  templates/   # HTML шаблоны
-bot/           # Telegram бот
-scripts/       # run_bot.sh, run_reminders.sh
+app/           # FastAPI (routers, models, services, templates, static)
+bot/           # Telegram bot
+mobile/        # Capacitor Android
+tests/         # pytest
+docs/          # design system, audit, TG setup
+PROMPTS/       # актуальные чеклисты агентов
+scripts/       # migrate / bot / reminders
 ```
+
+Схема БД: runtime-патчи в `app/db_schema.py` (каталог Alembic удалён как пустой).
+
+## Документация
+
+- `AGENTS.md` — оркестрация агентов
+- `docs/PROJECT_AUDIT.md` — аудит и план очистки
+- `docs/DESIGN_SYSTEM.md` — UI-токены
+- `docs/TELEGRAM_MINI_APP_SETUP.md` — Mini App
+- `mobile/README.md` — Android shell
+- `docs/archive/` — устаревшие планы
 
 ## Деплой
 
-- Docker: `docker compose up -d`
-- VPS (reg.ru): GitHub Actions deploy.yml
-- Напоминания: cron `./scripts/run_reminders.sh` каждые 15-30 мин
+- GitHub Actions: `.github/workflows/deploy.yml` (ветка `main`)
+- Web: Passenger (`passenger_wsgi.py`)
+- Напоминания: cron `./scripts/run_reminders.sh`

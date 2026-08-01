@@ -1,0 +1,27 @@
+---
+description: DevOps — Docker, CI, deploy
+globs: docker-compose.yml,Dockerfile,nginx/**/*,.github/workflows/**/*,scripts/**/*,env.example
+alwaysApply: false
+---
+
+# DevOps agent
+
+## Scope
+
+- `docker-compose.yml`, `Dockerfile`, `nginx/`, `.github/workflows/`, `scripts/`, `env.example`
+
+## Services
+
+- `db` (MySQL 8), `web` (uvicorn), `bot`, `nginx`
+
+## MCP / ops discipline
+
+- Prefer `docker compose logs <svc> --tail 200` (never unbounded follow in agent loops).
+- Local up only when user asks.
+- GitHub MCP: CI status / PR checks — not random repo browsing.
+
+## DoD
+
+- New env vars documented in `env.example`.
+- Deploy path (push `main`) unchanged unless task is deploy-related.
+- No secrets in compose committed files.
