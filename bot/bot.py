@@ -647,7 +647,7 @@ def handle_help_command(chat_id):
             ],
             [
                 _web_app_button("🏠 Открыть сервис", _mini_app_url("/tg/")),
-                _url_button("📱 Приложение", f"{site}/apps/"),
+                _web_app_button("📱 Приложение", _mini_app_url("/tg/apps/")),
             ],
         ]
     }
@@ -659,8 +659,8 @@ def handle_apps_command(chat_id):
     apps_url = f"{site}/apps/"
     keyboard = {
         "inline_keyboard": [
-            [_web_app_button("📱 Открыть Mini App", _mini_app_url("/tg/"))],
-            [_url_button("📖 Полная инструкция", apps_url)],
+            [_web_app_button("📱 Инструкция в Mini App", _mini_app_url("/tg/apps/"))],
+            [_url_button("🌐 Страница на сайте", apps_url)],
             [{"text": "Android в RuStore", "callback_data": "apps_android_soon"}],
         ]
     }

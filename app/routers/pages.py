@@ -220,6 +220,25 @@ async def telegram_mini_app_entry(request: Request, db: Session = Depends(get_db
     )
 
 
+@router.get("/tg/apps/")
+async def telegram_mini_app_apps_guide(request: Request, db: Session = Depends(get_db)):
+    """Install / phone guide inside Mini App shell (avoids full landing chrome)."""
+    from app.content.apps_copy import APPS_PAGE
+
+    user = _optional_user(request, db)
+    return templates.TemplateResponse(
+        "public/tg_apps.html",
+        page_context(
+            request,
+            db,
+            user,
+            tg_hub=True,
+            load_telegram_webapp=True,
+            apps_page=APPS_PAGE,
+        ),
+    )
+
+
 @router.get("/robots.txt", response_class=PlainTextResponse)
 async def robots_txt():
     base = settings.site_url.rstrip("/")
@@ -232,6 +251,7 @@ async def robots_txt():
         "Allow: /terms/\n"
         "Allow: /book/\n"
         "Allow: /tg/\n"
+        "Allow: /tg/apps/\n"
         "Disallow: /dashboard/\n"
         "Disallow: /profile/\n"
         "Disallow: /calendars/\n"

@@ -1,0 +1,73 @@
+{% extends "layouts/base.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Приложение на телефон — " ~ site_brand_name %}
+{% set meta_description = "Android RuStore и iPhone: Mini App или ярлык на экран Домой" %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=5">
+<link rel="stylesheet" href="/static/css/landing.css?v=22">
+{% endblock %}
+
+{% block body_class %}tg-hub-page{% endblock %}
+
+{% block body %}
+<div id="tg-scroll-root" class="tg-scroll-root" data-tg-shell="1">
+<div class="tg-hub" data-tg-hub="1" data-tg-authed="{% if user and user.is_authenticated %}1{% else %}0{% endif %}">
+    <div class="tg-hub__brand">
+        <img class="tg-hub__logo" src="/static/svg/logo.svg" alt="" width="40" height="40" decoding="async">
+        <h1 class="tg-hub__title">Приложение на телефон</h1>
+    </div>
+    <p class="tg-hub__text">{{ apps_page.intro }}</p>
+
+    <div class="tg-hub__actions stack-lg">
+        <article class="tg-hub__card-link" id="android">
+            <span class="tg-hub__card-title">Android: RuStore</span>
+            <span class="tg-hub__card-desc">{{ apps_page.android.body }}</span>
+            <span class="tg-hub__card-desc"><strong>{{ apps_page.android.cta_label }}</strong>. {{ apps_page.android.note }}</span>
+        </article>
+
+        <article class="tg-hub__card-link" id="iphone">
+            <span class="tg-hub__card-title">{{ apps_page.iphone.title }}</span>
+            <span class="tg-hub__card-desc">{{ apps_page.iphone.body }}</span>
+            <span class="tg-hub__card-title" style="margin-top:0.75rem">{{ apps_page.iphone.pwa.title }}</span>
+            <span class="tg-hub__card-desc">{{ apps_page.iphone.pwa.intro }}</span>
+            <ol class="apps-steps" style="margin:0.5rem 0 0;padding-left:1.2rem;color:inherit">
+                {% for step in apps_page.iphone.pwa.steps %}
+                <li>{{ step }}</li>
+                {% endfor %}
+            </ol>
+        </article>
+
+        <article class="tg-hub__card-link" id="mini-app">
+            <span class="tg-hub__card-title">{{ apps_page.mini_app.title }}</span>
+            <ol class="apps-steps" style="margin:0.5rem 0 0;padding-left:1.2rem;color:inherit">
+                {% for step in apps_page.mini_app.steps %}
+                <li>{{ step }}</li>
+                {% endfor %}
+            </ol>
+        </article>
+
+        <article class="tg-hub__card-link" id="shared">
+            <span class="tg-hub__card-title">{{ apps_page.shared.title }}</span>
+            <ul class="apps-shared__list" style="margin:0.5rem 0 0;padding-left:1.2rem;color:inherit">
+                {% for point in apps_page.shared.points %}
+                <li>{{ point }}</li>
+                {% endfor %}
+            </ul>
+        </article>
+
+        <a class="tg-hub__card-link tg-hub__card-link--primary" href="/tg/">
+            <span class="tg-hub__card-title">Назад в меню Mini App</span>
+            <span class="tg-hub__card-desc">Запись, кабинет, мои записи</span>
+        </a>
+        <a class="tg-hub__card-link" href="/apps/">
+            <span class="tg-hub__card-title">Полная страница на сайте</span>
+            <span class="tg-hub__card-desc">Тот же текст в обычном браузере</span>
+        </a>
+    </div>
+</div>
+</div>
+{% endblock %}

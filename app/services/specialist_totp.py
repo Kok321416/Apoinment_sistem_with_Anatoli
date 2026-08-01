@@ -23,9 +23,13 @@ def specialist_2fa_enabled(db: Session, user_id: int) -> bool:
 
 
 def needs_specialist_2fa(db: Session, user: User) -> bool:
-    if not user_is_specialist(db, user.id):
+    try:
+        if not user_is_specialist(db, user.id):
+            return False
+        return specialist_2fa_enabled(db, user.id)
+    except Exception:
+        # Missing table / schema drift must not break Mini App login.
         return False
-    return specialist_2fa_enabled(db, user.id)
 
 
 def ensure_specialist_2fa_setup(db: Session, user: User) -> UserTwoFactor:
