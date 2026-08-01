@@ -428,11 +428,21 @@ def handle_login_confirm_callback(chat_id, user_id, callback_query_id, token_str
     try:
         if status == 200 and data and data.get("success"):
             complete_url = data.get("complete_url", "")
-            keyboard = {"inline_keyboard": [[_url_button(LOGIN_OPEN_SITE, complete_url)]]} if complete_url else None
+            button_label = data.get("button_label") or LOGIN_OPEN_SITE
+            hint = data.get("success_hint") or (
+                "Нажмите кнопку ниже, чтобы завершить вход в браузере."
+            )
+            keyboard = (
+                {"inline_keyboard": [[{
+                    "text": button_label[:64],
+                    "url": complete_url,
+                }]]}
+                if complete_url
+                else None
+            )
             send_telegram_message(
                 chat_id,
-                "✅ <b>Вход подтверждён.</b>\n\n"
-                "Нажмите кнопку ниже, чтобы завершить вход в браузере.",
+                f"✅ <b>Вход подтверждён.</b>\n\n{hint}",
                 keyboard,
             )
         else:

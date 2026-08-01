@@ -153,10 +153,20 @@ async def confirm_telegram_login(request: Request, db: Session = Depends(get_db)
     )
     if not ok or not req:
         return JSONResponse({"success": False, "error": msg}, status_code=400)
-    site = settings.site_url.rstrip("/")
+    from app.services.client_channel import telegram_complete_urls
+
+    payload = telegram_complete_urls(
+        site_url=settings.site_url,
+        complete_token=req.complete_token or "",
+        client_channel=getattr(req, "client_channel", None) or "web",
+    )
     return {
         "success": True,
-        "complete_url": f"{site}/accounts/telegram/complete/{req.complete_token}/",
+        "complete_url": payload["complete_url"],
+        "https_url": payload["https_url"],
+        "client_channel": payload["client_channel"],
+        "button_label": payload["button_label"],
+        "success_hint": payload["success_hint"],
         "next_url": req.next_url,
     }
 

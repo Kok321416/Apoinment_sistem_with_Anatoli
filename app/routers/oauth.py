@@ -47,11 +47,100 @@ def _form_csrf_ok(request: Request, form) -> bool:
     return validate_csrf_token(request, token)
 
 
+def _oauth_return(
+    request: Request,
+    db: Session,
+    user,
+    next_url: str,
+    *,
+    client_channel: str = "web",
+    connect: bool = False,
+    connect_success_message: str | None = None,
+):
+    """Return to browser session or Capacitor app (HTTPS bridge → deep link)."""
+    from app.services.client_channel import normalize_client_channel
+    from app.services.native_auth_handoff import create_native_handoff
+
+    channel = normalize_client_channel(client_channel)
+    if channel == "native":
+        handoff = create_native_handoff(db, user_id=user.id, next_url=next_url)
+        if connect and connect_success_message:
+            request.session["integrations_success"] = connect_success_message
+        bridge = (
+            f"{settings.site_url.rstrip('/')}/accounts/open-native/"
+            f"?kind=handoff&token={quote(handoff.token)}"
+        )
+        return RedirectResponse(bridge, status_code=302)
+
+    if connect:
+        login_user(request, user, db)
+        if connect_success_message:
+            request.session["integrations_success"] = connect_success_message
+        return RedirectResponse(next_url, status_code=302)
+
+    from app.auth.login_flow import finish_login
+
+    return finish_login(request, user, db, next_url)
+
+
+@router.get("/open-native/")
+async def open_native_bridge(request: Request):
+    """HTTPS page opened from Telegram/browser; jumps into Capacitor via custom scheme."""
+    kind = (request.query_params.get("kind") or "").strip().lower()
+    token = (request.query_params.get("token") or "").strip()
+    if not token or kind not in ("complete", "handoff"):
+        return RedirectResponse("/login/", status_code=302)
+    if kind == "complete":
+        deep = f"allyourclients://auth/complete/{token}"
+        https_fallback = f"/accounts/telegram/complete/{quote(token)}/"
+    else:
+        deep = f"allyourclients://auth/handoff/{token}"
+        https_fallback = f"/accounts/native-handoff/{quote(token)}/"
+    html = f"""<!DOCTYPE html>
+<html lang="ru"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Открытие приложения</title>
+<style>
+body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#0B0D12;color:#e8eaed;
+font-family:system-ui,sans-serif;padding:1.5rem;text-align:center}}
+a.btn{{display:inline-block;margin:.5rem;padding:.85rem 1.2rem;border-radius:12px;text-decoration:none;
+background:linear-gradient(135deg,#7D5CFF,#49D1FF);color:#fff;font-weight:600}}
+a.sec{{color:#9aa3b2}}
+</style>
+</head><body>
+<p>Открываем приложение…</p>
+<p><a class="btn" id="open" href="{deep}">Открыть приложение</a></p>
+<p><a class="sec" href="{https_fallback}">Продолжить в браузере</a></p>
+<script>
+setTimeout(function(){{ window.location.href = {json.dumps(deep)}; }}, 200);
+</script>
+</body></html>"""
+    from fastapi.responses import HTMLResponse
+
+    return HTMLResponse(html)
+
+
+@router.get("/native-handoff/{token}/")
+async def native_auth_handoff(token: str, request: Request, db: Session = Depends(get_db)):
+    """Consume one-time token inside Capacitor WebView and finish login there."""
+    from app.auth.login_flow import finish_login
+    from app.services.native_auth_handoff import consume_native_handoff
+
+    user, next_url = consume_native_handoff(db, token)
+    if not user:
+        return RedirectResponse("/login/?error=handoff_expired", status_code=302)
+    return finish_login(request, user, db, next_url)
+
+
 @router.get("/telegram/login/")
 async def telegram_login_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     process = request.query_params.get("process", "login")
     next_url = safe_next_url(request.query_params.get("next"))
+    from app.services.client_channel import normalize_client_channel
+
+    client_channel = normalize_client_channel(request.query_params.get("client"))
 
     if process == "connect":
         if not user:
@@ -61,6 +150,7 @@ async def telegram_login_page(request: Request, db: Session = Depends(get_db)):
             next_url=next_url,
             process="connect",
             connect_user_id=user.id,
+            client_channel=client_channel,
         )
     else:
         if user:
@@ -74,11 +164,14 @@ async def telegram_login_page(request: Request, db: Session = Depends(get_db)):
                 process=process,
                 register_fio=register_fio,
                 register_phone=register_phone,
+                client_channel=client_channel,
             )
         elif process in ("signup", "signup_client"):
             return RedirectResponse(signup_error_redirect(next_url, "telegram_signup"), status_code=302)
         else:
-            req = create_login_request(db, next_url=next_url, process="login")
+            req = create_login_request(
+                db, next_url=next_url, process="login", client_channel=client_channel
+            )
 
     bot_username = settings.telegram_bot_username.lstrip("@")
     if not bot_username:
@@ -162,6 +255,9 @@ async def yandex_login(request: Request, db: Session = Depends(get_db)):
     request.session["yandex_oauth_state"] = state
     request.session["yandex_oauth_process"] = process
     request.session["yandex_oauth_next"] = next_url
+    from app.services.client_channel import normalize_client_channel
+
+    request.session["oauth_client_channel"] = normalize_client_channel(request.query_params.get("client"))
     return RedirectResponse(build_authorize_url(state), status_code=302)
 
 
@@ -177,6 +273,7 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
         process = request.session.pop("yandex_oauth_process", "login")
         next_url = safe_next_url(request.session.pop("yandex_oauth_next", "/"))
         connect_user_id = request.session.pop("yandex_connect_user_id", None)
+        client_channel = request.session.pop("oauth_client_channel", "web")
 
         if not code or not state or not expected_state or not secrets.compare_digest(state, expected_state):
             return RedirectResponse("/login/?error=yandex_state", status_code=302)
@@ -209,13 +306,17 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
             return RedirectResponse("/login/?error=yandex_failed", status_code=302)
 
         if process == "connect":
-            login_user(request, user, db)
-            request.session["integrations_success"] = "Яндекс привязан."
-            return RedirectResponse(next_url, status_code=302)
+            return _oauth_return(
+                request,
+                db,
+                user,
+                next_url,
+                client_channel=client_channel,
+                connect=True,
+                connect_success_message="Яндекс привязан.",
+            )
 
-        from app.auth.login_flow import finish_login
-
-        return finish_login(request, user, db, next_url)
+        return _oauth_return(request, db, user, next_url, client_channel=client_channel)
     except Exception:
         logger.exception("Unhandled Yandex OAuth callback error")
         db.rollback()
@@ -256,6 +357,9 @@ async def vk_login(request: Request, db: Session = Depends(get_db)):
     request.session["vk_oauth_process"] = process
     request.session["vk_oauth_next"] = next_url
     request.session["vk_code_verifier"] = code_verifier
+    from app.services.client_channel import normalize_client_channel
+
+    request.session["oauth_client_channel"] = normalize_client_channel(request.query_params.get("client"))
     return RedirectResponse(build_vk_authorize_url(state=state, code_challenge=code_challenge), status_code=302)
 
 
@@ -285,6 +389,7 @@ async def vk_callback(request: Request, db: Session = Depends(get_db)):
         connect_user_id = request.session.pop("vk_connect_user_id", None)
         code_verifier = request.session.pop("vk_code_verifier", None)
         link_token = request.session.pop("vk_link_booking_token", None)
+        client_channel = request.session.pop("oauth_client_channel", "web")
 
         if (
             not code
@@ -356,17 +461,17 @@ async def vk_callback(request: Request, db: Session = Depends(get_db)):
             return RedirectResponse("/login/?error=vk_failed", status_code=302)
 
         if process == "connect":
-            login_user(request, user, db)
-            request.session["integrations_success"] = "VK привязан."
-            if vk_messaging_configured():
-                write_url = vk_group_write_url()
-                if write_url:
-                    request.session["vk_allow_messages_hint"] = write_url
-            return RedirectResponse(next_url, status_code=302)
+            return _oauth_return(
+                request,
+                db,
+                user,
+                next_url,
+                client_channel=client_channel,
+                connect=True,
+                connect_success_message="VK привязан.",
+            )
 
-        from app.auth.login_flow import finish_login
-
-        return finish_login(request, user, db, next_url)
+        return _oauth_return(request, db, user, next_url, client_channel=client_channel)
     except Exception:
         logger.exception("Unhandled VK OAuth callback error")
         db.rollback()

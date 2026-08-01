@@ -259,6 +259,26 @@
             };
 
             tryWebappAuth(tg);
+            // Mark auth links so Telegram login returns into Mini App context.
+            document.addEventListener(
+                "click",
+                function (e) {
+                    var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+                    if (!a) return;
+                    var href = (a.getAttribute("href") || "").trim();
+                    if (
+                        href.indexOf("/accounts/telegram/login") === -1 &&
+                        href.indexOf("/accounts/yandex/login") === -1 &&
+                        href.indexOf("/accounts/vk/login") === -1
+                    ) {
+                        return;
+                    }
+                    if (href.indexOf("client=") !== -1) return;
+                    var sep = href.indexOf("?") >= 0 ? "&" : "?";
+                    a.setAttribute("href", href + sep + "client=tg");
+                },
+                true
+            );
         } catch (e) {
             // Ignore Mini App bootstrap errors outside Telegram.
         }

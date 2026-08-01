@@ -99,6 +99,22 @@ class TelegramLoginRequest(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # web | native | tg — where login started; used for return deep link after bot confirm
+    client_channel: Mapped[str] = mapped_column(String(20), default="web")
+
+
+class NativeAuthHandoff(Base):
+    """One-time token to move OAuth session from external browser into Capacitor WebView."""
+
+    __tablename__ = "native_auth_handoffs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("auth_user.id"), nullable=False)
+    next_url: Mapped[str] = mapped_column(String(500), default="/")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class TelegramUiPreference(Base):

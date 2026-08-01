@@ -30,7 +30,10 @@ def create_login_request(
     register_fio: str | None = None,
     register_phone: str | None = None,
     connect_user_id: int | None = None,
+    client_channel: str = "web",
 ) -> TelegramLoginRequest:
+    from app.services.client_channel import normalize_client_channel
+
     now = datetime.utcnow()
     req = TelegramLoginRequest(
         token=secrets.token_urlsafe(24),
@@ -39,6 +42,7 @@ def create_login_request(
         register_fio=(register_fio or "").strip() or None,
         register_phone=normalize_phone(register_phone) or None,
         connect_user_id=connect_user_id,
+        client_channel=normalize_client_channel(client_channel),
         created_at=now,
         expires_at=now + timedelta(minutes=LOGIN_TTL_MINUTES),
     )

@@ -15,6 +15,7 @@ _TELEGRAM_LOGIN_COLUMNS = {
     "telegram_id": "VARCHAR(32) NULL",
     "created_at": "DATETIME NULL",
     "consumed_at": "DATETIME NULL",
+    "client_channel": "VARCHAR(20) NULL DEFAULT 'web'",
 }
 
 _SCHEMA_PATCHES_ATTEMPTED = False
@@ -301,6 +302,11 @@ def ensure_telegram_login_schema() -> None:
         Base.metadata.create_all(bind=engine, tables=[auth_models.TelegramUiPreference.__table__])
     except Exception:
         logger.exception("telegram_ui_preferences create_all failed")
+
+    try:
+        Base.metadata.create_all(bind=engine, tables=[auth_models.NativeAuthHandoff.__table__])
+    except Exception:
+        logger.exception("native_auth_handoffs create_all failed")
 
 
 def ensure_email_auth_schema() -> None:
