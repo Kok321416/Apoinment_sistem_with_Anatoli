@@ -377,6 +377,85 @@ body.tg-webapp .profile-layout {
     gap: var(--tg-gap) !important;
 }
 
+body.tg-webapp .profile-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #ffffff;
+    border: 1px solid var(--border-default);
+    border-radius: var(--tg-radius-sm);
+}
+
+body.tg-webapp .profile-sidebar__btn {
+    flex: 0 0 auto;
+    min-height: var(--tg-touch, 44px);
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-default);
+    background: var(--surface-100);
+    pointer-events: auto !important;
+    touch-action: manipulation;
+}
+
+body.tg-webapp .profile-sidebar__btn.is-active {
+    background: #111111;
+    color: #fafafa;
+    border-color: #111111;
+}
+
+body.tg-webapp .profile-panel {
+    display: block;
+    scroll-margin-top: 72px;
+}
+
+body.tg-webapp .profile-panel[hidden] {
+    display: none !important;
+}
+
+body.tg-webapp .profile-panel .input,
+body.tg-webapp .profile-panel .textarea,
+body.tg-webapp .profile-panel .select,
+body.tg-webapp .profile-field {
+    pointer-events: auto !important;
+    touch-action: manipulation;
+    min-height: 44px;
+    font-size: 16px;
+}
+
+body.tg-webapp .profile-dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+body.tg-webapp .cabinet-empty {
+    min-height: auto;
+    padding: 20px 12px 28px;
+}
+
+body.tg-webapp .cabinet-empty__art {
+    inset: 0;
+    opacity: 0.55;
+}
+
+body.tg-webapp .cabinet-empty__card {
+    width: 100%;
+    max-width: 22rem;
+}
+
+body.tg-webapp .cabinet-home-guide {
+    display: grid;
+    gap: 10px;
+    margin-top: 8px;
+}
+
 body.tg-webapp table {
     display: block;
     width: 100%;
@@ -605,16 +684,16 @@ body.tg-webapp .apps-shared {
     mask: var(--tg-hub-icon) center / contain no-repeat;
 }
 
-.tg-hub__card-icon[data-icon="overview"] { --tg-hub-icon: url("/static/svg/icons/ui/overview.svg?v=2"); }
-.tg-hub__card-icon[data-icon="calendars"] { --tg-hub-icon: url("/static/svg/icons/ui/calendars.svg?v=2"); }
-.tg-hub__card-icon[data-icon="book"] { --tg-hub-icon: url("/static/svg/icons/ui/book.svg?v=2"); }
-.tg-hub__card-icon[data-icon="my-bookings"] { --tg-hub-icon: url("/static/svg/icons/ui/my-bookings.svg?v=2"); }
-.tg-hub__card-icon[data-icon="profile"] { --tg-hub-icon: url("/static/svg/icons/ui/profile.svg?v=2"); }
-.tg-hub__card-icon[data-icon="external"] { --tg-hub-icon: url("/static/svg/icons/ui/external.svg?v=2"); }
-.tg-hub__card-icon[data-icon="services"] { --tg-hub-icon: url("/static/svg/icons/ui/services.svg?v=2"); }
-.tg-hub__card-icon[data-icon="bookings"] { --tg-hub-icon: url("/static/svg/icons/ui/bookings.svg?v=2"); }
-.tg-hub__card-icon[data-icon="clients"] { --tg-hub-icon: url("/static/svg/icons/ui/clients.svg?v=2"); }
-.tg-hub__card-icon[data-icon="telegram"] { --tg-hub-icon: url("/static/svg/icons/ui/telegram.svg?v=2"); }
+.tg-hub__card-icon[data-icon="overview"] { --tg-hub-icon: url("/static/svg/icons/ui/overview.svg?v=3"); }
+.tg-hub__card-icon[data-icon="calendars"] { --tg-hub-icon: url("/static/svg/icons/ui/calendars.svg?v=3"); }
+.tg-hub__card-icon[data-icon="book"] { --tg-hub-icon: url("/static/svg/icons/ui/book.svg?v=3"); }
+.tg-hub__card-icon[data-icon="my-bookings"] { --tg-hub-icon: url("/static/svg/icons/ui/my-bookings.svg?v=3"); }
+.tg-hub__card-icon[data-icon="profile"] { --tg-hub-icon: url("/static/svg/icons/ui/profile.svg?v=3"); }
+.tg-hub__card-icon[data-icon="external"] { --tg-hub-icon: url("/static/svg/icons/ui/external.svg?v=3"); }
+.tg-hub__card-icon[data-icon="services"] { --tg-hub-icon: url("/static/svg/icons/ui/services.svg?v=3"); }
+.tg-hub__card-icon[data-icon="bookings"] { --tg-hub-icon: url("/static/svg/icons/ui/bookings.svg?v=3"); }
+.tg-hub__card-icon[data-icon="clients"] { --tg-hub-icon: url("/static/svg/icons/ui/clients.svg?v=3"); }
+.tg-hub__card-icon[data-icon="telegram"] { --tg-hub-icon: url("/static/svg/icons/ui/telegram.svg?v=3"); }
 
 .tg-hub__card-link--primary .tg-hub__card-icon {
     background-color: #fafafa;

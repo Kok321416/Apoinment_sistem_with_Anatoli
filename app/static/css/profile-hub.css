@@ -741,26 +741,108 @@
 @media (max-width: 900px) {
     .profile-layout {
         grid-template-columns: 1fr;
+        gap: var(--space-md);
     }
+
     .profile-sidebar-col {
         position: static;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
     }
+
+    /* Compact section menu: tap → jump to fill form */
     .profile-sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 25;
         flex-direction: row;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: var(--space-xs);
+        padding: var(--space-sm);
+        margin: 0 calc(-1 * var(--space-lg, 16px));
+        padding-left: var(--space-lg, 16px);
+        padding-right: var(--space-lg, 16px);
+        background: color-mix(in srgb, var(--surface-100) 94%, transparent);
+        border: 1px solid var(--border-default);
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        scrollbar-width: thin;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
     }
+
+    .profile-sidebar__btn {
+        flex: 0 0 auto;
+        min-height: 44px;
+        padding: var(--space-sm) var(--space-md);
+        border-left: none;
+        border-radius: 999px;
+        border: 1px solid var(--border-default);
+        background: var(--surface-100);
+        white-space: nowrap;
+    }
+
+    .profile-sidebar__btn.is-active {
+        background: #111111;
+        color: #fafafa;
+        border-color: #111111;
+        box-shadow: none;
+    }
+
+    .profile-sidebar__btn.is-active .profile-sidebar__icon {
+        background: color-mix(in srgb, #fafafa 18%, transparent);
+        color: #fafafa;
+    }
+
+    .profile-sidebar__icon {
+        width: 22px;
+        height: 22px;
+    }
+
+    .profile-editor-col {
+        min-width: 0;
+    }
+
+    .profile-panel {
+        scroll-margin-top: 4.5rem;
+    }
+
+    .profile-panel .input,
+    .profile-panel .textarea,
+    .profile-panel .select {
+        min-height: 44px;
+        font-size: 16px; /* avoid iOS zoom */
+        pointer-events: auto;
+        touch-action: manipulation;
+    }
+
+    .profile-panel .textarea {
+        min-height: 8rem;
+    }
+
+    .profile-mode-bar {
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+    }
+
     .profile-preview-col {
         max-width: none;
         justify-self: stretch;
     }
+
     .profile-footer-stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
     .social-edit-card {
         grid-template-columns: 1fr;
         gap: var(--space-sm);
     }
+
     .social-edit-card__status {
         justify-content: flex-start;
         min-width: 0;

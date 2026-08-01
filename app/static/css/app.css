@@ -854,19 +854,19 @@
     mask: var(--cabinet-icon) center / contain no-repeat;
 }
 
-.cabinet-nav__glyph[data-icon="overview"] { --cabinet-icon: url("/static/svg/icons/ui/overview.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="calendars"] { --cabinet-icon: url("/static/svg/icons/ui/calendars.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="services"] { --cabinet-icon: url("/static/svg/icons/ui/services.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="bookings"] { --cabinet-icon: url("/static/svg/icons/ui/bookings.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="clients"] { --cabinet-icon: url("/static/svg/icons/ui/clients.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="profile"] { --cabinet-icon: url("/static/svg/icons/ui/profile.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="integrations"] { --cabinet-icon: url("/static/svg/icons/ui/integrations.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="book"] { --cabinet-icon: url("/static/svg/icons/ui/book.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="my-bookings"] { --cabinet-icon: url("/static/svg/icons/ui/my-bookings.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="telegram"] { --cabinet-icon: url("/static/svg/icons/ui/telegram.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="theme"] { --cabinet-icon: url("/static/svg/icons/ui/theme.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="logout"] { --cabinet-icon: url("/static/svg/icons/ui/logout.svg?v=2"); }
-.cabinet-nav__glyph[data-icon="external"] { --cabinet-icon: url("/static/svg/icons/ui/external.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="overview"] { --cabinet-icon: url("/static/svg/icons/ui/overview.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="calendars"] { --cabinet-icon: url("/static/svg/icons/ui/calendars.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="services"] { --cabinet-icon: url("/static/svg/icons/ui/services.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="bookings"] { --cabinet-icon: url("/static/svg/icons/ui/bookings.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="clients"] { --cabinet-icon: url("/static/svg/icons/ui/clients.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="profile"] { --cabinet-icon: url("/static/svg/icons/ui/profile.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="integrations"] { --cabinet-icon: url("/static/svg/icons/ui/integrations.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="book"] { --cabinet-icon: url("/static/svg/icons/ui/book.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="my-bookings"] { --cabinet-icon: url("/static/svg/icons/ui/my-bookings.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="telegram"] { --cabinet-icon: url("/static/svg/icons/ui/telegram.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="theme"] { --cabinet-icon: url("/static/svg/icons/ui/theme.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="logout"] { --cabinet-icon: url("/static/svg/icons/ui/logout.svg?v=3"); }
+.cabinet-nav__glyph[data-icon="external"] { --cabinet-icon: url("/static/svg/icons/ui/external.svg?v=3"); }
 
 .cabinet-nav__icon {
     display: none;
@@ -1061,11 +1061,77 @@ html[data-theme="dark"] .brand__mark {
     margin-top: var(--space-md);
 }
 
+.cabinet-empty__lead--mobile {
+    display: none;
+}
+
+.cabinet-home-guide {
+    margin-top: var(--space-2xl);
+    padding: var(--space-2xl);
+    max-width: 40rem;
+}
+
+.cabinet-home-guide__title {
+    margin: 0 0 var(--space-xs);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-semibold);
+}
+
+.cabinet-home-guide__lead {
+    margin: 0 0 var(--space-lg);
+    color: var(--text-muted);
+    font-size: var(--font-size-body-sm);
+}
+
+.cabinet-home-guide__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.cabinet-home-guide__link {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--surface-100);
+    color: var(--text-primary);
+    text-decoration: none;
+    min-height: 48px;
+}
+
+.cabinet-home-guide__link:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-200);
+}
+
+.cabinet-home-guide__link .cabinet-nav__glyph {
+    margin-top: 2px;
+}
+
 .cabinet-bottom-nav {
     display: none;
 }
 
 @media (max-width: 899px) {
+    .cabinet-empty__lead--desktop {
+        display: none;
+    }
+
+    .cabinet-empty__lead--mobile {
+        display: block;
+    }
+
+    .cabinet-home-guide {
+        margin-top: var(--space-xl);
+        padding: var(--space-xl);
+        max-width: none;
+    }
     .cabinet-workspace__bar {
         display: flex;
         position: sticky;

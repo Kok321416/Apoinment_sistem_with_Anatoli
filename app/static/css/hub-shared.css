@@ -335,16 +335,16 @@
     mask: var(--hub-empty-icon) center / contain no-repeat;
 }
 
-.hub-empty__glyph[data-icon="overview"] { --hub-empty-icon: url("/static/svg/icons/ui/overview.svg?v=2"); }
-.hub-empty__glyph[data-icon="calendars"] { --hub-empty-icon: url("/static/svg/icons/ui/calendars.svg?v=2"); }
-.hub-empty__glyph[data-icon="services"] { --hub-empty-icon: url("/static/svg/icons/ui/services.svg?v=2"); }
-.hub-empty__glyph[data-icon="bookings"] { --hub-empty-icon: url("/static/svg/icons/ui/bookings.svg?v=2"); }
-.hub-empty__glyph[data-icon="clients"] { --hub-empty-icon: url("/static/svg/icons/ui/clients.svg?v=2"); }
-.hub-empty__glyph[data-icon="profile"] { --hub-empty-icon: url("/static/svg/icons/ui/profile.svg?v=2"); }
-.hub-empty__glyph[data-icon="integrations"] { --hub-empty-icon: url("/static/svg/icons/ui/integrations.svg?v=2"); }
-.hub-empty__glyph[data-icon="book"] { --hub-empty-icon: url("/static/svg/icons/ui/book.svg?v=2"); }
-.hub-empty__glyph[data-icon="my-bookings"] { --hub-empty-icon: url("/static/svg/icons/ui/my-bookings.svg?v=2"); }
-.hub-empty__glyph[data-icon="telegram"] { --hub-empty-icon: url("/static/svg/icons/ui/telegram.svg?v=2"); }
+.hub-empty__glyph[data-icon="overview"] { --hub-empty-icon: url("/static/svg/icons/ui/overview.svg?v=3"); }
+.hub-empty__glyph[data-icon="calendars"] { --hub-empty-icon: url("/static/svg/icons/ui/calendars.svg?v=3"); }
+.hub-empty__glyph[data-icon="services"] { --hub-empty-icon: url("/static/svg/icons/ui/services.svg?v=3"); }
+.hub-empty__glyph[data-icon="bookings"] { --hub-empty-icon: url("/static/svg/icons/ui/bookings.svg?v=3"); }
+.hub-empty__glyph[data-icon="clients"] { --hub-empty-icon: url("/static/svg/icons/ui/clients.svg?v=3"); }
+.hub-empty__glyph[data-icon="profile"] { --hub-empty-icon: url("/static/svg/icons/ui/profile.svg?v=3"); }
+.hub-empty__glyph[data-icon="integrations"] { --hub-empty-icon: url("/static/svg/icons/ui/integrations.svg?v=3"); }
+.hub-empty__glyph[data-icon="book"] { --hub-empty-icon: url("/static/svg/icons/ui/book.svg?v=3"); }
+.hub-empty__glyph[data-icon="my-bookings"] { --hub-empty-icon: url("/static/svg/icons/ui/my-bookings.svg?v=3"); }
+.hub-empty__glyph[data-icon="telegram"] { --hub-empty-icon: url("/static/svg/icons/ui/telegram.svg?v=3"); }
 
 .hub-empty__title,
 .calendars-empty__title,
@@ -404,13 +404,13 @@
     mask: var(--hub-hero-icon) center / contain no-repeat;
 }
 
-.hub-hero__glyph[data-icon="calendars"] { --hub-hero-icon: url("/static/svg/icons/ui/calendars.svg?v=2"); }
-.hub-hero__glyph[data-icon="bookings"] { --hub-hero-icon: url("/static/svg/icons/ui/bookings.svg?v=2"); }
-.hub-hero__glyph[data-icon="clients"] { --hub-hero-icon: url("/static/svg/icons/ui/clients.svg?v=2"); }
-.hub-hero__glyph[data-icon="services"] { --hub-hero-icon: url("/static/svg/icons/ui/services.svg?v=2"); }
-.hub-hero__glyph[data-icon="profile"] { --hub-hero-icon: url("/static/svg/icons/ui/profile.svg?v=2"); }
-.hub-hero__glyph[data-icon="overview"] { --hub-hero-icon: url("/static/svg/icons/ui/overview.svg?v=2"); }
-.hub-hero__glyph[data-icon="integrations"] { --hub-hero-icon: url("/static/svg/icons/ui/integrations.svg?v=2"); }
+.hub-hero__glyph[data-icon="calendars"] { --hub-hero-icon: url("/static/svg/icons/ui/calendars.svg?v=3"); }
+.hub-hero__glyph[data-icon="bookings"] { --hub-hero-icon: url("/static/svg/icons/ui/bookings.svg?v=3"); }
+.hub-hero__glyph[data-icon="clients"] { --hub-hero-icon: url("/static/svg/icons/ui/clients.svg?v=3"); }
+.hub-hero__glyph[data-icon="services"] { --hub-hero-icon: url("/static/svg/icons/ui/services.svg?v=3"); }
+.hub-hero__glyph[data-icon="profile"] { --hub-hero-icon: url("/static/svg/icons/ui/profile.svg?v=3"); }
+.hub-hero__glyph[data-icon="overview"] { --hub-hero-icon: url("/static/svg/icons/ui/overview.svg?v=3"); }
+.hub-hero__glyph[data-icon="integrations"] { --hub-hero-icon: url("/static/svg/icons/ui/integrations.svg?v=3"); }
 
 /* Integrations — Stripe-like tiles */
 .integrations-page {

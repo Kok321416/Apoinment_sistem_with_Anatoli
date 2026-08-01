@@ -7,9 +7,9 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=36">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=10">
-<link rel="stylesheet" href="/static/css/calendars-hub.css?v=6">
+<link rel="stylesheet" href="/static/css/app.css?v=38">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=11">
+<link rel="stylesheet" href="/static/css/calendars-hub.css?v=7">
 {% endblock %}
 
 {% block app_content %}
@@ -63,7 +63,10 @@
     {% endif %}
 
     <button type="button" class="calendars-create-toggle card" id="calendars-create-toggle" aria-expanded="false">
-        <span class="calendars-create-toggle__label">＋ Создать календарь</span>
+        <span class="calendars-create-toggle__label">
+            <span class="cabinet-nav__glyph" data-icon="book" aria-hidden="true"></span>
+            Создать календарь
+        </span>
         <span class="btn btn--ghost btn--sm" aria-hidden="true">Развернуть</span>
     </button>
 

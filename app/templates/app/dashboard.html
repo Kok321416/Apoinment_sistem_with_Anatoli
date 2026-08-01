@@ -27,9 +27,47 @@
     <div class="cabinet-empty__card">
         <img class="cabinet-empty__logo" src="/static/img/brand/logo-mark-160.png?v=4" alt="" width="56" height="56" decoding="async">
         <h1 class="cabinet-empty__title">{{ site_brand_name }}</h1>
-        <p class="cabinet-empty__lead">Кабинет специалиста. Выберите раздел слева: календари, услуги, записи или клиенты.</p>
+        <p class="cabinet-empty__lead cabinet-empty__lead--desktop">Кабинет специалиста. Выберите раздел слева: календари, услуги, записи или клиенты.</p>
+        <p class="cabinet-empty__lead cabinet-empty__lead--mobile">Кабинет специалиста. Выберите раздел в меню внизу: календари, услуги, записи или клиенты.</p>
         <p class="cabinet-empty__hint text-caption">Подсказка: начните с «Календари», чтобы открыть окна приёма.</p>
         <a href="/calendars/" class="btn btn--primary btn--sm cabinet-empty__cta">Открыть календари</a>
     </div>
+</section>
+
+<section class="cabinet-home-guide card" aria-label="Инструкция">
+    <h2 class="cabinet-home-guide__title">С чего начать</h2>
+    <p class="cabinet-home-guide__lead">Короткая инструкция, как настроить приём клиентов.</p>
+    <ol class="cabinet-home-guide__list">
+        <li>
+            <a href="/calendars/" class="cabinet-home-guide__link">
+                <span class="cabinet-nav__glyph" data-icon="calendars" aria-hidden="true"></span>
+                <span><strong>Календари</strong> - окна приёма и расписание недели</span>
+            </a>
+        </li>
+        <li>
+            <a href="/services/" class="cabinet-home-guide__link">
+                <span class="cabinet-nav__glyph" data-icon="services" aria-hidden="true"></span>
+                <span><strong>Услуги</strong> - цены и длительность</span>
+            </a>
+        </li>
+        <li>
+            <a href="/profile/" class="cabinet-home-guide__link">
+                <span class="cabinet-nav__glyph" data-icon="profile" aria-hidden="true"></span>
+                <span><strong>Профиль</strong> - фото, описание и ссылка для клиентов</span>
+            </a>
+        </li>
+        <li>
+            <a href="/integrations/" class="cabinet-home-guide__link">
+                <span class="cabinet-nav__glyph" data-icon="telegram" aria-hidden="true"></span>
+                <span><strong>Интеграции</strong> - уведомления в Telegram</span>
+            </a>
+        </li>
+        <li>
+            <a href="/booking/" class="cabinet-home-guide__link">
+                <span class="cabinet-nav__glyph" data-icon="bookings" aria-hidden="true"></span>
+                <span><strong>Записи</strong> - входящие встречи и статусы</span>
+            </a>
+        </li>
+    </ol>
 </section>
 {% endblock %}

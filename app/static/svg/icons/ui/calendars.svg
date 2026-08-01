@@ -1,10 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-<rect x="3.25" y="5.25" width="17.5" height="15.5" rx="2.5" stroke="#111111" stroke-width="1.75"/>
-<path d="M3.25 10.25h17.5M8 3.5v3.5M16 3.5v3.5" stroke="#111111" stroke-width="1.75" stroke-linecap="round"/>
-<circle cx="8.5" cy="14.5" r="1.1" fill="#111111"/>
-<circle cx="12" cy="14.5" r="1.1" fill="#111111"/>
-<circle cx="15.5" cy="14.5" r="1.1" fill="#111111"/>
-<circle cx="8.5" cy="17.75" r="1.1" fill="#111111"/>
-<circle cx="12" cy="17.75" r="1.1" fill="#111111"/>
+<rect x="4" y="5.5" width="16" height="14.5" rx="3.5" stroke="#111111" stroke-width="1.75"/>
+<path d="M8.5 3.75v3.5M15.5 3.75v3.5" stroke="#111111" stroke-width="1.75" stroke-linecap="round"/>
+<circle cx="12" cy="11.75" r="1.15" fill="#111111"/>
+<circle cx="12" cy="15.5" r="1.15" fill="#111111"/>
 </svg>
-
