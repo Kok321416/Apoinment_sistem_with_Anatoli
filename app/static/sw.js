@@ -1,6 +1,6 @@
 /* Static-only service worker for PWA / Capacitor WebView.
    Does not cache HTML or API (avoids stale CSRF / auth pages). */
-const CACHE = "ayc-static-v1";
+const CACHE = "ayc-static-v2";
 
 self.addEventListener("install", function (event) {
     self.skipWaiting();
