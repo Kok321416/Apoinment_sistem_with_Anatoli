@@ -9,7 +9,7 @@
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=35">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=9">
-<link rel="stylesheet" href="/static/css/services-catalog.css?v=11">
+<link rel="stylesheet" href="/static/css/services-catalog.css?v=12">
 {% endblock %}
 
 {% block app_content %}
@@ -21,7 +21,7 @@
                 <span class="hub-hero__glyph" data-icon="services" aria-hidden="true"></span>
                 <h1 class="services-hero__title">Услуги</h1>
             </div>
-            <p class="services-hero__lead">Цены, длительность и календари записи.</p>
+            <p class="services-hero__lead">Цены, длительность и календари записи. Нажмите карточку, чтобы редактировать.</p>
         </div>
         <button type="button" class="btn btn--primary btn--lg" id="btn-new-service">Новая услуга</button>
     </section>
@@ -31,28 +31,6 @@
         <div class="stat-card stat-card--success"><span class="stat-card__value" data-stat="active">—</span><span class="stat-card__label">Активных</span></div>
         <div class="stat-card stat-card--accent"><span class="stat-card__value" data-stat="avg_duration">—</span><span class="stat-card__label">Средняя длительность</span></div>
         <div class="stat-card stat-card--warning"><span class="stat-card__value" data-stat="calendars_used">—</span><span class="stat-card__label">Календарей</span></div>
-    </section>
-
-    <section class="services-toolbar card" id="services-toolbar">
-        <div class="services-toolbar__filters">
-            <select class="select" id="filter-status" aria-label="Фильтр по статусу">
-                <option value="all">Все</option>
-                <option value="active">Активные</option>
-                <option value="inactive">Отключённые</option>
-            </select>
-            <select class="select" id="sort-by" aria-label="Сортировка">
-                <option value="name">Название</option>
-                <option value="price">Цена</option>
-                <option value="duration">Длительность</option>
-                <option value="created">Дата создания</option>
-                <option value="updated">Последнее изменение</option>
-                <option value="manual">Порядок вручную</option>
-            </select>
-            <div class="view-toggle" role="group" aria-label="Вид отображения">
-                <button type="button" class="view-toggle__btn is-active" data-view="grid" title="Карточки">▦</button>
-                <button type="button" class="view-toggle__btn" data-view="list" title="Список">≣</button>
-            </div>
-        </div>
     </section>
 
     <div class="services-bulk-bar" id="services-bulk-bar" hidden>
@@ -83,17 +61,6 @@
     </section>
 
     <nav class="services-pagination" id="services-pagination" aria-label="Пагинация" hidden></nav>
-
-    <section class="services-analytics card" id="services-analytics" aria-label="Общая аналитика">
-        <h2 class="services-analytics__title">Общая аналитика</h2>
-        <div class="services-analytics__grid">
-            <div class="analytics-item"><span class="analytics-item__value" data-analytics="total_bookings">—</span><span class="analytics-item__label">Всего записей</span></div>
-            <div class="analytics-item"><span class="analytics-item__value" data-analytics="fill_rate">—</span><span class="analytics-item__label">Заполненность</span></div>
-            <div class="analytics-item"><span class="analytics-item__value" data-analytics="avg_price">—</span><span class="analytics-item__label">Средняя стоимость</span></div>
-            <div class="analytics-item"><span class="analytics-item__value" data-analytics="avg_duration">—</span><span class="analytics-item__label">Средняя длительность</span></div>
-            <div class="analytics-item analytics-item--wide"><span class="analytics-item__value" data-analytics="popular_service">—</span><span class="analytics-item__label">Самая популярная услуга</span></div>
-        </div>
-    </section>
 </div>
 
 <div class="service-drawer-backdrop" id="drawer-backdrop" hidden></div>
@@ -159,5 +126,5 @@
 <script src="/static/js/toast.js?v=1" defer></script>
 <script src="/static/js/services-api.js?v=1" defer></script>
 <script src="/static/js/services-drawer.js?v=2" defer></script>
-<script src="/static/js/services-page.js?v=5" defer></script>
+<script src="/static/js/services-page.js?v=6" defer></script>
 {% endblock %}

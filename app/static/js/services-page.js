@@ -10,7 +10,6 @@
         let catalog = null;
         let filtered = [];
         let currentPage = 1;
-        let viewMode = 'grid';
         let selectedIds = new Set();
         let openMenuId = null;
 
@@ -40,26 +39,6 @@
             drawer.openCreate(catalog.calendars, catalog.templates);
         });
 
-        document.getElementById('filter-status').addEventListener('change', () => {
-            currentPage = 1;
-            filterAndRender();
-        });
-        document.getElementById('sort-by').addEventListener('change', () => {
-            currentPage = 1;
-            filterAndRender();
-        });
-
-        document.querySelectorAll('.view-toggle__btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                viewMode = btn.dataset.view;
-                document.querySelectorAll('.view-toggle__btn').forEach((b) => {
-                    b.classList.toggle('is-active', b === btn);
-                });
-                grid.classList.toggle('services-grid--list', viewMode === 'list');
-                filterAndRender();
-            });
-        });
-
         document.querySelectorAll('[data-bulk]').forEach((btn) => {
             btn.addEventListener('click', () => bulkAction(btn.dataset.bulk));
         });
@@ -87,51 +66,34 @@
         function applyCatalog(data) {
             catalog = data;
             updateDashboard(data.dashboard);
-            updateAnalytics(data.analytics);
             currentPage = 1;
             filterAndRender();
         }
 
         function updateDashboard(d) {
-            document.querySelector('[data-stat="total"]').textContent = d.total;
-            document.querySelector('[data-stat="active"]').textContent = d.active;
-            document.querySelector('[data-stat="avg_duration"]').textContent = d.avg_duration ? d.avg_duration + ' мин' : '—';
-            document.querySelector('[data-stat="calendars_used"]').textContent = d.calendars_used;
+            const total = document.querySelector('[data-stat="total"]');
+            const active = document.querySelector('[data-stat="active"]');
+            const avg = document.querySelector('[data-stat="avg_duration"]');
+            const cals = document.querySelector('[data-stat="calendars_used"]');
+            if (!d || !total) return;
+            total.textContent = d.total;
+            active.textContent = d.active;
+            avg.textContent = d.avg_duration ? d.avg_duration + ' мин' : '—';
+            cals.textContent = d.calendars_used;
         }
 
-        function updateAnalytics(a) {
-            document.querySelector('[data-analytics="total_bookings"]').textContent = a.total_bookings;
-            document.querySelector('[data-analytics="fill_rate"]').textContent = a.fill_rate + '%';
-            document.querySelector('[data-analytics="avg_price"]').textContent = a.avg_price ? a.avg_price + ' ₽' : '—';
-            document.querySelector('[data-analytics="avg_duration"]').textContent = a.avg_duration ? a.avg_duration + ' мин' : '—';
-            document.querySelector('[data-analytics="popular_service"]').textContent = a.popular_service;
-        }
-
-        function getFiltered() {
-            const status = document.getElementById('filter-status').value;
-            const sort = document.getElementById('sort-by').value;
-            let items = (catalog.services || []).slice();
-
-            if (status === 'active') {
-                items = items.filter((s) => s.is_active);
-            } else if (status === 'inactive') {
-                items = items.filter((s) => !s.is_active);
-            }
-
-            const sorters = {
-                name: (a, b) => a.name.localeCompare(b.name, 'ru'),
-                price: (a, b) => (b.price || 0) - (a.price || 0),
-                duration: (a, b) => b.duration_minutes - a.duration_minutes,
-                created: (a, b) => (b.created_at || '').localeCompare(a.created_at || ''),
-                updated: (a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''),
-                manual: (a, b) => a.sort_order - b.sort_order,
-            };
-            items.sort(sorters[sort] || sorters.name);
-            return items;
+        function getOrderedServices() {
+            return (catalog.services || [])
+                .slice()
+                .sort((a, b) => {
+                    const byOrder = (a.sort_order || 0) - (b.sort_order || 0);
+                    if (byOrder !== 0) return byOrder;
+                    return (a.name || '').localeCompare(b.name || '', 'ru');
+                });
         }
 
         function filterAndRender() {
-            filtered = getFiltered();
+            filtered = getOrderedServices();
             render();
         }
 
@@ -151,16 +113,6 @@
                 grid.innerHTML = '';
                 empty.hidden = false;
                 setEmptyCopy('Пока нет услуг', 'Создайте первую услугу или выберите шаблон в форме.');
-                pagination.hidden = true;
-                updateBulkBar();
-                return;
-            }
-
-            if (!filtered.length) {
-                grid.hidden = true;
-                grid.innerHTML = '';
-                empty.hidden = false;
-                setEmptyCopy('Ничего не найдено', 'Измените поиск или фильтры.');
                 pagination.hidden = true;
                 updateBulkBar();
                 return;
@@ -193,23 +145,20 @@
                 card.classList.add('is-selected');
             }
 
-            const sortManual = document.getElementById('sort-by').value === 'manual';
-            if (sortManual) {
-                card.draggable = true;
-                card.addEventListener('dragstart', (e) => {
-                    e.dataTransfer.setData('text/plain', String(service.id));
-                    card.classList.add('is-dragging');
-                });
-                card.addEventListener('dragend', () => card.classList.remove('is-dragging'));
-                card.addEventListener('dragover', (e) => e.preventDefault());
-                card.addEventListener('drop', async (e) => {
-                    e.preventDefault();
-                    const fromId = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                    const toId = service.id;
-                    if (fromId === toId) return;
-                    await reorderCards(fromId, toId);
-                });
-            }
+            card.draggable = true;
+            card.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', String(service.id));
+                card.classList.add('is-dragging');
+            });
+            card.addEventListener('dragend', () => card.classList.remove('is-dragging'));
+            card.addEventListener('dragover', (e) => e.preventDefault());
+            card.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                const fromId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                const toId = service.id;
+                if (fromId === toId) return;
+                await reorderCards(fromId, toId);
+            });
 
             card.innerHTML =
                 '<label class="service-card__select">' +
@@ -229,7 +178,6 @@
                         '<div class="service-card__menu" hidden>' +
                             '<button type="button" data-action="edit" data-id="' + service.id + '">Редактировать</button>' +
                             '<button type="button" data-action="duplicate" data-id="' + service.id + '">Дублировать</button>' +
-                            '<button type="button" data-action="stats" data-id="' + service.id + '">Статистика</button>' +
                             '<button type="button" data-action="toggle" data-id="' + service.id + '">' +
                                 (service.is_active ? 'Отключить' : 'Включить') +
                             '</button>' +
@@ -288,8 +236,6 @@
                     const data = await api.duplicateService(id);
                     showToast(data.message);
                     applyCatalog(data.catalog);
-                } else if (action === 'stats') {
-                    drawer.openEdit(service, catalog.calendars);
                 } else if (action === 'toggle') {
                     const data = await api.updateService(id, { is_active: !service.is_active });
                     showToast(service.is_active ? 'Услуга отключена' : 'Услуга включена');
@@ -365,10 +311,7 @@
         }
 
         async function reorderCards(fromId, toId) {
-            const ids = catalog.services
-                .slice()
-                .sort((a, b) => a.sort_order - b.sort_order)
-                .map((s) => s.id);
+            const ids = getOrderedServices().map((s) => s.id);
             const fromIdx = ids.indexOf(fromId);
             const toIdx = ids.indexOf(toId);
             if (fromIdx < 0 || toIdx < 0) return;
@@ -376,7 +319,6 @@
             ids.splice(toIdx, 0, fromId);
             try {
                 const data = await api.reorder(ids);
-                document.getElementById('sort-by').value = 'manual';
                 applyCatalog(data.catalog);
                 showToast(data.message);
             } catch (error) {
