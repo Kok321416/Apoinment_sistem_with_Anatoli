@@ -220,32 +220,32 @@
     position: absolute;
     left: 6px;
     right: 6px;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     padding: 6px 8px;
-    color: #fff;
+    color: var(--text-on-accent);
     font-size: 0.75rem;
     font-weight: var(--font-weight-semibold);
     line-height: 1.2;
     cursor: pointer;
     overflow: hidden;
     z-index: 2;
-    transition: transform var(--schedule-transition), box-shadow var(--schedule-transition);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+    transition: transform var(--schedule-transition), box-shadow var(--schedule-transition), filter var(--schedule-transition);
+    background: var(--accent-primary);
+    border: 1px solid var(--border-strong);
+    box-shadow: var(--shadow-xs);
 }
 
 .week-slot::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 55%);
-    pointer-events: none;
+    content: none;
+    display: none;
 }
 
 .week-slot:hover,
 .week-slot.is-dragging {
-    transform: scale(1.03);
-    box-shadow: 0 0 18px rgba(0, 0, 0, 0.45);
+    transform: scale(1.02);
+    box-shadow: var(--shadow-sm);
     z-index: 10;
+    filter: brightness(1.05);
 }
 
 .week-slot__delete {
@@ -257,8 +257,8 @@
     height: 20px;
     border: 0;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.45);
-    color: #fff;
+    background: color-mix(in srgb, var(--bg-900) 55%, transparent);
+    color: var(--text-on-accent);
     font-size: 14px;
     line-height: 1;
     cursor: pointer;
@@ -273,13 +273,13 @@
 
 .week-slot__delete:hover,
 .week-slot__delete:focus-visible {
-    background: rgba(255, 92, 122, 0.95);
+    background: var(--accent-danger);
     outline: none;
 }
 
 .slot-card--focus {
-    border-color: rgba(74, 168, 255, 0.55);
-    box-shadow: 0 0 0 2px rgba(74, 168, 255, 0.25);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 25%, transparent);
 }
 
 .week-slot__resize {
@@ -299,13 +299,17 @@
     bottom: 0;
 }
 
-.week-slot[data-day="0"] { background: linear-gradient(135deg, var(--day-monday), #2ea855); }
-.week-slot[data-day="1"] { background: linear-gradient(135deg, var(--day-tuesday), #d97706); }
-.week-slot[data-day="2"] { background: linear-gradient(135deg, var(--day-wednesday), #2563eb); }
-.week-slot[data-day="3"] { background: linear-gradient(135deg, var(--day-thursday), #6d4aff); }
-.week-slot[data-day="4"] { background: linear-gradient(135deg, var(--day-friday), #db2777); }
-.week-slot[data-day="5"] { background: linear-gradient(135deg, var(--day-saturday), #ca8a04); }
-.week-slot[data-day="6"] { background: linear-gradient(135deg, var(--day-sunday), #4b5563); }
+/* Single brand palette for all weekdays (no rainbow days) */
+.week-slot[data-day="0"],
+.week-slot[data-day="1"],
+.week-slot[data-day="2"],
+.week-slot[data-day="3"],
+.week-slot[data-day="4"],
+.week-slot[data-day="5"],
+.week-slot[data-day="6"] {
+    background: var(--accent-primary);
+    color: var(--text-on-accent);
+}
 
 .day-editor-panel {
     min-height: 420px;
