@@ -17,9 +17,18 @@
 
 Merge tracks → `main` via PR. Do not force-push `main`.
 
+## Status
+
+- [x] `/apps/` + bot copy
+- [x] Capacitor Android project `ru.allyourclients.app`
+- [ ] Debug APK (needs JDK 17 + Android Studio on developer PC)
+- [ ] RuStore listing (later)
+
 ## Designer DoD for `/apps/`
 
 - [ ] 375px: two platform blocks stack, CTAs thumb-friendly
 - [ ] Tablet 768+: two columns optional, steps readable
 - [ ] Copy uses hyphen `-`, no em dash
 - [ ] Android shows «Скоро будет готово» until store link set
+
+Developer PC checklist: `mobile/SETUP_ANDROID.md`.

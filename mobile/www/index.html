@@ -2,15 +2,27 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Все клиенты здесь</title>
-  <meta http-equiv="refresh" content="0;url=https://allyourclients.ru/">
   <style>
-    body { font-family: system-ui, sans-serif; background: #0B0D12; color: #e8eaed; display: grid; place-items: center; min-height: 100vh; margin: 0; }
+    html, body { margin: 0; min-height: 100%; background: #0B0D12; color: #e8eaed;
+      font-family: system-ui, sans-serif; display: grid; place-items: center; }
     a { color: #49D1FF; }
+    .hint { opacity: 0.7; font-size: 0.9rem; max-width: 22rem; text-align: center; }
   </style>
 </head>
 <body>
-  <p>Открываем сервис… <a href="https://allyourclients.ru/">allyourclients.ru</a></p>
+  <div class="hint">
+    <p>Загрузка сервиса…</p>
+    <p>Если экран не открылся: <a href="https://allyourclients.ru/">allyourclients.ru</a></p>
+  </div>
+  <script>
+    // Fallback only when Capacitor server.url is unset; production uses remote URL.
+    setTimeout(function () {
+      if (!window.Capacitor || !window.Capacitor.isNativePlatform || !window.Capacitor.isNativePlatform()) {
+        window.location.replace("https://allyourclients.ru/");
+      }
+    }, 800);
+  </script>
 </body>
 </html>

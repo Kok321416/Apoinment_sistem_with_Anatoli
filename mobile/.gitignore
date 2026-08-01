@@ -1,8 +1,9 @@
-# Mobile track gitignore (local Capacitor build artifacts)
+# Mobile track gitignore
 node_modules/
-android/
 ios/
 .idea/
 *.keystore
 *.jks
 local.properties
+
+# Keep android/ in git (Capacitor project). Build outputs ignored by android/.gitignore

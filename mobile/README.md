@@ -1,28 +1,25 @@
 # Android shell (Capacitor → RuStore)
 
-Loads the live site in a WebView so login, design, and MySQL stay the same as web.
+Loads live site `https://allyourclients.ru` in a WebView.
 
 ## Status
 
-Scaffold only. RuStore listing: **coming soon** (CTA on `/apps/`).
+- Project generated: `mobile/android`
+- Package: `ru.allyourclients.app`
+- Plugins: App, StatusBar, SplashScreen
+- **Next:** install JDK 17 + Android Studio on your PC, then build debug APK
 
-## Setup (local)
+See **SETUP_ANDROID.md** for your checklist.
+
+## Commands
 
 ```bash
 cd mobile
 npm install
-npx cap add android
 npx cap sync android
 npx cap open android
 ```
 
-`capacitor.config.json` uses `server.url` = production site. Change for staging if needed.
-
-## References
-
-- https://github.com/ionic-team/capacitor
-- RuStore publish / in-app updates docs
-
 ## Branch
 
-Develop here on `track/android`. Merge to `main` via PR before store upload.
+`track/android` → PR into `main` before prod deploy of bridge JS.

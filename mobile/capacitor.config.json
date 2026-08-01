@@ -11,11 +11,26 @@
       "oauth.yandex.ru",
       "id.vk.com",
       "oauth.vk.com",
+      "id.vk.ru",
       "telegram.org",
-      "oauth.telegram.org"
+      "oauth.telegram.org",
+      "t.me"
     ]
   },
   "android": {
-    "allowMixedContent": false
+    "allowMixedContent": false,
+    "backgroundColor": "#0B0D12"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "launchAutoHide": true,
+      "backgroundColor": "#0B0D12",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0B0D12"
+    }
   }
 }
