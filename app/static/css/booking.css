@@ -64,7 +64,7 @@
 
 .booking-step.is-active {
     color: var(--accent-secondary);
-    border-color: rgba(73, 209, 255, 0.35);
+    border-color: color-mix(in srgb, var(--accent-secondary) 30%, transparent);
     background: var(--alert-info-bg);
 }
 
@@ -101,7 +101,7 @@
 }
 
 .booking-panel.is-highlight {
-    border-color: rgba(125, 92, 255, 0.45);
+    border-color: color-mix(in srgb, var(--accent-primary) 40%, transparent);
     box-shadow: var(--shadow-glow), var(--shadow-inner);
 }
 
@@ -135,7 +135,7 @@
 
 .booking-service.is-selected {
     border-color: var(--accent-primary);
-    background: rgba(125, 92, 255, 0.12);
+    background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
     box-shadow: var(--field-glow-focus);
 }
 
@@ -230,7 +230,7 @@
 }
 
 .booking-cal__day:hover:not(.is-other):not(.is-past) {
-    background: rgba(125, 92, 255, 0.15);
+    background: color-mix(in srgb, var(--accent-primary) 16%, transparent);
 }
 
 .booking-cal__day.is-other,
@@ -282,14 +282,14 @@
 }
 
 .book-cal-service-label {
-    color: #4aa8ff !important;
+    color: var(--accent-secondary) !important;
     font-weight: 700;
     font-size: 0.95rem;
 }
 
 .book-cal-panel--service .input:focus {
-    border-color: #4aa8ff;
-    box-shadow: 0 0 0 3px rgba(74, 168, 255, 0.2);
+    border-color: var(--accent-secondary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-secondary) 20%, transparent);
 }
 
 .book-cal-legend {
@@ -337,7 +337,7 @@
 
 .booking-time-chip:hover:not(:disabled) {
     border-color: var(--accent-secondary);
-    background: rgba(73, 209, 255, 0.12);
+    background: color-mix(in srgb, var(--accent-secondary) 12%, transparent);
 }
 
 .booking-time-chip.is-selected {
@@ -362,7 +362,7 @@
 
 .booking-notice--info {
     background: var(--alert-info-bg);
-    border: 1px solid rgba(73, 209, 255, 0.25);
+    border: 1px solid color-mix(in srgb, var(--accent-secondary) 25%, transparent);
     color: var(--accent-secondary);
 }
 
@@ -515,13 +515,10 @@
 /* Dark booking calendar scene (client) */
 .book-cal-scene {
     padding: var(--space-2xl);
-    border-radius: var(--radius-xl);
-    background:
-        radial-gradient(ellipse 80% 60% at 20% 0%, rgba(73, 209, 255, 0.12), transparent 55%),
-        radial-gradient(ellipse 70% 50% at 90% 20%, rgba(59, 228, 200, 0.08), transparent 50%),
-        linear-gradient(165deg, var(--bg-800) 0%, var(--bg-900) 100%);
+    border-radius: var(--radius-md);
+    background: var(--surface-200);
     border: 1px solid var(--border-default);
-    box-shadow: var(--shadow-inner);
+    box-shadow: var(--shadow-xs);
 }
 
 .book-cal-scene__title {
@@ -543,11 +540,15 @@
     align-items: start;
 }
 
+.book-cal-progress {
+    display: none;
+}
+
 .book-cal-panel {
     padding: var(--space-2xl);
-    border-radius: var(--radius-lg);
-    background: var(--glass-medium);
-    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-100);
+    border: 1px solid var(--border-default);
 }
 
 .book-cal-panel__title {
@@ -560,16 +561,16 @@
     align-items: center;
     gap: var(--space-sm);
     margin: 0 0 var(--space-xl);
-    padding: 0.7rem 1.4rem;
-    border: none;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-full);
-    background: var(--gradient-primary);
-    color: var(--text-on-accent);
-    font-size: var(--font-size-body);
-    font-weight: var(--font-weight-bold);
+    background: var(--surface-100);
+    color: var(--text-primary);
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
     line-height: 1.2;
     letter-spacing: 0.01em;
-    box-shadow: var(--shadow-glow);
+    box-shadow: none;
     white-space: nowrap;
 }
 
@@ -616,6 +617,72 @@
 @media (max-width: 1024px) {
     .book-cal-layout {
         grid-template-columns: 1fr;
+    }
+
+    .book-cal-progress {
+        display: flex;
+        grid-column: 1 / -1;
+        position: sticky;
+        top: 0;
+        z-index: 25;
+        gap: var(--space-xs);
+        margin: 0 0 var(--space-md);
+        padding: var(--space-sm);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--bg-900) 88%, transparent);
+        border: 1px solid var(--border-default);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .book-cal-progress__item {
+        flex: 1;
+        min-height: 40px;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-secondary);
+        font: inherit;
+        font-size: var(--font-size-body-sm);
+        font-weight: var(--font-weight-semibold);
+        cursor: pointer;
+        padding: var(--space-sm);
+    }
+
+    .book-cal-progress__item.is-active {
+        background: var(--accent-primary);
+        color: var(--text-on-accent);
+    }
+
+    .book-cal-progress__item.is-done {
+        color: var(--accent-success);
+    }
+
+    .book-cal-step {
+        white-space: normal;
+        max-width: 100%;
+        padding: 0.65rem 1rem;
+    }
+
+    .book-cal-panel {
+        scroll-margin-top: 4.5rem;
+    }
+
+    .slots-grid .slot-btn {
+        min-height: 44px;
+        min-width: 4.5rem;
+    }
+
+    .booking-cal__day {
+        min-height: 44px;
+    }
+
+    #bookSubmit {
+        width: 100%;
+        min-height: 48px;
+        position: sticky;
+        bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+        z-index: 20;
     }
 }
 

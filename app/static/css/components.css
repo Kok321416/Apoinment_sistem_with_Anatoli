@@ -58,14 +58,15 @@
 }
 
 .btn--primary {
-    background: var(--gradient-primary);
+    background: var(--accent-primary);
     color: var(--text-on-accent);
-    box-shadow: var(--shadow-glow);
+    box-shadow: var(--shadow-sm);
 }
 
 .btn--primary:hover:not(:disabled):not(.is-disabled):not(.is-loading) {
     transform: translateY(calc(var(--space-2xs) * -1));
-    box-shadow: var(--shadow-glow), var(--shadow-md);
+    box-shadow: var(--shadow-md);
+    filter: brightness(1.05);
 }
 
 .btn--primary:active:not(:disabled):not(.is-disabled):not(.is-loading) {
@@ -385,19 +386,17 @@
 
 .card {
     padding: var(--space-3xl);
-    border-radius: var(--radius-xl);
-    background: var(--glass-medium);
+    border-radius: var(--radius-md);
+    background: var(--surface-200);
     border: 1px solid var(--border-default);
-    box-shadow: var(--shadow-inner);
-    backdrop-filter: blur(var(--blur-lg));
-    -webkit-backdrop-filter: blur(var(--blur-lg));
+    box-shadow: var(--shadow-xs);
     transition: var(--transition-transform), var(--transition-shadow), var(--transition-background);
 }
 
 .card:hover {
     transform: translateY(calc(var(--space-2xs) * -1));
-    box-shadow: var(--shadow-md), var(--shadow-inner);
-    background: var(--glass-heavy);
+    box-shadow: var(--shadow-sm);
+    background: var(--surface-200);
 }
 
 .card:active {
@@ -406,8 +405,8 @@
 
 .card--static:hover {
     transform: none;
-    box-shadow: var(--shadow-inner);
-    background: var(--glass-medium);
+    box-shadow: var(--shadow-xs);
+    background: var(--surface-200);
 }
 
 .card--interactive {
@@ -451,15 +450,15 @@
 }
 
 .badge--primary {
-    background: rgba(125, 92, 255, 0.2);
+    background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
     color: var(--accent-primary);
-    border-color: rgba(125, 92, 255, 0.3);
+    border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 
 .badge--secondary {
-    background: rgba(73, 209, 255, 0.15);
+    background: color-mix(in srgb, var(--accent-secondary) 16%, transparent);
     color: var(--accent-secondary);
-    border-color: rgba(73, 209, 255, 0.25);
+    border-color: color-mix(in srgb, var(--accent-secondary) 25%, transparent);
 }
 
 .badge--success {
@@ -513,7 +512,7 @@
 }
 
 .accordion__item[open] {
-    border-color: rgba(125, 92, 255, 0.35);
+    border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
     box-shadow: var(--shadow-sm), var(--shadow-inner);
 }
 
@@ -590,7 +589,7 @@
 
 .alert--info {
     background: var(--alert-info-bg);
-    border-color: rgba(73, 209, 255, 0.25);
+    border-color: color-mix(in srgb, var(--accent-secondary) 25%, transparent);
     color: var(--accent-secondary);
 }
 
@@ -789,5 +788,63 @@
 
     .verification-code__digit {
         font-size: var(--font-size-body-lg);
+    }
+}
+
+/* ── Theme toggle (Cal-like) ── */
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    min-height: 40px;
+    padding: 0 var(--space-md);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-default);
+    background: var(--surface-200);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: var(--transition-button);
+}
+
+.theme-toggle:hover {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+}
+
+.theme-toggle:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+}
+
+.theme-toggle__icon {
+    width: 14px;
+    height: 14px;
+    border-radius: var(--radius-full);
+    border: 2px solid currentColor;
+    box-shadow: inset -3px -2px 0 0 currentColor;
+    flex-shrink: 0;
+}
+
+html[data-theme="light"] .theme-toggle__icon {
+    box-shadow: none;
+    background: currentColor;
+}
+
+@media (max-width: 480px) {
+    .theme-toggle__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+    }
+
+    .theme-toggle {
+        min-width: 40px;
+        justify-content: center;
+        padding: 0;
     }
 }

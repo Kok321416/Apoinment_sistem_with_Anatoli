@@ -35,7 +35,7 @@
 }
 
 .cookie-consent__text a {
-    color: var(--accent-secondary, #49d1ff);
+    color: var(--accent-secondary);
 }
 
 .cookie-consent__actions {

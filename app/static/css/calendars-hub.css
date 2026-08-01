@@ -2,8 +2,8 @@
 
 .calendars-link-card {
     padding: var(--space-2xl);
-    border-color: rgba(79, 163, 255, 0.25);
-    background: linear-gradient(135deg, rgba(79, 163, 255, 0.08), rgba(125, 92, 255, 0.06));
+    border-color: color-mix(in srgb, var(--accent-secondary) 25%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent-secondary) 8%, transparent), color-mix(in srgb, var(--accent-primary) 8%, transparent));
 }
 
 .calendars-link-card__head {
@@ -57,7 +57,7 @@
 }
 
 .calendars-create-toggle:hover {
-    border-color: rgba(125, 92, 255, 0.35);
+    border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
     box-shadow: var(--shadow-md);
 }
 
@@ -129,7 +129,7 @@
 .cal-card:hover {
     transform: scale(1.02);
     box-shadow: var(--shadow-md);
-    border-color: rgba(125, 92, 255, 0.35);
+    border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 
 .cal-card.is-hidden {

@@ -37,17 +37,14 @@
     position: relative;
     overflow: hidden;
     padding: 0;
-    border-color: rgba(125, 92, 255, 0.2);
+    border-color: var(--border-default);
 }
 
 .calendars-hero__glow,
 .bookings-hero__glow,
 .clients-hero__glow,
 .profile-hero__glow {
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-    filter: blur(40px);
+    display: none;
 }
 
 .calendars-hero__glow--purple,
@@ -84,7 +81,7 @@
     justify-content: space-between;
     gap: var(--space-xl);
     padding: var(--space-3xl);
-    background: linear-gradient(135deg, rgba(125, 92, 255, 0.14), rgba(59, 130, 246, 0.08));
+    background: var(--surface-200);
 }
 
 .calendars-hero__main,
@@ -347,6 +344,47 @@
     .dashboard-card:hover,
     .stat-card:hover {
         transform: none;
+    }
+
+    .calendars-toolbar,
+    .bookings-toolbar,
+    .clients-toolbar,
+    .services-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        padding: var(--space-md) var(--space-lg);
+    }
+
+    .calendars-toolbar__filters,
+    .bookings-toolbar__filters,
+    .clients-toolbar__filters,
+    .services-toolbar__filters {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-sm);
+    }
+
+    .calendars-toolbar__filters .select,
+    .bookings-toolbar__filters .select,
+    .clients-toolbar__filters .select,
+    .services-toolbar__filters .select,
+    .calendars-toolbar__filters .input,
+    .bookings-toolbar__filters .input,
+    .clients-toolbar__filters .input,
+    .services-toolbar__filters .input {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    .stat-card__label,
+    .calendars-dash-card__label,
+    .bookings-dash-card__label,
+    .clients-dash-card__label,
+    .dashboard-card__label {
+        overflow-wrap: anywhere;
+        hyphens: auto;
+        line-height: 1.3;
     }
 }
 

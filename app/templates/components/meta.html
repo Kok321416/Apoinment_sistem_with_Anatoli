@@ -4,8 +4,8 @@
 {% block meta %}
 <meta name="description" content="{{ meta_description | default('') }}">
 {% if meta_keywords %}<meta name="keywords" content="{{ meta_keywords }}">{% endif %}
-<meta name="theme-color" content="#0B0D12">
-<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="{{ site_brand_name }}">
@@ -23,13 +23,14 @@
 <meta name="twitter:title" content="{{ page_title | default(site_brand_name) }}">
 <meta name="twitter:description" content="{{ meta_description | default('') }}">
 {% endblock %}
+{% include "components/theme_boot.html" %}
 <link rel="icon" href="/static/svg/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" href="/static/css/main.css?v=18" as="style">
+<link rel="preload" href="/static/css/main.css?v=20" as="style">
 <link rel="preload" href="/static/svg/logo.svg" as="image" type="image/svg+xml">
-<link rel="stylesheet" href="/static/css/main.css?v=18">
-<link rel="stylesheet" href="/static/css/tg-webapp.css?v=5">
+<link rel="stylesheet" href="/static/css/main.css?v=20">
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=6">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
 {% block head_extra %}{% endblock %}

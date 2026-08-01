@@ -6,7 +6,7 @@
     {% include "components/meta.html" %}
     {% endblock %}
     {% block page_css %}
-    <link rel="stylesheet" href="/static/css/auth.css?v=18">
+    <link rel="stylesheet" href="/static/css/auth.css?v=19">
     {% endblock %}
     {% block head_extra %}{% endblock %}
     {% if telegram_mini_app_launch_url %}<meta name="ayc-telegram-launch" content="{{ telegram_mini_app_launch_url }}">{% endif %}
@@ -15,6 +15,7 @@
     {% include "components/skip_link.html" %}
     <div class="auth-page__topbar container">
         {% include "components/logo.html" %}
+        {% include "components/theme_toggle.html" %}
     </div>
     <main id="main" class="auth-page__main" tabindex="-1">
         {% block auth_content %}{% endblock %}
@@ -30,6 +31,7 @@
     {% include "components/cookie_consent.html" %}
     {% include "components/yandex_metrika.html" %}
     {% block scripts %}{% endblock %}
+    <script src="/static/js/theme-toggle.js?v=1" defer></script>
     <script src="/static/js/capacitor-bridge.js?v=3" defer></script>
 </body>
 </html>

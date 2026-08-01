@@ -1,8 +1,8 @@
 /* Public specialist landing — Calendly-like conversion layout */
 .booking-page:has(.ps-hero) {
     background:
-        radial-gradient(ellipse 70% 45% at 10% -10%, rgba(125, 92, 255, 0.18), transparent 55%),
-        radial-gradient(ellipse 55% 40% at 95% 5%, rgba(74, 168, 255, 0.12), transparent 50%),
+        radial-gradient(ellipse 70% 45% at 10% -10%, color-mix(in srgb, var(--accent-primary) 20%, transparent), transparent 55%),
+        radial-gradient(ellipse 55% 40% at 95% 5%, color-mix(in srgb, var(--accent-secondary) 12%, transparent), transparent 50%),
         #0b0d12;
 }
 
@@ -17,7 +17,7 @@
 }
 
 .ps-crumbs a {
-    color: #4aa8ff;
+    color: var(--accent-secondary);
     text-decoration: none;
 }
 
@@ -46,8 +46,8 @@
     height: 168px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid rgba(125, 92, 255, 0.45);
-    box-shadow: 0 12px 40px rgba(125, 92, 255, 0.28);
+    border: 3px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
+    box-shadow: 0 12px 40px color-mix(in srgb, var(--accent-primary) 30%, transparent);
     transition: transform 0.35s ease;
 }
 
@@ -79,13 +79,13 @@
     font-size: 0.75rem;
     font-weight: 600;
     color: #f4f7ff;
-    background: rgba(125, 92, 255, 0.22);
-    border: 1px solid rgba(125, 92, 255, 0.35);
+    background: color-mix(in srgb, var(--accent-primary) 25%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 
 .ps-badge--soft {
-    background: rgba(74, 168, 255, 0.15);
-    border-color: rgba(74, 168, 255, 0.35);
+    background: color-mix(in srgb, var(--accent-secondary) 16%, transparent);
+    border-color: color-mix(in srgb, var(--accent-secondary) 30%, transparent);
     color: #9fd0ff;
 }
 
@@ -127,7 +127,7 @@
 .ps-btn-book:hover,
 .ps-btn-book:focus-visible {
     transform: scale(1.03);
-    box-shadow: 0 0 0 4px rgba(125, 92, 255, 0.25);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 25%, transparent);
 }
 
 .ps-trust-mini {
@@ -141,7 +141,7 @@
 .ps-trust-mini span::before {
     content: "•";
     margin-right: 0.45rem;
-    color: #7d5cff;
+    color: var(--accent-primary);
 }
 
 .ps-welcome {
@@ -152,8 +152,8 @@
     gap: 1rem 1.25rem;
     padding: 1.25rem 1.5rem;
     border-radius: 22px;
-    background: linear-gradient(135deg, rgba(74, 168, 255, 0.22), rgba(125, 92, 255, 0.18));
-    border: 1px solid rgba(74, 168, 255, 0.35);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent-secondary) 25%, transparent), color-mix(in srgb, var(--accent-primary) 20%, transparent));
+    border: 1px solid color-mix(in srgb, var(--accent-secondary) 30%, transparent);
     animation: ps-rise 0.6s ease 0.05s both;
 }
 
@@ -238,8 +238,8 @@
 .ps-steps__item.is-active {
     color: #fff;
     border: none;
-    background: linear-gradient(135deg, #7d5cff 0%, #49d1ff 100%);
-    box-shadow: 0 0 40px rgba(125, 92, 255, 0.25);
+    background: var(--gradient-primary);
+    box-shadow: 0 0 40px color-mix(in srgb, var(--accent-primary) 25%, transparent);
 }
 
 .ps-steps__item.is-active span {
@@ -284,8 +284,8 @@
 
 .ps-why__card:hover {
     transform: translateY(-4px);
-    border-color: rgba(125, 92, 255, 0.4);
-    box-shadow: 0 16px 40px rgba(125, 92, 255, 0.18);
+    border-color: color-mix(in srgb, var(--accent-primary) 40%, transparent);
+    box-shadow: 0 16px 40px color-mix(in srgb, var(--accent-primary) 20%, transparent);
 }
 
 .ps-why__icon {
@@ -313,7 +313,7 @@
     border-radius: 22px;
     overflow: hidden;
     background:
-        radial-gradient(circle at 30% 30%, rgba(125, 92, 255, 0.35), transparent 45%),
+        radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent-primary) 30%, transparent), transparent 45%),
         #121826;
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -337,8 +337,8 @@
     width: 4.5rem;
     height: 4.5rem;
     border-radius: 50%;
-    background: linear-gradient(135deg, #7d5cff, #4aa8ff);
-    box-shadow: 0 12px 36px rgba(125, 92, 255, 0.45);
+    background: var(--gradient-primary);
+    box-shadow: 0 12px 36px color-mix(in srgb, var(--accent-primary) 40%, transparent);
     position: relative;
     transition: transform 0.2s ease;
 }
@@ -394,8 +394,8 @@
 .ps-social__btn:focus-visible {
     transform: translateY(-3px) scale(1.05);
     outline: none;
-    border-color: rgba(125, 92, 255, 0.6);
-    box-shadow: 0 0 24px rgba(125, 92, 255, 0.35);
+    border-color: color-mix(in srgb, var(--accent-primary) 60%, transparent);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 
 .ps-calendars__head {
@@ -445,7 +445,7 @@
 
 .ps-cal-card__stripe {
     height: 6px;
-    background: var(--cal-color, #7d5cff);
+    background: var(--cal-color, var(--accent-primary));
 }
 
 .ps-cal-card__body {
@@ -494,7 +494,7 @@
     margin: 0 auto 1rem;
     border-radius: 50%;
     background:
-        radial-gradient(circle at 40% 35%, rgba(125, 92, 255, 0.55), transparent 55%),
+        radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--accent-primary) 55%, transparent), transparent 55%),
         #121826;
 }
 
@@ -524,7 +524,7 @@
     padding: 0.9rem 1rem;
     border-radius: 18px;
     background: rgba(23, 28, 43, 0.94);
-    border: 1px solid rgba(125, 92, 255, 0.4);
+    border: 1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(14px);
 }

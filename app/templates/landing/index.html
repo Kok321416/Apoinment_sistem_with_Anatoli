@@ -14,12 +14,8 @@
 
 <main id="main" tabindex="-1">
     <section class="hero section" id="top">
-        <div class="hero__glow hero__glow--purple" aria-hidden="true"></div>
-        <div class="hero__glow hero__glow--cyan" aria-hidden="true"></div>
-        <div class="hero__pattern" aria-hidden="true"></div>
-        <img class="hero__arcs" src="/static/svg/decorative/hero-arcs.svg" alt="" aria-hidden="true" width="640" height="200" loading="lazy" decoding="async">
         <div class="container hero__grid">
-            <div class="animate-fade-in-up">
+            <div class="hero__copy animate-fade-in-up">
                 <p class="text-eyebrow hero__eyebrow"><span class="badge badge--secondary">{{ hero.eyebrow }}</span></p>
                 <h1 class="text-display-xl">{{ hero.title }}</h1>
                 <p class="text-body-lg text-muted mt-2xl max-w-prose">{{ hero.subtitle }}</p>
@@ -28,16 +24,16 @@
                     <a href="{{ hero.cta_secondary_href }}" class="btn btn--secondary focus-ring">{{ hero.cta_secondary_label }}</a>
                 </div>
             </div>
-            <div class="hero__preview card card--static animate-fade-in-up animate-delay-3" aria-hidden="true">
-                <div class="preview-card animate-soft-float">
+            <div class="hero__preview animate-fade-in-up animate-delay-3" aria-hidden="true">
+                <div class="preview-card">
                     <p class="text-caption">Сегодня</p>
                     <p class="text-h3">+3 новые записи</p>
                 </div>
-                <div class="preview-card animate-soft-float animate-delay-2">
+                <div class="preview-card">
                     <p class="text-caption">Ближайшая запись</p>
                     <p class="text-h3">14:30 · Консультация</p>
                 </div>
-                <div class="preview-card animate-soft-float animate-delay-4">
+                <div class="preview-card">
                     <p class="text-caption">Календарь</p>
                     <p class="text-body-sm text-muted">15:00 · 16:00 · 17:30</p>
                 </div>

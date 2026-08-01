@@ -55,7 +55,7 @@
 .client-card:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow-md);
-    border-color: rgba(125, 92, 255, 0.35);
+    border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 .client-card.is-hidden {
     display: none;
@@ -90,9 +90,9 @@
     transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .client-card__action:hover {
-    background: rgba(125, 92, 255, 0.15);
+    background: color-mix(in srgb, var(--accent-primary) 16%, transparent);
     color: var(--accent-primary);
-    border-color: rgba(125, 92, 255, 0.35);
+    border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 .client-card__action--danger:hover {
     background: rgba(255, 92, 122, 0.12);
@@ -152,7 +152,7 @@
     color: var(--accent-warning);
 }
 .client-card__badge--regular {
-    background: rgba(125, 92, 255, 0.12);
+    background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
     color: var(--accent-primary);
 }
 .client-card__badge--inactive {

@@ -6,7 +6,7 @@
     {% include "components/meta.html" %}
     {% endblock %}
     {% block page_css %}
-    <link rel="stylesheet" href="/static/css/landing.css?v=22">
+    <link rel="stylesheet" href="/static/css/landing.css?v=23">
     {% endblock %}
     {% if telegram_mini_app_launch_url %}<meta name="ayc-telegram-launch" content="{{ telegram_mini_app_launch_url }}">{% endif %}
 </head>
@@ -19,6 +19,7 @@
     {% include "components/telegram_webapp.html" %}
     {% endif %}
     {% block scripts %}{% endblock %}
+    <script src="/static/js/theme-toggle.js?v=1" defer></script>
     <script src="/static/js/capacitor-bridge.js?v=3" defer></script>
 </body>
 </html>

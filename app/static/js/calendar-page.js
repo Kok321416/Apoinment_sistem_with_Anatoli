@@ -16,6 +16,10 @@
         const badgesEl = document.getElementById('calendar-badges');
         const settingsForm = document.getElementById('calendar-settings-form');
         const copyBtn = document.getElementById('copy-booking-link');
+        const dayChipsEl = document.getElementById('schedule-day-chips');
+        const mobileProgress = document.getElementById('schedule-mobile-progress');
+        const settingsPanel = document.getElementById('calendar-settings-panel');
+        const settingsToggle = document.getElementById('calendar-settings-toggle');
 
         let selectedDay = new Date().getDay();
         selectedDay = selectedDay === 0 ? 6 : selectedDay - 1;
@@ -24,6 +28,10 @@
 
         function getSchedule() {
             return lastSchedule;
+        }
+
+        function isMobileSchedule() {
+            return window.matchMedia('(max-width: 768px)').matches;
         }
 
         function renderBadges(settings) {
@@ -54,6 +62,124 @@
             document.getElementById('setting-reminder-second-enabled').checked = settings.reminder_hours_second > 0;
         }
 
+        function renderDayChips(schedule) {
+            if (!dayChipsEl || !schedule || !schedule.week) {
+                return;
+            }
+            dayChipsEl.innerHTML = '';
+            schedule.week.forEach(function (day) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'schedule-day-chip';
+                btn.setAttribute('role', 'tab');
+                btn.dataset.day = String(day.day);
+                if (day.day === selectedDay) {
+                    btn.classList.add('is-selected');
+                    btn.setAttribute('aria-selected', 'true');
+                } else {
+                    btn.setAttribute('aria-selected', 'false');
+                }
+                if (!day.is_working) {
+                    btn.classList.add('is-off');
+                }
+                const slotCount = (day.slots && day.slots.length) || 0;
+                btn.innerHTML =
+                    '<span class="schedule-day-chip__short">' + (day.short || '') + '</span>' +
+                    '<span class="schedule-day-chip__meta">' +
+                    (day.is_working ? slotCount + ' окн.' : 'вых.') +
+                    '</span>';
+                btn.addEventListener('click', function () {
+                    selectDay(day.day, { scrollEditor: true });
+                });
+                dayChipsEl.appendChild(btn);
+            });
+        }
+
+        function syncDayChipSelection() {
+            if (!dayChipsEl) return;
+            dayChipsEl.querySelectorAll('.schedule-day-chip').forEach(function (chip) {
+                const day = parseInt(chip.dataset.day, 10);
+                const on = day === selectedDay;
+                chip.classList.toggle('is-selected', on);
+                chip.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+        }
+
+        function selectDay(day, opts) {
+            selectedDay = day;
+            if (weekGrid) {
+                weekGrid.selectDay(day);
+            } else if (lastSchedule && lastSchedule.week && dayEditor) {
+                dayEditor.renderDay(lastSchedule.week[day]);
+            }
+            syncDayChipSelection();
+            if (opts && opts.scrollEditor && isMobileSchedule()) {
+                const panel = document.getElementById('day-editor-panel');
+                if (panel) {
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        }
+
+        function wireMobileProgress() {
+            if (!mobileProgress) return;
+            mobileProgress.hidden = false;
+            const links = Array.prototype.slice.call(
+                mobileProgress.querySelectorAll('.schedule-mobile-progress__item')
+            );
+            const sections = {
+                day: document.getElementById('day-editor-panel'),
+                settings: document.getElementById('calendar-settings-panel'),
+                summary: document.getElementById('calendar-settings-summary'),
+            };
+
+            links.forEach(function (link) {
+                link.addEventListener('click', function (e) {
+                    const key = link.getAttribute('data-section');
+                    const target = sections[key];
+                    if (!target) return;
+                    e.preventDefault();
+                    if (key === 'settings' && settingsPanel && !settingsPanel.classList.contains('is-open')) {
+                        settingsPanel.classList.add('is-open');
+                        if (settingsToggle) settingsToggle.setAttribute('aria-expanded', 'true');
+                    }
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+
+            if (!('IntersectionObserver' in window)) return;
+            const observer = new IntersectionObserver(
+                function (entries) {
+                    entries.forEach(function (entry) {
+                        if (!entry.isIntersecting) return;
+                        const id = entry.target.id;
+                        let key = 'day';
+                        if (id === 'calendar-settings-panel') key = 'settings';
+                        if (id === 'calendar-settings-summary') key = 'summary';
+                        links.forEach(function (link) {
+                            link.classList.toggle(
+                                'is-active',
+                                link.getAttribute('data-section') === key
+                            );
+                        });
+                    });
+                },
+                { root: null, rootMargin: '-35% 0px -50% 0px', threshold: 0.01 }
+            );
+            Object.keys(sections).forEach(function (k) {
+                if (sections[k]) observer.observe(sections[k]);
+            });
+        }
+
+        if (settingsToggle && settingsPanel) {
+            settingsToggle.addEventListener('click', function () {
+                if (!isMobileSchedule()) return;
+                const open = !settingsPanel.classList.contains('is-open');
+                settingsPanel.classList.toggle('is-open', open);
+                settingsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        }
+
         let weekGrid = null;
         let dayEditor = null;
 
@@ -61,6 +187,7 @@
             lastSchedule = schedule;
             renderBadges(schedule.settings);
             syncSettingsForm(schedule.settings);
+            renderDayChips(schedule);
             if (weekGrid) {
                 weekGrid.selectedDay = selectedDay;
                 weekGrid.render(schedule);
@@ -83,6 +210,7 @@
                 lastSchedule = schedule;
                 renderBadges(schedule.settings);
                 syncSettingsForm(schedule.settings);
+                renderDayChips(schedule);
 
                 gridLoading.hidden = true;
                 editorLoading.hidden = true;
@@ -92,6 +220,7 @@
                     onDaySelect: (day) => {
                         selectedDay = day;
                         weekGrid.selectedDay = day;
+                        syncDayChipSelection();
                         if (!lastSchedule || !lastSchedule.week) {
                             return;
                         }
@@ -100,6 +229,7 @@
                     onSlotSelect: (day, slot) => {
                         selectedDay = day;
                         weekGrid.selectedDay = day;
+                        syncDayChipSelection();
                         if (!lastSchedule || !lastSchedule.week) {
                             return;
                         }
@@ -139,6 +269,7 @@
                     onScheduleChange: onScheduleChange,
                 });
                 dayEditor.renderDay(schedule.week[selectedDay]);
+                wireMobileProgress();
             } catch (error) {
                 gridLoading.textContent = 'Не удалось загрузить расписание: ' + error.message;
                 showToast(error.message, 'error');

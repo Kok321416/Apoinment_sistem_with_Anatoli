@@ -9,10 +9,8 @@
     position: sticky;
     top: 0;
     z-index: var(--z-sticky);
-    background: var(--glass-header);
-    border-bottom: 1px solid var(--border-subtle);
-    backdrop-filter: blur(var(--blur-md));
-    -webkit-backdrop-filter: blur(var(--blur-md));
+    background: var(--bg-900);
+    border-bottom: 1px solid var(--border-default);
 }
 
 .app-header__inner {
@@ -111,7 +109,7 @@
 }
 
 .app-mode-toggle__btn.is-active {
-    background: rgba(73, 209, 255, 0.22);
+    background: color-mix(in srgb, var(--accent-secondary) 25%, transparent);
     color: var(--accent-secondary);
     font-weight: var(--font-weight-semibold);
     cursor: default;
@@ -272,7 +270,7 @@
 }
 
 .app-header__menu[open] .app-header__menu-btn {
-    border-color: rgba(73, 209, 255, 0.4);
+    border-color: color-mix(in srgb, var(--accent-secondary) 40%, transparent);
     color: var(--accent-secondary);
 }
 

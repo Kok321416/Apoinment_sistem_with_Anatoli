@@ -100,6 +100,8 @@
                 renderCalendar();
                 showDayWindows(dateEl.value);
                 loadSlots();
+                scrollToStep(3);
+                setProgressStep(3);
             });
         });
     }
@@ -194,7 +196,65 @@
         currentCalDate.setMonth(currentCalDate.getMonth() + 1);
         renderCalendar();
     });
-    serviceEl.addEventListener("change", loadSlots);
+    serviceEl.addEventListener("change", function () {
+        loadSlots();
+        if (serviceEl.value) {
+            scrollToStep(2);
+            setProgressStep(2);
+        }
+    });
+
+    function scrollToStep(step) {
+        if (!window.matchMedia("(max-width: 1024px)").matches) return;
+        var map = {
+            1: document.getElementById("bookStepService"),
+            2: document.getElementById("bookStepDate"),
+            3: document.getElementById("bookStepTime"),
+        };
+        var el = map[step];
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function setProgressStep(step) {
+        var bar = document.getElementById("bookCalProgress");
+        if (!bar) return;
+        bar.querySelectorAll(".book-cal-progress__item").forEach(function (btn) {
+            var n = parseInt(btn.getAttribute("data-step"), 10);
+            btn.classList.toggle("is-active", n === step);
+            btn.classList.toggle("is-done", n < step);
+        });
+    }
+
+    (function wireProgress() {
+        var bar = document.getElementById("bookCalProgress");
+        if (!bar) return;
+        bar.querySelectorAll(".book-cal-progress__item").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                var step = parseInt(btn.getAttribute("data-step"), 10);
+                setProgressStep(step);
+                scrollToStep(step);
+            });
+        });
+        if (!("IntersectionObserver" in window)) return;
+        var panels = [
+            document.getElementById("bookStepService"),
+            document.getElementById("bookStepDate"),
+            document.getElementById("bookStepTime"),
+        ].filter(Boolean);
+        var observer = new IntersectionObserver(
+            function (entries) {
+                entries.forEach(function (entry) {
+                    if (!entry.isIntersecting) return;
+                    var step = parseInt(entry.target.getAttribute("data-book-step"), 10);
+                    if (step) setProgressStep(step);
+                });
+            },
+            { root: null, rootMargin: "-30% 0px -45% 0px", threshold: 0.05 }
+        );
+        panels.forEach(function (p) {
+            observer.observe(p);
+        });
+    })();
 
     var submitting = false;
     form.addEventListener("submit", function (event) {

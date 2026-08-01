@@ -8,8 +8,8 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=23">
-<link rel="stylesheet" href="/static/css/calendar-schedule.css?v=5">
+<link rel="stylesheet" href="/static/css/app.css?v=27">
+<link rel="stylesheet" href="/static/css/calendar-schedule.css?v=7">
 {% endblock %}
 
 {% block app_content %}
@@ -36,6 +36,12 @@
         </div>
     </header>
 
+    <nav class="schedule-mobile-progress" id="schedule-mobile-progress" aria-label="Разделы расписания" hidden>
+        <a class="schedule-mobile-progress__item is-active" href="#day-editor-panel" data-section="day">День</a>
+        <a class="schedule-mobile-progress__item" href="#calendar-settings-panel" data-section="settings">Настройки</a>
+        <a class="schedule-mobile-progress__item" href="#calendar-settings-summary" data-section="summary">Параметры</a>
+    </nav>
+
     {% if success %}
     <div class="alert alert--success" role="status">{{ success }}</div>
     {% endif %}
@@ -43,11 +49,35 @@
     <div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
     {% endif %}
 
+    <div class="calendar-layout" id="calendar-layout">
+        <section class="week-grid-panel card" aria-label="Недельная сетка">
+            <div class="week-grid-panel__toolbar">
+                <h2 class="week-grid-panel__title">Расписание недели</h2>
+                <p class="week-grid-panel__hint week-grid-panel__hint--desktop">Кликните по дню или окну, чтобы открыть редактор справа</p>
+                <p class="week-grid-panel__hint week-grid-panel__hint--mobile">Выберите день ниже и правьте окна в редакторе</p>
+            </div>
+            <div class="schedule-day-chips" id="schedule-day-chips" role="tablist" aria-label="Дни недели"></div>
+            <div class="week-grid-wrap" id="week-grid-wrap">
+                <div class="week-grid-loading" id="week-grid-loading">Загрузка расписания…</div>
+                <div class="week-grid" id="week-grid" hidden></div>
+            </div>
+        </section>
+
+        <section class="day-editor-panel card" aria-label="Редактор дня" id="day-editor-panel">
+            <div class="day-editor-loading" id="day-editor-loading">Выберите день</div>
+            <div id="day-editor"></div>
+        </section>
+    </div>
+
     <section class="calendar-settings-panel card" id="calendar-settings-panel">
-        <div class="calendar-settings-panel__head">
-            <h2 class="calendar-settings-panel__title">Дополнительные настройки календаря</h2>
-            <p class="calendar-settings-panel__lead">Перерывы, лимиты записи и напоминания клиентам</p>
-        </div>
+        <button type="button" class="calendar-settings-panel__toggle" id="calendar-settings-toggle" aria-expanded="false" aria-controls="calendar-settings-body">
+            <span class="calendar-settings-panel__head">
+                <span class="calendar-settings-panel__title">Дополнительные настройки</span>
+                <span class="calendar-settings-panel__lead">Перерывы, лимиты и напоминания</span>
+            </span>
+            <span class="calendar-settings-panel__chevron" aria-hidden="true"></span>
+        </button>
+        <div class="calendar-settings-panel__body" id="calendar-settings-body">
         <form class="calendar-settings-form" id="calendar-settings-form">
             <div class="calendar-settings-form__grid">
                 <div class="settings-card">
@@ -89,25 +119,8 @@
             </div>
             <button type="submit" class="btn btn--primary btn--lg calendar-settings-form__save" id="settings-save-btn">Сохранить изменения</button>
         </form>
+        </div>
     </section>
-
-    <div class="calendar-layout" id="calendar-layout">
-        <section class="week-grid-panel card" aria-label="Недельная сетка">
-            <div class="week-grid-panel__toolbar">
-                <h2 class="week-grid-panel__title">Расписание недели</h2>
-                <p class="week-grid-panel__hint">Кликните по дню или окну, чтобы открыть редактор справа</p>
-            </div>
-            <div class="week-grid-wrap" id="week-grid-wrap">
-                <div class="week-grid-loading" id="week-grid-loading">Загрузка расписания…</div>
-                <div class="week-grid" id="week-grid" hidden></div>
-            </div>
-        </section>
-
-        <section class="day-editor-panel card" aria-label="Редактор дня" id="day-editor-panel">
-            <div class="day-editor-loading" id="day-editor-loading">Выберите день в сетке</div>
-            <div id="day-editor" hidden></div>
-        </section>
-    </div>
 
     <footer class="calendar-settings-summary card" id="calendar-settings-summary">
         <h2 class="calendar-settings-summary__title">Текущие параметры</h2>
@@ -123,6 +136,6 @@
 <script src="/static/js/toast.js?v=1" defer></script>
 <script src="/static/js/calendar-api.js?v=2" defer></script>
 <script src="/static/js/calendar-week-grid.js?v=2" defer></script>
-<script src="/static/js/calendar-day-editor.js?v=3" defer></script>
-<script src="/static/js/calendar-page.js?v=2" defer></script>
+<script src="/static/js/calendar-day-editor.js?v=4" defer></script>
+<script src="/static/js/calendar-page.js?v=3" defer></script>
 {% endblock %}

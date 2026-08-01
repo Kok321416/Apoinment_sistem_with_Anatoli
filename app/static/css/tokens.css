@@ -1,60 +1,10 @@
 /*
- * Design System V1 — Design Tokens
- * Единственный источник цветов, размеров, motion и layout.
- * Запрещено дублировать значения в других CSS-файлах.
+ * Design System — tokens (Cal.com–inspired light + dark)
+ * Colors live under [data-theme]. Non-color tokens stay on :root.
+ * Prefer these vars everywhere; avoid hardcoded brand purple/cyan.
  */
 :root {
-    /* ── Background ── */
-    --bg-900: #0b0d12;
-    --bg-800: #111827;
-    --bg-700: #151821;
-    --bg-600: #1e2430;
-
-    /* ── Surface ── */
-    --surface-100: #151821;
-    --surface-200: #1a2030;
-    --surface-300: #222838;
-
-    /* ── Glass (Liquid Premium) ── */
-    --glass-light: rgba(255, 255, 255, 0.04);
-    --glass-medium: rgba(18, 22, 35, 0.68);
-    --glass-heavy: rgba(12, 16, 28, 0.88);
-    --glass-header: rgba(11, 13, 18, 0.82);
-
-    /* ── Text ── */
-    --text-primary: #f4f6fa;
-    --text-secondary: #b4bac6;
-    --text-muted: #8b93a3;
-    --text-disabled: #6b7280;
-    --text-on-accent: #ffffff;
-
-    /* ── Accent ── */
-    --accent-primary: #7d5cff;
-    --accent-secondary: #49d1ff;
-    --accent-success: #3be4c8;
-    --accent-warning: #f5a623;
-    --accent-danger: #ff5c7a;
-
-    /* ── Borders ── */
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    --border-default: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.16);
-
-    /* ── Opacity ── */
-    --opacity-disabled: 0.48;
-    --opacity-muted: 0.72;
-    --opacity-hover: 0.88;
-    --opacity-glow-soft: 0.22;
-    --opacity-glow-medium: 0.28;
-    --opacity-icon: 0.9;
-
-    /* ── Gradients (только из DS) ── */
-    --gradient-primary: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-    --gradient-secondary: linear-gradient(135deg, var(--accent-secondary) 0%, var(--accent-success) 100%);
-    --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
-    --gradient-glow-purple: radial-gradient(circle, rgba(125, 92, 255, 0.35) 0%, transparent 70%);
-    --gradient-glow-cyan: radial-gradient(circle, rgba(73, 209, 255, 0.3) 0%, transparent 70%);
-    --gradient-inner-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
+    color-scheme: dark;
 
     /* ── Spacing (2 → 128) ── */
     --space-2xs: 2px;
@@ -73,23 +23,14 @@
     --space-9xl: 96px;
     --space-10xl: 128px;
 
-    /* ── Radius ── */
-    --radius-xs: 8px;
-    --radius-sm: 12px;
-    --radius-md: 16px;
-    --radius-lg: 18px;
-    --radius-xl: 24px;
-    --radius-2xl: 32px;
+    /* ── Radius (Cal-like, slightly tighter) ── */
+    --radius-xs: 6px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 14px;
+    --radius-xl: 16px;
+    --radius-2xl: 24px;
     --radius-full: 9999px;
-
-    /* ── Shadows ── */
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.24);
-    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.28);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.32);
-    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.36);
-    --shadow-xl: 0 24px 56px rgba(0, 0, 0, 0.42);
-    --shadow-glow: 0 0 40px rgba(125, 92, 255, 0.25);
-    --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
     /* ── Blur ── */
     --blur-sm: 8px;
@@ -135,26 +76,20 @@
     --letter-spacing-tight: -0.02em;
     --letter-spacing-eyebrow: 0.08em;
 
-    /* ── Motion: easing ── */
+    /* ── Motion ── */
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-
-    /* ── Motion: duration ── */
     --duration-fast: 150ms;
     --duration-base: 250ms;
     --duration-slow: 450ms;
     --duration-slower: 900ms;
     --duration-ambient: 4.5s;
-
-    /* ── Motion: stagger ── */
     --delay-1: 80ms;
     --delay-2: 160ms;
     --delay-3: 240ms;
     --delay-4: 320ms;
     --delay-5: 400ms;
     --delay-6: 480ms;
-
-    /* ── Motion: transitions ── */
     --transition-color: color var(--duration-base) var(--ease-out);
     --transition-transform: transform var(--duration-base) var(--ease-out);
     --transition-shadow: box-shadow var(--duration-base) var(--ease-out);
@@ -172,24 +107,16 @@
     --content-max-prose: 36rem;
     --content-max-lead: 40rem;
     --page-pad-bottom: max(var(--space-3xl), env(safe-area-inset-bottom, 0px));
-
-    /* Safe area (iOS / Telegram) */
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
-
-    /* Breakpoints (literal in @media): sm 480 | md 768 | lg 1024 | xl 1280 */
-
-    /* ── Grid ── */
     --grid-columns: 12;
     --grid-gap: clamp(var(--space-lg), 2vw, var(--space-3xl));
     --grid-hero-ratio-left: 1.1fr;
     --grid-hero-ratio-right: 0.9fr;
     --grid-card-min: min(100%, 17.5rem);
     --grid-card-min-lg: min(100%, 22.5rem);
-
-    /* ── Z-index ── */
     --z-base: 0;
     --z-elevated: 10;
     --z-dropdown: 100;
@@ -197,18 +124,11 @@
     --z-modal: 300;
     --z-toast: 400;
     --z-drawer: 350;
-
-    /* Touch targets */
     --touch-min: 44px;
     --touch-comfortable: 48px;
     --drawer-width: min(26.25rem, 100%);
-
-    /* ── Focus ── */
     --focus-ring-width: 2px;
-    --focus-ring-color: var(--accent-secondary);
     --focus-ring-offset: 2px;
-
-    /* ── Components (UI Kit) ── */
     --btn-height: max(56px, var(--touch-comfortable));
     --btn-height-sm: max(48px, var(--touch-min));
     --btn-height-icon: var(--btn-height);
@@ -222,43 +142,144 @@
     --brand-mark-size: var(--icon-size-md);
     --step-badge-size: 40px;
     --step-badge-size-sm: 36px;
+    --orb-size-purple: 420px;
+    --orb-size-cyan: 360px;
+    --orb-offset-purple: calc(var(--space-8xl) * -1);
+    --orb-offset-cyan: calc(var(--space-6xl) * -1);
+    --calendar-width: 420px;
+    --day-monday: #42c96b;
+    --day-tuesday: #f59e0b;
+    --day-wednesday: #3b82f6;
+    --day-thursday: #6366f1;
+    --day-friday: #ec4899;
+    --day-saturday: #eab308;
+    --day-sunday: #6b7280;
+    --schedule-grid-height: 720px;
+    --schedule-transition: 0.2s ease;
+    --opacity-disabled: 0.48;
+    --opacity-muted: 0.72;
+    --opacity-hover: 0.88;
+    --opacity-glow-soft: 0.14;
+    --opacity-glow-medium: 0.2;
+    --opacity-icon: 0.9;
 
-    /* Field states */
+    /* Default = dark (Cal-like neutrals) until data-theme is set */
+    --bg-900: #0a0a0a;
+    --bg-800: #111111;
+    --bg-700: #171717;
+    --bg-600: #262626;
+    --surface-100: #141414;
+    --surface-200: #1a1a1a;
+    --surface-300: #242424;
+    --glass-light: rgba(255, 255, 255, 0.04);
+    --glass-medium: rgba(20, 20, 20, 0.72);
+    --glass-heavy: rgba(10, 10, 10, 0.92);
+    --glass-header: rgba(10, 10, 10, 0.86);
+    --text-primary: #fafafa;
+    --text-secondary: #a3a3a3;
+    --text-muted: #737373;
+    --text-disabled: #525252;
+    --text-on-accent: #0a0a0a;
+    --accent-primary: #fafafa;
+    --accent-secondary: #e5e5e5;
+    --accent-success: #22c55e;
+    --accent-warning: #f59e0b;
+    --accent-danger: #ef4444;
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-default: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --gradient-primary: linear-gradient(180deg, #fafafa 0%, #e5e5e5 100%);
+    --gradient-secondary: linear-gradient(180deg, #e5e5e5 0%, #a3a3a3 100%);
+    --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+    --gradient-glow-purple: radial-gradient(circle, rgba(250, 250, 250, 0.08) 0%, transparent 70%);
+    --gradient-glow-cyan: radial-gradient(circle, rgba(163, 163, 163, 0.08) 0%, transparent 70%);
+    --gradient-inner-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 100%);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.45);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+    --shadow-xl: 0 24px 56px rgba(0, 0, 0, 0.6);
+    --shadow-glow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+    --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --focus-ring-color: var(--accent-secondary);
     --field-bg: var(--surface-200);
     --field-border: var(--border-default);
     --field-border-focus: var(--accent-secondary);
     --field-border-error: var(--accent-danger);
     --field-border-success: var(--accent-success);
-    --field-glow-focus: 0 0 0 3px rgba(73, 209, 255, 0.2);
-    --field-glow-error: 0 0 0 3px rgba(255, 92, 122, 0.2);
-    --field-glow-success: 0 0 0 3px rgba(59, 228, 200, 0.2);
+    --field-glow-focus: 0 0 0 3px rgba(250, 250, 250, 0.16);
+    --field-glow-error: 0 0 0 3px rgba(239, 68, 68, 0.2);
+    --field-glow-success: 0 0 0 3px rgba(34, 197, 94, 0.2);
+    --alert-info-bg: rgba(255, 255, 255, 0.06);
+    --alert-success-bg: rgba(34, 197, 94, 0.12);
+    --alert-warning-bg: rgba(245, 158, 11, 0.12);
+    --alert-error-bg: rgba(239, 68, 68, 0.12);
+    --color-glow-purple: rgba(250, 250, 250, var(--opacity-glow-medium));
+    --color-glow-cyan: rgba(163, 163, 163, var(--opacity-glow-soft));
+    --theme-meta: #0a0a0a;
+}
 
-    /* Alert / toast surfaces */
-    --alert-info-bg: rgba(73, 209, 255, 0.12);
-    --alert-success-bg: rgba(59, 228, 200, 0.12);
-    --alert-warning-bg: rgba(245, 166, 35, 0.12);
-    --alert-error-bg: rgba(255, 92, 122, 0.12);
+html[data-theme="dark"] {
+    color-scheme: dark;
+}
 
-    /* ── Hero decorative ── */
-    --orb-size-purple: 420px;
-    --orb-size-cyan: 360px;
-    --orb-offset-purple: calc(var(--space-8xl) * -1);
-    --orb-offset-cyan: calc(var(--space-6xl) * -1);
-    --color-glow-purple: rgba(125, 92, 255, var(--opacity-glow-medium));
-    --color-glow-cyan: rgba(73, 209, 255, var(--opacity-glow-soft));
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg-900: #ffffff;
+    --bg-800: #fafafa;
+    --bg-700: #f5f5f5;
+    --bg-600: #e5e5e5;
+    --surface-100: #ffffff;
+    --surface-200: #fafafa;
+    --surface-300: #f0f0f0;
+    --glass-light: rgba(0, 0, 0, 0.03);
+    --glass-medium: rgba(255, 255, 255, 0.86);
+    --glass-heavy: rgba(255, 255, 255, 0.94);
+    --glass-header: rgba(255, 255, 255, 0.9);
+    --text-primary: #0a0a0a;
+    --text-secondary: #525252;
+    --text-muted: #737373;
+    --text-disabled: #a3a3a3;
+    --text-on-accent: #fafafa;
+    --accent-primary: #111111;
+    --accent-secondary: #404040;
+    --accent-success: #16a34a;
+    --accent-warning: #d97706;
+    --accent-danger: #dc2626;
+    --border-subtle: rgba(0, 0, 0, 0.05);
+    --border-default: rgba(0, 0, 0, 0.1);
+    --border-strong: rgba(0, 0, 0, 0.18);
+    --gradient-primary: linear-gradient(180deg, #171717 0%, #0a0a0a 100%);
+    --gradient-secondary: linear-gradient(180deg, #404040 0%, #262626 100%);
+    --gradient-card: linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, transparent 100%);
+    --gradient-glow-purple: radial-gradient(circle, rgba(0, 0, 0, 0.04) 0%, transparent 70%);
+    --gradient-glow-cyan: radial-gradient(circle, rgba(0, 0, 0, 0.03) 0%, transparent 70%);
+    --gradient-inner-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, transparent 100%);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 24px 56px rgba(0, 0, 0, 0.12);
+    --shadow-glow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+    --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    --focus-ring-color: var(--accent-primary);
+    --field-bg: #ffffff;
+    --field-border: var(--border-default);
+    --field-border-focus: var(--accent-primary);
+    --field-glow-focus: 0 0 0 3px rgba(17, 17, 17, 0.12);
+    --field-glow-error: 0 0 0 3px rgba(220, 38, 38, 0.15);
+    --field-glow-success: 0 0 0 3px rgba(22, 163, 74, 0.15);
+    --alert-info-bg: rgba(0, 0, 0, 0.04);
+    --alert-success-bg: rgba(22, 163, 74, 0.1);
+    --alert-warning-bg: rgba(217, 119, 6, 0.1);
+    --alert-error-bg: rgba(220, 38, 38, 0.1);
+    --color-glow-purple: rgba(0, 0, 0, 0.06);
+    --color-glow-cyan: rgba(0, 0, 0, 0.04);
+    --theme-meta: #ffffff;
+}
 
-    /* ── Calendar widget (Stage 5 prep) ── */
-    --calendar-width: 420px;
-
-    /* ── Week grid day colors ── */
-    --day-monday: #42c96b;
-    --day-tuesday: #f59e0b;
-    --day-wednesday: #3b82f6;
-    --day-thursday: #7c5cff;
-    --day-friday: #ec4899;
-    --day-saturday: #eab308;
-    --day-sunday: #6b7280;
-
-    --schedule-grid-height: 720px;
-    --schedule-transition: 0.2s ease;
+/* Smooth theme swaps for surfaces that use tokens */
+html {
+    transition: background-color var(--duration-base) var(--ease-out),
+        color var(--duration-base) var(--ease-out);
 }

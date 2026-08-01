@@ -1,0 +1,18 @@
+{# Inline before CSS to avoid FOUC. Preference: localStorage ayc_theme #}
+<script>
+(function () {
+    try {
+        var k = "ayc_theme";
+        var p = localStorage.getItem(k);
+        var t = p;
+        if (!t || t === "system") {
+            t = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        }
+        if (t !== "light" && t !== "dark") t = "dark";
+        document.documentElement.setAttribute("data-theme", t);
+        document.documentElement.style.colorScheme = t;
+    } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+    }
+})();
+</script>

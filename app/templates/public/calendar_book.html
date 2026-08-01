@@ -27,7 +27,12 @@
     {% else %}
     <form method="POST" action="/s/{{ slug }}/c/{{ calendar.id }}/" class="book-cal-layout" id="publicBookForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <section class="book-cal-panel book-cal-panel--service">
+        <nav class="book-cal-progress" id="bookCalProgress" aria-label="Шаги записи">
+            <button type="button" class="book-cal-progress__item is-active" data-step="1">1. Услуга</button>
+            <button type="button" class="book-cal-progress__item" data-step="2">2. Дата</button>
+            <button type="button" class="book-cal-progress__item" data-step="3">3. Время</button>
+        </nav>
+        <section class="book-cal-panel book-cal-panel--service" data-book-step="1" id="bookStepService">
             <h2 class="book-cal-step"><span class="book-cal-step__num">1</span> Услуга</h2>
             <div class="form-field">
                 <label class="form-field__label book-cal-service-label" for="service_id">Выберите услугу</label>
@@ -42,7 +47,7 @@
             </div>
         </section>
 
-        <section class="book-cal-panel book-cal-panel--month" aria-label="Календарь">
+        <section class="book-cal-panel book-cal-panel--month" aria-label="Календарь" data-book-step="2" id="bookStepDate">
             <h2 class="book-cal-step"><span class="book-cal-step__num">2</span> Выберите дату</h2>
             <div class="booking-cal">
                 <div class="booking-cal__header">
@@ -67,7 +72,7 @@
             </p>
         </section>
 
-        <section class="book-cal-panel book-cal-panel--day">
+        <section class="book-cal-panel book-cal-panel--day" data-book-step="3" id="bookStepTime">
             <h2 class="book-cal-step"><span class="book-cal-step__num">3</span> Выберите время</h2>
             <p class="book-cal-day-sub" id="dayPanelTitle">Сначала выберите дату в календаре</p>
             <div id="windowsBlock" class="book-windows" hidden>
@@ -90,5 +95,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/public-calendar-book.js?v=4" defer></script>
+<script src="/static/js/public-calendar-book.js?v=5" defer></script>
 {% endblock %}

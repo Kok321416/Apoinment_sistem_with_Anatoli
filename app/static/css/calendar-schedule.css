@@ -103,6 +103,16 @@
     font-size: var(--font-size-body-sm);
 }
 
+.schedule-mobile-progress,
+.schedule-day-chips,
+.week-grid-panel__hint--mobile {
+    display: none;
+}
+
+.week-grid-panel__hint--desktop {
+    display: block;
+}
+
 .week-grid-panel__toolbar {
     margin-bottom: var(--space-lg);
 }
@@ -181,8 +191,8 @@
 }
 
 .week-grid__column.is-selected {
-    background: rgba(125, 92, 255, 0.08);
-    box-shadow: inset 0 0 0 1px rgba(125, 92, 255, 0.35);
+    background: color-mix(in srgb, var(--accent-primary) 080%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 350%, transparent);
 }
 
 .week-grid__column.is-off {
@@ -642,6 +652,7 @@
 
     .calendar-page__header-actions .btn {
         flex: 1;
+        min-height: 44px;
     }
 
     .calendar-settings-form__grid {
@@ -650,6 +661,241 @@
 
     .quick-actions {
         grid-template-columns: 1fr;
+    }
+
+    /* Day-first: chips + editor primary; week grid secondary (hidden) */
+    .schedule-mobile-progress {
+        display: flex;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        gap: var(--space-xs);
+        margin: 0 0 var(--space-lg);
+        padding: var(--space-sm);
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--surface-100) 92%, transparent);
+        border: 1px solid var(--border-default);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+
+    .schedule-mobile-progress[hidden] {
+        display: flex !important;
+    }
+
+    .schedule-mobile-progress__item {
+        flex: 1;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-sm) var(--space-md);
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: var(--font-size-body-sm);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .schedule-mobile-progress__item.is-active {
+        background: var(--accent-primary);
+        color: var(--text-on-accent);
+    }
+
+    .week-grid-panel__hint--desktop {
+        display: none;
+    }
+
+    .week-grid-panel__hint--mobile {
+        display: block;
+    }
+
+    .schedule-day-chips {
+        display: flex;
+        gap: var(--space-sm);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: var(--space-xs) 0 var(--space-md);
+        margin-bottom: var(--space-sm);
+        scrollbar-width: none;
+    }
+
+    .schedule-day-chips::-webkit-scrollbar {
+        display: none;
+    }
+
+    .schedule-day-chip {
+        flex: 0 0 auto;
+        min-width: 3.25rem;
+        min-height: 3.5rem;
+        padding: var(--space-sm) var(--space-md);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-default);
+        background: var(--surface-100);
+        color: var(--text-primary);
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        cursor: pointer;
+        font: inherit;
+    }
+
+    .schedule-day-chip__short {
+        font-size: var(--font-size-body-sm);
+        font-weight: var(--font-weight-bold);
+    }
+
+    .schedule-day-chip__meta {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+
+    .schedule-day-chip.is-selected {
+        border-color: var(--accent-secondary);
+        background: color-mix(in srgb, var(--accent-secondary) 18%, var(--surface-100));
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-secondary) 350%, transparent);
+    }
+
+    .schedule-day-chip.is-off {
+        opacity: 0.55;
+    }
+
+    .week-grid-wrap {
+        display: none;
+    }
+
+    .calendar-layout {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-lg);
+    }
+
+    .week-grid-panel {
+        order: 1;
+        padding: var(--space-lg);
+    }
+
+    .day-editor-panel {
+        order: 2;
+        padding: var(--space-lg);
+    }
+
+    .calendar-settings-panel {
+        order: 3;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .calendar-settings-panel__toggle {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-md);
+        padding: var(--space-lg) var(--space-xl);
+        border: none;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+        min-height: 52px;
+    }
+
+    .calendar-settings-panel__head {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+        min-width: 0;
+    }
+
+    .calendar-settings-panel__title {
+        margin: 0;
+        font-size: var(--font-size-h3);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .calendar-settings-panel__lead {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: var(--font-size-body-sm);
+    }
+
+    .calendar-settings-panel__chevron {
+        flex-shrink: 0;
+        width: 0.6rem;
+        height: 0.6rem;
+        border-right: 2px solid var(--text-muted);
+        border-bottom: 2px solid var(--text-muted);
+        transform: rotate(45deg);
+        transition: transform 0.2s ease;
+    }
+
+    .calendar-settings-panel.is-open .calendar-settings-panel__chevron {
+        transform: rotate(225deg);
+    }
+
+    .calendar-settings-panel__body {
+        display: none;
+        padding: 0 var(--space-xl) var(--space-xl);
+    }
+
+    .calendar-settings-panel.is-open .calendar-settings-panel__body {
+        display: block;
+    }
+
+    .calendar-settings-summary {
+        order: 4;
+        padding: var(--space-lg);
+    }
+
+    .day-editor__empty {
+        font-size: var(--font-size-body-sm);
+    }
+}
+
+@media (min-width: 769px) {
+    .schedule-mobile-progress,
+    .schedule-day-chips,
+    .week-grid-panel__hint--mobile {
+        display: none !important;
+    }
+
+    .week-grid-panel__hint--desktop {
+        display: block;
+    }
+
+    .calendar-settings-panel__toggle {
+        display: block;
+        width: 100%;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+        cursor: default;
+        pointer-events: none;
+    }
+
+    .calendar-settings-panel__chevron {
+        display: none;
+    }
+
+    .calendar-settings-panel__body {
+        display: block !important;
+        padding: 0;
+        margin-top: var(--space-lg);
+    }
+
+    .calendar-settings-panel__title {
+        margin: 0 0 var(--space-xs);
+        font-size: var(--font-size-h2);
+    }
+
+    .calendar-settings-panel__lead {
+        margin: 0;
+        color: var(--text-muted);
     }
 }
 

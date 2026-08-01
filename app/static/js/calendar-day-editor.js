@@ -68,7 +68,7 @@
             const slots = this._slotsList(dayData);
             const slotsHtml = slots.length
                 ? slots.map((slot) => this._slotCard(slot)).join('')
-                : '<p class="day-editor__empty">Нет временных окон. Добавьте окно ниже или кликните по слоту в сетке.</p>';
+                : '<p class="day-editor__empty">Нет временных окон. Добавьте окно ниже.</p>';
 
             return (
                 '<div class="day-editor">' +

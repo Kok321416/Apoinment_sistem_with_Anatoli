@@ -59,7 +59,7 @@
     padding: var(--space-md) var(--space-lg);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--glass-light);
+    background: var(--surface-100);
     color: var(--text-primary);
     font-weight: var(--font-weight-semibold);
     font-size: var(--font-size-body);
@@ -70,13 +70,13 @@
 
 .auth-method:hover {
     border-color: var(--accent-secondary);
-    background: var(--glass-medium);
+    background: var(--surface-200);
 }
 
 .auth-method.is-selected,
 .auth-method.selected {
     border-color: var(--accent-primary);
-    background: rgba(125, 92, 255, 0.12);
+    background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
     box-shadow: var(--field-glow-focus);
 }
 
@@ -133,7 +133,7 @@
 
 .auth-role.is-selected {
     border-color: var(--accent-primary);
-    background: var(--glass-light);
+    background: var(--surface-100);
 }
 
 .auth-role input {
@@ -195,7 +195,7 @@
     margin-top: var(--space-3xl);
     padding: var(--space-2xl);
     border-radius: var(--radius-md);
-    background: var(--glass-light);
+    background: var(--surface-100);
     border: 1px solid var(--border-subtle);
 }
 
