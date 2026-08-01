@@ -87,17 +87,19 @@
 
     function applyTheme(tg) {
         var root = document.documentElement;
-        var tp = tg.themeParams || {};
-        // Product is light-only; still map Telegram palette vars for chrome.
+        // Product is light-only: never mirror Telegram dark themeParams into UI.
         root.setAttribute("data-tg-theme", "light");
         root.setAttribute("data-theme", "light");
         root.style.colorScheme = "light";
-        if (tp.bg_color) root.style.setProperty("--tg-bg", tp.bg_color);
-        if (tp.secondary_bg_color) root.style.setProperty("--tg-bg-secondary", tp.secondary_bg_color);
-        if (tp.button_color) root.style.setProperty("--tg-button", tp.button_color);
-        if (tp.button_text_color) root.style.setProperty("--tg-button-text", tp.button_text_color);
-        if (tp.text_color) root.style.setProperty("--tg-text", tp.text_color);
-        if (tp.hint_color) root.style.setProperty("--tg-hint", tp.hint_color);
+        try {
+            localStorage.removeItem("ayc_theme");
+        } catch (e) {}
+        root.style.setProperty("--tg-bg", "#ffffff");
+        root.style.setProperty("--tg-bg-secondary", "#fafafa");
+        root.style.setProperty("--tg-button", "#111111");
+        root.style.setProperty("--tg-button-text", "#fafafa");
+        root.style.setProperty("--tg-text", "#0a0a0a");
+        root.style.setProperty("--tg-hint", "#525252");
         try {
             if (typeof tg.setHeaderColor === "function") {
                 tg.setHeaderColor("#ffffff");
@@ -105,7 +107,7 @@
             if (typeof tg.setBackgroundColor === "function") {
                 tg.setBackgroundColor("#ffffff");
             }
-        } catch (e) {}
+        } catch (e2) {}
     }
 
     function haptic(kind) {
@@ -147,9 +149,8 @@
         var text = (el.getAttribute("data-tg-main-button") || el.textContent || "Продолжить").trim();
         try {
             tg.MainButton.setText(text.slice(0, 64));
-            if (tg.MainButton.color === undefined && tg.themeParams && tg.themeParams.button_color) {
-                tg.MainButton.color = tg.themeParams.button_color;
-            }
+            tg.MainButton.color = "#111111";
+            tg.MainButton.textColor = "#fafafa";
             tg.MainButton.show();
             tg.MainButton.onClick(function () {
                 haptic("medium");

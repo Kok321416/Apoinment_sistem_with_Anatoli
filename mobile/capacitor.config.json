@@ -28,7 +28,7 @@
       "showSpinner": false
     },
     "StatusBar": {
-      "style": "LIGHT",
+      "style": "DARK",
       "backgroundColor": "#FFFFFF"
     }
   }
