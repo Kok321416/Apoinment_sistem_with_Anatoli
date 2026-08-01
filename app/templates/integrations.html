@@ -8,6 +8,11 @@
 {% include "components/meta.html" %}
 {% endblock %}
 
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/app.css?v=30">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=5">
+{% endblock %}
+
 {% block app_content %}
 {{ app_page_head("Интеграции") }}
 
@@ -18,6 +23,7 @@
 <div class="alert alert--success mt-lg" role="status">{{ success }}</div>
 {% endif %}
 
+<div class="integrations-page">
 <div class="integrations-grid">
     <article class="integration-tile{% if email_verified %} is-connected{% endif %}">
         <div class="integration-tile__icon-wrap">
@@ -233,6 +239,7 @@
             </div>
         </div>
     </article>
+</div>
 </div>
 {% endblock %}
 

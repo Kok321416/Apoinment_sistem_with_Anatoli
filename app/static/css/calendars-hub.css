@@ -127,9 +127,9 @@
 }
 
 .cal-card:hover {
-    transform: scale(1.02);
-    box-shadow: var(--shadow-md);
-    border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
+    transform: none;
+    box-shadow: var(--shadow-sm);
+    border-color: var(--border-strong);
 }
 
 .cal-card.is-hidden {

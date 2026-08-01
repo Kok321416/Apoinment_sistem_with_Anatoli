@@ -7,9 +7,9 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=29">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=4">
-<link rel="stylesheet" href="/static/css/calendars-hub.css?v=3">
+<link rel="stylesheet" href="/static/css/app.css?v=30">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=5">
+<link rel="stylesheet" href="/static/css/calendars-hub.css?v=4">
 {% endblock %}
 
 {% block app_content %}
@@ -20,16 +20,16 @@
         <div class="calendars-hero__glow calendars-hero__glow--cyan" aria-hidden="true"></div>
         <div class="calendars-hero__inner">
             <div class="calendars-hero__main">
-                <div class="calendars-hero__icon" aria-hidden="true">📅</div>
+                <span class="hub-hero__glyph" data-icon="calendars" aria-hidden="true"></span>
                 <div>
-                    <h1 class="calendars-hero__title">Календари записи</h1>
-                    <p class="calendars-hero__desc">Управляйте всеми календарями, ссылками и расписанием клиентов.</p>
+                    <h1 class="calendars-hero__title">Календари</h1>
+                    <p class="calendars-hero__desc">Окна записи, ссылки и расписание.</p>
                     <p class="calendars-hero__stat"><strong id="hero-total">{{ hub_dashboard.total }}</strong> календарей</p>
                     <p class="calendars-hero__meta" id="calendars-hero-updated">Последнее изменение: —</p>
                 </div>
             </div>
             <div class="calendars-hero__actions">
-                <button type="button" class="btn btn--primary btn--sm" id="btn-hero-new-calendar">+ Новый календарь</button>
+                <button type="button" class="btn btn--primary btn--sm" id="btn-hero-new-calendar">Новый календарь</button>
                 <button type="button" class="btn btn--ghost btn--sm" id="btn-import-calendars" title="Скоро">Импорт</button>
                 <button type="button" class="btn btn--secondary btn--sm" id="btn-export-calendars" title="Скоро">Экспорт</button>
             </div>
@@ -232,11 +232,11 @@
                 </div>
             </section>
             {% else %}
-            <div class="calendars-empty" id="calendars-empty">
-                <div class="calendars-empty__icon" aria-hidden="true">📅</div>
-                <h2 class="calendars-empty__title">У вас пока нет календарей</h2>
-                <p class="calendars-empty__text">Создайте первый календарь, настройте окна записи и отправьте ссылку клиентам.</p>
-                <button type="button" class="btn btn--primary" id="btn-empty-create">Создать календарь</button>
+            <div class="hub-empty calendars-empty" id="calendars-empty" role="status">
+                <span class="hub-empty__glyph" data-icon="calendars" aria-hidden="true"></span>
+                <h2 class="hub-empty__title">Пока нет календарей</h2>
+                <p class="hub-empty__text">Создайте календарь, настройте окна и отправьте ссылку клиентам.</p>
+                <button type="button" class="btn btn--primary hub-empty__cta" id="btn-empty-create">Создать календарь</button>
             </div>
             {% endif %}
         </div>

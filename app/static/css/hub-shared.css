@@ -166,8 +166,8 @@
 .clients-dash-card:hover,
 .dashboard-card:hover,
 .stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-md);
+    transform: none;
+    box-shadow: var(--shadow-sm);
     border-color: var(--border-strong);
 }
 
@@ -286,30 +286,220 @@
     gap: var(--space-sm);
 }
 
-/* Empty states */
+/* Empty states (Notion-like) */
+.hub-empty,
 .calendars-empty,
 .bookings-empty,
 .clients-empty,
 .services-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
+    gap: var(--space-sm);
     padding: var(--space-4xl) var(--space-2xl);
+    border: 1px dashed var(--border-default);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--surface-200) 80%, transparent);
 }
 
+.hub-empty__glyph,
+.calendars-empty__icon,
+.bookings-empty__icon,
+.clients-empty__icon,
+.services-empty__icon {
+    display: block;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-bottom: var(--space-sm);
+    background-color: var(--text-muted);
+    opacity: 0.85;
+    -webkit-mask: var(--hub-empty-icon) center / contain no-repeat;
+    mask: var(--hub-empty-icon) center / contain no-repeat;
+}
+
+.hub-empty__glyph[data-icon="overview"] { --hub-empty-icon: url("/static/svg/icons/ui/overview.svg"); }
+.hub-empty__glyph[data-icon="calendars"] { --hub-empty-icon: url("/static/svg/icons/ui/calendars.svg"); }
+.hub-empty__glyph[data-icon="services"] { --hub-empty-icon: url("/static/svg/icons/ui/services.svg"); }
+.hub-empty__glyph[data-icon="bookings"] { --hub-empty-icon: url("/static/svg/icons/ui/bookings.svg"); }
+.hub-empty__glyph[data-icon="clients"] { --hub-empty-icon: url("/static/svg/icons/ui/clients.svg"); }
+.hub-empty__glyph[data-icon="profile"] { --hub-empty-icon: url("/static/svg/icons/ui/profile.svg"); }
+.hub-empty__glyph[data-icon="integrations"] { --hub-empty-icon: url("/static/svg/icons/ui/integrations.svg"); }
+
+.hub-empty__title,
 .calendars-empty__title,
 .bookings-empty__title,
 .clients-empty__title,
 .services-empty__title {
-    margin: 0 0 var(--space-sm);
+    margin: 0;
     font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
 }
 
+.hub-empty__text,
 .calendars-empty__text,
 .bookings-empty__text,
 .clients-empty__text,
 .services-empty__text {
     margin: 0;
+    max-width: 28rem;
     color: var(--text-muted);
     font-size: var(--font-size-body-sm);
+    line-height: 1.45;
+}
+
+.hub-empty__cta {
+    margin-top: var(--space-md);
+}
+
+/* Skeleton loading grids */
+.hub-skeleton {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-lg);
+    padding: var(--space-sm) 0;
+}
+
+.hub-skeleton__card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    min-height: 10rem;
+    padding: var(--space-xl);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--surface-200);
+}
+
+.hub-hero__glyph {
+    display: block;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex-shrink: 0;
+    background-color: var(--text-primary);
+    -webkit-mask: var(--hub-hero-icon) center / contain no-repeat;
+    mask: var(--hub-hero-icon) center / contain no-repeat;
+}
+
+.hub-hero__glyph[data-icon="calendars"] { --hub-hero-icon: url("/static/svg/icons/ui/calendars.svg"); }
+.hub-hero__glyph[data-icon="bookings"] { --hub-hero-icon: url("/static/svg/icons/ui/bookings.svg"); }
+.hub-hero__glyph[data-icon="clients"] { --hub-hero-icon: url("/static/svg/icons/ui/clients.svg"); }
+.hub-hero__glyph[data-icon="services"] { --hub-hero-icon: url("/static/svg/icons/ui/services.svg"); }
+.hub-hero__glyph[data-icon="profile"] { --hub-hero-icon: url("/static/svg/icons/ui/profile.svg"); }
+
+/* Integrations — Stripe-like tiles */
+.integrations-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xl);
+}
+
+.integrations-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-lg);
+}
+
+.integration-tile {
+    display: grid;
+    grid-template-columns: 3.25rem minmax(0, 1fr);
+    gap: var(--space-lg);
+    align-items: start;
+    min-width: 0;
+    min-height: 0;
+    padding: var(--space-xl);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--surface-200);
+    box-shadow: var(--shadow-xs);
+    text-align: left;
+    transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.integration-tile:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
+}
+
+.integration-tile.is-connected {
+    border-color: color-mix(in srgb, var(--accent-success) 35%, var(--border-default));
+}
+
+.integration-tile.is-disabled {
+    opacity: 0.7;
+}
+
+.integration-tile__icon-wrap {
+    width: 3.25rem;
+    height: 3.25rem;
+    margin: 0;
+    aspect-ratio: auto;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-default);
+    background: var(--surface-100);
+    padding: var(--space-sm);
+}
+
+.integration-tile__icon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.integration-tile__body {
+    min-width: 0;
+}
+
+.integration-tile__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.integration-tile__title {
+    margin: 0;
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-semibold);
+}
+
+.integration-tile__text,
+.integration-tile__meta {
+    margin: 0 0 var(--space-md);
+    font-size: var(--font-size-body-sm);
+    color: var(--text-secondary);
+    text-align: left;
+}
+
+.integration-tile__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    justify-content: flex-start;
+    margin-top: var(--space-sm);
+}
+
+.integration-tile__form {
+    margin-top: var(--space-md);
+}
+
+.integration-tile__details {
+    margin-top: var(--space-md);
+    text-align: left;
+    font-size: var(--font-size-body-sm);
+    color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+    .integrations-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Shared responsive collapses */

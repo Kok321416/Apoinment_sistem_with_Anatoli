@@ -1,0 +1,26 @@
+{# Notion-style empty state for specialist hubs. icon = data-icon for CSS mask (calendars|services|bookings|clients|…). #}
+{% macro hub_empty(icon, title, text, cta_id=None, cta_label=None, cta_href=None, extra_class="", empty_id=None, hidden=false) %}
+<div class="hub-empty {{ extra_class }}"{% if empty_id %} id="{{ empty_id }}"{% endif %}{% if hidden %} hidden{% endif %} role="status">
+    <span class="hub-empty__glyph" data-icon="{{ icon }}" aria-hidden="true"></span>
+    <h2 class="hub-empty__title">{{ title }}</h2>
+    <p class="hub-empty__text">{{ text }}</p>
+    {% if cta_href and cta_label %}
+    <a href="{{ cta_href }}" class="btn btn--primary hub-empty__cta"{% if cta_id %} id="{{ cta_id }}"{% endif %}>{{ cta_label }}</a>
+    {% elif cta_id and cta_label %}
+    <button type="button" class="btn btn--primary hub-empty__cta" id="{{ cta_id }}">{{ cta_label }}</button>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro hub_skeleton_cards(count=4, extra_class="") %}
+<div class="hub-skeleton {{ extra_class }}" aria-busy="true" aria-label="Загрузка">
+    {% for _ in range(count) %}
+    <div class="hub-skeleton__card">
+        <div class="skeleton skeleton--title"></div>
+        <div class="skeleton skeleton--text"></div>
+        <div class="skeleton skeleton--text" style="width:70%"></div>
+        <div class="skeleton skeleton--button"></div>
+    </div>
+    {% endfor %}
+</div>
+{% endmacro %}

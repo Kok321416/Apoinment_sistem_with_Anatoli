@@ -53,9 +53,9 @@
     to { opacity: 1; transform: translateY(0); }
 }
 .client-card:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-md);
-    border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
+    transform: none;
+    box-shadow: var(--shadow-sm);
+    border-color: var(--border-strong);
 }
 .client-card.is-hidden {
     display: none;
@@ -160,9 +160,20 @@
     color: var(--text-muted);
 }
 .client-card__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     font-size: 0.6875rem;
     color: var(--text-muted);
 }
+.client-card__status-dot {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: var(--radius-full);
+    background: currentColor;
+}
+.client-card__status--active { color: var(--accent-success); }
+.client-card__status--inactive { color: var(--text-muted); }
 .client-card__contacts {
     margin: 0 0 var(--space-md);
     padding: 0;

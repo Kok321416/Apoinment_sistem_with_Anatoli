@@ -7,9 +7,9 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=29">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=4">
-<link rel="stylesheet" href="/static/css/clients-crm.css?v=2">
+<link rel="stylesheet" href="/static/css/app.css?v=30">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=5">
+<link rel="stylesheet" href="/static/css/clients-crm.css?v=3">
 {% endblock %}
 
 {% block app_content %}
@@ -20,15 +20,15 @@
         <div class="clients-hero__glow clients-hero__glow--cyan" aria-hidden="true"></div>
         <div class="clients-hero__inner">
             <div class="clients-hero__main">
-                <div class="clients-hero__icon" aria-hidden="true">👥</div>
+                <span class="hub-hero__glyph" data-icon="clients" aria-hidden="true"></span>
                 <div>
-                    <h1 class="clients-hero__title">База клиентов</h1>
-                    <p class="clients-hero__stat"><strong id="hero-total">{{ crm_dashboard.total }}</strong> клиентов</p>
+                    <h1 class="clients-hero__title">Клиенты</h1>
+                    <p class="clients-hero__stat"><strong id="hero-total">{{ crm_dashboard.total }}</strong> в базе</p>
                     <p class="clients-hero__meta" id="hero-updated">Последнее изменение: —</p>
                 </div>
             </div>
             <div class="clients-hero__actions">
-                <button type="button" class="btn btn--primary btn--sm" id="btn-add-client">+ Добавить клиента</button>
+                <button type="button" class="btn btn--primary btn--sm" id="btn-add-client">Добавить клиента</button>
                 <button type="button" class="btn btn--secondary btn--sm" id="btn-export-clients">Экспорт</button>
                 <button type="button" class="btn btn--ghost btn--sm" id="btn-import-clients" title="Скоро">Импорт</button>
             </div>
@@ -155,7 +155,7 @@
                                     <span class="client-card__badge client-card__badge--{{ client.badge }}">{{ client.badge_label }}</span>
                                     {% endif %}
                                     <span class="client-card__status client-card__status--{{ client.status }}">
-                                        {% if client.status == 'active' %}🟢{% else %}⚪{% endif %} {{ client.status_label }}
+                                        <span class="client-card__status-dot" aria-hidden="true"></span>{{ client.status_label }}
                                     </span>
                                 </div>
                             </div>
@@ -192,11 +192,11 @@
                     <p>По вашему запросу клиенты не найдены. Измените фильтр или поиск.</p>
                 </div>
                 {% else %}
-                <div class="clients-empty" id="clients-empty">
-                    <div class="clients-empty__icon" aria-hidden="true">👥</div>
-                    <h2 class="clients-empty__title">Ваша база клиентов пока пуста</h2>
-                    <p class="clients-empty__text">Создайте первую карточку, чтобы вести историю и быстро записывать клиентов.</p>
-                    <button type="button" class="btn btn--primary" id="btn-empty-add">+ Добавить клиента</button>
+                <div class="hub-empty clients-empty" id="clients-empty" role="status">
+                    <span class="hub-empty__glyph" data-icon="clients" aria-hidden="true"></span>
+                    <h2 class="hub-empty__title">База клиентов пуста</h2>
+                    <p class="hub-empty__text">Добавьте карточку, чтобы вести историю и быстро записывать клиентов.</p>
+                    <button type="button" class="btn btn--primary hub-empty__cta" id="btn-empty-add">Добавить клиента</button>
                 </div>
                 {% endif %}
             </section>

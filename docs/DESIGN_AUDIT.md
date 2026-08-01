@@ -43,10 +43,11 @@
 4. Mobile bottom navigation  
 5. Подключение иконок в sidenav  
 
-### Фаза B
-- Унификация hub cards / filters / empty+skeleton  
-- Booking list day/week/month polish  
-- Integrations cards в одной оболочке  
+### Фаза B (сделано 2026-08-01)
+- Унификация hub empty (glyph + CTA) + skeleton на услугах  
+- Карточки: без «прыгающего» hover; booking cards без emoji-meta  
+- Integrations: Stripe-like горизонтальные тайлы в hub-shared  
+- Bookings: фильтры статусов текстом; виды «По дням» / «Месяц»  
 
 ### Фаза C
 - Soft page transitions (CSS), sheet/drawer patterns  

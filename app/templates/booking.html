@@ -9,10 +9,10 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=29">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=4">
-<link rel="stylesheet" href="/static/css/bookings-hub.css?v=3">
-<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=18">
+<link rel="stylesheet" href="/static/css/app.css?v=30">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=5">
+<link rel="stylesheet" href="/static/css/bookings-hub.css?v=4">
+<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=19">
 {% endblock %}
 
 {% block app_content %}
@@ -22,10 +22,10 @@
         <div class="bookings-hero__glow bookings-hero__glow--cyan" aria-hidden="true"></div>
         <div class="bookings-hero__inner">
             <div class="bookings-hero__main">
-                <div class="bookings-hero__icon" aria-hidden="true">📅</div>
+                <span class="hub-hero__glyph" data-icon="bookings" aria-hidden="true"></span>
             <div>
                     <h1 class="bookings-hero__title">Записи</h1>
-                    <p class="bookings-hero__desc">Все встречи с клиентами в одном месте.</p>
+                    <p class="bookings-hero__desc">Встречи по дням, неделе и месяцу.</p>
                 </div>
             </div>
         </div>
@@ -71,16 +71,16 @@
     </section>
 
     <nav class="bookings-status-pills" aria-label="Фильтр по статусу">
-        <a href="/booking/" class="bookings-status-pill bookings-status-pill--all {% if not status_filter or status_filter == 'all' %}is-active{% endif %}">◉ Все</a>
-        <a href="/booking/?status=pending" class="bookings-status-pill bookings-status-pill--pending {% if status_filter == 'pending' %}is-active{% endif %}">🟡 Ожидают</a>
-        <a href="/booking/?status=confirmed" class="bookings-status-pill bookings-status-pill--confirmed {% if status_filter == 'confirmed' %}is-active{% endif %}">🟢 Подтверждены</a>
-        <a href="/booking/?status=completed" class="bookings-status-pill bookings-status-pill--completed {% if status_filter == 'completed' %}is-active{% endif %}">🔵 Завершены</a>
-        <a href="/booking/?status=cancelled" class="bookings-status-pill bookings-status-pill--cancelled {% if status_filter == 'cancelled' %}is-active{% endif %}">🔴 Отменены</a>
+        <a href="/booking/" class="bookings-status-pill bookings-status-pill--all {% if not status_filter or status_filter == 'all' %}is-active{% endif %}">Все</a>
+        <a href="/booking/?status=pending" class="bookings-status-pill bookings-status-pill--pending {% if status_filter == 'pending' %}is-active{% endif %}">Ожидают</a>
+        <a href="/booking/?status=confirmed" class="bookings-status-pill bookings-status-pill--confirmed {% if status_filter == 'confirmed' %}is-active{% endif %}">Подтверждены</a>
+        <a href="/booking/?status=completed" class="bookings-status-pill bookings-status-pill--completed {% if status_filter == 'completed' %}is-active{% endif %}">Завершены</a>
+        <a href="/booking/?status=cancelled" class="bookings-status-pill bookings-status-pill--cancelled {% if status_filter == 'cancelled' %}is-active{% endif %}">Отменены</a>
     </nav>
 
     <div class="bookings-segment" role="tablist" aria-label="Вид отображения">
-        <button type="button" class="bookings-segment__btn is-active" data-view="list" role="tab" aria-selected="true">Список</button>
-        <button type="button" class="bookings-segment__btn" data-view="calendar" role="tab" aria-selected="false">📅 Календарь</button>
+        <button type="button" class="bookings-segment__btn is-active" data-view="list" role="tab" aria-selected="true">По дням</button>
+        <button type="button" class="bookings-segment__btn" data-view="calendar" role="tab" aria-selected="false">Месяц</button>
     </div>
 
     <div class="bookings-layout">
@@ -108,10 +108,11 @@
                             {% endfor %}
                         </div>
                         {% else %}
-                        <div class="bookings-empty" id="bookings-empty-upcoming">
-                            <div class="bookings-empty__icon" aria-hidden="true">📅</div>
-                            <h2 class="bookings-empty__title">Нет запланированных записей</h2>
-                            <p class="bookings-empty__text">Когда клиенты запишутся, встречи появятся здесь в виде таймлайна.</p>
+                        <div class="hub-empty bookings-empty" id="bookings-empty-upcoming" role="status">
+                            <span class="hub-empty__glyph" data-icon="bookings" aria-hidden="true"></span>
+                            <h2 class="hub-empty__title">Нет запланированных записей</h2>
+                            <p class="hub-empty__text">Когда клиенты запишутся, встречи появятся здесь по дням.</p>
+                            <a href="/calendars/" class="btn btn--primary hub-empty__cta">Открыть календари</a>
                         </div>
                         {% endif %}
 

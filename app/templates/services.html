@@ -7,9 +7,9 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=29">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=4">
-<link rel="stylesheet" href="/static/css/services-catalog.css?v=7">
+<link rel="stylesheet" href="/static/css/app.css?v=30">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=5">
+<link rel="stylesheet" href="/static/css/services-catalog.css?v=8">
 {% endblock %}
 
 {% block app_content %}
@@ -17,10 +17,13 @@
 
     <section class="services-hero card">
         <div class="services-hero__content">
-            <h1 class="services-hero__title">Услуги</h1>
-            <p class="services-hero__lead">Создавайте услуги, управляйте ценами, длительностью и календарями записи.</p>
+            <div class="services-hero__title-row">
+                <span class="hub-hero__glyph" data-icon="services" aria-hidden="true"></span>
+                <h1 class="services-hero__title">Услуги</h1>
+            </div>
+            <p class="services-hero__lead">Цены, длительность и календари записи.</p>
         </div>
-        <button type="button" class="btn btn--primary btn--lg" id="btn-new-service">+ Новая услуга</button>
+        <button type="button" class="btn btn--primary btn--lg" id="btn-new-service">Новая услуга</button>
     </section>
 
     <section class="services-stats" id="services-stats" aria-label="Статистика услуг">
@@ -66,13 +69,18 @@
     </div>
 
     <section class="services-catalog" id="services-catalog" aria-live="polite">
-        <div class="services-loading" id="services-loading">Загрузка услуг…</div>
+        <div class="hub-skeleton services-loading" id="services-loading" aria-busy="true" aria-label="Загрузка услуг">
+            <div class="hub-skeleton__card"><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--text" style="width:70%"></div><div class="skeleton skeleton--button"></div></div>
+            <div class="hub-skeleton__card"><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--text" style="width:55%"></div><div class="skeleton skeleton--button"></div></div>
+            <div class="hub-skeleton__card"><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--text" style="width:60%"></div><div class="skeleton skeleton--button"></div></div>
+            <div class="hub-skeleton__card"><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--text" style="width:65%"></div><div class="skeleton skeleton--button"></div></div>
+        </div>
         <div class="services-grid" id="services-grid" hidden></div>
-        <div class="services-empty" id="services-empty" hidden>
-            <div class="services-empty__icon" aria-hidden="true">📋</div>
-            <h2 class="services-empty__title">У вас пока нет услуг</h2>
-            <p class="services-empty__text">Создайте первую услугу или выберите готовый шаблон</p>
-            <button type="button" class="btn btn--primary" id="btn-empty-create">+ Создать услугу</button>
+        <div class="hub-empty services-empty" id="services-empty" hidden role="status">
+            <span class="hub-empty__glyph" data-icon="services" aria-hidden="true"></span>
+            <h2 class="hub-empty__title">Пока нет услуг</h2>
+            <p class="hub-empty__text">Создайте первую услугу или выберите шаблон в форме.</p>
+            <button type="button" class="btn btn--primary hub-empty__cta" id="btn-empty-create">Создать услугу</button>
         </div>
     </section>
 

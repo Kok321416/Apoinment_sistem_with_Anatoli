@@ -222,10 +222,20 @@
     font-weight: var(--font-weight-semibold);
 }
 .bkg-card__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     flex-shrink: 0;
     font-size: var(--font-size-body-sm);
     font-weight: var(--font-weight-medium);
     white-space: nowrap;
+}
+.bkg-card__status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: var(--radius-full);
+    background: currentColor;
+    flex-shrink: 0;
 }
 .bkg-card__status--pending { color: var(--accent-warning); }
 .bkg-card__status--confirmed { color: var(--accent-success); }
@@ -241,11 +251,16 @@
     gap: var(--space-sm);
 }
 .bkg-card__meta li {
-    display: flex;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr);
     gap: var(--space-sm);
+    align-items: baseline;
     font-size: var(--font-size-body-sm);
     color: var(--text-secondary);
+}
+.bkg-card__meta-label {
+    color: var(--text-muted);
+    font-size: var(--font-size-caption, 0.75rem);
 }
 .bkg-card__meta-icon {
     flex-shrink: 0;
