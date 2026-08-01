@@ -11,7 +11,11 @@
 {%- endmacro %}
 
 {% macro auth_provider_icon(name, size=20) -%}
-<img class="auth-method__icon" src="/static/svg/icons/{{ name }}.svg" alt="" width="{{ size }}" height="{{ size }}" decoding="async">
+{% if name in ('vk', 'yandex') %}
+<img class="auth-method__icon" src="/static/img/icons/{{ name }}.png?v=5" alt="" width="{{ size }}" height="{{ size }}" decoding="async">
+{% else %}
+<img class="auth-method__icon" src="/static/svg/icons/{{ name }}.svg?v=5" alt="" width="{{ size }}" height="{{ size }}" decoding="async">
+{% endif %}
 {%- endmacro %}
 
 {% macro loader(size='') -%}

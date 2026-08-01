@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=38">
+<link rel="stylesheet" href="/static/css/app.css?v=39">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=11">
 {% endblock %}
 
@@ -27,7 +27,7 @@
 <div class="integrations-grid">
     <article class="integration-tile{% if email_verified %} is-connected{% endif %}">
         <div class="integration-tile__icon-wrap">
-            <img class="integration-tile__icon" src="/static/svg/icons/email.svg" alt="">
+            <img class="integration-tile__icon" src="/static/img/icons/email.png?v=5" alt="">
         </div>
         <div class="integration-tile__body">
             <div class="integration-tile__head">
@@ -79,7 +79,7 @@
 
     <article class="integration-tile{% if telegram_login_connected %} is-connected{% endif %}">
         <div class="integration-tile__icon-wrap">
-            <img class="integration-tile__icon" src="/static/svg/icons/ui/telegram.svg?v=3" alt="">
+            <img class="integration-tile__icon" src="/static/svg/icons/ui/telegram.svg?v=5" alt="">
         </div>
         <div class="integration-tile__body">
             <div class="integration-tile__head">
@@ -107,7 +107,7 @@
 
     <article class="integration-tile{% if yandex_login_connected %} is-connected{% endif %}">
         <div class="integration-tile__icon-wrap">
-            <img class="integration-tile__icon" src="/static/svg/icons/yandex.svg" alt="">
+            <img class="integration-tile__icon" src="/static/img/icons/yandex.png?v=5" alt="">
         </div>
         <div class="integration-tile__body">
             <div class="integration-tile__head">
@@ -137,7 +137,7 @@
 
     <article class="integration-tile{% if vk_login_connected %} is-connected{% endif %}">
         <div class="integration-tile__icon-wrap">
-            <img class="integration-tile__icon" src="/static/svg/icons/vk.svg?v=2" alt="">
+            <img class="integration-tile__icon" src="/static/img/icons/vk.png?v=5" alt="">
         </div>
         <div class="integration-tile__body">
             <div class="integration-tile__head">
@@ -167,7 +167,7 @@
 
     <article class="integration-tile{% if integration.telegram_connected %} is-connected{% endif %}">
         <div class="integration-tile__icon-wrap">
-            <img class="integration-tile__icon" src="/static/svg/icons/ui/telegram.svg?v=3" alt="">
+            <img class="integration-tile__icon" src="/static/svg/icons/ui/telegram.svg?v=5" alt="">
         </div>
         <div class="integration-tile__body">
             <div class="integration-tile__head">
@@ -221,22 +221,6 @@
                 </form>
             </div>
             {% endif %}
-        </div>
-    </article>
-
-    <article class="integration-tile is-disabled">
-        <div class="integration-tile__icon-wrap">
-            <img class="integration-tile__icon" src="/static/svg/icons/google.svg" alt="">
-        </div>
-        <div class="integration-tile__body">
-            <div class="integration-tile__head">
-                <h2 class="integration-tile__title">Google Календарь</h2>
-                <span class="badge badge--ghost">Скоро</span>
-            </div>
-            <p class="integration-tile__text">Синхронизация записей с Google Календарём готовится. Пока подключение из кабинета недоступно.</p>
-            <div class="integration-tile__actions">
-                <button type="button" class="btn btn--ghost" disabled>Скоро</button>
-            </div>
         </div>
     </article>
 </div>

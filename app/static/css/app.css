@@ -993,8 +993,8 @@
     text-align: center;
     gap: var(--space-md);
     padding: var(--space-4xl) var(--space-xl);
-    min-height: min(60vh, 28rem);
-    overflow: hidden;
+    min-height: min(70vh, 36rem);
+    overflow: auto;
 }
 
 .cabinet-empty__art {
@@ -1018,7 +1018,8 @@
     flex-direction: column;
     align-items: center;
     gap: var(--space-md);
-    max-width: 26rem;
+    width: min(100%, 36rem);
+    max-width: 36rem;
     padding: var(--space-3xl) var(--space-2xl);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-default);
@@ -1052,6 +1053,10 @@ html[data-theme="dark"] .brand__mark {
     line-height: var(--line-height-body-lg);
 }
 
+.cabinet-empty__lead--mobile {
+    display: none;
+}
+
 .cabinet-empty__hint {
     margin: 0;
     color: var(--text-muted);
@@ -1061,26 +1066,26 @@ html[data-theme="dark"] .brand__mark {
     margin-top: var(--space-md);
 }
 
-.cabinet-empty__lead--mobile {
-    display: none;
-}
-
-.cabinet-home-guide {
-    margin-top: var(--space-2xl);
-    padding: var(--space-2xl);
-    max-width: 40rem;
+.cabinet-empty__card .cabinet-home-guide {
+    width: 100%;
+    margin-top: var(--space-lg);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--border-subtle);
+    text-align: left;
 }
 
 .cabinet-home-guide__title {
     margin: 0 0 var(--space-xs);
     font-size: var(--font-size-h3);
     font-weight: var(--font-weight-semibold);
+    text-align: center;
 }
 
 .cabinet-home-guide__lead {
     margin: 0 0 var(--space-lg);
     color: var(--text-muted);
     font-size: var(--font-size-body-sm);
+    text-align: center;
 }
 
 .cabinet-home-guide__list {
@@ -1112,6 +1117,7 @@ html[data-theme="dark"] .brand__mark {
 
 .cabinet-home-guide__link .cabinet-nav__glyph {
     margin-top: 2px;
+    flex-shrink: 0;
 }
 
 .cabinet-bottom-nav {
@@ -1127,11 +1133,15 @@ html[data-theme="dark"] .brand__mark {
         display: block;
     }
 
-    .cabinet-home-guide {
-        margin-top: var(--space-xl);
-        padding: var(--space-xl);
-        max-width: none;
+    .cabinet-empty__card {
+        padding: var(--space-2xl) var(--space-xl);
     }
+
+    .cabinet-empty__card .cabinet-home-guide {
+        margin-top: var(--space-md);
+        padding-top: var(--space-md);
+    }
+
     .cabinet-workspace__bar {
         display: flex;
         position: sticky;

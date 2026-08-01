@@ -447,13 +447,12 @@ body.tg-webapp .cabinet-empty__art {
 
 body.tg-webapp .cabinet-empty__card {
     width: 100%;
-    max-width: 22rem;
+    max-width: 28rem;
 }
 
-body.tg-webapp .cabinet-home-guide {
-    display: grid;
-    gap: 10px;
-    margin-top: 8px;
+body.tg-webapp .cabinet-empty__card .cabinet-home-guide {
+    margin-top: 12px;
+    padding-top: 12px;
 }
 
 body.tg-webapp table {

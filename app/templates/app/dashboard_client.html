@@ -20,48 +20,40 @@
         <h1 class="cabinet-empty__title">{{ site_brand_name }}</h1>
         <p class="cabinet-empty__lead cabinet-empty__lead--desktop">Кабинет клиента. Выберите раздел слева или внизу: запись и ваши визиты.</p>
         <p class="cabinet-empty__lead cabinet-empty__lead--mobile">Кабинет клиента. Выберите раздел в меню внизу: запись и ваши визиты.</p>
-        <p class="cabinet-empty__hint text-caption">
-            {% if has_consultant %}
-            Режим можно сменить на «Специалист» в меню.
-            {% else %}
-            Начните с «Записаться», чтобы выбрать специалиста и время.
-            {% endif %}
-        </p>
-        <a href="/book/" class="btn btn--primary btn--sm cabinet-empty__cta">Записаться</a>
-    </div>
-</section>
 
-<section class="cabinet-home-guide card" aria-label="Инструкция">
-    <h2 class="cabinet-home-guide__title">Быстрые действия</h2>
-    <p class="cabinet-home-guide__lead">То же, что на сайте: запись и список визитов.</p>
-    <ol class="cabinet-home-guide__list">
-        <li>
-            <a href="/book/" class="cabinet-home-guide__link">
-                <span class="cabinet-nav__glyph" data-icon="book" aria-hidden="true"></span>
-                <span><strong>Записаться</strong> - выбрать специалиста и время</span>
-            </a>
-        </li>
-        <li>
-            <a href="/my-bookings/" class="cabinet-home-guide__link">
-                <span class="cabinet-nav__glyph" data-icon="my-bookings" aria-hidden="true"></span>
-                <span><strong>Мои записи</strong> - ближайшие и история</span>
-            </a>
-        </li>
-        {% if has_consultant %}
-        <li>
-            <a href="/calendars/" class="cabinet-home-guide__link">
-                <span class="cabinet-nav__glyph" data-icon="overview" aria-hidden="true"></span>
-                <span><strong>Кабинет специалиста</strong> - переключите режим в меню на «Специалист»</span>
-            </a>
-        </li>
-        {% else %}
-        <li>
-            <a href="/become-specialist/" class="cabinet-home-guide__link">
-                <span class="cabinet-nav__glyph" data-icon="profile" aria-hidden="true"></span>
-                <span><strong>Стать специалистом</strong> - открыть приём клиентов</span>
-            </a>
-        </li>
-        {% endif %}
-    </ol>
+        <div class="cabinet-home-guide" aria-label="Инструкция">
+            <h2 class="cabinet-home-guide__title">Быстрые действия</h2>
+            <p class="cabinet-home-guide__lead">То же, что на сайте: запись и список визитов.</p>
+            <ol class="cabinet-home-guide__list">
+                <li>
+                    <a href="/book/" class="cabinet-home-guide__link">
+                        <span class="cabinet-nav__glyph" data-icon="book" aria-hidden="true"></span>
+                        <span><strong>Записаться</strong> - выбрать специалиста и время</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/my-bookings/" class="cabinet-home-guide__link">
+                        <span class="cabinet-nav__glyph" data-icon="my-bookings" aria-hidden="true"></span>
+                        <span><strong>Мои записи</strong> - ближайшие и история</span>
+                    </a>
+                </li>
+                {% if has_consultant %}
+                <li>
+                    <a href="/calendars/" class="cabinet-home-guide__link">
+                        <span class="cabinet-nav__glyph" data-icon="overview" aria-hidden="true"></span>
+                        <span><strong>Кабинет специалиста</strong> - переключите режим в меню на «Специалист»</span>
+                    </a>
+                </li>
+                {% else %}
+                <li>
+                    <a href="/become-specialist/" class="cabinet-home-guide__link">
+                        <span class="cabinet-nav__glyph" data-icon="profile" aria-hidden="true"></span>
+                        <span><strong>Стать специалистом</strong> - открыть приём клиентов</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ol>
+        </div>
+    </div>
 </section>
 {% endblock %}
