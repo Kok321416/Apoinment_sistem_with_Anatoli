@@ -1,12 +1,25 @@
-/* Telegram Mini App — sticky WebView shell with inner scroll */
+/**
+ * Telegram Mini App UI layer
+ * Refs: core.telegram.org/bots/webapps (safeArea / contentSafeArea / themeParams)
+ *       github.com/Telegram-Mini-Apps/TelegramUI (spacing, list cells, density)
+ * Applies when html/body have .tg-webapp (set by telegram-webapp.js).
+ */
 
 html.tg-webapp,
 body.tg-webapp {
-    --tg-safe-top: env(safe-area-inset-top, 0px);
-    --tg-safe-right: env(safe-area-inset-right, 0px);
-    --tg-safe-bottom: env(safe-area-inset-bottom, 0px);
-    --tg-safe-left: env(safe-area-inset-left, 0px);
-    --tg-viewport-stable-height: 100vh;
+    /* System notch + Telegram chrome (JS may override with real insets) */
+    --tg-safe-top: var(--tg-content-safe-area-inset-top, var(--tg-safe-area-inset-top, env(safe-area-inset-top, 0px)));
+    --tg-safe-right: var(--tg-content-safe-area-inset-right, var(--tg-safe-area-inset-right, env(safe-area-inset-right, 0px)));
+    --tg-safe-bottom: var(--tg-content-safe-area-inset-bottom, var(--tg-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+    --tg-safe-left: var(--tg-content-safe-area-inset-left, var(--tg-safe-area-inset-left, env(safe-area-inset-left, 0px)));
+    --tg-viewport-stable-height: 100dvh;
+    --tg-pad-x: 16px;
+    --tg-pad-y: 12px;
+    --tg-gap: 12px;
+    --tg-radius: 14px;
+    --tg-radius-sm: 10px;
+    --tg-touch: 44px;
+    --tg-section-gap: 20px;
 
     width: 100% !important;
     height: var(--tg-viewport-stable-height) !important;
@@ -19,6 +32,8 @@ body.tg-webapp {
     color: var(--tg-text, var(--text-primary));
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
+    font-size: 16px;
+    line-height: 1.45;
 }
 
 body.tg-webapp {
@@ -28,7 +43,7 @@ body.tg-webapp {
     touch-action: manipulation;
 }
 
-/* Inner scroll surface — only this element scrolls */
+/* ── Scroll shell ─────────────────────────────────────────── */
 .tg-scroll-root {
     position: absolute;
     inset: 0;
@@ -45,7 +60,7 @@ body.tg-webapp {
     padding-top: var(--tg-safe-top);
     padding-right: var(--tg-safe-right);
     padding-left: var(--tg-safe-left);
-    padding-bottom: var(--tg-safe-bottom);
+    padding-bottom: calc(var(--tg-safe-bottom) + 12px);
 }
 
 .tg-scroll-root a,
@@ -59,7 +74,6 @@ body.tg-webapp {
     touch-action: manipulation;
 }
 
-/* Kill entrance animations that can leave opacity:0 in WebView */
 html.tg-webapp .animate-fade-in-up,
 html.tg-webapp .animate-fade-in,
 html.tg-webapp .animate-soft-float {
@@ -68,7 +82,6 @@ html.tg-webapp .animate-soft-float {
     transform: none !important;
 }
 
-/* Layout overrides inside Telegram */
 body.tg-webapp.auth-page,
 body.tg-webapp.tg-hub-page,
 body.tg-webapp.app-shell,
@@ -79,59 +92,309 @@ body.tg-webapp.booking-page {
     overflow: hidden !important;
 }
 
+/* ── Shared density ───────────────────────────────────────── */
+body.tg-webapp .container {
+    width: 100%;
+    max-width: 100%;
+    padding-left: var(--tg-pad-x);
+    padding-right: var(--tg-pad-x);
+    box-sizing: border-box;
+}
+
+body.tg-webapp .btn,
+body.tg-webapp button.btn,
+body.tg-webapp a.btn {
+    min-height: var(--tg-touch);
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: var(--tg-radius-sm);
+    font-size: 0.95rem;
+}
+
+body.tg-webapp .input,
+body.tg-webapp input.input,
+body.tg-webapp select.input,
+body.tg-webapp textarea.input,
+body.tg-webapp .form-field input,
+body.tg-webapp .form-field select,
+body.tg-webapp .form-field textarea {
+    min-height: var(--tg-touch);
+    font-size: 16px !important; /* prevent iOS zoom */
+    border-radius: var(--tg-radius-sm);
+}
+
+body.tg-webapp .card {
+    border-radius: var(--tg-radius);
+}
+
+body.tg-webapp .cookie-consent {
+    left: var(--tg-pad-x);
+    right: var(--tg-pad-x);
+    bottom: calc(var(--tg-safe-bottom) + 12px);
+    max-width: calc(100% - 2 * var(--tg-pad-x));
+    border-radius: var(--tg-radius);
+}
+
+/* ── Auth / hub entry ─────────────────────────────────────── */
 body.tg-webapp .auth-page__main,
 body.tg-webapp .tg-hub-auth {
     display: block;
     flex: none;
     min-height: 0;
     height: auto;
-    padding: 1rem;
+    padding: var(--tg-pad-y) var(--tg-pad-x) 24px;
     overflow: visible;
-    align-items: stretch;
-    justify-content: flex-start;
 }
 
 body.tg-webapp .auth-card {
     width: 100%;
     max-width: 100%;
-    margin: 0 auto 1.5rem;
-    padding: 1.15rem;
+    margin: 0 auto 20px;
+    padding: 18px 16px;
     box-sizing: border-box;
+    border-radius: var(--tg-radius);
+}
+
+body.tg-webapp .auth-card__title {
+    font-size: 1.35rem;
+    line-height: 1.25;
+    margin-bottom: 6px;
 }
 
 body.tg-webapp .auth-card__lead {
-    margin-bottom: 1rem;
+    margin-bottom: 14px;
+    font-size: 0.92rem;
+    line-height: 1.45;
 }
 
+body.tg-webapp .auth-methods {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+body.tg-webapp .auth-method {
+    min-height: var(--tg-touch);
+    border-radius: var(--tg-radius-sm);
+}
+
+body.tg-webapp .auth-page__topbar {
+    padding: 10px var(--tg-pad-x);
+}
+
+body.tg-webapp .form-field {
+    margin-bottom: 12px;
+}
+
+body.tg-webapp .stack {
+    gap: 12px;
+}
+
+/* ── App cabinet shell ────────────────────────────────────── */
 body.tg-webapp .app-header {
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: 30;
+    background: var(--tg-bg, var(--glass-header));
+}
+
+body.tg-webapp .app-header__inner {
+    min-height: 52px;
+    gap: 10px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+body.tg-webapp .app-header__nav,
+body.tg-webapp .app-header__nav--desktop {
+    display: none !important;
+}
+
+body.tg-webapp .app-header__menu {
+    display: block !important;
+    position: relative;
+}
+
+body.tg-webapp .app-header__menu-btn {
+    list-style: none;
+    min-height: var(--tg-touch);
+    min-width: var(--tg-touch);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border-radius: var(--tg-radius-sm);
+    border: 1px solid var(--border-default);
+    background: var(--tg-bg-secondary, var(--surface-200));
+    color: var(--tg-text, var(--text-primary));
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+body.tg-webapp .app-header__menu-btn::-webkit-details-marker {
+    display: none;
+}
+
+body.tg-webapp .app-header__menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 40;
+    width: min(18rem, calc(100vw - 2 * var(--tg-pad-x)));
+    padding: 12px;
+    border-radius: var(--tg-radius);
+    border: 1px solid var(--border-default);
+    background: var(--tg-bg-secondary, var(--surface-200));
+    box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.35));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+body.tg-webapp .app-header__menu-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+body.tg-webapp .app-header__menu-nav a,
+body.tg-webapp .app-header__menu-logout {
+    display: flex;
+    align-items: center;
+    min-height: var(--tg-touch);
+    padding: 0 12px;
+    border-radius: var(--tg-radius-sm);
+    text-decoration: none;
+    color: var(--tg-text, var(--text-primary));
+    font-size: 0.95rem;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+body.tg-webapp .app-header__menu-nav a:active,
+body.tg-webapp .app-header__menu-logout:active {
+    background: var(--glass-light);
+}
+
+body.tg-webapp .app-header__actions {
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+body.tg-webapp .app-header__user {
+    max-width: min(11rem, 48vw);
+    margin-right: 0;
+    text-align: right;
+}
+
+body.tg-webapp .app-header__name {
+    font-size: 0.85rem;
+}
+
+body.tg-webapp .app-header__account {
+    font-size: 0.65rem;
+}
+
+body.tg-webapp .app-mode-toggle__btn {
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 0.75rem;
 }
 
 body.tg-webapp .app-main {
-    padding-block: 1rem;
+    padding-block: 12px 28px;
     overflow: visible;
 }
 
-body.tg-webapp .app-footer-mini,
+body.tg-webapp .app-footer-mini {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    justify-content: center;
+    padding: 16px var(--tg-pad-x) 28px;
+    font-size: 0.8rem;
+    overflow: visible;
+}
+
+/* ── Hubs (calendars / bookings / clients / profile / services) */
+body.tg-webapp .calendars-page,
+body.tg-webapp .bookings-page,
+body.tg-webapp .clients-page,
+body.tg-webapp .profile-page,
+body.tg-webapp .services-page {
+    gap: var(--tg-section-gap);
+}
+
+body.tg-webapp .calendars-hero__inner,
+body.tg-webapp .bookings-hero__inner,
+body.tg-webapp .clients-hero__inner,
+body.tg-webapp .profile-hero__inner {
+    padding: 16px !important;
+}
+
+body.tg-webapp .calendars-hero h1,
+body.tg-webapp .bookings-hero h1,
+body.tg-webapp .clients-hero h1,
+body.tg-webapp .profile-hero h1,
+body.tg-webapp .text-display,
+body.tg-webapp .text-h1 {
+    font-size: 1.35rem !important;
+    line-height: 1.25 !important;
+}
+
+body.tg-webapp .hub-grid,
+body.tg-webapp .stats-grid,
+body.tg-webapp .features-grid,
+body.tg-webapp [class*="__grid"]:not(.tg-hub__switch) {
+    grid-template-columns: 1fr !important;
+    gap: var(--tg-gap) !important;
+}
+
+body.tg-webapp .bookings-layout,
+body.tg-webapp .calendars-layout,
+body.tg-webapp .clients-layout,
+body.tg-webapp .profile-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--tg-gap) !important;
+}
+
+body.tg-webapp table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.tg-webapp .btn--sm {
+    min-height: 40px;
+}
+
+/* Booking funnel */
 body.tg-webapp .booking-page__main {
+    padding: 12px var(--tg-pad-x) 28px;
     overflow: visible;
 }
 
 body.tg-webapp .book-cal-scene {
-    padding: 1rem;
-    border-radius: 16px;
+    padding: 14px;
+    border-radius: var(--tg-radius);
 }
 
 body.tg-webapp .book-cal-layout {
     grid-template-columns: 1fr !important;
-    gap: 1rem;
-    margin-top: 1rem;
+    gap: 12px;
+    margin-top: 12px;
 }
 
 body.tg-webapp .book-cal-panel {
-    padding: 1rem;
+    padding: 14px;
+    border-radius: var(--tg-radius-sm);
 }
 
 body.tg-webapp .book-cal-step {
@@ -139,10 +402,58 @@ body.tg-webapp .book-cal-step {
     max-width: 100%;
 }
 
-/* Hub */
+body.tg-webapp .slot-chip,
+body.tg-webapp [class*="slot"] button,
+body.tg-webapp .time-slot {
+    min-height: 40px;
+}
+
+/* Dashboard cards */
+body.tg-webapp .app-nav-card,
+body.tg-webapp .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    gap: var(--tg-gap) !important;
+}
+
+body.tg-webapp .app-nav-card {
+    min-height: var(--tg-touch);
+    padding: 14px 16px;
+    border-radius: var(--tg-radius);
+}
+
+/* Landing pages opened inside TG (rare) */
+body.tg-webapp .site-header,
+body.tg-webapp .site-footer {
+    padding-left: var(--tg-pad-x);
+    padding-right: var(--tg-pad-x);
+}
+
+body.tg-webapp .site-nav {
+    display: none;
+}
+
+body.tg-webapp .hero,
+body.tg-webapp .section,
+body.tg-webapp .section-sm {
+    padding-block: 20px;
+}
+
+body.tg-webapp .apps-grid,
+body.tg-webapp .apps-grid--half {
+    grid-template-columns: 1fr !important;
+    gap: var(--tg-gap);
+}
+
+body.tg-webapp .apps-card,
+body.tg-webapp .apps-option,
+body.tg-webapp .apps-shared {
+    padding: 16px;
+}
+
+/* ── Mini App hub (/tg/, /tg/apps/) ───────────────────────── */
 .tg-hub-page {
     margin: 0;
-    background: var(--bg-900);
+    background: var(--tg-bg, var(--bg-900));
 }
 
 .tg-hub {
@@ -150,70 +461,83 @@ body.tg-webapp .book-cal-step {
     width: 100%;
     max-width: 480px;
     margin: 0 auto;
-    padding: 0.75rem 1rem 2rem;
+    padding: 14px var(--tg-pad-x) 28px;
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: 14px;
 }
 
 .tg-hub__brand {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 12px;
+    padding-top: 4px;
 }
 
 .tg-hub__logo {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     flex-shrink: 0;
+    border-radius: 12px;
 }
 
 .tg-hub__title {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.3rem;
     line-height: 1.25;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--tg-text, var(--text-primary));
+    letter-spacing: -0.01em;
 }
 
 .tg-hub__mode {
     display: inline-flex;
     align-self: flex-start;
     margin: 0;
-    padding: 0.3rem 0.7rem;
+    padding: 6px 12px;
     font-size: 0.8rem;
+    font-weight: 600;
     border-radius: 999px;
-    background: rgba(125, 92, 255, 0.18);
+    background: color-mix(in srgb, var(--accent-primary) 22%, transparent);
     color: var(--accent-secondary);
 }
 
 .tg-hub__switch {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
+    gap: 8px;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--glass-light);
+    border: 1px solid var(--border-subtle);
 }
 
 .tg-hub__switch a {
     text-align: center;
-    padding: 0.7rem 0.75rem;
-    border-radius: 12px;
+    padding: 12px 10px;
+    min-height: var(--tg-touch);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--tg-radius-sm);
     text-decoration: none;
     font-size: 0.9rem;
     font-weight: 600;
-    border: 1px solid var(--border-default);
-    color: var(--text-secondary);
-    background: var(--glass-medium);
+    border: none;
+    color: var(--tg-hint, var(--text-secondary));
+    background: transparent;
+    box-sizing: border-box;
 }
 
 .tg-hub__switch a.is-active {
-    border-color: rgba(73, 209, 255, 0.45);
-    color: var(--text-primary);
-    background: rgba(73, 209, 255, 0.16);
+    color: var(--tg-text, var(--text-primary));
+    background: var(--tg-bg-secondary, var(--surface-200));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .tg-hub__text {
     margin: 0;
-    color: var(--text-secondary);
+    color: var(--tg-hint, var(--text-secondary));
     font-size: 0.95rem;
     line-height: 1.5;
 }
@@ -221,14 +545,17 @@ body.tg-webapp .book-cal-step {
 .tg-hub__actions {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    margin-top: 0.25rem;
-    padding-bottom: 1rem;
+    gap: 10px;
+    margin-top: 4px;
+    padding-bottom: 8px;
+}
+
+.tg-hub__actions.stack-lg {
+    gap: 12px;
 }
 
 .tg-hub__actions .btn {
     width: 100%;
-    min-height: 48px;
 }
 
 .tg-hub__hint {
@@ -241,57 +568,110 @@ body.tg-webapp .book-cal-step {
 .tg-hub__card-link {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    padding: 1rem 1.1rem;
-    border-radius: 16px;
+    gap: 6px;
+    padding: 16px;
+    border-radius: var(--tg-radius);
     border: 1px solid var(--border-default);
-    background: var(--glass-medium);
+    background: var(--tg-bg-secondary, var(--glass-medium));
     text-decoration: none;
-    color: var(--text-primary);
+    color: var(--tg-text, var(--text-primary));
     cursor: pointer;
     -webkit-user-select: none;
     user-select: none;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.tg-hub__card-link:active {
+    transform: scale(0.985);
 }
 
 .tg-hub__card-link--primary {
     border: none;
-    background: var(--gradient-primary);
+    background: var(--tg-button, var(--gradient-primary));
     box-shadow: var(--shadow-glow);
 }
 
 .tg-hub__card-link--primary .tg-hub__card-title,
 .tg-hub__card-link--primary .tg-hub__card-desc {
-    color: var(--text-on-accent);
+    color: var(--tg-button-text, var(--text-on-accent));
 }
 
 .tg-hub__card-title {
     font-size: 1.05rem;
     font-weight: 700;
+    line-height: 1.3;
 }
 
 .tg-hub__card-desc {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    line-height: 1.4;
+    font-size: 0.88rem;
+    color: var(--tg-hint, var(--text-secondary));
+    line-height: 1.45;
+}
+
+.tg-hub .apps-steps,
+.tg-hub .apps-shared__list {
+    margin: 4px 0 0;
+    padding-left: 1.15rem;
+    color: var(--tg-hint, var(--text-secondary));
+    font-size: 0.9rem;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .tg-hub-auth {
     box-sizing: border-box;
     width: 100%;
-    padding: 0.75rem 1rem 2rem;
+    padding: 12px var(--tg-pad-x) 28px;
 }
 
 .tg-hub-auth .auth-card {
     max-width: 100%;
 }
 
+.tg-hub-auth .auth-footer-links {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 0.9rem;
+}
+
+.tg-hub-auth .auth-footer-links a {
+    display: inline-block;
+    min-height: 40px;
+    line-height: 40px;
+}
+
 @media (min-width: 481px) {
     .tg-hub {
         max-width: 420px;
-        padding-top: 1.25rem;
+        padding-top: 18px;
     }
 
     body.tg-webapp .auth-card {
         max-width: 420px;
+    }
+
+    body.tg-webapp .auth-methods {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Narrow phones */
+@media (max-width: 360px) {
+    html.tg-webapp,
+    body.tg-webapp {
+        --tg-pad-x: 12px;
+        --tg-gap: 10px;
+    }
+
+    .tg-hub__title {
+        font-size: 1.15rem;
+    }
+
+    .tg-hub__card-link {
+        padding: 14px;
     }
 }

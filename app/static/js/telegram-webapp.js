@@ -43,11 +43,32 @@
         return shell;
     }
 
+    function applySafeArea(tg) {
+        var root = document.documentElement;
+        function px(n) {
+            var v = Number(n);
+            return (isFinite(v) && v > 0 ? Math.round(v) : 0) + "px";
+        }
+        try {
+            var sa = tg.safeAreaInset || {};
+            var csa = tg.contentSafeAreaInset || {};
+            root.style.setProperty("--tg-safe-area-inset-top", px(sa.top));
+            root.style.setProperty("--tg-safe-area-inset-bottom", px(sa.bottom));
+            root.style.setProperty("--tg-safe-area-inset-left", px(sa.left));
+            root.style.setProperty("--tg-safe-area-inset-right", px(sa.right));
+            root.style.setProperty("--tg-content-safe-area-inset-top", px(csa.top));
+            root.style.setProperty("--tg-content-safe-area-inset-bottom", px(csa.bottom));
+            root.style.setProperty("--tg-content-safe-area-inset-left", px(csa.left));
+            root.style.setProperty("--tg-content-safe-area-inset-right", px(csa.right));
+        } catch (e) {}
+    }
+
     function applyViewport(tg) {
         var root = document.documentElement;
         var body = document.body;
         var shell = document.getElementById("tg-scroll-root");
         try {
+            applySafeArea(tg);
             var h = Math.round(tg.viewportStableHeight || tg.viewportHeight || window.innerHeight || 0);
             if (h > 0) {
                 root.style.setProperty("--tg-viewport-stable-height", h + "px");
@@ -221,6 +242,12 @@
                 });
                 tg.onEvent("themeChanged", function () {
                     applyTheme(tg);
+                });
+                tg.onEvent("safeAreaChanged", function () {
+                    applySafeArea(tg);
+                });
+                tg.onEvent("contentSafeAreaChanged", function () {
+                    applySafeArea(tg);
                 });
             }
 
