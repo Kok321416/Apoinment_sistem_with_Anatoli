@@ -1035,7 +1035,7 @@
 
 html[data-theme="dark"] .cabinet-empty__logo,
 html[data-theme="dark"] .brand__mark {
-    filter: invert(1);
+    filter: none;
 }
 
 .cabinet-empty__title {

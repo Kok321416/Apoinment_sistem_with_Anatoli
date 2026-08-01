@@ -88,12 +88,10 @@
     function applyTheme(tg) {
         var root = document.documentElement;
         var tp = tg.themeParams || {};
-        var scheme = tg.colorScheme === "dark" ? "dark" : "light";
-        root.setAttribute("data-tg-theme", scheme);
-        // Match site tokens to Telegram for this session only.
-        // Do not write localStorage: keep user's ayc_theme preference for web/PWA.
-        root.setAttribute("data-theme", scheme);
-        root.style.colorScheme = scheme;
+        // Product is light-only; still map Telegram palette vars for chrome.
+        root.setAttribute("data-tg-theme", "light");
+        root.setAttribute("data-theme", "light");
+        root.style.colorScheme = "light";
         if (tp.bg_color) root.style.setProperty("--tg-bg", tp.bg_color);
         if (tp.secondary_bg_color) root.style.setProperty("--tg-bg-secondary", tp.secondary_bg_color);
         if (tp.button_color) root.style.setProperty("--tg-button", tp.button_color);
@@ -102,10 +100,10 @@
         if (tp.hint_color) root.style.setProperty("--tg-hint", tp.hint_color);
         try {
             if (typeof tg.setHeaderColor === "function") {
-                tg.setHeaderColor(tp.bg_color || (scheme === "dark" ? "#0a0a0a" : "#ffffff"));
+                tg.setHeaderColor("#ffffff");
             }
             if (typeof tg.setBackgroundColor === "function") {
-                tg.setBackgroundColor(tp.bg_color || (scheme === "dark" ? "#0a0a0a" : "#ffffff"));
+                tg.setBackgroundColor("#ffffff");
             }
         } catch (e) {}
     }

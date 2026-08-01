@@ -1,10 +1,10 @@
 /*
- * Design System — tokens (Cal.com–inspired light + dark)
- * Colors live under [data-theme]. Non-color tokens stay on :root.
+ * Design System — tokens (light only)
+ * Colors on :root. Non-color tokens stay on :root.
  * Prefer these vars everywhere; avoid hardcoded brand purple/cyan.
  */
 :root {
-    color-scheme: dark;
+    color-scheme: light;
 
     /* ── Spacing (2 → 128) ── */
     --space-2xs: 2px;
@@ -163,68 +163,7 @@
     --opacity-glow-medium: 0.2;
     --opacity-icon: 0.9;
 
-    /* Default = dark (Cal-like neutrals) until data-theme is set */
-    --bg-900: #0a0a0a;
-    --bg-800: #111111;
-    --bg-700: #171717;
-    --bg-600: #262626;
-    --surface-100: #141414;
-    --surface-200: #1a1a1a;
-    --surface-300: #242424;
-    --glass-light: rgba(255, 255, 255, 0.04);
-    --glass-medium: rgba(20, 20, 20, 0.72);
-    --glass-heavy: rgba(10, 10, 10, 0.92);
-    --glass-header: rgba(10, 10, 10, 0.86);
-    --text-primary: #fafafa;
-    --text-secondary: #a3a3a3;
-    --text-muted: #737373;
-    --text-disabled: #525252;
-    --text-on-accent: #0a0a0a;
-    --accent-primary: #fafafa;
-    --accent-secondary: #e5e5e5;
-    --accent-success: #22c55e;
-    --accent-warning: #f59e0b;
-    --accent-danger: #ef4444;
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    --border-default: rgba(255, 255, 255, 0.1);
-    --border-strong: rgba(255, 255, 255, 0.18);
-    --gradient-primary: linear-gradient(180deg, #fafafa 0%, #e5e5e5 100%);
-    --gradient-secondary: linear-gradient(180deg, #e5e5e5 0%, #a3a3a3 100%);
-    --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
-    --gradient-glow-purple: radial-gradient(circle, rgba(250, 250, 250, 0.08) 0%, transparent 70%);
-    --gradient-glow-cyan: radial-gradient(circle, rgba(163, 163, 163, 0.08) 0%, transparent 70%);
-    --gradient-inner-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 100%);
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.45);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
-    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
-    --shadow-xl: 0 24px 56px rgba(0, 0, 0, 0.6);
-    --shadow-glow: 0 0 0 1px rgba(255, 255, 255, 0.08);
-    --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    --focus-ring-color: var(--accent-secondary);
-    --field-bg: var(--surface-200);
-    --field-border: var(--border-default);
-    --field-border-focus: var(--accent-secondary);
-    --field-border-error: var(--accent-danger);
-    --field-border-success: var(--accent-success);
-    --field-glow-focus: 0 0 0 3px rgba(250, 250, 250, 0.16);
-    --field-glow-error: 0 0 0 3px rgba(239, 68, 68, 0.2);
-    --field-glow-success: 0 0 0 3px rgba(34, 197, 94, 0.2);
-    --alert-info-bg: rgba(255, 255, 255, 0.06);
-    --alert-success-bg: rgba(34, 197, 94, 0.12);
-    --alert-warning-bg: rgba(245, 158, 11, 0.12);
-    --alert-error-bg: rgba(239, 68, 68, 0.12);
-    --color-glow-purple: rgba(250, 250, 250, var(--opacity-glow-medium));
-    --color-glow-cyan: rgba(163, 163, 163, var(--opacity-glow-soft));
-    --theme-meta: #0a0a0a;
-}
-
-html[data-theme="dark"] {
-    color-scheme: dark;
-}
-
-html[data-theme="light"] {
-    color-scheme: light;
+    /* Light theme (only) */
     --bg-900: #ffffff;
     --bg-800: #fafafa;
     --bg-700: #f5f5f5;
@@ -266,6 +205,8 @@ html[data-theme="light"] {
     --field-bg: #ffffff;
     --field-border: var(--border-default);
     --field-border-focus: var(--accent-primary);
+    --field-border-error: var(--accent-danger);
+    --field-border-success: var(--accent-success);
     --field-glow-focus: 0 0 0 3px rgba(17, 17, 17, 0.12);
     --field-glow-error: 0 0 0 3px rgba(220, 38, 38, 0.15);
     --field-glow-success: 0 0 0 3px rgba(22, 163, 74, 0.15);
@@ -278,8 +219,6 @@ html[data-theme="light"] {
     --theme-meta: #ffffff;
 }
 
-/* Smooth theme swaps for surfaces that use tokens */
 html {
-    transition: background-color var(--duration-base) var(--ease-out),
-        color var(--duration-base) var(--ease-out);
+    color-scheme: light;
 }

@@ -12,18 +12,18 @@
 
 ## Цвета (токены)
 
-См. `app/static/css/tokens.css`.
+См. `app/static/css/tokens.css`. Продукт **только светлая тема**.
 
-| Роль | Light | Dark |
-|------|-------|------|
-| Background | `#ffffff` / `#fafafa` | `#0a0a0a` / `#141414` |
-| Surface / cards | `#fafafa` | `#1a1a1a` |
-| Text primary | `#0a0a0a` | `#fafafa` |
-| Text muted | `#737373` | `#a3a3a3` |
-| Accent / primary CTA | `#111111` | `#fafafa` |
-| On-accent | `#fafafa` | `#0a0a0a` |
-| Border | `rgba(0,0,0,.1)` | `rgba(255,255,255,.1)` |
-| Success / Warning / Danger | semantic greens/ambers/reds | same hue, adjusted |
+| Роль | Light |
+|------|-------|
+| Background | `#ffffff` / `#fafafa` |
+| Surface / cards | `#fafafa` |
+| Text primary | `#0a0a0a` |
+| Text muted | `#737373` |
+| Accent / primary CTA | `#111111` |
+| On-accent | `#fafafa` |
+| Border | `rgba(0,0,0,.1)` |
+| Success / Warning / Danger | semantic greens/ambers/reds |
 
 Интеграции: карточка в токенах сайта; бренд-цвет соцсети - только маленький badge, не весь UI.
 

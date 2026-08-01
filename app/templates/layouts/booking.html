@@ -14,7 +14,6 @@
     {% include "components/skip_link.html" %}
     <header class="auth-page__topbar container">
         {% include "components/logo.html" %}
-        {% include "components/theme_toggle.html" %}
     </header>
     <main id="main" class="booking-page__main container" tabindex="-1">
         {% block booking_content %}{% endblock %}
@@ -38,7 +37,7 @@
     {% include "components/yandex_metrika.html" %}
     {% include "components/telegram_webapp.html" %}
     {% block scripts %}{% endblock %}
-    <script src="/static/js/theme-toggle.js?v=1" defer></script>
+    <script src="/static/js/theme-toggle.js?v=2" defer></script>
     <script src="/static/js/capacitor-bridge.js?v=3" defer></script>
 </body>
 </html>
