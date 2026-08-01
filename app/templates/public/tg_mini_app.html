@@ -9,7 +9,7 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/auth.css?v=18">
-<link rel="stylesheet" href="/static/css/tg-webapp.css?v=9">
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=10">
 {% endblock %}
 
 {% block body_class %}{% if user and user.is_authenticated %}tg-hub-page{% else %}auth-page tg-hub-page{% endif %}{% endblock %}
@@ -22,10 +22,6 @@
         <img class="tg-hub__logo" src="/static/svg/logo.svg" alt="" width="40" height="40" decoding="async">
         <h1 class="tg-hub__title">{{ site_brand_name }}</h1>
     </div>
-
-    <span class="tg-hub__mode">
-        {% if tg_mode == tg_mode_specialist %}Режим: специалист{% else %}Режим: клиент{% endif %}
-    </span>
 
     {% if tg_show_mode_switcher %}
     <div class="tg-hub__switch" role="group" aria-label="Режим">

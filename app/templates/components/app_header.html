@@ -9,25 +9,27 @@
                 <div class="app-header__name" title="{{ header_consultant_name }}">{{ header_consultant_name }}</div>
                 {% if show_mode_switcher %}
                 <div class="app-header__mode">
-                    <span class="app-header__mode-label">Режим:</span>
                     <div class="app-mode-toggle" role="group" aria-label="Режим кабинета">
-                        {% if active_mode == 'specialist' %}
-                        <span class="app-mode-toggle__btn is-active" aria-current="true">Специалист</span>
                         <form method="POST" action="/account/mode/" class="app-mode-toggle__form">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="mode" value="client">
                             <input type="hidden" name="next" value="/dashboard/">
-                            <button type="submit" class="app-mode-toggle__btn">Клиент</button>
+                            <button
+                                type="submit"
+                                class="app-mode-toggle__btn{% if active_mode == 'client' %} is-active{% endif %}"
+                                {% if active_mode == 'client' %}disabled aria-current="true"{% endif %}
+                            >Клиент</button>
                         </form>
-                        {% else %}
                         <form method="POST" action="/account/mode/" class="app-mode-toggle__form">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="mode" value="specialist">
                             <input type="hidden" name="next" value="/dashboard/">
-                            <button type="submit" class="app-mode-toggle__btn">Специалист</button>
+                            <button
+                                type="submit"
+                                class="app-mode-toggle__btn{% if active_mode == 'specialist' %} is-active{% endif %}"
+                                {% if active_mode == 'specialist' %}disabled aria-current="true"{% endif %}
+                            >Специалист</button>
                         </form>
-                        <span class="app-mode-toggle__btn is-active" aria-current="true">Клиент</span>
-                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
@@ -53,25 +55,27 @@
                     </div>
                     {% if show_mode_switcher %}
                     <div class="app-header__mode app-header__mode--menu">
-                        <span class="app-header__mode-label">Режим:</span>
                         <div class="app-mode-toggle" role="group" aria-label="Режим кабинета">
-                            {% if active_mode == 'specialist' %}
-                            <span class="app-mode-toggle__btn is-active" aria-current="true">Специалист</span>
                             <form method="POST" action="/account/mode/" class="app-mode-toggle__form">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <input type="hidden" name="mode" value="client">
                                 <input type="hidden" name="next" value="/dashboard/">
-                                <button type="submit" class="app-mode-toggle__btn">Клиент</button>
+                                <button
+                                    type="submit"
+                                    class="app-mode-toggle__btn{% if active_mode == 'client' %} is-active{% endif %}"
+                                    {% if active_mode == 'client' %}disabled aria-current="true"{% endif %}
+                                >Клиент</button>
                             </form>
-                            {% else %}
                             <form method="POST" action="/account/mode/" class="app-mode-toggle__form">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <input type="hidden" name="mode" value="specialist">
                                 <input type="hidden" name="next" value="/dashboard/">
-                                <button type="submit" class="app-mode-toggle__btn">Специалист</button>
+                                <button
+                                    type="submit"
+                                    class="app-mode-toggle__btn{% if active_mode == 'specialist' %} is-active{% endif %}"
+                                    {% if active_mode == 'specialist' %}disabled aria-current="true"{% endif %}
+                                >Специалист</button>
                             </form>
-                            <span class="app-mode-toggle__btn is-active" aria-current="true">Клиент</span>
-                            {% endif %}
                         </div>
                     </div>
                     {% endif %}
