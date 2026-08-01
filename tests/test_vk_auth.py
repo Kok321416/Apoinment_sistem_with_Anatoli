@@ -47,7 +47,7 @@ def test_vk_oauth_configured_requires_client_id(monkeypatch):
 def test_vk_booked_message_plain():
     b = _booking()
     text = tg_html_to_plain(format_client_booked_message(b, channel="vk"))
-    assert "Ваша запись подтверждена" in text
+    assert "Вы записались" in text
     assert "<b>" not in text
     assert "сообщениях VK" in text
 
@@ -58,7 +58,7 @@ def test_notify_client_booked_vk_calls_api():
         assert notify_client_booked_vk(b) is True
         mock_send.assert_called_once()
         assert mock_send.call_args.args[0] == 42
-        assert "Ваша запись подтверждена" in mock_send.call_args.args[1]
+        assert "Вы записались" in mock_send.call_args.args[1]
 
 
 def test_on_booking_created_prefers_vk_over_email():

@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
   <title>Все клиенты здесь</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Onest:wght@600;700&display=swap">
   <style>
     html, body {
       margin: 0;
@@ -15,7 +18,6 @@
       display: grid;
       place-items: center;
     }
-    a { color: #0a0a0a; font-weight: 600; }
     .hint {
       opacity: 0.85;
       font-size: 0.95rem;
@@ -24,10 +26,21 @@
       line-height: 1.45;
       padding: 1.5rem;
     }
+    .hint strong {
+      font-family: Onest, Inter, system-ui, sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: block;
+      margin-bottom: 0.75rem;
+      font-size: 1.25rem;
+      opacity: 1;
+    }
+    a { color: #0a0a0a; font-weight: 600; }
   </style>
 </head>
 <body>
   <div class="hint">
+    <strong>Все клиенты здесь</strong>
     <p>Загрузка сервиса…</p>
     <p>Если экран не открылся: <a href="https://allyourclients.ru/">allyourclients.ru</a></p>
   </div>

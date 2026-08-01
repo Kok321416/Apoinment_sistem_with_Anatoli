@@ -10,22 +10,22 @@
   "lang": "ru",
   "icons": [
     {
-      "src": "/static/img/brand/service-icon-512.png?v=3",
+      "src": "/static/img/brand/service-icon-512.png?v=4",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/svg/brand/service-icon-512.svg?v=3",
+      "src": "/static/svg/brand/service-icon-512.svg?v=4",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/static/svg/logo-mark.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/static/img/brand/logo-mark-160.png?v=4",
+      "sizes": "160x160",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

@@ -20,16 +20,6 @@
     <div class="cabinet-sidenav__mode" role="group" aria-label="Режим кабинета">
         <form method="POST" action="/account/mode/" class="cabinet-mode__form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="mode" value="client">
-            <input type="hidden" name="next" value="/dashboard/">
-            <button
-                type="submit"
-                class="cabinet-mode__btn{% if active_mode == 'client' %} is-active{% endif %}"
-                {% if active_mode == 'client' %}disabled aria-current="true"{% endif %}
-            >Клиент</button>
-        </form>
-        <form method="POST" action="/account/mode/" class="cabinet-mode__form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="mode" value="specialist">
             <input type="hidden" name="next" value="/dashboard/">
             <button
@@ -37,6 +27,16 @@
                 class="cabinet-mode__btn{% if active_mode == 'specialist' %} is-active{% endif %}"
                 {% if active_mode == 'specialist' %}disabled aria-current="true"{% endif %}
             >Специалист</button>
+        </form>
+        <form method="POST" action="/account/mode/" class="cabinet-mode__form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="mode" value="client">
+            <input type="hidden" name="next" value="/dashboard/">
+            <button
+                type="submit"
+                class="cabinet-mode__btn{% if active_mode == 'client' %} is-active{% endif %}"
+                {% if active_mode == 'client' %}disabled aria-current="true"{% endif %}
+            >Клиент</button>
         </form>
     </div>
     {% endif %}

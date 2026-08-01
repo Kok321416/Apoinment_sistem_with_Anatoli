@@ -44,9 +44,9 @@ def test_sends_email_when_no_telegram():
         assert mock_send.called
         args, kwargs = mock_send.call_args
         assert args[0] == "client@example.com"
-        assert "Ваша запись подтверждена" in args[1]
+        assert "Вы записались" in args[1]
         html_body = args[2]
-        assert "Ваша запись подтверждена" in html_body
+        assert "Вы записались" in html_body
         assert "Консультация" in html_body
         assert "Иван П" in html_body
         assert kwargs.get("template_key") == "booking_client_confirmed"

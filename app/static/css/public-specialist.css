@@ -97,9 +97,11 @@
 
 .ps-hero__name {
     margin: 0;
+    font-family: var(--font-family-display);
     font-size: clamp(1.85rem, 4vw, 2.75rem);
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-heading);
+    letter-spacing: var(--letter-spacing-tight);
     color: #f4f7ff;
 }
 

@@ -21,6 +21,11 @@
 
 .auth-card__title {
     margin-bottom: var(--space-sm);
+    font-family: var(--font-family-display);
+    font-size: var(--font-size-h1);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-heading);
+    letter-spacing: var(--letter-spacing-tight);
 }
 
 .auth-card__lead {

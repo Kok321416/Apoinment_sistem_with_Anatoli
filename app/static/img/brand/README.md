@@ -1,17 +1,16 @@
 # Brand pack — «Все клиенты здесь» (light)
 
-Sources (SVG): `app/static/svg/brand/`
-Rasters (PNG): `app/static/img/brand/`
-Regen PNG: `python scripts/generate_brand_pngs.py`
-Regen SVG text: `python scripts/write_brand_svgs.py`
+Mark: календарь + человек + галочка (Flux, 2026-08).
+Источники: `logo-source-flux.png`, мастер `logo-mark-master.png`.
+Пересборка: `python scripts/install_new_logo.py`
 
 | Asset | File | Where |
 |-------|------|-------|
-| Mark | `../svg/logo.svg`, `logo-mark.svg` | Header, empty card |
-| Wordmark | `logo-wordmark.svg` | Pack / print |
-| Horizontal | `logo-horizontal.svg` + PNG 128/512/1024 | Stores, BotFather, docs |
-| Square | `logo-square.svg` + PNG 512/1024 | PWA, stores |
+| Header mark | `logo-mark-160.png` | `logo.html`, TG hub, empty states |
+| Favicon | `../svg/favicon.svg` | `meta.html` |
 | PWA / apple | `service-icon-512.png` (+ svg) | manifest, apple-touch |
+| Square | `logo-square-512.png` / `1024` | Stores, packs |
+| Horizontal | `logo-horizontal-*.png` (+ svg) | BotFather, docs |
 | OG | `og-banner-1200x630.png` (+ svg) | og:image / twitter |
-| Empty decor | `cabinet-empty-decor.svg` | Cabinet empty background |
-| Empty mock | `cabinet-empty-light.png` (+ svg) | Pack / moodboard |
+| TG avatar | `../svg/telegram-bot-avatar.png` | BotFather (вручную) |
+| Android | `mobile/.../mipmap-*/ic_launcher*.png` | Capacitor APK |

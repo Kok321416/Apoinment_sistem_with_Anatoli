@@ -8,8 +8,8 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/auth.css?v=18">
-<link rel="stylesheet" href="/static/css/tg-webapp.css?v=10">
+<link rel="stylesheet" href="/static/css/auth.css?v=21">
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=11">
 {% endblock %}
 
 {% block body_class %}{% if user and user.is_authenticated %}tg-hub-page{% else %}auth-page tg-hub-page{% endif %}{% endblock %}
@@ -19,14 +19,14 @@
 {% if user and user.is_authenticated %}
 <div class="tg-hub" data-tg-hub="1" data-tg-authed="1">
     <div class="tg-hub__brand">
-        <img class="tg-hub__logo" src="/static/svg/logo.svg" alt="" width="40" height="40" decoding="async">
+        <img class="tg-hub__logo" src="/static/img/brand/logo-mark-160.png?v=4" alt="" width="40" height="40" decoding="async">
         <h1 class="tg-hub__title">{{ site_brand_name }}</h1>
     </div>
 
     {% if tg_show_mode_switcher %}
     <div class="tg-hub__switch" role="group" aria-label="Режим">
-        <a href="/tg/?mode=client" class="{% if tg_mode == tg_mode_client %}is-active{% endif %}">Клиент</a>
         <a href="/tg/?mode=specialist" class="{% if tg_mode == tg_mode_specialist %}is-active{% endif %}">Специалист</a>
+        <a href="/tg/?mode=client" class="{% if tg_mode == tg_mode_client %}is-active{% endif %}">Клиент</a>
     </div>
     {% endif %}
 

@@ -99,7 +99,10 @@
 }
 
 .brand__name {
+    font-family: var(--font-family-display);
     font-size: var(--font-size-nav);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-heading);
 }
 
 .sr-only {

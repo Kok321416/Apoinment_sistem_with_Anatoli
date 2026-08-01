@@ -29,8 +29,10 @@
 
 ## Типографика
 
-- Family: Inter  
-- H1 / H2 / H3 / body / body-sm / caption - fluid clamp в tokens  
+- Display / H1 / H2: **Onest** (600–700), tighter tracking  
+- H3 / body / UI: **Inter** (400–600)  
+- Fluid clamp: Display XL → H1 → H2 → H3 с шагом ~1.25–1.35×  
+- Токены: `--font-family-display`, `--font-family-base` в `tokens.css`  
 - Короткие тексты; empty state: title + 1–2 строки + hint  
 
 ## Радиусы и тени
@@ -71,7 +73,7 @@ Specialist calendar: day-first mobile; слоты одной гаммы accent
 
 | Файл | Назначение |
 |------|------------|
-| `logo-mark.svg` | mark календарь 3×3 |
+| `logo-mark-160.png` / `logo.svg` | mark: календарь + человек + галочка |
 | `icons/ui/*.svg` | sidenav / bottom nav |
 | Empty décor | CSS pattern + mark (без тяжёлых PNG) |
 

@@ -106,9 +106,14 @@
 .calendars-hero__title,
 .bookings-hero__title,
 .clients-hero__title,
-.profile-hero__title {
+.profile-hero__title,
+.services-hero__title {
     margin: 0 0 var(--space-xs);
-    font-size: clamp(1.5rem, 2.5vw, 2rem);
+    font-family: var(--font-family-display);
+    font-size: var(--font-size-h1);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-heading);
+    letter-spacing: var(--letter-spacing-tight);
 }
 
 .calendars-hero__desc,
@@ -344,8 +349,10 @@
 .clients-empty__title,
 .services-empty__title {
     margin: 0;
+    font-family: var(--font-family-base);
     font-size: var(--font-size-h3);
     font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-subheading);
     color: var(--text-primary);
 }
 

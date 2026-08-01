@@ -79,7 +79,7 @@ def test_role_labels_in_templates():
             consultant=SimpleNamespace(first_name="Иван", last_name="П", email="a@b.c"),
         ),
     )
-    assert "Ваша запись" in tg.format_client_booked_message(booking)
+    assert "Вы записались" in tg.format_client_booked_message(booking)
     assert "К вам новая запись" in tg.format_new_booking_message_for_specialist(booking)
     assert "Ваша запись: напоминание" in tg.format_reminder_message(booking, 6)
     assert "К вам запись: напоминание" in tg.format_specialist_reminder_message(booking, 6)

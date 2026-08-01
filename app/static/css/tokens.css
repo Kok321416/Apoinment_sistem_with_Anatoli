@@ -40,18 +40,19 @@
     --blur-orb: 80px;
 
     /* ── Typography: family ── */
+    --font-family-display: "Onest", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-family-base: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-    /* ── Typography: size (fluid) ── */
-    --font-size-display-xl: clamp(2.25rem, 1.6rem + 3.2vw, 4rem);
-    --font-size-display: clamp(1.85rem, 1.4rem + 2.4vw, 3rem);
-    --font-size-h1: clamp(1.5rem, 1.25rem + 1.4vw, 2.25rem);
-    --font-size-h2: clamp(1.25rem, 1.1rem + 0.9vw, 1.75rem);
-    --font-size-h3: clamp(1.05rem, 1rem + 0.35vw, 1.25rem);
+    /* ── Typography: size (fluid, ~1.25–1.35× between heading levels) ── */
+    --font-size-display-xl: clamp(2.5rem, 1.75rem + 3.75vw, 4.25rem);
+    --font-size-display: clamp(2rem, 1.5rem + 2.5vw, 3.25rem);
+    --font-size-h1: clamp(1.75rem, 1.35rem + 1.8vw, 2.5rem);
+    --font-size-h2: clamp(1.375rem, 1.15rem + 1vw, 1.875rem);
+    --font-size-h3: clamp(1.125rem, 1.05rem + 0.4vw, 1.375rem);
     --font-size-body-lg: clamp(1.05rem, 1rem + 0.3vw, 1.125rem);
     --font-size-body: clamp(0.9375rem, 0.9rem + 0.2vw, 1rem);
     --font-size-body-sm: clamp(0.8125rem, 0.8rem + 0.1vw, 0.875rem);
-    --font-size-caption: clamp(0.75rem, 0.72rem + 0.1vw, 0.875rem);
+    --font-size-caption: clamp(0.75rem, 0.72rem + 0.1vw, 0.8125rem);
     --font-size-nav: clamp(0.875rem, 0.85rem + 0.15vw, 0.9375rem);
     --font-size-stat: clamp(1.25rem, 1.1rem + 0.8vw, 1.5rem);
     --font-size-stat-lg: clamp(1.5rem, 1.25rem + 1.2vw, 2rem);
@@ -63,17 +64,20 @@
     --font-weight-bold: 700;
 
     /* ── Typography: line-height ── */
-    --line-height-tight: 1.1;
-    --line-height-snug: 1.15;
-    --line-height-heading: 1.2;
-    --line-height-subheading: 1.25;
-    --line-height-compact: 1.3;
+    --line-height-tight: 1.05;
+    --line-height-snug: 1.1;
+    --line-height-heading: 1.15;
+    --line-height-subheading: 1.2;
+    --line-height-compact: 1.25;
     --line-height-caption: 1.4;
     --line-height-body: 1.5;
     --line-height-body-lg: 1.6;
 
     /* ── Typography: letter-spacing ── */
-    --letter-spacing-tight: -0.02em;
+    --letter-spacing-display: -0.03em;
+    --letter-spacing-tight: -0.025em;
+    --letter-spacing-heading: -0.02em;
+    --letter-spacing-subheading: -0.015em;
     --letter-spacing-eyebrow: 0.08em;
 
     /* ── Motion ── */

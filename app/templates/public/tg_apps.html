@@ -7,8 +7,8 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/tg-webapp.css?v=10">
-<link rel="stylesheet" href="/static/css/landing.css?v=22">
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=11">
+<link rel="stylesheet" href="/static/css/landing.css?v=25">
 {% endblock %}
 
 {% block body_class %}tg-hub-page{% endblock %}
@@ -17,7 +17,7 @@
 <div id="tg-scroll-root" class="tg-scroll-root" data-tg-shell="1">
 <div class="tg-hub" data-tg-hub="1" data-tg-authed="{% if user and user.is_authenticated %}1{% else %}0{% endif %}">
     <div class="tg-hub__brand">
-        <img class="tg-hub__logo" src="/static/svg/logo.svg" alt="" width="40" height="40" decoding="async">
+        <img class="tg-hub__logo" src="/static/img/brand/logo-mark-160.png?v=4" alt="" width="40" height="40" decoding="async">
         <h1 class="tg-hub__title">Приложение на телефон</h1>
     </div>
     <p class="tg-hub__text">{{ apps_page.intro }}</p>

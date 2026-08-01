@@ -163,7 +163,7 @@ def format_client_booked_message(booking: Booking, *, channel: str = "telegram")
     else:
         footer = "Напоминания придут сюда перед консультацией."
     return (
-        f"✅ <b>Ваша запись подтверждена</b>\n\n"
+        f"✅ <b>Вы записались</b>\n\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
         f"📅 Дата: {info['date_str']}\n"
         f"🕐 Время: {info['slot']}\n"

@@ -41,7 +41,7 @@ def test_tg_escape_and_dashes():
 def test_transactional_templates_escape_and_role_titles():
     b = _booking()
     client_msg = format_client_booked_message(b)
-    assert "Ваша запись подтверждена" in client_msg
+    assert "Вы записались" in client_msg
     assert "&lt;script&gt;" in client_msg
     assert assert_no_long_dashes(client_msg)
 

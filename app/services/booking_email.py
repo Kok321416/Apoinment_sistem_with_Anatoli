@@ -111,7 +111,7 @@ def notify_client_via_email_if_no_telegram(booking: Booking) -> bool:
     try:
         return _send_client_booking_mail(
             booking,
-            subject_title="Ваша запись подтверждена",
+            subject_title="Вы записались",
             tg_html=format_client_booked_message(booking, channel="email"),
             template_key="booking_client_confirmed",
         )
