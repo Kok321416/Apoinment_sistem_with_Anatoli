@@ -36,35 +36,43 @@
                 <p class="text-eyebrow"><span class="badge badge--secondary">{{ apps.iphone.eyebrow }}</span></p>
                 <h2 class="text-h2">{{ apps.iphone.title }}</h2>
                 <p class="text-body text-muted">{{ apps.iphone.body }}</p>
+
+                <div class="apps-pwa" id="iphone-pwa">
+                    <h3 class="text-h3">{{ apps.iphone.pwa.title }}</h3>
+                    <p class="text-body-sm text-muted">{{ apps.iphone.pwa.intro }}</p>
+                    <ol class="apps-steps">
+                        {% for step in apps.iphone.pwa.steps %}
+                        <li>{{ step }}</li>
+                        {% endfor %}
+                    </ol>
+                    <a href="{{ apps.iphone.pwa.cta_href }}" class="btn btn--primary focus-ring apps-card__cta">{{ apps.iphone.pwa.cta_label }}</a>
+                </div>
             </article>
         </div>
 
-        <div class="stack-lg" id="iphone-steps">
-            {% for opt in apps.iphone.options %}
-            <article class="apps-option card card--static">
-                <h3 class="text-h3">{{ opt.title }}</h3>
+        <div class="apps-grid apps-grid--half" id="iphone-steps">
+            <section class="apps-shared card card--static" aria-labelledby="apps-shared-title">
+                <h2 class="text-h2" id="apps-shared-title">{{ apps.shared.title }}</h2>
+                <ul class="apps-shared__list">
+                    {% for point in apps.shared.points %}
+                    <li>{{ point }}</li>
+                    {% endfor %}
+                </ul>
+                <div class="cluster mt-2xl">
+                    <a href="/guide/" class="btn btn--secondary focus-ring">Как начать на сайте</a>
+                </div>
+            </section>
+
+            <article class="apps-option card card--static" id="mini-app">
+                <h2 class="text-h2">{{ apps.mini_app.title }}</h2>
                 <ol class="apps-steps">
-                    {% for step in opt.steps %}
+                    {% for step in apps.mini_app.steps %}
                     <li>{{ step }}</li>
                     {% endfor %}
                 </ol>
-                <a href="{{ opt.cta_href }}" class="btn btn--primary focus-ring">{{ opt.cta_label }}</a>
+                <a href="{{ apps.mini_app.cta_href }}" class="btn btn--primary focus-ring">{{ apps.mini_app.cta_label }}</a>
             </article>
-            {% endfor %}
         </div>
-
-        <section class="apps-shared card card--static" aria-labelledby="apps-shared-title">
-            <h2 class="text-h2" id="apps-shared-title">{{ apps.shared.title }}</h2>
-            <ul class="apps-shared__list">
-                {% for point in apps.shared.points %}
-                <li>{{ point }}</li>
-                {% endfor %}
-            </ul>
-            <div class="cluster mt-2xl">
-                <a href="/tg/" class="btn btn--primary focus-ring">Открыть в Telegram</a>
-                <a href="/guide/" class="btn btn--secondary focus-ring">Как начать на сайте</a>
-            </div>
-        </section>
     </div>
 </main>
 

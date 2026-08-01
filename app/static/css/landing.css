@@ -386,6 +386,23 @@
     pointer-events: none;
 }
 
+.apps-pwa {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.apps-grid--half {
+    align-items: stretch;
+}
+
+.apps-grid--half > .card {
+    min-height: 100%;
+}
+
 .apps-steps {
     margin: 0;
     padding-left: 1.25rem;
