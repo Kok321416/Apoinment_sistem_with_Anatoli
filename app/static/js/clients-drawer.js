@@ -52,14 +52,22 @@
         drawer.hidden = false;
         drawer.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
+        requestAnimationFrame(function () {
+            drawer.classList.add('is-open');
+        });
     }
 
     function close() {
         var drawer = document.getElementById('client-drawer');
         if (!drawer) return;
-        drawer.hidden = true;
+        drawer.classList.remove('is-open');
         drawer.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+        window.setTimeout(function () {
+            if (!drawer.classList.contains('is-open')) {
+                drawer.hidden = true;
+            }
+        }, 220);
     }
 
     function init(clients) {

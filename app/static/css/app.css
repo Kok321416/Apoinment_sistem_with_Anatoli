@@ -1093,10 +1093,13 @@ html[data-theme="dark"] .brand__mark {
         inset: 0;
         z-index: calc(var(--z-sticky) + 4);
         background: rgba(0, 0, 0, 0.45);
+        opacity: 1;
+        transition: opacity var(--duration-base) var(--ease-out);
     }
 
     .cabinet-sidenav__backdrop[hidden] {
         display: none;
+        opacity: 0;
     }
 
     .cabinet-workspace__main {

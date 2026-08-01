@@ -313,8 +313,9 @@
 .clients-activity__empty {
     font-size: var(--font-size-body-sm);
     color: var(--text-muted);
-}/* Drawer */.client-drawer[hidden] {
-    display: none;
+}/* Drawer */
+.client-drawer[hidden] {
+    display: none !important;
 }
 .client-drawer {
     position: fixed;
@@ -324,8 +325,12 @@
 .client-drawer__backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(11, 13, 18, 0.65);
-    backdrop-filter: blur(2px);
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity var(--duration-base) var(--ease-out);
+}
+.client-drawer.is-open .client-drawer__backdrop {
+    opacity: 1;
 }
 .client-drawer__panel {
     position: absolute;
@@ -333,17 +338,18 @@
     right: 0;
     width: min(420px, 100%);
     max-width: 100%;
-    padding-bottom: var(--safe-bottom);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     height: 100%;
     display: flex;
     flex-direction: column;
     background: var(--surface-200);
     border-left: 1px solid var(--border-default);
-    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.35);
-    animation: client-drawer-in 0.28s ease;
-}@keyframes client-drawer-in {
-    from { transform: translateX(100%); }
-    to { transform: translateX(0); }
+    box-shadow: var(--shadow-xl);
+    transform: translateX(100%);
+    transition: transform var(--duration-base) var(--ease-out);
+}
+.client-drawer.is-open .client-drawer__panel {
+    transform: translateX(0);
 }
 .client-drawer__header {
     display: flex;

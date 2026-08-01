@@ -360,16 +360,21 @@
     position: fixed;
     inset: 0;
     z-index: var(--z-modal);
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     padding: max(var(--space-2xl), var(--safe-top)) var(--space-2xl) max(var(--space-2xl), var(--safe-bottom));
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(var(--blur-sm));
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--duration-base) var(--ease-out), visibility var(--duration-base) var(--ease-out);
 }
 
 .reschedule-overlay.is-open {
-    display: flex;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 .reschedule-overlay[hidden],
@@ -389,10 +394,18 @@
     width: 100%;
     max-width: 420px;
     padding: var(--space-3xl);
-    border-radius: var(--radius-xl);
-    background: var(--glass-heavy);
-    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--surface-200);
+    border: 1px solid var(--border-default);
     box-shadow: var(--shadow-lg);
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    transition: opacity var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out);
+}
+
+.reschedule-overlay.is-open .reschedule-modal {
+    opacity: 1;
+    transform: translateY(0) scale(1);
 }
 
 .reschedule-modal h3 {

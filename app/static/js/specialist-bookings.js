@@ -304,7 +304,9 @@
             lastFocus = document.activeElement;
             if (overlay) {
                 overlay.hidden = false;
-                overlay.classList.add('is-open');
+                requestAnimationFrame(function () {
+                    overlay.classList.add('is-open');
+                });
             }
             hidePopover();
             if (focusTrapHandler) {
@@ -332,7 +334,11 @@
         function closeRescheduleModal() {
             if (overlay) {
                 overlay.classList.remove('is-open');
-                overlay.hidden = true;
+                window.setTimeout(function () {
+                    if (overlay && !overlay.classList.contains('is-open')) {
+                        overlay.hidden = true;
+                    }
+                }, 220);
             }
             if (focusTrapHandler) {
                 document.removeEventListener('keydown', focusTrapHandler);

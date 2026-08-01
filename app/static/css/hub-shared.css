@@ -587,3 +587,75 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ── Phase C: soft motion + sheet patterns ───────────────── */
+@keyframes hub-workspace-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.cabinet-workspace__main > * {
+    animation: hub-workspace-in var(--duration-base) var(--ease-out) both;
+}
+
+.cabinet-workspace__main > *:nth-child(1) { animation-delay: 0ms; }
+.cabinet-workspace__main > *:nth-child(2) { animation-delay: 30ms; }
+.cabinet-workspace__main > *:nth-child(3) { animation-delay: 55ms; }
+.cabinet-workspace__main > *:nth-child(4) { animation-delay: 80ms; }
+.cabinet-workspace__main > *:nth-child(5) { animation-delay: 100ms; }
+.cabinet-workspace__main > *:nth-child(n+6) { animation-delay: 110ms; }
+
+@media (max-width: 390px) {
+    .calendars-hero__inner,
+    .bookings-hero__inner,
+    .clients-hero__inner,
+    .profile-hero__inner,
+    .services-hero {
+        padding: var(--space-lg);
+    }
+
+    .calendars-page,
+    .bookings-page,
+    .clients-page,
+    .profile-page,
+    .services-page {
+        gap: var(--space-lg);
+    }
+
+    .hub-empty,
+    .calendars-empty,
+    .bookings-empty,
+    .clients-empty,
+    .services-empty {
+        padding: var(--space-2xl) var(--space-lg);
+    }
+}
+
+@media (max-width: 320px) {
+    .calendars-toolbar__search .input,
+    .bookings-toolbar__search .input,
+    .clients-toolbar__search .input,
+    .services-toolbar__search .input {
+        font-size: 16px; /* iOS zoom guard */
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cabinet-workspace__main > *,
+    .bookings-view.is-active,
+    .service-drawer,
+    .service-drawer-backdrop,
+    .client-drawer__backdrop,
+    .client-drawer__panel,
+    .reschedule-overlay,
+    .reschedule-modal {
+        animation: none !important;
+        transition: none !important;
+    }
+}

@@ -58,7 +58,9 @@ Mobile: drawer + **bottom nav** (Главная / Записи|Календар�
 ## Анимации
 
 CSS only: `opacity`, `transform`; duration `--duration-fast/base`.  
-Modal/drawer: fade + translateY/X. Без Framer Motion в этом стеке.
+Modal/drawer: fade + translateY/X. Без Framer Motion в этом стеке.  
+Workspace: staggered `hub-workspace-in` (отключается в TG и при `prefers-reduced-motion`).  
+Sheets: `.service-drawer` / `.client-drawer` / `.reschedule-overlay` - enter/exit 220ms.  
 
 ## Booking
 

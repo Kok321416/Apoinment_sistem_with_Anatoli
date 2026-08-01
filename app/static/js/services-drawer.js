@@ -156,16 +156,26 @@
 
         _show() {
             this.backdrop.hidden = false;
-            this.drawer.classList.add('is-open');
             this.drawer.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
+            var self = this;
+            requestAnimationFrame(function () {
+                self.backdrop.classList.add('is-open');
+                self.drawer.classList.add('is-open');
+            });
         }
 
         close() {
-            this.backdrop.hidden = true;
             this.drawer.classList.remove('is-open');
+            this.backdrop.classList.remove('is-open');
             this.drawer.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = '';
+            var backdrop = this.backdrop;
+            window.setTimeout(function () {
+                if (!backdrop.classList.contains('is-open')) {
+                    backdrop.hidden = true;
+                }
+            }, 220);
         }
 
         async save() {

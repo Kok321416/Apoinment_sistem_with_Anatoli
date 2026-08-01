@@ -49,9 +49,11 @@
 - Integrations: Stripe-like горизонтальные тайлы в hub-shared  
 - Bookings: фильтры статусов текстом; виды «По дням» / «Месяц»  
 
-### Фаза C
-- Soft page transitions (CSS), sheet/drawer patterns  
-- Browser QA 320–1440 + TG  
+### Фаза C (сделано 2026-08-01)
+- Soft fade workspace + bookings view  
+- Sheet/drawer: service, client, reschedule - slide/fade 150–250ms + exit delay  
+- TG denser cabinet + safe-area bottom nav  
+- prefers-reduced-motion / 320–390 padding guards  
 
 ## Ограничения
 

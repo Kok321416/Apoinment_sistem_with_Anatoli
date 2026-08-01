@@ -675,3 +675,53 @@ body.tg-webapp .apps-shared {
         padding: 14px;
     }
 }
+
+/* ── Cabinet denser (Phase C) ─────────────────────────────── */
+body.tg-webapp.cabinet-shell .cabinet-workspace__main > * {
+    animation: none !important;
+}
+
+body.tg-webapp.cabinet-shell .calendars-hero__inner,
+body.tg-webapp.cabinet-shell .bookings-hero__inner,
+body.tg-webapp.cabinet-shell .clients-hero__inner,
+body.tg-webapp.cabinet-shell .profile-hero__inner,
+body.tg-webapp.cabinet-shell .services-hero {
+    padding: 14px 16px;
+}
+
+body.tg-webapp.cabinet-shell .calendars-page,
+body.tg-webapp.cabinet-shell .bookings-page,
+body.tg-webapp.cabinet-shell .clients-page,
+body.tg-webapp.cabinet-shell .profile-page,
+body.tg-webapp.cabinet-shell .services-page {
+    gap: 14px;
+}
+
+body.tg-webapp.cabinet-shell .calendars-dash-card,
+body.tg-webapp.cabinet-shell .bookings-dash-card,
+body.tg-webapp.cabinet-shell .clients-dash-card,
+body.tg-webapp.cabinet-shell .dashboard-card,
+body.tg-webapp.cabinet-shell .stat-card {
+    min-height: 88px;
+    padding: 14px;
+}
+
+body.tg-webapp.cabinet-shell .cabinet-bottom-nav {
+    padding-bottom: calc(6px + var(--tg-safe-bottom, env(safe-area-inset-bottom, 0px)));
+}
+
+body.tg-webapp.cabinet-shell .cabinet-workspace__main {
+    padding-left: var(--tg-pad-x, 16px);
+    padding-right: var(--tg-pad-x, 16px);
+    padding-bottom: calc(4.75rem + var(--tg-safe-bottom, env(safe-area-inset-bottom, 0px)));
+}
+
+body.tg-webapp.cabinet-shell .service-drawer,
+body.tg-webapp.cabinet-shell .client-drawer__panel {
+    width: 100%;
+    max-width: 100%;
+}
+
+body.tg-webapp.cabinet-shell .bkg-card__actions .btn {
+    min-height: var(--tg-touch, 44px);
+}
