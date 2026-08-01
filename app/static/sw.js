@@ -1,6 +1,7 @@
 /* Static-only service worker for PWA / Capacitor WebView.
-   Does not cache HTML or API (avoids stale CSRF / auth pages). */
-const CACHE = "ayc-static-v3";
+   Does not cache HTML or API (avoids stale CSRF / auth pages).
+   /static/* uses network-first so design updates appear in the phone app. */
+const CACHE = "ayc-static-v4";
 
 self.addEventListener("install", function (event) {
     self.skipWaiting();
@@ -10,7 +11,7 @@ self.addEventListener("activate", function (event) {
     event.waitUntil(
         caches.keys().then(function (keys) {
             return Promise.all(
-                keys.filter(function (k) { return k !== CACHE; }).map(function (k) {
+                keys.map(function (k) {
                     return caches.delete(k);
                 })
             );
@@ -34,15 +35,18 @@ self.addEventListener("fetch", function (event) {
 
     event.respondWith(
         caches.open(CACHE).then(function (cache) {
-            return cache.match(req).then(function (hit) {
-                if (hit) return hit;
-                return fetch(req).then(function (res) {
+            return fetch(req)
+                .then(function (res) {
                     if (res && res.ok) {
                         cache.put(req, res.clone());
                     }
                     return res;
+                })
+                .catch(function () {
+                    return cache.match(req).then(function (hit) {
+                        return hit || Response.error();
+                    });
                 });
-            });
         })
     );
 });
