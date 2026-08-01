@@ -584,6 +584,29 @@ def _clear_webhook() -> None:
         logger.warning("deleteWebhook failed: %s", exc)
 
 
+def _setup_bot_commands() -> None:
+    """Sync BotFather-style command list from bot.copy.BOTFATHER."""
+    if not TELEGRAM_API_URL:
+        return
+    from bot.copy import BOTFATHER
+
+    commands = [{"command": c, "description": d[:256]} for c, d in BOTFATHER.get("commands") or []]
+    if not commands:
+        return
+    try:
+        r = _tg_session.post(
+            f"{TELEGRAM_API_URL}/setMyCommands",
+            json={"commands": commands},
+            timeout=(5, 10),
+        )
+        if r.ok and (r.json() or {}).get("ok"):
+            logger.info("setMyCommands OK (%s)", len(commands))
+        else:
+            logger.warning("setMyCommands failed: %s", r.text[:300])
+    except Exception as exc:
+        logger.warning("setMyCommands error: %s", exc)
+
+
 def _setup_menu_button() -> None:
     """Set chat Menu Button to open Mini App (appears next to message input)."""
     if not TELEGRAM_API_URL:
@@ -623,6 +646,7 @@ def run_long_polling() -> None:
     _warn_security_config()
     verify_bot_identity()
     _clear_webhook()
+    _setup_bot_commands()
     _setup_menu_button()
     url = f"{TELEGRAM_API_URL}/getUpdates"
     offset = 0
