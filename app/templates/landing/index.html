@@ -82,6 +82,7 @@
         <div class="container stack-lg">
             <div class="text-center">
                 <h2 class="text-display">Как это работает</h2>
+                <p class="text-body-lg text-muted max-w-lead mx-auto">От регистрации до телефона: сайт, Telegram и приложение на Android / iPhone.</p>
             </div>
             <div class="timeline">
                 {% for item in how_it_works %}
@@ -89,6 +90,9 @@
                     <div class="timeline__step-num">{{ item.step }}</div>
                     <h3 class="text-h3">{{ item.title }}</h3>
                     <p class="text-body-sm text-muted">{{ item.description }}</p>
+                    {% if item.link_href %}
+                    <a href="{{ item.link_href }}" class="link-accent text-body-sm">{{ item.link_label }}</a>
+                    {% endif %}
                 </article>
                 {% endfor %}
             </div>
@@ -119,6 +123,7 @@
         <div class="container stack-lg">
             <div class="text-center">
                 <h2 class="text-display">Частые вопросы</h2>
+                <p class="text-body-lg text-muted max-w-lead mx-auto">В том числе про приложение на Android и iPhone. Полная инструкция: <a class="link-accent" href="/apps/">Приложение</a>.</p>
             </div>
             <div class="accordion" role="list">
                 {% for item in faq_items %}
