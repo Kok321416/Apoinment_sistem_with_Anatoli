@@ -7,9 +7,9 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=32">
+<link rel="stylesheet" href="/static/css/app.css?v=33">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=8">
-<link rel="stylesheet" href="/static/css/calendars-hub.css?v=4">
+<link rel="stylesheet" href="/static/css/calendars-hub.css?v=5">
 {% endblock %}
 
 {% block app_content %}
@@ -62,24 +62,6 @@
     <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}
 
-    {% if public_booking_url %}
-    <section class="calendars-link-card card" id="calendars-link-card">
-        <div class="calendars-link-card__head">
-            <span class="calendars-link-card__icon" aria-hidden="true">🌍</span>
-            <div>
-                <h2 class="calendars-link-card__title">Общая ссылка специалиста</h2>
-                <p class="calendars-link-card__desc">Клиент укажет контакты и увидит все активные календари и услуги.</p>
-            </div>
-        </div>
-        <p class="calendars-link-card__url" id="public-booking-url-display">{{ public_booking_url|replace('https://', '')|replace('http://', '') }}</p>
-        <div class="calendars-link-card__actions">
-            <button type="button" class="btn btn--primary btn--sm" data-link="{{ public_booking_url }}" onclick="copyBookingLink(this)">Копировать</button>
-            <a href="{{ public_booking_url }}" class="btn btn--secondary btn--sm" target="_blank" rel="noopener noreferrer">Открыть</a>
-            <button type="button" class="btn btn--ghost btn--sm" id="btn-public-qr" title="Скоро">QR-код</button>
-        </div>
-    </section>
-    {% endif %}
-
     <button type="button" class="calendars-create-toggle card" id="calendars-create-toggle" aria-expanded="false">
         <span class="calendars-create-toggle__label">＋ Создать календарь</span>
         <span class="btn btn--ghost btn--sm" aria-hidden="true">Развернуть</span>
@@ -111,10 +93,6 @@
         <div class="calendars-main">
             {% if hub_calendars %}
             <section class="calendars-toolbar card">
-                <div class="calendars-toolbar__search">
-                    <span class="calendars-toolbar__search-icon" aria-hidden="true">🔍</span>
-                    <input class="input" type="search" id="calendars-search" placeholder="Поиск календаря..." autocomplete="off">
-                </div>
                 <div class="calendars-toolbar__filters">
                     <select class="select" id="calendars-filter" aria-label="Фильтр">
                         <option value="all">Все</option>
@@ -228,7 +206,7 @@
                     {% endfor %}
                 </div>
                 <div class="calendars-filter-empty" id="calendars-filter-empty" hidden>
-                    <p>По вашему запросу календари не найдены. Измените фильтр или поиск.</p>
+                    <p>По выбранному фильтру календарей нет.</p>
                 </div>
             </section>
             {% else %}
@@ -256,12 +234,30 @@
             </ul>
         </aside>
     </div>
+
+    {% if public_booking_url %}
+    <section class="calendars-link-card card" id="calendars-link-card">
+        <div class="calendars-link-card__head">
+            <span class="calendars-link-card__icon" aria-hidden="true">🌍</span>
+            <div>
+                <h2 class="calendars-link-card__title">Общая ссылка специалиста</h2>
+                <p class="calendars-link-card__desc">Клиент укажет контакты и увидит все активные календари и услуги.</p>
+            </div>
+        </div>
+        <p class="calendars-link-card__url" id="public-booking-url-display">{{ public_booking_url|replace('https://', '')|replace('http://', '') }}</p>
+        <div class="calendars-link-card__actions">
+            <button type="button" class="btn btn--primary btn--sm" data-link="{{ public_booking_url }}" onclick="copyBookingLink(this)">Копировать</button>
+            <a href="{{ public_booking_url }}" class="btn btn--secondary btn--sm" target="_blank" rel="noopener noreferrer">Открыть</a>
+            <button type="button" class="btn btn--ghost btn--sm" id="btn-public-qr" title="Скоро">QR-код</button>
+        </div>
+    </section>
+    {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
 <script src="/static/js/copy-link.js?v=1" defer></script>
-<script src="/static/js/calendars-page.js?v=1" defer></script>
+<script src="/static/js/calendars-page.js?v=2" defer></script>
 <script type="application/json" id="calendars-hub-data">{{ hub_payload | tojson }}</script>
 {% endblock %}

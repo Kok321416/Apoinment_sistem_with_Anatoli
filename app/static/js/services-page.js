@@ -40,17 +40,13 @@
             drawer.openCreate(catalog.calendars, catalog.templates);
         });
 
-        document.getElementById('services-search').addEventListener('input', () => {
-            currentPage = 1;
-            render();
-        });
         document.getElementById('filter-status').addEventListener('change', () => {
             currentPage = 1;
-            render();
+            filterAndRender();
         });
         document.getElementById('sort-by').addEventListener('change', () => {
             currentPage = 1;
-            render();
+            filterAndRender();
         });
 
         document.querySelectorAll('.view-toggle__btn').forEach((btn) => {
@@ -60,7 +56,7 @@
                     b.classList.toggle('is-active', b === btn);
                 });
                 grid.classList.toggle('services-grid--list', viewMode === 'list');
-                render();
+                filterAndRender();
             });
         });
 
@@ -112,17 +108,10 @@
         }
 
         function getFiltered() {
-            const q = document.getElementById('services-search').value.trim().toLowerCase();
             const status = document.getElementById('filter-status').value;
             const sort = document.getElementById('sort-by').value;
             let items = (catalog.services || []).slice();
 
-            if (q) {
-                items = items.filter((s) => {
-                    return (s.name || '').toLowerCase().includes(q) ||
-                        (s.description || '').toLowerCase().includes(q);
-                });
-            }
             if (status === 'active') {
                 items = items.filter((s) => s.is_active);
             } else if (status === 'inactive') {

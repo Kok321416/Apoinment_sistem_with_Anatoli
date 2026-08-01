@@ -67,25 +67,20 @@
     }
 
     function filterCalendars() {
-        var search = (document.getElementById("calendars-search") || {}).value || "";
         var filter = (document.getElementById("calendars-filter") || {}).value || "all";
         var sort = (document.getElementById("calendars-sort") || {}).value || "recent";
-        var q = search.trim().toLowerCase();
         var cards = Array.from(document.querySelectorAll(".cal-card"));
         var visible = [];
 
         cards.forEach(function (card) {
             var status = card.getAttribute("data-status") || "";
             var isArchive = card.getAttribute("data-archive") === "true";
-            var searchText = card.getAttribute("data-search") || "";
-            var matchSearch = !q || searchText.indexOf(q) !== -1;
             var matchFilter = true;
             if (filter === "active") matchFilter = status === "active";
             else if (filter === "inactive") matchFilter = status === "inactive" && !isArchive;
             else if (filter === "archive") matchFilter = isArchive;
-            var show = matchSearch && matchFilter;
-            card.classList.toggle("is-hidden", !show);
-            if (show) visible.push(card);
+            card.classList.toggle("is-hidden", !matchFilter);
+            if (matchFilter) visible.push(card);
         });
 
         visible.sort(function (a, b) {
@@ -171,10 +166,8 @@
             });
         });
 
-        var search = document.getElementById("calendars-search");
         var filter = document.getElementById("calendars-filter");
         var sort = document.getElementById("calendars-sort");
-        if (search) search.addEventListener("input", filterCalendars);
         if (filter) filter.addEventListener("change", filterCalendars);
         if (sort) sort.addEventListener("change", filterCalendars);
     }
