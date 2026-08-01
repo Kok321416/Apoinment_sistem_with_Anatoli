@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="{{ site_brand_name }}">
 <link rel="manifest" href="/static/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/static/svg/brand/service-icon-512.svg">
+<link rel="apple-touch-icon" href="/static/svg/brand/service-icon-512.svg?v=2">
 <link rel="canonical" href="{{ canonical_url | default(request.url) }}">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ru_RU">
@@ -18,17 +18,17 @@
 <meta property="og:title" content="{{ page_title | default(site_brand_name) }}">
 <meta property="og:description" content="{{ meta_description | default('') }}">
 <meta property="og:url" content="{{ canonical_url | default(request.url) }}">
-<meta property="og:image" content="{{ site_url }}/static/svg/logo.svg">
+<meta property="og:image" content="{{ site_url }}/static/svg/brand/service-icon-512.svg">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="{{ page_title | default(site_brand_name) }}">
 <meta name="twitter:description" content="{{ meta_description | default('') }}">
 {% endblock %}
 {% include "components/theme_boot.html" %}
-<link rel="icon" href="/static/svg/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/svg/favicon.svg?v=2" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" href="/static/css/main.css?v=22" as="style">
-<link rel="preload" href="/static/svg/logo.svg" as="image" type="image/svg+xml">
+<link rel="preload" href="/static/svg/logo-mark.svg" as="image" type="image/svg+xml">
 <link rel="stylesheet" href="/static/css/main.css?v=22">
 <link rel="stylesheet" href="/static/css/tg-webapp.css?v=8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
