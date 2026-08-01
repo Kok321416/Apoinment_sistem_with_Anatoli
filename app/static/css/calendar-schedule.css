@@ -136,6 +136,14 @@
     background: var(--bg-800);
 }
 
+.week-grid-scroll {
+    position: relative;
+}
+
+.week-grid-panel__scroll-hint {
+    display: none;
+}
+
 .week-grid-loading,
 .day-editor-loading {
     padding: var(--space-3xl);
@@ -299,7 +307,8 @@
     bottom: 0;
 }
 
-/* Single brand palette for all weekdays (no rainbow days) */
+/* Single brand palette for all weekdays (black slots) */
+.week-slot,
 .week-slot[data-day="0"],
 .week-slot[data-day="1"],
 .week-slot[data-day="2"],
@@ -307,8 +316,18 @@
 .week-slot[data-day="4"],
 .week-slot[data-day="5"],
 .week-slot[data-day="6"] {
-    background: var(--accent-primary);
-    color: var(--text-on-accent);
+    background: #111111;
+    color: #fafafa;
+    border-color: #111111;
+}
+
+.day-editor__add-row .select,
+.slot-card--editing .select {
+    text-align: right;
+    text-align-last: right;
+    padding-inline-start: var(--space-sm);
+    padding-inline-end: 1.75rem;
+    font-size: var(--font-size-body-sm);
 }
 
 .day-editor-panel {
@@ -400,8 +419,8 @@
 }
 
 .slot-card--editing {
-    border-color: rgba(108, 99, 255, 0.45);
-    box-shadow: 0 0 0 1px rgba(108, 99, 255, 0.2);
+    border-color: color-mix(in srgb, #111111 45%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, #111111 20%, transparent);
 }
 
 .slot-card__time {
@@ -721,11 +740,18 @@
         -webkit-overflow-scrolling: touch;
         padding: var(--space-xs) 0 var(--space-md);
         margin-bottom: var(--space-sm);
-        scrollbar-width: none;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--text-muted) 55%, transparent) transparent;
     }
 
     .schedule-day-chips::-webkit-scrollbar {
-        display: none;
+        height: 4px;
+        display: block;
+    }
+
+    .schedule-day-chips::-webkit-scrollbar-thumb {
+        background: color-mix(in srgb, var(--text-muted) 55%, transparent);
+        border-radius: 999px;
     }
 
     .schedule-day-chip {
@@ -766,19 +792,77 @@
         opacity: 0.55;
     }
 
+    /* Week grid stays visible on phone; horizontal scroll is obvious */
+    .week-grid-panel {
+        --schedule-grid-height: 480px;
+        order: 1;
+        padding: var(--space-lg);
+    }
+
+    .week-grid-scroll {
+        position: relative;
+    }
+
+    .week-grid-scroll::after {
+        content: "";
+        position: absolute;
+        top: 1px;
+        right: 1px;
+        bottom: 6px;
+        width: 36px;
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        pointer-events: none;
+        z-index: 4;
+        background: linear-gradient(to right, transparent, var(--bg-800));
+    }
+
     .week-grid-wrap {
-        display: none;
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--text-muted) 60%, transparent) transparent;
+        padding-bottom: var(--space-xs);
+    }
+
+    .week-grid-wrap::-webkit-scrollbar {
+        height: 5px;
+    }
+
+    .week-grid-wrap::-webkit-scrollbar-thumb {
+        background: color-mix(in srgb, var(--text-muted) 60%, transparent);
+        border-radius: 999px;
+    }
+
+    .week-grid-panel__scroll-hint {
+        display: block;
+        margin: var(--space-xs) 0 0;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        text-align: right;
+    }
+
+    .week-grid {
+        min-width: 640px;
+    }
+
+    .week-slot__delete {
+        opacity: 1;
+    }
+
+    .day-editor__add-row .form-field {
+        min-width: 7.25rem;
+        flex: 1 1 calc(50% - var(--space-md));
+    }
+
+    .day-editor__add-row .select {
+        min-height: 44px;
     }
 
     .calendar-layout {
         display: flex;
         flex-direction: column;
         gap: var(--space-lg);
-    }
-
-    .week-grid-panel {
-        order: 1;
-        padding: var(--space-lg);
     }
 
     .day-editor-panel {
@@ -862,8 +946,13 @@
 @media (min-width: 769px) {
     .schedule-mobile-progress,
     .schedule-day-chips,
-    .week-grid-panel__hint--mobile {
+    .week-grid-panel__hint--mobile,
+    .week-grid-panel__scroll-hint {
         display: none !important;
+    }
+
+    .week-grid-scroll::after {
+        display: none;
     }
 
     .week-grid-panel__hint--desktop {

@@ -13,7 +13,8 @@ alwaysApply: false
 
 ## Mobile UX (product direction)
 
-- ≤768px / TG: **day-first** (day chips + slot cards), not horizontal 640px grid as primary UI.
+- ≤768px / TG: day chips + **visible week grid** (horizontal scroll with fade/scrollbar hint) + day editor below.
+- Tap black week slots → open day editor edit mode (same as desktop).
 - Desktop ≥769px: keep week grid + side day editor.
 - Settings: accordion/collapse on phone; do not bury primary slot actions.
 

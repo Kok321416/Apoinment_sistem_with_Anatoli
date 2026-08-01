@@ -8,6 +8,10 @@ NATIVE_SCHEME = "allyourclients"
 NATIVE_CHANNELS = frozenset({"native", "app", "capacitor", "android", "ios"})
 TG_CHANNELS = frozenset({"tg", "telegram", "miniapp", "mini_app", "webapp"})
 
+# Telegram startapp: A-Z a-z 0-9 _ - ; consumed in telegram-webapp.js
+TG_STARTAPP_COMPLETE_PREFIX = "cmp_"
+TG_STARTAPP_HANDOFF_PREFIX = "hnd_"
+
 
 def normalize_client_channel(raw: str | None) -> str:
     value = (raw or "").strip().lower()
@@ -18,8 +22,37 @@ def normalize_client_channel(raw: str | None) -> str:
     return "web"
 
 
+def tg_startapp_param(*, kind: str, token: str) -> str:
+    """Build startapp value for reopening Mini App after external auth."""
+    clean = (token or "").strip()
+    if kind == "complete":
+        return f"{TG_STARTAPP_COMPLETE_PREFIX}{clean}"
+    return f"{TG_STARTAPP_HANDOFF_PREFIX}{clean}"
+
+
+def parse_tg_startapp_param(raw: str | None) -> tuple[str, str] | None:
+    """Return (kind, token) for cmp_/hnd_ start_param, else None."""
+    value = (raw or "").strip()
+    if value.startswith(TG_STARTAPP_COMPLETE_PREFIX):
+        token = value[len(TG_STARTAPP_COMPLETE_PREFIX) :]
+        return ("complete", token) if token else None
+    if value.startswith(TG_STARTAPP_HANDOFF_PREFIX):
+        token = value[len(TG_STARTAPP_HANDOFF_PREFIX) :]
+        return ("handoff", token) if token else None
+    return None
+
+
+def tg_mini_app_direct_link(*, bot_username: str, start_param: str) -> str:
+    """https://t.me/<bot>?startapp=<param> reopens the bot Menu Mini App."""
+    bot = (bot_username or "").lstrip("@").strip()
+    param = (start_param or "").strip()
+    if not bot or not param:
+        return ""
+    return f"https://t.me/{bot}?startapp={quote(param, safe='')}"
+
+
 def telegram_complete_urls(*, site_url: str, complete_token: str, client_channel: str) -> dict[str, str]:
-    """HTTPS always works; native uses HTTPS bridge page (Telegram buttons require http/https)."""
+    """HTTPS always works; native/tg use HTTPS bridge pages (Telegram buttons require http/https)."""
     site = (site_url or "").rstrip("/")
     https_url = f"{site}/accounts/telegram/complete/{complete_token}/"
     channel = normalize_client_channel(client_channel)
@@ -34,12 +67,14 @@ def telegram_complete_urls(*, site_url: str, complete_token: str, client_channel
             "success_hint": "Нажмите кнопку ниже, чтобы вернуться в приложение и завершить вход.",
         }
     if channel == "tg":
+        # Bridge opens t.me/?startapp= so session is created inside Mini App WebView.
+        bridge = f"{site}/accounts/open-tg-app/?kind=complete&token={quote(complete_token)}"
         return {
             "client_channel": channel,
-            "complete_url": https_url,
+            "complete_url": bridge,
             "https_url": https_url,
-            "button_label": "Открыть сервис",
-            "success_hint": "Вернитесь в мини-приложение — вход завершится сам, или нажмите кнопку ниже.",
+            "button_label": "Вернуться в приложение",
+            "success_hint": "Нажмите кнопку ниже, чтобы вернуться в мини-приложение и завершить вход.",
         }
     return {
         "client_channel": channel,

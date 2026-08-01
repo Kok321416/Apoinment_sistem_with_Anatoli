@@ -57,7 +57,7 @@ def _oauth_return(
     connect: bool = False,
     connect_success_message: str | None = None,
 ):
-    """Return to browser session or Capacitor app (HTTPS bridge → deep link)."""
+    """Return to browser, Capacitor, or Telegram Mini App (HTTPS bridge → reopen)."""
     from app.services.client_channel import normalize_client_channel
     from app.services.native_auth_handoff import create_native_handoff
 
@@ -68,6 +68,17 @@ def _oauth_return(
             request.session["integrations_success"] = connect_success_message
         bridge = (
             f"{settings.site_url.rstrip('/')}/accounts/open-native/"
+            f"?kind=handoff&token={quote(handoff.token)}"
+        )
+        return RedirectResponse(bridge, status_code=302)
+
+    if channel == "tg":
+        # OAuth finished in external browser; reopen Mini App with one-time handoff.
+        handoff = create_native_handoff(db, user_id=user.id, next_url=next_url or "/tg/")
+        if connect and connect_success_message:
+            request.session["integrations_success"] = connect_success_message
+        bridge = (
+            f"{settings.site_url.rstrip('/')}/accounts/open-tg-app/"
             f"?kind=handoff&token={quote(handoff.token)}"
         )
         return RedirectResponse(bridge, status_code=302)
@@ -111,6 +122,52 @@ a.sec{{color:#9aa3b2}}
 </head><body>
 <p>Открываем приложение…</p>
 <p><a class="btn" id="open" href="{deep}">Открыть приложение</a></p>
+<p><a class="sec" href="{https_fallback}">Продолжить в браузере</a></p>
+<script>
+setTimeout(function(){{ window.location.href = {json.dumps(deep)}; }}, 200);
+</script>
+</body></html>"""
+    from fastapi.responses import HTMLResponse
+
+    return HTMLResponse(html)
+
+
+@router.get("/open-tg-app/")
+async def open_tg_app_bridge(request: Request):
+    """HTTPS page for Telegram URL buttons; jumps back into Mini App via startapp."""
+    from app.services.client_channel import tg_mini_app_direct_link, tg_startapp_param
+
+    kind = (request.query_params.get("kind") or "").strip().lower()
+    token = (request.query_params.get("token") or "").strip()
+    if not token or kind not in ("complete", "handoff"):
+        return RedirectResponse("/tg/", status_code=302)
+
+    bot = (settings.telegram_bot_username or "").lstrip("@").strip()
+    start_param = tg_startapp_param(kind=kind, token=token)
+    deep = tg_mini_app_direct_link(bot_username=bot, start_param=start_param)
+    if kind == "complete":
+        https_fallback = f"/accounts/telegram/complete/{quote(token)}/"
+    else:
+        https_fallback = f"/accounts/native-handoff/{quote(token)}/"
+
+    if not deep:
+        return RedirectResponse(https_fallback, status_code=302)
+
+    html = f"""<!DOCTYPE html>
+<html lang="ru"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Возврат в приложение</title>
+<style>
+body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#ffffff;color:#0a0a0a;
+font-family:system-ui,sans-serif;padding:1.5rem;text-align:center}}
+a.btn{{display:inline-block;margin:.5rem;padding:.85rem 1.2rem;border-radius:12px;text-decoration:none;
+background:#111111;color:#fafafa;font-weight:600}}
+a.sec{{color:#525252}}
+</style>
+</head><body>
+<p>Возвращаем вас в мини-приложение…</p>
+<p><a class="btn" id="open" href="{deep}">Открыть в Telegram</a></p>
 <p><a class="sec" href="{https_fallback}">Продолжить в браузере</a></p>
 <script>
 setTimeout(function(){{ window.location.href = {json.dumps(deep)}; }}, 200);

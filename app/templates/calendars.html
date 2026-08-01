@@ -1,4 +1,4 @@
-{% extends "layouts/app.html" %}
+﻿{% extends "layouts/app.html" %}
 
 {% block meta_tags %}
 {% set page_title = "Календари записи — " ~ site_brand_name %}
@@ -7,9 +7,9 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=35">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=9">
-<link rel="stylesheet" href="/static/css/calendars-hub.css?v=5">
+<link rel="stylesheet" href="/static/css/app.css?v=36">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=10">
+<link rel="stylesheet" href="/static/css/calendars-hub.css?v=6">
 {% endblock %}
 
 {% block app_content %}
@@ -92,23 +92,6 @@
     <div class="calendars-layout">
         <div class="calendars-main">
             {% if hub_calendars %}
-            <section class="calendars-toolbar card">
-                <div class="calendars-toolbar__filters">
-                    <select class="select" id="calendars-filter" aria-label="Фильтр">
-                        <option value="all">Все</option>
-                        <option value="active">Активные</option>
-                        <option value="inactive">Выключенные</option>
-                        <option value="archive">Архив</option>
-                    </select>
-                    <select class="select" id="calendars-sort" aria-label="Сортировка">
-                        <option value="recent">Последние</option>
-                        <option value="name">По названию</option>
-                        <option value="created">По дате создания</option>
-                        <option value="activity">По активности</option>
-                    </select>
-                </div>
-            </section>
-
             <section class="calendars-grid-wrap" id="calendars-grid-wrap" aria-live="polite">
                 <div class="calendars-grid" id="calendars-grid">
                     {% for cal in hub_calendars %}
@@ -205,9 +188,6 @@
                     </article>
                     {% endfor %}
                 </div>
-                <div class="calendars-filter-empty" id="calendars-filter-empty" hidden>
-                    <p>По выбранному фильтру календарей нет.</p>
-                </div>
             </section>
             {% else %}
             <div class="hub-empty calendars-empty" id="calendars-empty" role="status">
@@ -218,21 +198,6 @@
             </div>
             {% endif %}
         </div>
-
-        <aside class="calendars-activity card" id="calendars-activity" aria-label="Последние действия">
-            <h2 class="calendars-activity__title">Последние действия</h2>
-            <ul class="calendars-activity__list" id="calendars-activity-list">
-                {% for item in hub_activity %}
-                <li class="calendars-activity__item">
-                    <span class="calendars-activity__name">{{ item.calendar_name }}</span>
-                    <span class="calendars-activity__action">{{ item.action_label }}</span>
-                    <time class="calendars-activity__time" datetime="{{ item.at or '' }}" data-relative="{{ item.at or '' }}">—</time>
-                </li>
-                {% else %}
-                <li class="calendars-activity__empty">Действий пока нет</li>
-                {% endfor %}
-            </ul>
-        </aside>
     </div>
 
     {% if public_booking_url %}
@@ -258,6 +223,6 @@
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
 <script src="/static/js/copy-link.js?v=1" defer></script>
-<script src="/static/js/calendars-page.js?v=2" defer></script>
+<script src="/static/js/calendars-page.js?v=3" defer></script>
 <script type="application/json" id="calendars-hub-data">{{ hub_payload | tojson }}</script>
 {% endblock %}

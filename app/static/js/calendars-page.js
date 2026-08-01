@@ -40,11 +40,11 @@
 
     function loadData() {
         var node = document.getElementById("calendars-hub-data");
-        if (!node) return { dashboard: {}, calendars: [], activity: [] };
+        if (!node) return { dashboard: {}, calendars: [] };
         try {
             return JSON.parse(node.textContent || "{}");
         } catch (e) {
-            return { dashboard: {}, calendars: [], activity: [] };
+            return { dashboard: {}, calendars: [] };
         }
     }
 
@@ -64,49 +64,6 @@
         var toggle = document.getElementById("calendars-create-toggle");
         if (panel) panel.hidden = true;
         if (toggle) toggle.hidden = false;
-    }
-
-    function filterCalendars() {
-        var filter = (document.getElementById("calendars-filter") || {}).value || "all";
-        var sort = (document.getElementById("calendars-sort") || {}).value || "recent";
-        var cards = Array.from(document.querySelectorAll(".cal-card"));
-        var visible = [];
-
-        cards.forEach(function (card) {
-            var status = card.getAttribute("data-status") || "";
-            var isArchive = card.getAttribute("data-archive") === "true";
-            var matchFilter = true;
-            if (filter === "active") matchFilter = status === "active";
-            else if (filter === "inactive") matchFilter = status === "inactive" && !isArchive;
-            else if (filter === "archive") matchFilter = isArchive;
-            card.classList.toggle("is-hidden", !matchFilter);
-            if (matchFilter) visible.push(card);
-        });
-
-        visible.sort(function (a, b) {
-            if (sort === "name") {
-                return (a.getAttribute("data-name") || "").localeCompare(b.getAttribute("data-name") || "", "ru");
-            }
-            if (sort === "created") {
-                return (b.getAttribute("data-created") || "").localeCompare(a.getAttribute("data-created") || "");
-            }
-            if (sort === "activity") {
-                var aa = parseInt(a.getAttribute("data-activity") || "0", 10);
-                var ab = parseInt(b.getAttribute("data-activity") || "0", 10);
-                return ab - aa;
-            }
-            return (b.getAttribute("data-updated") || "").localeCompare(a.getAttribute("data-updated") || "");
-        });
-
-        var grid = document.getElementById("calendars-grid");
-        if (grid) {
-            visible.forEach(function (card) {
-                grid.appendChild(card);
-            });
-        }
-
-        var empty = document.getElementById("calendars-filter-empty");
-        if (empty) empty.hidden = visible.length > 0 || cards.length === 0;
     }
 
     function initRelativeDates() {
@@ -165,11 +122,6 @@
                 stubAction("Статистика календаря скоро будет доступна");
             });
         });
-
-        var filter = document.getElementById("calendars-filter");
-        var sort = document.getElementById("calendars-sort");
-        if (filter) filter.addEventListener("change", filterCalendars);
-        if (sort) sort.addEventListener("change", filterCalendars);
     }
 
     if (document.readyState === "loading") {

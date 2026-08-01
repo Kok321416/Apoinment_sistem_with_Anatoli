@@ -1,4 +1,4 @@
-{% extends "layouts/base.html" %}
+﻿{% extends "layouts/base.html" %}
 {% from "components/icon.html" import auth_provider_icon %}
 
 {% block meta_tags %}
@@ -9,7 +9,7 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/auth.css?v=21">
-<link rel="stylesheet" href="/static/css/tg-webapp.css?v=11">
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=12">
 {% endblock %}
 
 {% block body_class %}{% if user and user.is_authenticated %}tg-hub-page{% else %}auth-page tg-hub-page{% endif %}{% endblock %}
@@ -35,39 +35,47 @@
     <div class="tg-hub__actions">
         {% if tg_mode == tg_mode_specialist and tg_has_consultant %}
         <a class="tg-hub__card-link tg-hub__card-link--primary" href="/dashboard/">
+            <span class="tg-hub__card-icon" data-icon="overview" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Кабинет специалиста</span>
             <span class="tg-hub__card-desc">Профиль, записи и инструменты</span>
         </a>
         <a class="tg-hub__card-link" href="/calendars/">
+            <span class="tg-hub__card-icon" data-icon="calendars" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Календари</span>
             <span class="tg-hub__card-desc">Окна приёма и расписание</span>
         </a>
         <a class="tg-hub__card-link" href="/my-bookings/">
+            <span class="tg-hub__card-icon" data-icon="my-bookings" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Мои записи</span>
             <span class="tg-hub__card-desc">Как клиент</span>
         </a>
         {% else %}
         <a class="tg-hub__card-link tg-hub__card-link--primary" href="/book/">
+            <span class="tg-hub__card-icon" data-icon="book" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Записаться</span>
             <span class="tg-hub__card-desc">Выбрать специалиста и время</span>
         </a>
         <a class="tg-hub__card-link" href="/my-bookings/">
+            <span class="tg-hub__card-icon" data-icon="my-bookings" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Мои записи</span>
             <span class="tg-hub__card-desc">Ближайшие и история</span>
         </a>
         {% if tg_has_consultant %}
         <a class="tg-hub__card-link" href="/tg/?mode=specialist">
+            <span class="tg-hub__card-icon" data-icon="overview" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Кабинет специалиста</span>
             <span class="tg-hub__card-desc">Переключить режим</span>
         </a>
         {% else %}
         <a class="tg-hub__card-link" href="/become-specialist/">
+            <span class="tg-hub__card-icon" data-icon="profile" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Стать специалистом</span>
             <span class="tg-hub__card-desc">Включить приём клиентов</span>
         </a>
         {% endif %}
         {% endif %}
         <a class="tg-hub__card-link" href="/tg/apps/">
+            <span class="tg-hub__card-icon" data-icon="external" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Приложение на телефон</span>
             <span class="tg-hub__card-desc">Android (скоро) и iPhone: Mini App или ярлык</span>
         </a>
@@ -84,18 +92,18 @@
             <span class="form-field__label">Быстрый вход</span>
             <div class="auth-methods">
                 {% if telegram_bot_username %}
-                <a href="/accounts/telegram/login/?next={{ '/tg/'|urlencode }}" class="auth-method auth-method--telegram">
+                <a href="/accounts/telegram/login/?next={{ '/tg/'|urlencode }}&amp;client=tg" class="auth-method auth-method--telegram">
                     {{ auth_provider_icon('telegram') }}
                     <span>Телеграм</span>
                 </a>
                 {% endif %}
                 {% if vk_oauth_enabled %}
-                <a href="/accounts/vk/login/?next={{ '/tg/'|urlencode }}" class="auth-method auth-method--vk">
+                <a href="/accounts/vk/login/?next={{ '/tg/'|urlencode }}&amp;client=tg" class="auth-method auth-method--vk">
                     {{ auth_provider_icon('vk') }}
                     <span>VK</span>
                 </a>
                 {% endif %}
-                <a href="/accounts/yandex/login/?next={{ '/tg/'|urlencode }}" class="auth-method auth-method--yandex">
+                <a href="/accounts/yandex/login/?next={{ '/tg/'|urlencode }}&amp;client=tg" class="auth-method auth-method--yandex">
                     {{ auth_provider_icon('yandex') }}
                     <span>Яндекс</span>
                 </a>
@@ -124,7 +132,7 @@
         </form>
 
         <div class="auth-footer-links">
-            <p>Нет аккаунта? <a href="/register/?next={{ '/tg/'|urlencode }}">Зарегистрироваться</a></p>
+            <p>Нет аккаунта? <a href="/register/?next={{ '/tg/'|urlencode }}&amp;client=tg">Зарегистрироваться</a></p>
             <p><a href="/book/">Записаться без входа</a></p>
             <p><a href="/tg/apps/">Как установить на телефон</a></p>
         </div>

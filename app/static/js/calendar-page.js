@@ -235,6 +235,12 @@
                         }
                         dayEditor.renderDay(lastSchedule.week[day]);
                         dayEditor.editSlot(slot.id);
+                        if (isMobileSchedule()) {
+                            const panel = document.getElementById('day-editor-panel');
+                            if (panel) {
+                                panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                        }
                     },
                     onSlotDelete: async (slotId, day) => {
                         if (!window.confirm('Удалить это окно?')) {

@@ -1,4 +1,4 @@
-{% extends "layouts/app.html" %}
+﻿{% extends "layouts/app.html" %}
 {% from "components/app_page_head.html" import app_page_head %}
 
 {% block meta_tags %}
@@ -8,8 +8,8 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=35">
-<link rel="stylesheet" href="/static/css/calendar-schedule.css?v=8">
+<link rel="stylesheet" href="/static/css/app.css?v=36">
+<link rel="stylesheet" href="/static/css/calendar-schedule.css?v=9">
 {% endblock %}
 
 {% block app_content %}
@@ -54,13 +54,16 @@
             <div class="week-grid-panel__toolbar">
                 <h2 class="week-grid-panel__title">Расписание недели</h2>
                 <p class="week-grid-panel__hint week-grid-panel__hint--desktop">Кликните по дню или окну, чтобы открыть редактор справа</p>
-                <p class="week-grid-panel__hint week-grid-panel__hint--mobile">Выберите день ниже и правьте окна в редакторе</p>
+                <p class="week-grid-panel__hint week-grid-panel__hint--mobile">Листайте неделю вправо. Нажмите на чёрное окно, чтобы править ниже</p>
             </div>
             <div class="schedule-day-chips" id="schedule-day-chips" role="tablist" aria-label="Дни недели"></div>
-            <div class="week-grid-wrap" id="week-grid-wrap">
-                <div class="week-grid-loading" id="week-grid-loading">Загрузка расписания…</div>
-                <div class="week-grid" id="week-grid" hidden></div>
+            <div class="week-grid-scroll">
+                <div class="week-grid-wrap" id="week-grid-wrap">
+                    <div class="week-grid-loading" id="week-grid-loading">Загрузка расписания…</div>
+                    <div class="week-grid" id="week-grid" hidden></div>
+                </div>
             </div>
+            <p class="week-grid-panel__scroll-hint" aria-hidden="true">Листайте вправо, чтобы увидеть все дни</p>
         </section>
 
         <section class="day-editor-panel card" aria-label="Редактор дня" id="day-editor-panel">
@@ -137,5 +140,5 @@
 <script src="/static/js/calendar-api.js?v=2" defer></script>
 <script src="/static/js/calendar-week-grid.js?v=2" defer></script>
 <script src="/static/js/calendar-day-editor.js?v=4" defer></script>
-<script src="/static/js/calendar-page.js?v=3" defer></script>
+<script src="/static/js/calendar-page.js?v=4" defer></script>
 {% endblock %}

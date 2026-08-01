@@ -1,7 +1,7 @@
-"""Calendars hub: dashboard stats, serialization, activity feed."""
+"""Calendars hub: dashboard stats and serialization."""
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -143,45 +143,6 @@ def serialize_calendar(calendar: Calendar, booking_url: str, stats: dict) -> dic
     }
 
 
-def recent_activity(calendars: list[Calendar], limit: int = 8) -> list[dict]:
-    events: list[dict] = []
-    for cal in calendars:
-        if cal.created_at:
-            events.append({
-                "calendar_id": cal.id,
-                "calendar_name": cal.name,
-                "action": "created",
-                "action_label": "Создан",
-                "at": cal.created_at,
-            })
-        if cal.updated_at and cal.created_at and cal.updated_at > cal.created_at + timedelta(seconds=1):
-            label = "Изменён"
-            action = "updated"
-            if not cal.is_active:
-                label = "Выключен"
-                action = "disabled"
-            events.append({
-                "calendar_id": cal.id,
-                "calendar_name": cal.name,
-                "action": action,
-                "action_label": label,
-                "at": cal.updated_at,
-            })
-
-    events.sort(key=lambda e: e["at"] or datetime.min, reverse=True)
-    result = []
-    for event in events[:limit]:
-        ts = event["at"]
-        result.append({
-            "calendar_id": event["calendar_id"],
-            "calendar_name": event["calendar_name"],
-            "action": event["action"],
-            "action_label": event["action_label"],
-            "at": ts.isoformat() if ts else None,
-        })
-    return result
-
-
 def build_calendars_payload(db: Session, calendars: list[Calendar], public_url: str) -> dict:
     cal_ids = _calendar_ids(calendars)
     stats_map = per_calendar_stats(db, cal_ids)
@@ -192,6 +153,5 @@ def build_calendars_payload(db: Session, calendars: list[Calendar], public_url: 
     return {
         "dashboard": dashboard_stats(calendars, stats_map),
         "calendars": serialized,
-        "activity": recent_activity(calendars),
         "public_url": public_url,
     }

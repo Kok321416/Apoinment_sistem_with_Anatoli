@@ -418,6 +418,9 @@ async def legal_pages(request: Request):
 @router.post("/register/")
 async def register_page(request: Request, db: Session = Depends(get_db)):
     user = _optional_user(request, db)
+    from app.services.client_channel import normalize_client_channel, with_client_query
+
+    client_channel = normalize_client_channel(request.query_params.get("client"))
     if user:
         next_after = safe_next_url(request.query_params.get("next"), default="/dashboard/")
         return RedirectResponse(next_after, status_code=302)
@@ -440,6 +443,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         phone = normalize_phone(form.get("phone"))
         accept_privacy = form.get("accept_privacy") == "1"
         auth_method = form.get("auth_method", "email")
+        client_channel = normalize_client_channel(form.get("client") or request.query_params.get("client"))
         account_role = (form.get("account_role") or "specialist").strip().lower()
         if account_role not in ("client", "specialist"):
             account_role = "specialist"
@@ -465,7 +469,10 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                 request.session["register_phone"] = phone
                 request.session["register_accepted_legal"] = True
                 return RedirectResponse(
-                    f"/accounts/yandex/login/?{urlencode({'process': ya_process, 'next': next_after})}",
+                    with_client_query(
+                        f"/accounts/yandex/login/?{urlencode({'process': ya_process, 'next': next_after})}",
+                        client_channel,
+                    ),
                     status_code=302,
                 )
         elif auth_method == "vk":
@@ -477,7 +484,10 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
                 request.session["register_phone"] = phone
                 request.session["register_accepted_legal"] = True
                 return RedirectResponse(
-                    f"/accounts/vk/login/?{urlencode({'process': vk_process, 'next': next_after})}",
+                    with_client_query(
+                        f"/accounts/vk/login/?{urlencode({'process': vk_process, 'next': next_after})}",
+                        client_channel,
+                    ),
                     status_code=302,
                 )
         elif auth_method == "telegram":
@@ -485,7 +495,10 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
             request.session["register_phone"] = phone
             request.session["register_accepted_legal"] = True
             return RedirectResponse(
-                f"/accounts/telegram/login/?{urlencode({'process': tg_process, 'next': next_after})}",
+                with_client_query(
+                    f"/accounts/telegram/login/?{urlencode({'process': tg_process, 'next': next_after})}",
+                    client_channel,
+                ),
                 status_code=302,
             )
         else:
@@ -554,6 +567,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
         account_role=account_role,
         accept_privacy=accept_privacy,
         next_url=safe_next_url(request.query_params.get("next"), default=""),
+        client_channel=client_channel,
     ))
 
 
@@ -890,7 +904,6 @@ async def calendars_page(request: Request, db: Session = Depends(get_db)):
         public_booking_url=public_url,
         hub_dashboard=hub_payload["dashboard"],
         hub_calendars=hub_payload["calendars"],
-        hub_activity=hub_payload["activity"],
         hub_payload=hub_payload,
         success=success,
         error=error,

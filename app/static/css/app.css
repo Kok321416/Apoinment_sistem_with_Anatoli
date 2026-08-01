@@ -854,18 +854,19 @@
     mask: var(--cabinet-icon) center / contain no-repeat;
 }
 
-.cabinet-nav__glyph[data-icon="overview"] { --cabinet-icon: url("/static/svg/icons/ui/overview.svg"); }
-.cabinet-nav__glyph[data-icon="calendars"] { --cabinet-icon: url("/static/svg/icons/ui/calendars.svg"); }
-.cabinet-nav__glyph[data-icon="services"] { --cabinet-icon: url("/static/svg/icons/ui/services.svg"); }
-.cabinet-nav__glyph[data-icon="bookings"] { --cabinet-icon: url("/static/svg/icons/ui/bookings.svg"); }
-.cabinet-nav__glyph[data-icon="clients"] { --cabinet-icon: url("/static/svg/icons/ui/clients.svg"); }
-.cabinet-nav__glyph[data-icon="profile"] { --cabinet-icon: url("/static/svg/icons/ui/profile.svg"); }
-.cabinet-nav__glyph[data-icon="integrations"] { --cabinet-icon: url("/static/svg/icons/ui/integrations.svg"); }
-.cabinet-nav__glyph[data-icon="book"] { --cabinet-icon: url("/static/svg/icons/ui/book.svg"); }
-.cabinet-nav__glyph[data-icon="my-bookings"] { --cabinet-icon: url("/static/svg/icons/ui/my-bookings.svg"); }
-.cabinet-nav__glyph[data-icon="telegram"] { --cabinet-icon: url("/static/svg/icons/ui/telegram.svg"); }
-.cabinet-nav__glyph[data-icon="logout"] { --cabinet-icon: url("/static/svg/icons/ui/logout.svg"); }
-.cabinet-nav__glyph[data-icon="external"] { --cabinet-icon: url("/static/svg/icons/ui/external.svg"); }
+.cabinet-nav__glyph[data-icon="overview"] { --cabinet-icon: url("/static/svg/icons/ui/overview.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="calendars"] { --cabinet-icon: url("/static/svg/icons/ui/calendars.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="services"] { --cabinet-icon: url("/static/svg/icons/ui/services.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="bookings"] { --cabinet-icon: url("/static/svg/icons/ui/bookings.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="clients"] { --cabinet-icon: url("/static/svg/icons/ui/clients.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="profile"] { --cabinet-icon: url("/static/svg/icons/ui/profile.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="integrations"] { --cabinet-icon: url("/static/svg/icons/ui/integrations.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="book"] { --cabinet-icon: url("/static/svg/icons/ui/book.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="my-bookings"] { --cabinet-icon: url("/static/svg/icons/ui/my-bookings.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="telegram"] { --cabinet-icon: url("/static/svg/icons/ui/telegram.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="theme"] { --cabinet-icon: url("/static/svg/icons/ui/theme.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="logout"] { --cabinet-icon: url("/static/svg/icons/ui/logout.svg?v=2"); }
+.cabinet-nav__glyph[data-icon="external"] { --cabinet-icon: url("/static/svg/icons/ui/external.svg?v=2"); }
 
 .cabinet-nav__icon {
     display: none;
@@ -1001,12 +1002,12 @@
     inset: 6% 8%;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    background-color: var(--surface-50, #fafafa);
-    background-image: url("/static/svg/brand/cabinet-empty-decor.svg?v=1");
+    background-color: #fafafa;
+    background-image: url("/static/svg/brand/cabinet-empty-light.svg?v=2");
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
-    opacity: 0.9;
+    opacity: 0.95;
     pointer-events: none;
 }
 

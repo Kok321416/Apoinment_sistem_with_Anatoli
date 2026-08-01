@@ -22,6 +22,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="auth_method" id="auth_method" value="email">
         {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+        {% if client_channel and client_channel != 'web' %}<input type="hidden" name="client" value="{{ client_channel }}">{% endif %}
 
         <div class="stack">
             <div class="form-field">

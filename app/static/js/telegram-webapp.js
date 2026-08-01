@@ -205,6 +205,48 @@
         );
     }
 
+    function consumeStartParamAuth(tg) {
+        var hub = document.querySelector("[data-tg-hub]");
+        if (hub && hub.getAttribute("data-tg-authed") === "1") return false;
+
+        var start = "";
+        try {
+            start = String((tg.initDataUnsafe && tg.initDataUnsafe.start_param) || "").trim();
+        } catch (e) {}
+        if (!start) {
+            try {
+                start = String(new URLSearchParams(window.location.search).get("tgWebAppStartParam") || "").trim();
+            } catch (e2) {}
+        }
+        if (!start) return false;
+
+        var kind = "";
+        var token = "";
+        if (start.indexOf("cmp_") === 0) {
+            kind = "complete";
+            token = start.slice(4);
+        } else if (start.indexOf("hnd_") === 0) {
+            kind = "handoff";
+            token = start.slice(4);
+        } else {
+            return false;
+        }
+        if (!token) return false;
+
+        var doneKey = "tg_startapp_auth_done";
+        try {
+            if (sessionStorage.getItem(doneKey) === start) return false;
+            sessionStorage.setItem(doneKey, start);
+        } catch (e3) {}
+
+        var url =
+            kind === "complete"
+                ? "/accounts/telegram/complete/" + encodeURIComponent(token) + "/"
+                : "/accounts/native-handoff/" + encodeURIComponent(token) + "/";
+        window.location.replace(url);
+        return true;
+    }
+
     function tryWebappAuth(tg) {
         var hub = document.querySelector("[data-tg-hub]");
         if (!hub) return;
@@ -312,6 +354,9 @@
                 haptic: haptic,
             };
 
+            if (consumeStartParamAuth(tg)) {
+                return;
+            }
             tryWebappAuth(tg);
             // Site/native links point to t.me — inside Mini App stay on the hub.
             try {
@@ -322,7 +367,7 @@
                     a.removeAttribute("target");
                 });
             } catch (e) {}
-            // Mark auth links so Telegram login returns into Mini App context.
+            // Mark auth links so OAuth / Telegram login returns into Mini App context.
             document.addEventListener(
                 "click",
                 function (e) {
@@ -332,7 +377,9 @@
                     if (
                         href.indexOf("/accounts/telegram/login") === -1 &&
                         href.indexOf("/accounts/yandex/login") === -1 &&
-                        href.indexOf("/accounts/vk/login") === -1
+                        href.indexOf("/accounts/vk/login") === -1 &&
+                        href.indexOf("/register/") === -1 &&
+                        href.indexOf("/login/") === -1
                     ) {
                         return;
                     }

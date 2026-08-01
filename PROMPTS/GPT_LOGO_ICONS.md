@@ -84,9 +84,8 @@ C) только mark для favicon / PWA 512
 
 | Ассет | Путь |
 |-------|------|
-| Логотип | `app/static/svg/logo.svg` (сейчас не трогаем, пока не утвердим) |
-| Favicon / PWA | `app/static/svg/favicon.svg`, `brand/service-icon-512.svg` |
-| Иконки меню | `app/static/svg/icons/*.svg` |
-| Empty state (опц.) | `app/static/svg/cabinet-empty.svg` или фон в `cabinet-empty` |
+| Логотип | не трогаем (уже в `app/static/img/brand/`) |
+| Иконки меню | `app/static/svg/icons/icon-*.svg` + runtime `app/static/svg/icons/ui/*.svg` |
+| Empty state light | `app/static/svg/brand/cabinet-empty-light.svg` → `.cabinet-empty__art` |
 
-После получения файлов: сказать Cursor «подключи новые иконки в `cabinet_sidenav.html` и укрась `.cabinet-empty`».
+Иконки подключены в sidenav / bottom nav / hub empty / TG Mini App. Android Capacitor тянет те же `/static/` с сайта.
