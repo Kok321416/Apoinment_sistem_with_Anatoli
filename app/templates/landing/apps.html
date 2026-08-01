@@ -15,46 +15,46 @@
     <div class="container stack-lg">
         <div class="stack apps-page__intro">
             <p class="text-caption"><a href="/" class="link-accent">← На главную</a></p>
-            <h1 class="text-display">{{ apps.title }}</h1>
-            <p class="text-body-lg text-muted max-w-prose">{{ apps.intro }}</p>
+            <h1 class="text-display">{{ apps_page.title }}</h1>
+            <p class="text-body-lg text-muted max-w-prose">{{ apps_page.intro }}</p>
         </div>
 
         <div class="apps-grid">
             <article class="apps-card card card--static" id="android">
-                <p class="text-eyebrow"><span class="badge badge--secondary">{{ apps.android.eyebrow }}</span></p>
-                <h2 class="text-h2">{{ apps.android.title }}</h2>
-                <p class="text-body text-muted">{{ apps.android.body }}</p>
-                {% if apps.android.cta_disabled %}
-                <span class="btn btn--secondary apps-card__cta is-disabled" aria-disabled="true">{{ apps.android.cta_label }}</span>
+                <p class="text-eyebrow"><span class="badge badge--secondary">{{ apps_page.android.eyebrow }}</span></p>
+                <h2 class="text-h2">{{ apps_page.android.title }}</h2>
+                <p class="text-body text-muted">{{ apps_page.android.body }}</p>
+                {% if apps_page.android.cta_disabled %}
+                <span class="btn btn--secondary apps-card__cta is-disabled" aria-disabled="true">{{ apps_page.android.cta_label }}</span>
                 {% else %}
-                <a href="{{ apps.android.cta_href }}" class="btn btn--primary focus-ring apps-card__cta">{{ apps.android.cta_label }}</a>
+                <a href="{{ apps_page.android.cta_href }}" class="btn btn--primary focus-ring apps-card__cta">{{ apps_page.android.cta_label }}</a>
                 {% endif %}
-                <p class="text-caption text-muted mt-lg">{{ apps.android.note }}</p>
+                <p class="text-caption text-muted mt-lg">{{ apps_page.android.note }}</p>
             </article>
 
             <article class="apps-card card card--static" id="iphone">
-                <p class="text-eyebrow"><span class="badge badge--secondary">{{ apps.iphone.eyebrow }}</span></p>
-                <h2 class="text-h2">{{ apps.iphone.title }}</h2>
-                <p class="text-body text-muted">{{ apps.iphone.body }}</p>
+                <p class="text-eyebrow"><span class="badge badge--secondary">{{ apps_page.iphone.eyebrow }}</span></p>
+                <h2 class="text-h2">{{ apps_page.iphone.title }}</h2>
+                <p class="text-body text-muted">{{ apps_page.iphone.body }}</p>
 
                 <div class="apps-pwa" id="iphone-pwa">
-                    <h3 class="text-h3">{{ apps.iphone.pwa.title }}</h3>
-                    <p class="text-body-sm text-muted">{{ apps.iphone.pwa.intro }}</p>
+                    <h3 class="text-h3">{{ apps_page.iphone.pwa.title }}</h3>
+                    <p class="text-body-sm text-muted">{{ apps_page.iphone.pwa.intro }}</p>
                     <ol class="apps-steps">
-                        {% for step in apps.iphone.pwa.steps %}
+                        {% for step in apps_page.iphone.pwa.steps %}
                         <li>{{ step }}</li>
                         {% endfor %}
                     </ol>
-                    <a href="{{ apps.iphone.pwa.cta_href }}" class="btn btn--primary focus-ring apps-card__cta">{{ apps.iphone.pwa.cta_label }}</a>
+                    <a href="{{ apps_page.iphone.pwa.cta_href }}" class="btn btn--primary focus-ring apps-card__cta">{{ apps_page.iphone.pwa.cta_label }}</a>
                 </div>
             </article>
         </div>
 
         <div class="apps-grid apps-grid--half" id="iphone-steps">
             <section class="apps-shared card card--static" aria-labelledby="apps-shared-title">
-                <h2 class="text-h2" id="apps-shared-title">{{ apps.shared.title }}</h2>
+                <h2 class="text-h2" id="apps-shared-title">{{ apps_page.shared.title }}</h2>
                 <ul class="apps-shared__list">
-                    {% for point in apps.shared.points %}
+                    {% for point in apps_page.shared.points %}
                     <li>{{ point }}</li>
                     {% endfor %}
                 </ul>
@@ -64,13 +64,13 @@
             </section>
 
             <article class="apps-option card card--static" id="mini-app">
-                <h2 class="text-h2">{{ apps.mini_app.title }}</h2>
+                <h2 class="text-h2">{{ apps_page.mini_app.title }}</h2>
                 <ol class="apps-steps">
-                    {% for step in apps.mini_app.steps %}
+                    {% for step in apps_page.mini_app.steps %}
                     <li>{{ step }}</li>
                     {% endfor %}
                 </ol>
-                <a href="{{ apps.mini_app.cta_href }}" class="btn btn--primary focus-ring">{{ apps.mini_app.cta_label }}</a>
+                <a href="{{ apps_page.mini_app.cta_href }}" class="btn btn--primary focus-ring">{{ apps_page.mini_app.cta_label }}</a>
             </article>
         </div>
     </div>

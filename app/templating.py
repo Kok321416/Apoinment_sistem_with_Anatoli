@@ -311,5 +311,6 @@ def guide_context(request, db, user=None, **extra):
 
 def apps_context(request, db, user=None, **extra):
     ctx = landing_context(request, db, user, **extra)
-    ctx.update({"apps_meta": APPS_META, "apps": APPS_PAGE})
+    # Use apps_page (not apps) — avoids clashing with URL_MAP key "apps".
+    ctx.update({"apps_meta": APPS_META, "apps_page": APPS_PAGE})
     return ctx
