@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none" aria-hidden="true">
+  <rect width="1200" height="630" fill="#FAFAFA"/>
+  <g stroke="#E5E5E5" stroke-width="1">
+    <path d="M0 105h1200M0 210h1200M0 315h1200M0 420h1200M0 525h1200"/>
+    <path d="M150 0v630M300 0v630M450 0v630M600 0v630M750 0v630M900 0v630M1050 0v630"/>
+  </g>
+  <rect x="80" y="80" width="1040" height="470" rx="24" fill="#FFFFFF" stroke="#E5E5E5" stroke-width="2"/>
+  <g transform="translate(468,150) scale(2.6)">
+  <rect x="6" y="6" width="52" height="52" rx="14" stroke="#0A0A0A" stroke-width="3"/>
+  <rect x="16" y="18" width="32" height="28" rx="4" stroke="#0A0A0A" stroke-width="2.5"/>
+  <path d="M16 28h32M24 14v8M40 14v8" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="24" cy="36" r="2.2" fill="#0A0A0A"/>
+  <circle cx="32" cy="36" r="2.2" fill="#0A0A0A"/>
+  <circle cx="40" cy="36" r="2.2" fill="#0A0A0A"/>
+  <circle cx="24" cy="44" r="2.2" fill="#0A0A0A"/>
+  <circle cx="32" cy="44" r="2.2" fill="#0A0A0A"/>
+  <circle cx="40" cy="44" r="2.2" fill="#0A0A0A"/>
+  </g>
+  <text x="600" y="400" text-anchor="middle" fill="#0A0A0A" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="44" font-weight="600">Все клиенты здесь</text>
+  <text x="600" y="455" text-anchor="middle" fill="#737373" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24">Онлайн-запись и кабинет специалиста</text>
+</svg>

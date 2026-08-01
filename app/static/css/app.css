@@ -982,36 +982,16 @@
 
 .cabinet-empty__art {
     position: absolute;
-    inset: 8% 10%;
+    inset: 6% 8%;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    background-image:
-        linear-gradient(var(--border-subtle) 1px, transparent 1px),
-        linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
-    background-size: 28px 28px;
-    opacity: 0.55;
+    background-color: var(--surface-50, #fafafa);
+    background-image: url("/static/svg/brand/cabinet-empty-decor.svg?v=1");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    opacity: 0.9;
     pointer-events: none;
-}
-
-.cabinet-empty__art::before,
-.cabinet-empty__art::after {
-    content: "";
-    position: absolute;
-    width: 4.5rem;
-    height: 4.5rem;
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-sm);
-    opacity: 0.7;
-}
-
-.cabinet-empty__art::before {
-    top: 12%;
-    left: 10%;
-}
-
-.cabinet-empty__art::after {
-    right: 12%;
-    bottom: 14%;
 }
 
 .cabinet-empty__card {

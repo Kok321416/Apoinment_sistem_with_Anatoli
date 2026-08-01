@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 560" fill="none" aria-hidden="true">
+  <rect width="720" height="560" fill="#FAFAFA"/>
+  <g stroke="#E5E5E5" stroke-width="1" opacity="0.9">
+    <path d="M0 80h720M0 160h720M0 240h720M0 320h720M0 400h720M0 480h720"/>
+    <path d="M80 0v560M160 0v560M240 0v560M320 0v560M400 0v560M480 0v560M560 0v560M640 0v560"/>
+  </g>
+  <rect x="120" y="90" width="480" height="360" rx="20" fill="#FFFFFF" stroke="#DADADA" stroke-width="1.5"/>
+  <g transform="translate(296,140)">
+  <rect x="6" y="6" width="52" height="52" rx="14" stroke="#0A0A0A" stroke-width="3"/>
+  <rect x="16" y="18" width="32" height="28" rx="4" stroke="#0A0A0A" stroke-width="2.5"/>
+  <path d="M16 28h32M24 14v8M40 14v8" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="24" cy="36" r="2.2" fill="#0A0A0A"/>
+  <circle cx="32" cy="36" r="2.2" fill="#0A0A0A"/>
+  <circle cx="40" cy="36" r="2.2" fill="#0A0A0A"/>
+  <circle cx="24" cy="44" r="2.2" fill="#0A0A0A"/>
+  <circle cx="32" cy="44" r="2.2" fill="#0A0A0A"/>
+  <circle cx="40" cy="44" r="2.2" fill="#0A0A0A"/>
+  </g>
+  <text x="360" y="260" text-anchor="middle" fill="#0A0A0A" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="28" font-weight="600">Все клиенты здесь</text>
+  <text x="360" y="300" text-anchor="middle" fill="#525252" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16">Кабинет специалиста. Выберите раздел слева.</text>
+  <text x="360" y="330" text-anchor="middle" fill="#737373" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">Подсказка: начните с «Календари».</text>
+</svg>

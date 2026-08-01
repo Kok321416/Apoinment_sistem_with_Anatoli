@@ -10,7 +10,13 @@
   "lang": "ru",
   "icons": [
     {
-      "src": "/static/svg/brand/service-icon-512.svg",
+      "src": "/static/img/brand/service-icon-512.png?v=3",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/svg/brand/service-icon-512.svg?v=3",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
