@@ -7,9 +7,9 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=32">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=7">
-<link rel="stylesheet" href="/static/css/services-catalog.css?v=9">
+<link rel="stylesheet" href="/static/css/app.css?v=33">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=8">
+<link rel="stylesheet" href="/static/css/services-catalog.css?v=10">
 {% endblock %}
 
 {% block app_content %}
@@ -59,7 +59,7 @@
     </section>
 
     <div class="services-bulk-bar" id="services-bulk-bar" hidden>
-        <span id="bulk-count">0 выбрано</span>
+        <span id="bulk-count">Выбрано: 0</span>
         <div class="services-bulk-bar__actions">
             <button type="button" class="btn btn--ghost btn--sm" data-bulk="activate">Включить</button>
             <button type="button" class="btn btn--ghost btn--sm" data-bulk="deactivate">Отключить</button>
@@ -69,11 +69,12 @@
     </div>
 
     <section class="services-catalog" id="services-catalog" aria-live="polite">
-        <div class="hub-skeleton services-loading" id="services-loading" aria-busy="true" aria-label="Загрузка услуг">
-            <div class="hub-skeleton__card"><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--text" style="width:70%"></div><div class="skeleton skeleton--button"></div></div>
-            <div class="hub-skeleton__card"><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--text" style="width:55%"></div><div class="skeleton skeleton--button"></div></div>
-            <div class="hub-skeleton__card"><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--text" style="width:60%"></div><div class="skeleton skeleton--button"></div></div>
-            <div class="hub-skeleton__card"><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--text" style="width:65%"></div><div class="skeleton skeleton--button"></div></div>
+        <div class="services-loading" id="services-loading" aria-busy="true" aria-label="Загрузка услуг">
+            <p class="services-loading__label">Загрузка списка услуг…</p>
+            <div class="services-loading__grid" aria-hidden="true">
+                <div class="hub-skeleton__card"><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--text" style="width:70%"></div><div class="skeleton skeleton--button"></div></div>
+                <div class="hub-skeleton__card"><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--text" style="width:55%"></div><div class="skeleton skeleton--button"></div></div>
+            </div>
         </div>
         <div class="services-grid" id="services-grid" hidden></div>
         <div class="hub-empty services-empty" id="services-empty" hidden role="status">
@@ -161,5 +162,5 @@
 <script src="/static/js/toast.js?v=1" defer></script>
 <script src="/static/js/services-api.js?v=1" defer></script>
 <script src="/static/js/services-drawer.js?v=2" defer></script>
-<script src="/static/js/services-page.js?v=3" defer></script>
+<script src="/static/js/services-page.js?v=4" defer></script>
 {% endblock %}

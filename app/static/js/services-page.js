@@ -146,27 +146,39 @@
             render();
         }
 
+        function setEmptyCopy(title, text) {
+            const titleEl = empty.querySelector('.hub-empty__title, .services-empty__title');
+            const textEl = empty.querySelector('.hub-empty__text, .services-empty__text');
+            if (titleEl) titleEl.textContent = title;
+            if (textEl) textEl.textContent = text;
+        }
+
         function render() {
             loading.hidden = true;
             closeMenus();
 
-            if (!catalog.services.length) {
+            if (!catalog || !catalog.services || !catalog.services.length) {
                 grid.hidden = true;
+                grid.innerHTML = '';
                 empty.hidden = false;
+                setEmptyCopy('Пока нет услуг', 'Создайте первую услугу или выберите шаблон в форме.');
                 pagination.hidden = true;
+                updateBulkBar();
                 return;
             }
 
             if (!filtered.length) {
                 grid.hidden = true;
+                grid.innerHTML = '';
                 empty.hidden = false;
-                empty.querySelector('.services-empty__title').textContent = 'Ничего не найдено';
-                empty.querySelector('.services-empty__text').textContent = 'Измените поиск или фильтры';
+                setEmptyCopy('Ничего не найдено', 'Измените поиск или фильтры.');
                 pagination.hidden = true;
+                updateBulkBar();
                 return;
             }
 
             empty.hidden = true;
+            setEmptyCopy('Пока нет услуг', 'Создайте первую услугу или выберите шаблон в форме.');
             grid.hidden = false;
 
             const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -344,7 +356,7 @@
         function updateBulkBar() {
             const count = selectedIds.size;
             bulkBar.hidden = count === 0;
-            document.getElementById('bulk-count').textContent = count + ' выбрано';
+            document.getElementById('bulk-count').textContent = 'Выбрано: ' + count;
         }
 
         async function bulkAction(action) {

@@ -301,6 +301,20 @@
     background: color-mix(in srgb, var(--surface-200) 80%, transparent);
 }
 
+/* display:* above would otherwise keep [hidden] blocks visible */
+.hub-empty[hidden],
+.calendars-empty[hidden],
+.bookings-empty[hidden],
+.clients-empty[hidden],
+.services-empty[hidden],
+.hub-skeleton[hidden],
+.services-grid[hidden],
+.services-bulk-bar[hidden],
+.services-pagination[hidden],
+.services-loading[hidden] {
+    display: none !important;
+}
+
 .hub-empty__glyph,
 .calendars-empty__icon,
 .bookings-empty__icon,
@@ -354,7 +368,7 @@
 /* Skeleton loading grids */
 .hub-skeleton {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
     gap: var(--space-lg);
     padding: var(--space-sm) 0;
 }
