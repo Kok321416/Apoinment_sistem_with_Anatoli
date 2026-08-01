@@ -36,6 +36,7 @@ def test_email_registration_does_not_500(monkeypatch):
             "email": email,
             "password": "TestPass123!",
             "password_confirm": "TestPass123!",
+            "accept_privacy": "1",
         },
         follow_redirects=False,
     )
