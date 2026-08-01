@@ -6,6 +6,11 @@
 {% if meta_keywords %}<meta name="keywords" content="{{ meta_keywords }}">{% endif %}
 <meta name="theme-color" content="#0B0D12">
 <meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="{{ site_brand_name }}">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/static/svg/brand/service-icon-512.svg">
 <link rel="canonical" href="{{ canonical_url | default(request.url) }}">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ru_RU">

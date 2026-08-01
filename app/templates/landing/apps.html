@@ -1,0 +1,72 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ apps_meta.title.format(brand=site_brand_name) }}{% endblock %}
+
+{% block meta_tags %}
+{% set page_title = apps_meta.title.format(brand=site_brand_name) %}
+{% set meta_description = apps_meta.description %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block body %}
+{% include "components/landing_header.html" %}
+
+<main id="main" class="section apps-page" tabindex="-1">
+    <div class="container stack-lg">
+        <div class="stack apps-page__intro">
+            <p class="text-caption"><a href="/" class="link-accent">← На главную</a></p>
+            <h1 class="text-display">{{ apps.title }}</h1>
+            <p class="text-body-lg text-muted max-w-prose">{{ apps.intro }}</p>
+        </div>
+
+        <div class="apps-grid">
+            <article class="apps-card card card--static" id="android">
+                <p class="text-eyebrow"><span class="badge badge--secondary">{{ apps.android.eyebrow }}</span></p>
+                <h2 class="text-h2">{{ apps.android.title }}</h2>
+                <p class="text-body text-muted">{{ apps.android.body }}</p>
+                {% if apps.android.cta_disabled %}
+                <span class="btn btn--secondary apps-card__cta is-disabled" aria-disabled="true">{{ apps.android.cta_label }}</span>
+                {% else %}
+                <a href="{{ apps.android.cta_href }}" class="btn btn--primary focus-ring apps-card__cta">{{ apps.android.cta_label }}</a>
+                {% endif %}
+                <p class="text-caption text-muted mt-lg">{{ apps.android.note }}</p>
+            </article>
+
+            <article class="apps-card card card--static" id="iphone">
+                <p class="text-eyebrow"><span class="badge badge--secondary">{{ apps.iphone.eyebrow }}</span></p>
+                <h2 class="text-h2">{{ apps.iphone.title }}</h2>
+                <p class="text-body text-muted">{{ apps.iphone.body }}</p>
+            </article>
+        </div>
+
+        <div class="stack-lg" id="iphone-steps">
+            {% for opt in apps.iphone.options %}
+            <article class="apps-option card card--static">
+                <h3 class="text-h3">{{ opt.title }}</h3>
+                <ol class="apps-steps">
+                    {% for step in opt.steps %}
+                    <li>{{ step }}</li>
+                    {% endfor %}
+                </ol>
+                <a href="{{ opt.cta_href }}" class="btn btn--primary focus-ring">{{ opt.cta_label }}</a>
+            </article>
+            {% endfor %}
+        </div>
+
+        <section class="apps-shared card card--static" aria-labelledby="apps-shared-title">
+            <h2 class="text-h2" id="apps-shared-title">{{ apps.shared.title }}</h2>
+            <ul class="apps-shared__list">
+                {% for point in apps.shared.points %}
+                <li>{{ point }}</li>
+                {% endfor %}
+            </ul>
+            <div class="cluster mt-2xl">
+                <a href="/tg/" class="btn btn--primary focus-ring">Открыть в Telegram</a>
+                <a href="/guide/" class="btn btn--secondary focus-ring">Как начать на сайте</a>
+            </div>
+        </section>
+    </div>
+</main>
+
+{% include "components/landing_footer.html" %}
+{% endblock %}

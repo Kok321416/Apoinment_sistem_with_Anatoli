@@ -1,0 +1,21 @@
+{
+  "appId": "ru.allyourclients.app",
+  "appName": "Все клиенты здесь",
+  "webDir": "www",
+  "server": {
+    "url": "https://allyourclients.ru",
+    "cleartext": false,
+    "allowNavigation": [
+      "allyourclients.ru",
+      "*.allyourclients.ru",
+      "oauth.yandex.ru",
+      "id.vk.com",
+      "oauth.vk.com",
+      "telegram.org",
+      "oauth.telegram.org"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

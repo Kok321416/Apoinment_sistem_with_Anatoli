@@ -20,6 +20,7 @@ from app.content.landing_copy import (
     faq_with_support,
     footer_with_context,
 )
+from app.content.apps_copy import APPS_META, APPS_PAGE, LANDING_APPS_TEASER
 from app.security.csrf import ensure_csrf_token
 
 settings = get_settings()
@@ -29,6 +30,7 @@ URL_MAP = {
     "landing": "/",
     "dashboard": "/dashboard/",
     "guide": "/guide/",
+    "apps": "/apps/",
     "privacy": "/privacy/",
     "terms": "/terms/",
     "register": "/register/",
@@ -293,6 +295,7 @@ def landing_context(request, db, user=None, **extra):
             "features": FEATURES,
             "how_it_works": HOW_IT_WORKS,
             "cta_block": CTA_BLOCK,
+            "apps_teaser": LANDING_APPS_TEASER,
             "faq_items": faq_with_support(settings.support_email),
             "footer_copy": footer_with_context(settings.support_email, settings.site_brand_name, year),
         }
@@ -303,4 +306,10 @@ def landing_context(request, db, user=None, **extra):
 def guide_context(request, db, user=None, **extra):
     ctx = landing_context(request, db, user, **extra)
     ctx.update({"guide_meta": GUIDE_META, "guide": GUIDE})
+    return ctx
+
+
+def apps_context(request, db, user=None, **extra):
+    ctx = landing_context(request, db, user, **extra)
+    ctx.update({"apps_meta": APPS_META, "apps": APPS_PAGE})
     return ctx

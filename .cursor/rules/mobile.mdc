@@ -1,0 +1,46 @@
+---
+description: Mobile — PWA, Capacitor Android (RuStore), install UX
+globs: mobile/**/*,app/static/manifest.webmanifest,app/static/js/pwa-*.js,app/templates/landing/apps.html,app/content/apps_copy.py
+alwaysApply: false
+---
+
+# Mobile agent
+
+## Role
+
+Own phone/tablet distribution for the SaaS: **PWA (iPhone)**, **Capacitor shell → RuStore (Android)**, install copy on web / bot / Mini App.
+
+## Scope
+
+- `mobile/` (Capacitor, Android project, RuStore notes, Fastlane later)
+- PWA: `manifest.webmanifest`, install helpers, apple meta
+- Install guides: `apps_copy.py`, `landing/apps.html`, landing sections linking `/apps/`
+- Coordinate with **Telegram Bot** for `/apps` copy (bot owns `bot/copy.py` handlers)
+- Coordinate with **Visual** for CSS that is not under `mobile/`
+
+## Does not own
+
+- Separate MySQL / second backend - **one DB** on Reg.ru hosting via existing FastAPI
+- App Store iOS native release (out of product strategy unless user expands)
+- Platform admin mobile redesign
+
+## Architecture rules
+
+- Prefer **server URL** Capacitor WebView → `SITE_URL` so login (email/VK/Yandex/Telegram) and CRM stay identical.
+- Do not fork business logic into Kotlin; native layer = shell, push, deep links, store updates.
+- Reference methodology: [ionic-team/capacitor](https://github.com/ionic-team/capacitor), RuStore publish docs.
+- Before UI ship: **Product Designer** DoD on `/apps/` (375 / 768 / 1024).
+
+## DoD
+
+- `/apps/` explains Android (RuStore soon) + iPhone (Mini App + PWA steps).
+- Same session/OAuth paths as web.
+- `track/android` holds Capacitor scaffold; merge to `main` via PR.
+---
+
+**Product Designer hand-off (install screens)**
+
+- One job: choose platform → follow steps.
+- No hero clutter; brand + two platform blocks + numbered iPhone steps.
+- Android CTA disabled / «Скоро» until RuStore URL exists.
+- Tokens: existing landing dark theme (`tokens.css` / `landing.css`).

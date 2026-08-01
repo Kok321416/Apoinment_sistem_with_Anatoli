@@ -354,3 +354,60 @@
 .legal-list li {
     margin-bottom: var(--space-sm);
 }
+
+/* /apps/ — install guides (Product Designer DoD: 375 / 768 / 1024) */
+.apps-page__intro {
+    max-width: 40rem;
+}
+
+.apps-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2xl);
+}
+
+.apps-card,
+.apps-option,
+.apps-shared {
+    padding: var(--space-3xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.apps-card__cta {
+    align-self: flex-start;
+    margin-top: var(--space-md);
+}
+
+.apps-card__cta.is-disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.apps-steps {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+    line-height: var(--line-height-body-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.apps-shared__list {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+    line-height: var(--line-height-body-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+@media (max-width: 768px) {
+    .apps-grid {
+        grid-template-columns: 1fr;
+    }
+}

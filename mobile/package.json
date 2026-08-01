@@ -1,0 +1,17 @@
+{
+  "name": "allyourclients-mobile",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Capacitor shell for allyourclients.ru (RuStore)",
+  "scripts": {
+    "sync": "npx cap sync android",
+    "open:android": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}

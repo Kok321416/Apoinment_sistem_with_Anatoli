@@ -1,0 +1,35 @@
+---
+description: Always-on orchestration and token economy for all agents
+alwaysApply: true
+---
+
+# Orchestration & token economy
+
+You are in a **multi-agent** repo. See `AGENTS.md` and `PROMPTS/AGENT_ORCHESTRATION.md`.
+
+## Before coding
+
+1. Identify **one primary domain** (Backend, Visual, …).
+2. List **scope files**; refuse to edit outside scope unless user expands it.
+3. Prefer **grep/glob** over reading whole directories.
+
+## Token rules
+
+- Do not re-explore the full repo if paths are already known.
+- Max **one** broad explore subagent per user task.
+- Do not run Browser MCP until implementation is done.
+- MySQL MCP: **read-only** (`SELECT`, `SHOW`, `EXPLAIN`).
+- Docker logs: `--tail 200` max.
+- Architect-style tasks: plan in ≤15 lines, then hand off — no drive-by refactors.
+
+## Project facts
+
+- Stack: FastAPI + Jinja + MySQL + Telegram bot + Docker.
+- Prod deploy: push `main`. Do not commit `data.db`.
+- Platform admin UI: **desktop only** (no mobile hamburger).
+- Shared design tokens: `app/static/css/tokens.css`.
+- Mobile track: PWA + Capacitor→RuStore (no App Store). Agent: **Mobile** (`mobile.mdc`). Branches: `track/site`, `track/telegram`, `track/android`.
+
+## Commits
+
+Only commit when the user asks. Never force-push `main`.

@@ -11,6 +11,7 @@ import requests
 from bot.api_client import post_site_api
 from bot.config import get_bot_settings
 from bot.copy import (
+    APPS_INSTALL_TEXT,
     CONNECT_SITE,
     HELP_TEXT,
     LOGIN_OPEN_SITE,
@@ -94,12 +95,14 @@ def send_telegram_message(chat_id, text, reply_markup=None, *, retries: int = 2)
     return False
 
 
-def answer_callback_query(callback_query_id, text=None) -> bool:
+def answer_callback_query(callback_query_id, text=None, *, show_alert: bool = False) -> bool:
     if not settings.telegram_bot_token:
         return False
     payload = {"callback_query_id": callback_query_id}
     if text:
         payload["text"] = text[:200]
+    if show_alert:
+        payload["show_alert"] = True
     try:
         _tg_session.post(f"{TELEGRAM_API_URL}/answerCallbackQuery", json=payload, timeout=(3, 5))
         return True
@@ -307,6 +310,8 @@ def handle_telegram_update(update_data: dict) -> None:
                 handle_appointments_command(chat_id, user_id)
             elif cmd == "/help" or text in ("❓ Помощь",):
                 handle_help_command(chat_id)
+            elif cmd == "/apps" or text in ("📱 Приложение", "Приложение"):
+                handle_apps_command(chat_id)
             elif cmd == "/history" or text in ("📜 История",):
                 handle_history_command(chat_id, user_id)
             elif cmd == "/admin" or text in ("📞 Связаться",):
@@ -333,7 +338,7 @@ def handle_telegram_update(update_data: dict) -> None:
             chat_id = callback_query["message"]["chat"]["id"]
             data = callback_query.get("data", "")
             user_id = callback_query.get("from", {}).get("id")
-            if not data.startswith(("booklink_", "spec_confirm_", "login_confirm_")):
+            if not data.startswith(("booklink_", "spec_confirm_", "login_confirm_", "apps_android")):
                 answer_callback_query(callback_query_id)
             if data == "my_appointments":
                 answer_callback_query(callback_query_id)
@@ -368,6 +373,12 @@ def handle_telegram_update(update_data: dict) -> None:
             elif data.startswith("spec_confirm_"):
                 handle_specialist_connect_telegram_callback(
                     chat_id, user_id, callback_query_id, data.replace("spec_confirm_", "", 1)
+                )
+            elif data == "apps_android_soon":
+                answer_callback_query(
+                    callback_query_id,
+                    "Android-приложение в RuStore скоро будет готово",
+                    show_alert=True,
                 )
             else:
                 answer_callback_query(callback_query_id, "Неизвестная кнопка")
@@ -634,10 +645,30 @@ def handle_help_command(chat_id):
                 _web_app_button("📝 Регистрация", f"{site}/register/"),
                 _url_button("📞 Связаться", f"https://t.me/{admin}"),
             ],
-            [_web_app_button("🏠 Открыть сервис", _mini_app_url("/tg/"))],
+            [
+                _web_app_button("🏠 Открыть сервис", _mini_app_url("/tg/")),
+                _url_button("📱 Приложение", f"{site}/apps/"),
+            ],
         ]
     }
     send_telegram_message(chat_id, HELP_TEXT.format(site_url=site), keyboard)
+
+
+def handle_apps_command(chat_id):
+    site = get_site_url().rstrip("/")
+    apps_url = f"{site}/apps/"
+    keyboard = {
+        "inline_keyboard": [
+            [_web_app_button("📱 Открыть Mini App", _mini_app_url("/tg/"))],
+            [_url_button("📖 Полная инструкция", apps_url)],
+            [{"text": "Android в RuStore", "callback_data": "apps_android_soon"}],
+        ]
+    }
+    send_telegram_message(
+        chat_id,
+        APPS_INSTALL_TEXT.format(apps_url=apps_url),
+        keyboard,
+    )
 
 
 def handle_specialist_next_appointments(chat_id, user_id):

@@ -1,0 +1,8 @@
+# Mobile track gitignore (local Capacitor build artifacts)
+node_modules/
+android/
+ios/
+.idea/
+*.keystore
+*.jks
+local.properties

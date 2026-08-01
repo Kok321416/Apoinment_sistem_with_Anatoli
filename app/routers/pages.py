@@ -44,7 +44,7 @@ from app.services.entity_delete import delete_calendar, delete_client_card, dele
 from app.services.slots import get_available_slots
 from app.services.telegram import notify_booking_status_changed
 from app.services.integration_telegram import claim_integration_telegram_chat, clear_integration_telegram_chat
-from app.templating import guide_context, landing_context, media_relative_path, page_context, templates
+from app.templating import apps_context, guide_context, landing_context, media_relative_path, page_context, templates
 from app.utils.safe_redirect import login_url_with_next, safe_next_url
 
 router = APIRouter(tags=["pages"])
@@ -227,6 +227,7 @@ async def robots_txt():
         "User-agent: *\n"
         "Allow: /\n"
         "Allow: /guide/\n"
+        "Allow: /apps/\n"
         "Allow: /privacy/\n"
         "Allow: /terms/\n"
         "Allow: /book/\n"
@@ -250,7 +251,7 @@ async def robots_txt():
 @router.get("/sitemap.xml")
 async def sitemap_xml():
     base = settings.site_url.rstrip("/")
-    urls = ["/", "/guide/", "/privacy/", "/terms/", "/login/", "/register/", "/book/"]
+    urls = ["/", "/guide/", "/apps/", "/privacy/", "/terms/", "/login/", "/register/", "/book/"]
     body = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
@@ -266,6 +267,17 @@ async def guide_page(request: Request):
     db, user = _session_db_if_logged_in(request)
     try:
         return templates.TemplateResponse("landing/guide.html", guide_context(request, db, user))
+    finally:
+        if db is not None:
+            db.close()
+
+
+@router.get("/apps/")
+async def apps_page(request: Request):
+    """How to install / use on Android (RuStore soon) and iPhone (Mini App + PWA)."""
+    db, user = _session_db_if_logged_in(request)
+    try:
+        return templates.TemplateResponse("landing/apps.html", apps_context(request, db, user))
     finally:
         if db is not None:
             db.close()

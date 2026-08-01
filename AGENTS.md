@@ -32,6 +32,19 @@ Diagram: `docs/agents-orchestration-diagram.png`.
 | **QA** | Tests, browser checks | `tests/`, Playwright/Browser MCP |
 | **DevOps** | Docker, CI, deploy | `docker-compose.yml`, `.github/workflows/` |
 | **Compliance** | 152-ФЗ / РКН, согласия, legal docs | `legal_copy.py`, cookie consent, privacy/terms |
+| **Mobile** | PWA, Capacitor Android / RuStore, `/apps/` | `mobile/`, `apps_copy.py`, PWA manifest; see `PROMPTS/MOBILE_APP.md` |
+| **Product Designer** | UX spec before Visual/Mobile UI | mocks, DoD; rule `product-designer.mdc` |
+
+## Long-lived tracks (GitHub)
+
+| Branch | Focus |
+|--------|--------|
+| `track/site` | Website, landing, PWA, `/apps/` |
+| `track/telegram` | Bot + Telegram Mini App |
+| `track/android` | Capacitor shell, RuStore packaging |
+| `main` | Production (push deploys) |
+
+Mobile checklist: `PROMPTS/MOBILE_APP.md`.
 
 ## Token economy (mandatory)
 
@@ -63,6 +76,7 @@ Copy `.cursor/mcp.json.example` → `.cursor/mcp.json` and fill credentials loca
 - Stateful workflows: [LangGraph](https://github.com/langchain-ai/langgraph)
 - Autonomous PRs (optional): [OpenHands](https://github.com/OpenHands/OpenHands), [Aider](https://github.com/Aider-AI/aider)
 - E2E mobile: [Playwright](https://github.com/microsoft/playwright)
+- Capacitor (Android shell): [ionic-team/capacitor](https://github.com/ionic-team/capacitor)
 
 ## Out of scope for agents unless user asks
 

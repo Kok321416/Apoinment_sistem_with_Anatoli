@@ -1,0 +1,25 @@
+{
+  "name": "Все клиенты здесь",
+  "short_name": "Клиенты",
+  "description": "Онлайн-запись для специалистов и клиентов",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0B0D12",
+  "theme_color": "#0B0D12",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/static/svg/brand/service-icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/svg/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
