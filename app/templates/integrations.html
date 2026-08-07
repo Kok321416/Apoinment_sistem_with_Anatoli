@@ -3,18 +3,18 @@
 {% from "components/verification_code_input.html" import verification_code_input, verification_code_scripts %}
 
 {% block meta_tags %}
-{% set page_title = "Интеграции — " ~ site_brand_name %}
-{% set meta_description = "Подключение уведомлений и интеграций — " ~ site_brand_name %}
+{% set page_title = "РРЅС‚РµРіСЂР°С†РёРё вЂ” " ~ site_brand_name %}
+{% set meta_description = "РџРѕРґРєР»СЋС‡РµРЅРёРµ СѓРІРµРґРѕРјР»РµРЅРёР№ Рё РёРЅС‚РµРіСЂР°С†РёР№ вЂ” " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=40">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=12">
+<link rel="stylesheet" href="/static/css/app.css?v=39">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=11">
 {% endblock %}
 
 {% block app_content %}
-{{ app_page_head("Интеграции") }}
+{{ app_page_head("РРЅС‚РµРіСЂР°С†РёРё") }}
 
 {% if error %}
 <div class="alert alert--error" role="alert">{{ error }}</div>
@@ -31,34 +31,34 @@
         </div>
         <div class="integration-tile__body">
             <div class="integration-tile__head">
-                <h2 class="integration-tile__title">Вход по почте</h2>
+                <h2 class="integration-tile__title">Р’С…РѕРґ РїРѕ РїРѕС‡С‚Рµ</h2>
                 {% if email_verified %}
-                <span class="badge badge--success">Подтверждена</span>
+                <span class="badge badge--success">РџРѕРґС‚РІРµСЂР¶РґРµРЅР°</span>
                 {% else %}
-                <span class="badge badge--warning">Нужно подтверждение</span>
+                <span class="badge badge--warning">РќСѓР¶РЅРѕ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ</span>
                 {% endif %}
             </div>
             {% if email_verified %}
-            <p class="integration-tile__meta">Почта: <strong>{{ email_address }}</strong></p>
-            <p class="integration-tile__text">Спасибо, что привязали почту. Теперь можно входить через почту и пароль.</p>
+            <p class="integration-tile__meta">РџРѕС‡С‚Р°: <strong>{{ email_address }}</strong></p>
+            <p class="integration-tile__text">РЎРїР°СЃРёР±Рѕ, С‡С‚Рѕ РїСЂРёРІСЏР·Р°Р»Рё РїРѕС‡С‚Сѓ. РўРµРїРµСЂСЊ РјРѕР¶РЅРѕ РІС…РѕРґРёС‚СЊ С‡РµСЂРµР· РїРѕС‡С‚Сѓ Рё РїР°СЂРѕР»СЊ.</p>
             <div class="integration-tile__actions">
-                <form method="POST" action="/integrations/" onsubmit="return confirm('Отвязать почту?');">
+                <form method="POST" action="/integrations/" onsubmit="return confirm('РћС‚РІСЏР·Р°С‚СЊ РїРѕС‡С‚Сѓ?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="disconnect_email_login">
-                    <button type="submit" class="btn btn--ghost">Отвязать</button>
+                    <button type="submit" class="btn btn--ghost">РћС‚РІСЏР·Р°С‚СЊ</button>
                 </form>
             </div>
             {% else %}
-            <p class="integration-tile__text">Подтвердите почту 6-значным кодом из письма, чтобы входить в кабинет по почте и паролю.</p>
+            <p class="integration-tile__text">РџРѕРґС‚РІРµСЂРґРёС‚Рµ РїРѕС‡С‚Сѓ 6-Р·РЅР°С‡РЅС‹Рј РєРѕРґРѕРј РёР· РїРёСЃСЊРјР°, С‡С‚РѕР±С‹ РІС…РѕРґРёС‚СЊ РІ РєР°Р±РёРЅРµС‚ РїРѕ РїРѕС‡С‚Рµ Рё РїР°СЂРѕР»СЋ.</p>
             <form method="POST" action="/integrations/" class="integration-tile__form stack">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="send_email_code">
                 <div class="form-field">
-                    <label class="form-field__label" for="email_login">Почта</label>
+                    <label class="form-field__label" for="email_login">РџРѕС‡С‚Р°</label>
                     <input class="input" type="email" id="email_login" name="email" value="{{ email_pending or email_address }}" required autocomplete="email">
                 </div>
                 <div class="integration-tile__actions">
-                    <button type="submit" class="btn btn--primary">Привязать</button>
+                    <button type="submit" class="btn btn--primary">РџСЂРёРІСЏР·Р°С‚СЊ</button>
                 </div>
             </form>
             {% if email_pending %}
@@ -66,10 +66,10 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="confirm_email_code">
                 <input type="hidden" name="email" value="{{ email_pending }}">
-                <p class="form-field__hint mb-lg">Код отправлен на <strong>{{ email_pending }}</strong></p>
-                {{ verification_code_input("email_code", hint="Можно вставить код из буфера обмена.") }}
+                <p class="form-field__hint mb-lg">РљРѕРґ РѕС‚РїСЂР°РІР»РµРЅ РЅР° <strong>{{ email_pending }}</strong></p>
+                {{ verification_code_input("email_code", hint="РњРѕР¶РЅРѕ РІСЃС‚Р°РІРёС‚СЊ РєРѕРґ РёР· Р±СѓС„РµСЂР° РѕР±РјРµРЅР°.") }}
                 <div class="integration-tile__actions">
-                    <button type="submit" class="btn btn--secondary">Подтвердить</button>
+                    <button type="submit" class="btn btn--secondary">РџРѕРґС‚РІРµСЂРґРёС‚СЊ</button>
                 </div>
             </form>
             {% endif %}
@@ -83,23 +83,23 @@
         </div>
         <div class="integration-tile__body">
             <div class="integration-tile__head">
-                <h2 class="integration-tile__title">Телеграм для входа</h2>
+                <h2 class="integration-tile__title">РўРµР»РµРіСЂР°Рј РґР»СЏ РІС…РѕРґР°</h2>
                 {% if telegram_login_connected %}
-                <span class="badge badge--success">Привязан</span>
+                <span class="badge badge--success">РџСЂРёРІСЏР·Р°РЅ</span>
                 {% else %}
-                <span class="badge badge--ghost">Не привязан</span>
+                <span class="badge badge--ghost">РќРµ РїСЂРёРІСЏР·Р°РЅ</span>
                 {% endif %}
             </div>
-            <p class="integration-tile__text">Вход в кабинет через бота Телеграм. Можно отвязать и привязать другой аккаунт.</p>
+            <p class="integration-tile__text">Р’С…РѕРґ РІ РєР°Р±РёРЅРµС‚ С‡РµСЂРµР· Р±РѕС‚Р° РўРµР»РµРіСЂР°Рј. РњРѕР¶РЅРѕ РѕС‚РІСЏР·Р°С‚СЊ Рё РїСЂРёРІСЏР·Р°С‚СЊ РґСЂСѓРіРѕР№ Р°РєРєР°СѓРЅС‚.</p>
             <div class="integration-tile__actions">
                 {% if telegram_login_connected %}
-                <form method="POST" action="/integrations/" onsubmit="return confirm('Отвязать Телеграм для входа?');">
+                <form method="POST" action="/integrations/" onsubmit="return confirm('РћС‚РІСЏР·Р°С‚СЊ РўРµР»РµРіСЂР°Рј РґР»СЏ РІС…РѕРґР°?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="disconnect_telegram_login">
-                    <button type="submit" class="btn btn--ghost">Отвязать</button>
+                    <button type="submit" class="btn btn--ghost">РћС‚РІСЏР·Р°С‚СЊ</button>
                 </form>
                 {% else %}
-                <a href="/accounts/telegram/login/?process=connect&next=/integrations/" class="btn btn--primary">Привязать</a>
+                <a href="/accounts/telegram/login/?process=connect&next=/integrations/" class="btn btn--primary">РџСЂРёРІСЏР·Р°С‚СЊ</a>
                 {% endif %}
             </div>
         </div>
@@ -111,25 +111,25 @@
         </div>
         <div class="integration-tile__body">
             <div class="integration-tile__head">
-                <h2 class="integration-tile__title">Яндекс для входа</h2>
+                <h2 class="integration-tile__title">РЇРЅРґРµРєСЃ РґР»СЏ РІС…РѕРґР°</h2>
                 {% if yandex_login_connected %}
-                <span class="badge badge--success">Привязан</span>
+                <span class="badge badge--success">РџСЂРёРІСЏР·Р°РЅ</span>
                 {% else %}
-                <span class="badge badge--ghost">Не привязан</span>
+                <span class="badge badge--ghost">РќРµ РїСЂРёРІСЏР·Р°РЅ</span>
                 {% endif %}
             </div>
-            <p class="integration-tile__text">Вход в кабинет через Яндекс ID. Можно отвязать и привязать другой аккаунт.</p>
+            <p class="integration-tile__text">Р’С…РѕРґ РІ РєР°Р±РёРЅРµС‚ С‡РµСЂРµР· РЇРЅРґРµРєСЃ ID. РњРѕР¶РЅРѕ РѕС‚РІСЏР·Р°С‚СЊ Рё РїСЂРёРІСЏР·Р°С‚СЊ РґСЂСѓРіРѕР№ Р°РєРєР°СѓРЅС‚.</p>
             <div class="integration-tile__actions">
                 {% if yandex_login_connected %}
-                <form method="POST" action="/integrations/" onsubmit="return confirm('Отвязать Яндекс для входа?');">
+                <form method="POST" action="/integrations/" onsubmit="return confirm('РћС‚РІСЏР·Р°С‚СЊ РЇРЅРґРµРєСЃ РґР»СЏ РІС…РѕРґР°?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="disconnect_yandex_login">
-                    <button type="submit" class="btn btn--ghost">Отвязать</button>
+                    <button type="submit" class="btn btn--ghost">РћС‚РІСЏР·Р°С‚СЊ</button>
                 </form>
                 {% elif yandex_oauth_enabled %}
-                <a href="/accounts/yandex/login/?process=connect&next=/integrations/" class="btn btn--primary">Привязать</a>
+                <a href="/accounts/yandex/login/?process=connect&next=/integrations/" class="btn btn--primary">РџСЂРёРІСЏР·Р°С‚СЊ</a>
                 {% else %}
-                <span class="text-body-sm text-muted">Не настроено на сервере</span>
+                <span class="text-body-sm text-muted">РќРµ РЅР°СЃС‚СЂРѕРµРЅРѕ РЅР° СЃРµСЂРІРµСЂРµ</span>
                 {% endif %}
             </div>
         </div>
@@ -141,25 +141,25 @@
         </div>
         <div class="integration-tile__body">
             <div class="integration-tile__head">
-                <h2 class="integration-tile__title">VK для входа</h2>
+                <h2 class="integration-tile__title">VK РґР»СЏ РІС…РѕРґР°</h2>
                 {% if vk_login_connected %}
-                <span class="badge badge--success">Привязан</span>
+                <span class="badge badge--success">РџСЂРёРІСЏР·Р°РЅ</span>
                 {% else %}
-                <span class="badge badge--ghost">Не привязан</span>
+                <span class="badge badge--ghost">РќРµ РїСЂРёРІСЏР·Р°РЅ</span>
                 {% endif %}
             </div>
-            <p class="integration-tile__text">Вход в кабинет через VK ID. Для сообщений о записи клиенту нужно сообщество VK на сервере.</p>
+            <p class="integration-tile__text">Р’С…РѕРґ РІ РєР°Р±РёРЅРµС‚ С‡РµСЂРµР· VK ID. Р”Р»СЏ СЃРѕРѕР±С‰РµРЅРёР№ Рѕ Р·Р°РїРёСЃРё РєР»РёРµРЅС‚Сѓ РЅСѓР¶РЅРѕ СЃРѕРѕР±С‰РµСЃС‚РІРѕ VK РЅР° СЃРµСЂРІРµСЂРµ.</p>
             <div class="integration-tile__actions">
                 {% if vk_login_connected %}
-                <form method="POST" action="/integrations/" onsubmit="return confirm('Отвязать VK для входа?');">
+                <form method="POST" action="/integrations/" onsubmit="return confirm('РћС‚РІСЏР·Р°С‚СЊ VK РґР»СЏ РІС…РѕРґР°?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="disconnect_vk_login">
-                    <button type="submit" class="btn btn--ghost">Отвязать</button>
+                    <button type="submit" class="btn btn--ghost">РћС‚РІСЏР·Р°С‚СЊ</button>
                 </form>
                 {% elif vk_oauth_enabled %}
-                <a href="/accounts/vk/login/?process=connect&next=/integrations/" class="btn btn--primary">Привязать</a>
+                <a href="/accounts/vk/login/?process=connect&next=/integrations/" class="btn btn--primary">РџСЂРёРІСЏР·Р°С‚СЊ</a>
                 {% else %}
-                <span class="text-body-sm text-muted">Не настроено на сервере</span>
+                <span class="text-body-sm text-muted">РќРµ РЅР°СЃС‚СЂРѕРµРЅРѕ РЅР° СЃРµСЂРІРµСЂРµ</span>
                 {% endif %}
             </div>
         </div>
@@ -167,49 +167,49 @@
 
     <article class="integration-tile{% if integration.telegram_connected %} is-connected{% endif %}">
         <div class="integration-tile__icon-wrap">
-            <img class="integration-tile__icon" src="/static/svg/icons/telegram.svg?v=6" alt="">
+            <img class="integration-tile__icon" src="/static/svg/icons/ui/telegram.svg?v=5" alt="">
         </div>
         <div class="integration-tile__body">
             <div class="integration-tile__head">
-                <h2 class="integration-tile__title">Уведомления в Телеграм</h2>
+                <h2 class="integration-tile__title">РЈРІРµРґРѕРјР»РµРЅРёСЏ РІ РўРµР»РµРіСЂР°Рј</h2>
                 {% if integration.telegram_connected %}
-                <span class="badge badge--success">Подключено</span>
+                <span class="badge badge--success">РџРѕРґРєР»СЋС‡РµРЅРѕ</span>
                 {% elif integration.telegram_enabled %}
-                <span class="badge badge--warning">Включено</span>
+                <span class="badge badge--warning">Р’РєР»СЋС‡РµРЅРѕ</span>
                 {% else %}
-                <span class="badge badge--ghost">Отключено</span>
+                <span class="badge badge--ghost">РћС‚РєР»СЋС‡РµРЅРѕ</span>
                 {% endif %}
             </div>
-            <p class="integration-tile__text">Уведомления о новых записях и напоминания о консультациях в Телеграм. Вход через Телеграм на сайт - отдельно: он не включает эти уведомления автоматически.</p>
+            <p class="integration-tile__text">РЈРІРµРґРѕРјР»РµРЅРёСЏ Рѕ РЅРѕРІС‹С… Р·Р°РїРёСЃСЏС… Рё РЅР°РїРѕРјРёРЅР°РЅРёСЏ Рѕ РєРѕРЅСЃСѓР»СЊС‚Р°С†РёСЏС… РІ РўРµР»РµРіСЂР°Рј. Р’С…РѕРґ С‡РµСЂРµР· РўРµР»РµРіСЂР°Рј РЅР° СЃР°Р№С‚ - РѕС‚РґРµР»СЊРЅРѕ: РѕРЅ РЅРµ РІРєР»СЋС‡Р°РµС‚ СЌС‚Рё СѓРІРµРґРѕРјР»РµРЅРёСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё.</p>
             {% if integration.telegram_connected %}
             {% if integration.telegram_chat_id %}
-            <p class="integration-tile__meta">Чат: {{ integration.telegram_chat_id }}</p>
+            <p class="integration-tile__meta">Р§Р°С‚: {{ integration.telegram_chat_id }}</p>
             {% endif %}
             <div class="integration-tile__actions">
                 <form method="POST" action="/integrations/">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="disconnect_telegram">
-                    <button type="submit" class="btn btn--ghost">Отвязать</button>
+                    <button type="submit" class="btn btn--ghost">РћС‚РІСЏР·Р°С‚СЊ</button>
                 </form>
             </div>
             {% elif integration.telegram_enabled %}
             <div class="integration-tile__actions">
-                <a href="/integrations/telegram/connect-app/" class="btn btn--primary">Привязать</a>
+                <a href="/integrations/telegram/connect-app/" class="btn btn--primary">РџСЂРёРІСЏР·Р°С‚СЊ</a>
             </div>
             <details class="integration-tile__details">
-                <summary>Подключить вручную (токен и chat id)</summary>
+                <summary>РџРѕРґРєР»СЋС‡РёС‚СЊ РІСЂСѓС‡РЅСѓСЋ (С‚РѕРєРµРЅ Рё chat id)</summary>
                 <form method="POST" action="/integrations/" class="stack mt-lg">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="connect_telegram">
                     <div class="form-field">
-                        <label class="form-field__label" for="bot_token">Токен бота</label>
+                        <label class="form-field__label" for="bot_token">РўРѕРєРµРЅ Р±РѕС‚Р°</label>
                         <input class="input" type="text" id="bot_token" name="bot_token" placeholder="123456:ABC-DEF..." autocomplete="off">
                     </div>
                     <div class="form-field">
-                        <label class="form-field__label" for="chat_id">Идентификатор чата</label>
+                        <label class="form-field__label" for="chat_id">РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ С‡Р°С‚Р°</label>
                         <input class="input" type="text" id="chat_id" name="chat_id" placeholder="123456789" required autocomplete="off">
                     </div>
-                    <button type="submit" class="btn btn--secondary btn--sm">Подключить</button>
+                    <button type="submit" class="btn btn--secondary btn--sm">РџРѕРґРєР»СЋС‡РёС‚СЊ</button>
                 </form>
             </details>
             {% else %}
@@ -217,7 +217,7 @@
                 <form method="POST" action="/integrations/">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="toggle_telegram">
-                    <button type="submit" class="btn btn--primary">Включить</button>
+                    <button type="submit" class="btn btn--primary">Р’РєР»СЋС‡РёС‚СЊ</button>
                 </form>
             </div>
             {% endif %}

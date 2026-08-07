@@ -1,8 +1,8 @@
 {% extends "layouts/app.html" %}
 
 {% block meta_tags %}
-{% set page_title = "База клиентов — " ~ site_brand_name %}
-{% set meta_description = "CRM специалиста — база клиентов — " ~ site_brand_name %}
+{% set page_title = "Р‘Р°Р·Р° РєР»РёРµРЅС‚РѕРІ вЂ” " ~ site_brand_name %}
+{% set meta_description = "CRM СЃРїРµС†РёР°Р»РёСЃС‚Р° вЂ” Р±Р°Р·Р° РєР»РёРµРЅС‚РѕРІ вЂ” " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
@@ -22,35 +22,35 @@
             <div class="clients-hero__main">
                 <span class="hub-hero__glyph" data-icon="clients" aria-hidden="true"></span>
                 <div>
-                    <h1 class="clients-hero__title">Клиенты</h1>
-                    <p class="clients-hero__stat"><strong id="hero-total">{{ crm_dashboard.total }}</strong> в базе</p>
-                    <p class="clients-hero__meta" id="hero-updated">Последнее изменение: —</p>
+                    <h1 class="clients-hero__title">РљР»РёРµРЅС‚С‹</h1>
+                    <p class="clients-hero__stat"><strong id="hero-total">{{ crm_dashboard.total }}</strong> РІ Р±Р°Р·Рµ</p>
+                    <p class="clients-hero__meta" id="hero-updated">РџРѕСЃР»РµРґРЅРµРµ РёР·РјРµРЅРµРЅРёРµ: вЂ”</p>
                 </div>
             </div>
             <div class="clients-hero__actions">
-                <button type="button" class="btn btn--primary btn--sm" id="btn-add-client">Добавить клиента</button>
-                <button type="button" class="btn btn--secondary btn--sm" id="btn-export-clients">Экспорт</button>
-                <button type="button" class="btn btn--ghost btn--sm" id="btn-import-clients" title="Скоро">Импорт</button>
+                <button type="button" class="btn btn--primary btn--sm" id="btn-add-client">Р”РѕР±Р°РІРёС‚СЊ РєР»РёРµРЅС‚Р°</button>
+                <button type="button" class="btn btn--secondary btn--sm" id="btn-export-clients">Р­РєСЃРїРѕСЂС‚</button>
+                <button type="button" class="btn btn--ghost btn--sm" id="btn-import-clients" title="РЎРєРѕСЂРѕ">РРјРїРѕСЂС‚</button>
             </div>
         </div>
     </section>
 
-    <section class="clients-dashboard" id="clients-dashboard" aria-label="Статистика CRM">
+    <section class="clients-dashboard" id="clients-dashboard" aria-label="РЎС‚Р°С‚РёСЃС‚РёРєР° CRM">
         <div class="clients-dash-card clients-dash-card--accent">
             <span class="clients-dash-card__value" data-dash="total">{{ crm_dashboard.total }}</span>
-            <span class="clients-dash-card__label">Всего клиентов</span>
+            <span class="clients-dash-card__label">Р’СЃРµРіРѕ РєР»РёРµРЅС‚РѕРІ</span>
         </div>
         <div class="clients-dash-card clients-dash-card--success">
             <span class="clients-dash-card__value" data-dash="new_count">{{ crm_dashboard.new_count }}</span>
-            <span class="clients-dash-card__label">Новых</span>
+            <span class="clients-dash-card__label">РќРѕРІС‹С…</span>
         </div>
         <div class="clients-dash-card clients-dash-card--info">
             <span class="clients-dash-card__value" data-dash="today_bookings">{{ crm_dashboard.today_bookings }}</span>
-            <span class="clients-dash-card__label">Записей сегодня</span>
+            <span class="clients-dash-card__label">Р—Р°РїРёСЃРµР№ СЃРµРіРѕРґРЅСЏ</span>
         </div>
         <div class="clients-dash-card clients-dash-card--warning">
             <span class="clients-dash-card__value" data-dash="upcoming">{{ crm_dashboard.upcoming }}</span>
-            <span class="clients-dash-card__label">Предстоящих встреч</span>
+            <span class="clients-dash-card__label">РџСЂРµРґСЃС‚РѕСЏС‰РёС… РІСЃС‚СЂРµС‡</span>
         </div>
     </section>
 
@@ -63,19 +63,19 @@
 
     <section class="clients-create card" id="clients-create" hidden>
         <div class="clients-create__head">
-            <h2 class="clients-create__title">? Новый клиент</h2>
-            <button type="button" class="btn btn--ghost btn--sm" id="btn-close-create" aria-label="Закрыть">?</button>
+            <h2 class="clients-create__title">вћ• РќРѕРІС‹Р№ РєР»РёРµРЅС‚</h2>
+            <button type="button" class="btn btn--ghost btn--sm" id="btn-close-create" aria-label="Р—Р°РєСЂС‹С‚СЊ">вњ•</button>
         </div>
         <form method="POST" action="/clients/" class="clients-create__form" id="clients-create-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="create">
             <div class="app-form-grid">
                 <div class="form-field">
-                    <label class="form-field__label" for="name">Имя</label>
-                    <input class="input" type="text" id="name" name="name" placeholder="Имя клиента">
+                    <label class="form-field__label" for="name">РРјСЏ</label>
+                    <input class="input" type="text" id="name" name="name" placeholder="РРјСЏ РєР»РёРµРЅС‚Р°">
                 </div>
                 <div class="form-field">
-                    <label class="form-field__label" for="phone">Телефон</label>
+                    <label class="form-field__label" for="phone">РўРµР»РµС„РѕРЅ</label>
                     <input class="input" type="tel" id="phone" name="phone" placeholder="+7...">
                 </div>
                 <div class="form-field">
@@ -84,14 +84,14 @@
                 </div>
                 <div class="form-field">
                     <label class="form-field__label" for="telegram">Telegram</label>
-                    <input class="input" type="text" id="telegram" name="telegram" placeholder="@ник">
+                    <input class="input" type="text" id="telegram" name="telegram" placeholder="@РЅРёРє">
                 </div>
             </div>
             <div class="form-field">
-                <label class="form-field__label" for="notes">Заметки</label>
-                <textarea class="textarea" name="notes" id="notes" rows="2" placeholder="Примечания о клиенте"></textarea>
+                <label class="form-field__label" for="notes">Р—Р°РјРµС‚РєРё</label>
+                <textarea class="textarea" name="notes" id="notes" rows="2" placeholder="РџСЂРёРјРµС‡Р°РЅРёСЏ Рѕ РєР»РёРµРЅС‚Рµ"></textarea>
             </div>
-            <button type="submit" class="btn btn--primary">Создать</button>
+            <button type="submit" class="btn btn--primary">РЎРѕР·РґР°С‚СЊ</button>
         </form>
     </section>
 
@@ -99,22 +99,22 @@
         <div class="clients-main">
             <section class="clients-toolbar card" id="clients-toolbar">
                 <div class="clients-toolbar__search">
-                    <span class="clients-toolbar__search-icon" aria-hidden="true">??</span>
-                    <input class="input" type="search" id="clients-search" placeholder="Поиск клиента..." autocomplete="off">
+                    <span class="clients-toolbar__search-icon" aria-hidden="true">рџ”Ќ</span>
+                    <input class="input" type="search" id="clients-search" placeholder="РџРѕРёСЃРє РєР»РёРµРЅС‚Р°..." autocomplete="off">
                 </div>
                 <div class="clients-toolbar__filters">
-                    <select class="select" id="clients-filter" aria-label="Фильтр">
-                        <option value="all">Все</option>
-                        <option value="new">Новые</option>
-                        <option value="active">Активные</option>
+                    <select class="select" id="clients-filter" aria-label="Р¤РёР»СЊС‚СЂ">
+                        <option value="all">Р’СЃРµ</option>
+                        <option value="new">РќРѕРІС‹Рµ</option>
+                        <option value="active">РђРєС‚РёРІРЅС‹Рµ</option>
                         <option value="vip">VIP</option>
-                        <option value="archive">Архив</option>
+                        <option value="archive">РђСЂС…РёРІ</option>
                     </select>
-                    <select class="select" id="clients-sort" aria-label="Сортировка">
-                        <option value="recent">Последние</option>
-                        <option value="name">По имени</option>
-                        <option value="created">По дате создания</option>
-                        <option value="last_visit">По последнему посещению</option>
+                    <select class="select" id="clients-sort" aria-label="РЎРѕСЂС‚РёСЂРѕРІРєР°">
+                        <option value="recent">РџРѕСЃР»РµРґРЅРёРµ</option>
+                        <option value="name">РџРѕ РёРјРµРЅРё</option>
+                        <option value="created">РџРѕ РґР°С‚Рµ СЃРѕР·РґР°РЅРёСЏ</option>
+                        <option value="last_visit">РџРѕ РїРѕСЃР»РµРґРЅРµРјСѓ РїРѕСЃРµС‰РµРЅРёСЋ</option>
                     </select>
                 </div>
             </section>
@@ -134,16 +134,16 @@
                              data-search="{{ (client.name ~ ' ' ~ client.phone ~ ' ' ~ client.email ~ ' ' ~ client.telegram)|lower }}"
                              style="--avatar-color: {{ client.avatar_color }}">
                         <div class="client-card__hover-actions">
-                            <a href="{{ client.detail_url }}" class="client-card__action" title="Редактировать">?</a>
-                            <a href="/booking/" class="client-card__action" title="Записать">??</a>
+                            <a href="{{ client.detail_url }}" class="client-card__action" title="Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ">вњЏ</a>
+                            <a href="/booking/" class="client-card__action" title="Р—Р°РїРёСЃР°С‚СЊ">рџ“…</a>
                             {% if client.phone or client.telegram or client.email %}
-                            <button type="button" class="client-card__action" data-action="message" title="Написать">??</button>
+                            <button type="button" class="client-card__action" data-action="message" title="РќР°РїРёСЃР°С‚СЊ">рџ’¬</button>
                             {% endif %}
-                            <form method="POST" action="/clients/" class="client-card__delete-form" onsubmit="return confirm('Удалить карточку клиента?');">
+                            <form method="POST" action="/clients/" class="client-card__delete-form" onsubmit="return confirm('РЈРґР°Р»РёС‚СЊ РєР°СЂС‚РѕС‡РєСѓ РєР»РёРµРЅС‚Р°?');">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="card_id" value="{{ client.id }}">
-                                <button type="submit" class="client-card__action client-card__action--danger" title="Удалить">??</button>
+                                <button type="submit" class="client-card__action client-card__action--danger" title="РЈРґР°Р»РёС‚СЊ">рџ—‘</button>
                             </form>
                         </div>
                         <div class="client-card__top">
@@ -161,11 +161,11 @@
                             </div>
                         </div>
                         <ul class="client-card__contacts">
-                            {% if client.phone %}<li><span class="client-card__contact-icon">??</span>{{ client.phone }}</li>{% endif %}
-                            {% if client.email %}<li><span class="client-card__contact-icon">?</span>{{ client.email }}</li>{% endif %}
-                            {% if client.telegram %}<li><span class="client-card__contact-icon">?</span>{{ client.telegram }}</li>{% endif %}
+                            {% if client.phone %}<li><span class="client-card__contact-icon">рџ“ћ</span>{{ client.phone }}</li>{% endif %}
+                            {% if client.email %}<li><span class="client-card__contact-icon">вњ‰</span>{{ client.email }}</li>{% endif %}
+                            {% if client.telegram %}<li><span class="client-card__contact-icon">вњ€</span>{{ client.telegram }}</li>{% endif %}
                             {% if not client.phone and not client.email and not client.telegram %}
-                            <li class="client-card__contacts-empty">Контакты не указаны</li>
+                            <li class="client-card__contacts-empty">РљРѕРЅС‚Р°РєС‚С‹ РЅРµ СѓРєР°Р·Р°РЅС‹</li>
                             {% endif %}
                         </ul>
                         <div class="client-card__completeness">
@@ -176,43 +176,43 @@
                         </div>
                         <div class="client-card__footer">
                             <div class="client-card__meta">
-                                <span class="client-card__meta-label">Последняя запись</span>
-                                <span class="client-card__meta-value" data-relative="{{ client.last_booking or '' }}">{% if client.last_booking %}—{% else %}Нет записей{% endif %}</span>
+                                <span class="client-card__meta-label">РџРѕСЃР»РµРґРЅСЏСЏ Р·Р°РїРёСЃСЊ</span>
+                                <span class="client-card__meta-value" data-relative="{{ client.last_booking or '' }}">{% if client.last_booking %}вЂ”{% else %}РќРµС‚ Р·Р°РїРёСЃРµР№{% endif %}</span>
                             </div>
                             <div class="client-card__meta">
-                                <span class="client-card__meta-label">Записей</span>
+                                <span class="client-card__meta-label">Р—Р°РїРёСЃРµР№</span>
                                 <span class="client-card__meta-value">{{ client.booking_count }}</span>
                             </div>
                         </div>
-                        <button type="button" class="client-card__more" data-open-drawer="{{ client.id }}">Подробнее ></button>
+                        <button type="button" class="client-card__more" data-open-drawer="{{ client.id }}">РџРѕРґСЂРѕР±РЅРµРµ в†’</button>
                     </article>
                     {% endfor %}
                 </div>
                 <div class="clients-filter-empty" id="clients-filter-empty" hidden>
-                    <p>По вашему запросу клиенты не найдены. Измените фильтр или поиск.</p>
+                    <p>РџРѕ РІР°С€РµРјСѓ Р·Р°РїСЂРѕСЃСѓ РєР»РёРµРЅС‚С‹ РЅРµ РЅР°Р№РґРµРЅС‹. РР·РјРµРЅРёС‚Рµ С„РёР»СЊС‚СЂ РёР»Рё РїРѕРёСЃРє.</p>
                 </div>
                 {% else %}
                 <div class="hub-empty clients-empty" id="clients-empty" role="status">
                     <span class="hub-empty__glyph" data-icon="clients" aria-hidden="true"></span>
-                    <h2 class="hub-empty__title">База клиентов пуста</h2>
-                    <p class="hub-empty__text">Добавьте карточку, чтобы вести историю и быстро записывать клиентов.</p>
-                    <button type="button" class="btn btn--primary hub-empty__cta" id="btn-empty-add">Добавить клиента</button>
+                    <h2 class="hub-empty__title">Р‘Р°Р·Р° РєР»РёРµРЅС‚РѕРІ РїСѓСЃС‚Р°</h2>
+                    <p class="hub-empty__text">Р”РѕР±Р°РІСЊС‚Рµ РєР°СЂС‚РѕС‡РєСѓ, С‡С‚РѕР±С‹ РІРµСЃС‚Рё РёСЃС‚РѕСЂРёСЋ Рё Р±С‹СЃС‚СЂРѕ Р·Р°РїРёСЃС‹РІР°С‚СЊ РєР»РёРµРЅС‚РѕРІ.</p>
+                    <button type="button" class="btn btn--primary hub-empty__cta" id="btn-empty-add">Р”РѕР±Р°РІРёС‚СЊ РєР»РёРµРЅС‚Р°</button>
                 </div>
                 {% endif %}
             </section>
         </div>
 
-        <aside class="clients-activity card" id="clients-activity" aria-label="Последние действия">
-            <h2 class="clients-activity__title">Последние действия</h2>
+        <aside class="clients-activity card" id="clients-activity" aria-label="РџРѕСЃР»РµРґРЅРёРµ РґРµР№СЃС‚РІРёСЏ">
+            <h2 class="clients-activity__title">РџРѕСЃР»РµРґРЅРёРµ РґРµР№СЃС‚РІРёСЏ</h2>
             <ul class="clients-activity__list" id="clients-activity-list">
                 {% for item in crm_activity %}
                 <li class="clients-activity__item">
                     <span class="clients-activity__name">{{ item.name }}</span>
                     <span class="clients-activity__action">{{ item.action }}</span>
-                    <time class="clients-activity__time" datetime="{{ item.at or '' }}" data-relative="{{ item.at or '' }}">—</time>
+                    <time class="clients-activity__time" datetime="{{ item.at or '' }}" data-relative="{{ item.at or '' }}">вЂ”</time>
                 </li>
                 {% else %}
-                <li class="clients-activity__empty">Действий пока нет</li>
+                <li class="clients-activity__empty">Р”РµР№СЃС‚РІРёР№ РїРѕРєР° РЅРµС‚</li>
                 {% endfor %}
             </ul>
         </aside>
@@ -223,12 +223,12 @@
     <div class="client-drawer__backdrop" id="client-drawer-backdrop"></div>
     <aside class="client-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="client-drawer-title">
         <header class="client-drawer__header">
-            <h2 class="client-drawer__title" id="client-drawer-title">Карточка клиента</h2>
-            <button type="button" class="btn btn--ghost btn--sm" id="client-drawer-close" aria-label="Закрыть">?</button>
+            <h2 class="client-drawer__title" id="client-drawer-title">РљР°СЂС‚РѕС‡РєР° РєР»РёРµРЅС‚Р°</h2>
+            <button type="button" class="btn btn--ghost btn--sm" id="client-drawer-close" aria-label="Р—Р°РєСЂС‹С‚СЊ">вњ•</button>
         </header>
         <div class="client-drawer__body" id="client-drawer-body"></div>
         <footer class="client-drawer__footer">
-            <a href="#" class="btn btn--primary btn--block" id="client-drawer-open-full">Открыть полностью</a>
+            <a href="#" class="btn btn--primary btn--block" id="client-drawer-open-full">РћС‚РєСЂС‹С‚СЊ РїРѕР»РЅРѕСЃС‚СЊСЋ</a>
         </footer>
     </aside>
 </div>

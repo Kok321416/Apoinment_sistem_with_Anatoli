@@ -1,13 +1,12 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     {% block meta_tags %}
     {% set meta_description = meta_description | default('') %}
     {% include "components/meta.html" %}
     {% endblock %}
-    {% block page_css %}
-    <link rel="stylesheet" href="/static/css/app.css?v=41">
-    {% endblock %}
+    <link rel="stylesheet" href="/static/css/app.css?v=42">
+    {% block page_css %}{% endblock %}
     {% block head_extra %}{% endblock %}
     {% if telegram_mini_app_launch_url %}<meta name="ayc-telegram-launch" content="{{ telegram_mini_app_launch_url }}">{% endif %}
 </head>
