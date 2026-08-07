@@ -6,7 +6,7 @@
     {% include "components/meta.html" %}
     {% endblock %}
     {% block page_css %}
-    <link rel="stylesheet" href="/static/css/app.css?v=39">
+    <link rel="stylesheet" href="/static/css/app.css?v=40">
     {% endblock %}
     {% block head_extra %}{% endblock %}
     {% if telegram_mini_app_launch_url %}<meta name="ayc-telegram-launch" content="{{ telegram_mini_app_launch_url }}">{% endif %}
@@ -40,9 +40,10 @@
 
             {% block app_footer %}
             <footer class="cabinet-workspace__footer" role="contentinfo">
-                <a href="/privacy/">Конфиденциальность</a>
-                <a href="/terms/">Условия</a>
-                <a href="/guide/">Гайд</a>
+                <a href="/">Главная</a>
+                <a href="/privacy/">Политика конфиденциальности</a>
+                <a href="/terms/">Пользовательское соглашение</a>
+                <a href="/support/">Контакты</a>
             </footer>
             {% endblock %}
         </div>

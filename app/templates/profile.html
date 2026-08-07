@@ -1,14 +1,14 @@
-п»ї{% extends "layouts/app.html" %}
+{% extends "layouts/app.html" %}
 
 {% block meta_tags %}
-{% set page_title = "РњРѕР№ РїСЂРѕС„РёР»СЊ вЂ” " ~ site_brand_name %}
-{% set meta_description = "РџСЂРѕС„РёР»СЊ СЃРїРµС†РёР°Р»РёСЃС‚Р° вЂ” " ~ site_brand_name %}
+{% set page_title = "Мой профиль — " ~ site_brand_name %}
+{% set meta_description = "Профиль специалиста — " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=38">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=11">
+<link rel="stylesheet" href="/static/css/app.css?v=40">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=12">
 <link rel="stylesheet" href="/static/css/profile-hub.css?v=8">
 {% endblock %}
 
@@ -26,81 +26,81 @@
                     {% else %}
                     <div class="profile-hero__avatar profile-hero__avatar--empty" id="heroAvatar" data-avatar-role="initials">{{ profile_initials }}</div>
                     {% endif %}
-                    <span class="profile-hero__status" title="РџСЂРѕС„РёР»СЊ Р°РєС‚РёРІРµРЅ"><span class="profile-hero__status-dot"></span> РћРЅР»Р°Р№РЅ</span>
+                    <span class="profile-hero__status" title="Профиль активен"><span class="profile-hero__status-dot"></span> Онлайн</span>
                 </div>
                 <div class="profile-hero__info">
                     <h1 class="profile-hero__name" id="heroName">{{ consultant.first_name }} {{ consultant.last_name }}</h1>
-                    <p class="profile-hero__role" id="heroSpecialization">{{ consultant.category.name_category if consultant.category else "РЎРїРµС†РёР°Р»РёСЃС‚" }}</p>
+                    <p class="profile-hero__role" id="heroSpecialization">{{ consultant.category.name_category if consultant.category else "Специалист" }}</p>
                     <div class="profile-hero__metrics">
-                        <span class="profile-hero__metric"><strong data-hero-stat="services">{{ profile_dashboard.services_total }}</strong> СѓСЃР»СѓРі</span>
-                        <span class="profile-hero__metric"><strong data-hero-stat="clients">{{ profile_dashboard.clients_total }}</strong> РєР»РёРµРЅС‚РѕРІ</span>
-                        <span class="profile-hero__metric"><strong data-hero-stat="completeness">{{ profile_completeness.percent }}</strong>% РїСЂРѕС„РёР»СЊ</span>
+                        <span class="profile-hero__metric"><strong data-hero-stat="services">{{ profile_dashboard.services_total }}</strong> услуг</span>
+                        <span class="profile-hero__metric"><strong data-hero-stat="clients">{{ profile_dashboard.clients_total }}</strong> клиентов</span>
+                        <span class="profile-hero__metric"><strong data-hero-stat="completeness">{{ profile_completeness.percent }}</strong>% профиль</span>
                     </div>
-                    <p class="profile-hero__meta" id="heroUpdated">РџРѕСЃР»РµРґРЅРµРµ РёР·РјРµРЅРµРЅРёРµ: С‚РѕР»СЊРєРѕ С‡С‚Рѕ</p>
+                    <p class="profile-hero__meta" id="heroUpdated">Последнее изменение: только что</p>
                 </div>
             </div>
             <div class="profile-hero__actions">
-                <button type="button" class="btn btn--secondary btn--sm" id="btn-preview-mode">РџСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ</button>
-                <button type="button" class="btn btn--primary btn--sm" id="btn-share-profile" data-link="{{ public_booking_url }}">РџРѕРґРµР»РёС‚СЊСЃСЏ</button>
+                <button type="button" class="btn btn--secondary btn--sm" id="btn-preview-mode">Предпросмотр</button>
+                <button type="button" class="btn btn--primary btn--sm" id="btn-share-profile" data-link="{{ public_booking_url }}">Поделиться</button>
             </div>
         </div>
     </section>
 
-    <section class="profile-dashboard" id="profile-dashboard" aria-label="РЎС‚Р°С‚РёСЃС‚РёРєР° РїСЂРѕС„РёР»СЏ">
+    <section class="profile-dashboard" id="profile-dashboard" aria-label="Статистика профиля">
         <div class="dashboard-card dashboard-card--accent">
             <span class="dashboard-card__value" data-dash="services_total">{{ profile_dashboard.services_total }}</span>
-            <span class="dashboard-card__label">РЈСЃР»СѓРі</span>
-            <span class="dashboard-card__sub" data-dash-sub="services_active">РђРєС‚РёРІРЅС‹С…: {{ profile_dashboard.services_active }}</span>
+            <span class="dashboard-card__label">Услуг</span>
+            <span class="dashboard-card__sub" data-dash-sub="services_active">Активных: {{ profile_dashboard.services_active }}</span>
         </div>
         <div class="dashboard-card dashboard-card--success">
             <span class="dashboard-card__value" data-dash="calendars_total">{{ profile_dashboard.calendars_total }}</span>
-            <span class="dashboard-card__label">РљР°Р»РµРЅРґР°СЂСЏ</span>
-            <span class="dashboard-card__sub" data-dash-sub="calendars_active">РђРєС‚РёРІРЅС‹С…: {{ profile_dashboard.calendars_active }}</span>
+            <span class="dashboard-card__label">Календаря</span>
+            <span class="dashboard-card__sub" data-dash-sub="calendars_active">Активных: {{ profile_dashboard.calendars_active }}</span>
         </div>
         <div class="dashboard-card dashboard-card--info">
             <span class="dashboard-card__value" data-dash="clients_total">{{ profile_dashboard.clients_total }}</span>
-            <span class="dashboard-card__label">РљР»РёРµРЅС‚РѕРІ</span>
+            <span class="dashboard-card__label">Клиентов</span>
         </div>
         <div class="dashboard-card dashboard-card--warning">
             <span class="dashboard-card__value" data-dash="completeness">{{ profile_completeness.percent }}%</span>
-            <span class="dashboard-card__label">РџСЂРѕС„РёР»СЊ Р·Р°РїРѕР»РЅРµРЅ</span>
+            <span class="dashboard-card__label">Профиль заполнен</span>
         </div>
     </section>
 
     <div class="profile-mode-bar">
         <div class="profile-save-status" id="save-status" aria-live="polite"></div>
-        <div class="profile-mode-toggle" role="group" aria-label="Р РµР¶РёРј СЃС‚СЂР°РЅРёС†С‹">
-            <button type="button" class="profile-mode-toggle__btn is-active" data-mode="edit">Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ</button>
-            <button type="button" class="profile-mode-toggle__btn" data-mode="preview">РџСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ</button>
+        <div class="profile-mode-toggle" role="group" aria-label="Режим страницы">
+            <button type="button" class="profile-mode-toggle__btn is-active" data-mode="edit">Редактирование</button>
+            <button type="button" class="profile-mode-toggle__btn" data-mode="preview">Предпросмотр</button>
         </div>
     </div>
 
     {% if show_telegram_welcome or request.query_params.get('telegram_connected') %}
-    <div class="alert alert--success" role="alert"><strong>РўРµР»РµРіСЂР°Рј СѓСЃРїРµС€РЅРѕ РїРѕРґРєР»СЋС‡С‘РЅ.</strong></div>
+    <div class="alert alert--success" role="alert"><strong>Телеграм успешно подключён.</strong></div>
     {% endif %}
     {% if error %}<div class="alert alert--error" role="alert">{{ error }}</div>{% endif %}
     {% if success %}<div class="alert alert--success" role="status">{{ success }}</div>{% endif %}
 
     <div class="profile-layout" id="profile-layout">
         <aside class="profile-sidebar-col">
-            <nav class="profile-sidebar card" id="profile-sidebar" aria-label="Р Р°Р·РґРµР»С‹ РїСЂРѕС„РёР»СЏ" role="tablist" data-profile-menu="1">
-                <button type="button" class="profile-sidebar__btn is-active" data-tab="basic"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> РћСЃРЅРѕРІРЅРѕРµ</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="photo"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span> Р¤РѕС‚Рѕ</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="about"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></span> Рћ СЃРµР±Рµ</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="video"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span> Р’РёРґРµРѕ</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="social"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> РЎРѕС†СЃРµС‚Рё</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="share"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> РЎСЃС‹Р»РєР°</button>
-                <button type="button" class="profile-sidebar__btn" data-tab="auth"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Р’С…РѕРґ</button>
+            <nav class="profile-sidebar card" id="profile-sidebar" aria-label="Разделы профиля" role="tablist" data-profile-menu="1">
+                <button type="button" class="profile-sidebar__btn is-active" data-tab="basic"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Основное</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="photo"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span> Фото</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="about"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></span> О себе</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="video"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span> Видео</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="social"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Соцсети</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="share"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> Ссылка</button>
+                <button type="button" class="profile-sidebar__btn" data-tab="auth"><span class="profile-sidebar__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Вход</button>
             </nav>
             <div class="progress-card card" id="progress-card">
-                <h3 class="progress-card__title">Р—Р°РїРѕР»РЅРµРЅРЅРѕСЃС‚СЊ РїСЂРѕС„РёР»СЏ</h3>
+                <h3 class="progress-card__title">Заполненность профиля</h3>
                 <div class="progress-card__percent"><span id="progress-percent">{{ profile_completeness.percent }}</span>%</div>
                 <div class="progress-card__bar"><div class="progress-card__fill" id="progress-fill" style="width: {{ profile_completeness.percent }}%"></div></div>
                 <p class="progress-card__message" id="progress-message">{{ profile_completeness.message }}</p>
                 <ul class="progress-card__list" id="progress-list">
                     {% for check in profile_completeness.checks %}
                     <li class="progress-card__item {% if check.done %}is-done{% elif check.partial %}is-partial{% else %}is-missing{% endif %}"{% if check.tab %} data-tab="{{ check.tab }}" role="button" tabindex="0"{% endif %}>
-                        <span class="progress-card__item-icon">{% if check.done %}вњ”{% elif check.partial %}в—ђ{% else %}в—‹{% endif %}</span>
+                        <span class="progress-card__item-icon">{% if check.done %}?{% elif check.partial %}?{% else %}0{% endif %}</span>
                         <span class="progress-card__item-text">{{ check.label }}</span>
                         <span class="progress-card__item-points">{{ check.points }}/{{ check.weight }}</span>
                     </li>
@@ -115,55 +115,55 @@
                 <input type="hidden" name="action" value="update_profile">
 
                 <section class="profile-panel card is-active" data-panel="basic">
-                    <h2 class="profile-panel__title">РћСЃРЅРѕРІРЅС‹Рµ РґР°РЅРЅС‹Рµ</h2>
+                    <h2 class="profile-panel__title">Основные данные</h2>
                     <div class="app-form-grid">
-                        <div class="form-field"><label class="form-field__label" for="first_name">РРјСЏ</label><input class="input profile-field" id="first_name" name="first_name" value="{{ consultant.first_name }}" required></div>
-                        <div class="form-field"><label class="form-field__label" for="last_name">Р¤Р°РјРёР»РёСЏ</label><input class="input profile-field" id="last_name" name="last_name" value="{{ consultant.last_name }}" required></div>
-                        <div class="form-field"><label class="form-field__label" for="middle_name">РћС‚С‡РµСЃС‚РІРѕ</label><input class="input profile-field" id="middle_name" name="middle_name" value="{{ consultant.middle_name }}"></div>
-                        <div class="form-field"><label class="form-field__label" for="email">РџРѕС‡С‚Р°</label><input class="input profile-field" id="email" type="email" name="email" value="{{ consultant.email }}" required></div>
-                        <div class="form-field"><label class="form-field__label" for="phone">РўРµР»РµС„РѕРЅ</label><input class="input profile-field" id="phone" type="tel" name="phone" value="{{ consultant.phone }}" required></div>
-                        <div class="form-field"><label class="form-field__label" for="telegram_nickname">РќРёРє РІ РўРµР»РµРіСЂР°Рј</label><input class="input profile-field" id="telegram_nickname" name="telegram_nickname" value="{{ consultant.telegram_nickname }}" placeholder="@РЅРёРє"></div>
+                        <div class="form-field"><label class="form-field__label" for="first_name">Имя</label><input class="input profile-field" id="first_name" name="first_name" value="{{ consultant.first_name }}" required></div>
+                        <div class="form-field"><label class="form-field__label" for="last_name">Фамилия</label><input class="input profile-field" id="last_name" name="last_name" value="{{ consultant.last_name }}" required></div>
+                        <div class="form-field"><label class="form-field__label" for="middle_name">Отчество</label><input class="input profile-field" id="middle_name" name="middle_name" value="{{ consultant.middle_name }}"></div>
+                        <div class="form-field"><label class="form-field__label" for="email">Почта</label><input class="input profile-field" id="email" type="email" name="email" value="{{ consultant.email }}" required></div>
+                        <div class="form-field"><label class="form-field__label" for="phone">Телефон</label><input class="input profile-field" id="phone" type="tel" name="phone" value="{{ consultant.phone }}" required></div>
+                        <div class="form-field"><label class="form-field__label" for="telegram_nickname">Ник в Телеграм</label><input class="input profile-field" id="telegram_nickname" name="telegram_nickname" value="{{ consultant.telegram_nickname }}" placeholder="@ник"></div>
                     </div>
                 </section>
 
                 <section class="profile-panel card" data-panel="photo" hidden>
-                    <h2 class="profile-panel__title">Р¤РѕС‚Рѕ РїСЂРѕС„РёР»СЏ</h2>
+                    <h2 class="profile-panel__title">Фото профиля</h2>
                     <div class="profile-photo-card">
                         {% if consultant.profile_photo %}
-                        <img src="{{ consultant.profile_photo|profile_photo_src }}" alt="Р¤РѕС‚Рѕ" class="profile-photo profile-photo--large" id="profilePhotoPreview">
+                        <img src="{{ consultant.profile_photo|profile_photo_src }}" alt="Фото" class="profile-photo profile-photo--large" id="profilePhotoPreview">
                         {% else %}
-                        <div class="profile-photo profile-photo--large profile-photo--empty" id="profilePhotoPreview">РќРµС‚ С„РѕС‚Рѕ</div>
+                        <div class="profile-photo profile-photo--large profile-photo--empty" id="profilePhotoPreview">Нет фото</div>
                         {% endif %}
                         <div class="profile-photo-drop" id="photoDropZone">
-                            <p>РџРµСЂРµС‚Р°С‰РёС‚Рµ РёР·РѕР±СЂР°Р¶РµРЅРёРµ СЃСЋРґР° РёР»Рё РІС‹Р±РµСЂРёС‚Рµ С„Р°Р№Р»</p>
+                            <p>Перетащите изображение сюда или выберите файл</p>
                             <input class="input" type="file" id="profilePhotoInput" name="profile_photo" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
                         </div>
-                        <p class="form-field__hint" id="avatarCropHint">JPG, PNG РёР»Рё WEBP. РџРѕСЃР»Рµ РІС‹Р±РѕСЂР° РѕС‚РєСЂРѕРµС‚СЃСЏ СЂРµРґР°РєС‚РѕСЂ РїРѕРґ РєСЂСѓРіР»РѕРµ С„РѕС‚Рѕ.</p>
+                        <p class="form-field__hint" id="avatarCropHint">JPG, PNG или WEBP. После выбора откроется редактор под круглое фото.</p>
                     </div>
                 </section>
 
                 <section class="profile-panel card" data-panel="about" hidden>
-                    <h2 class="profile-panel__title">Рћ СЃРµР±Рµ</h2>
+                    <h2 class="profile-panel__title">О себе</h2>
                     <div class="form-field">
-                        <label class="form-field__label" for="profile_description">РћРїРёСЃР°РЅРёРµ</label>
-                        <textarea class="textarea profile-field" id="profile_description" name="profile_description" rows="8" maxlength="2000" placeholder="Р Р°СЃСЃРєР°Р¶РёС‚Рµ Рѕ СЃРµР±Рµ Рё СѓСЃР»СѓРіР°С…">{{ consultant.profile_description or '' }}</textarea>
-                        <p class="form-field__hint"><span id="desc-count">0</span> / 2000 СЃРёРјРІРѕР»РѕРІ</p>
+                        <label class="form-field__label" for="profile_description">Описание</label>
+                        <textarea class="textarea profile-field" id="profile_description" name="profile_description" rows="8" maxlength="2000" placeholder="Расскажите о себе и услугах">{{ consultant.profile_description or '' }}</textarea>
+                        <p class="form-field__hint"><span id="desc-count">0</span> / 2000 символов</p>
                     </div>
                 </section>
 
                 <section class="profile-panel card" data-panel="video" hidden>
-                    <h2 class="profile-panel__title">Р’РёРґРµРѕ</h2>
+                    <h2 class="profile-panel__title">Видео</h2>
                     <div class="form-field">
-                        <label class="form-field__label" for="video_link">РЎСЃС‹Р»РєР° РЅР° РІРёРґРµРѕ</label>
-                        <input class="input profile-field" id="video_link" name="video_link" value="{{ consultant.video_link|blank_field }}" placeholder="YouTube, VK Р’РёРґРµРѕ РёР»Рё Rutube">
+                        <label class="form-field__label" for="video_link">Ссылка на видео</label>
+                        <input class="input profile-field" id="video_link" name="video_link" value="{{ consultant.video_link|blank_field }}" placeholder="YouTube, VK Видео или Rutube">
                     </div>
                     <div class="video-preview" id="video-preview" hidden></div>
                 </section>
 
                 <section class="profile-panel card" data-panel="social" hidden>
-                    <h2 class="profile-panel__title">РЎРѕС†РёР°Р»СЊРЅС‹Рµ СЃРµС‚Рё</h2>
-                    <p class="profile-panel__lead">Р”РѕР±Р°РІСЊС‚Рµ СЃСЃС‹Р»РєРё РЅР° РїСЂРѕС„РёР»Рё. РђРєС‚РёРІРЅС‹Рµ РёРєРѕРЅРєРё РІРµРґСѓС‚ РЅР° СѓРєР°Р·Р°РЅРЅС‹Рµ Р°РґСЂРµСЃР°, СЃРµСЂС‹Рµ РѕР·РЅР°С‡Р°СЋС‚, С‡С‚Рѕ РїРѕР»Рµ РµС‰С‘ РїСѓСЃС‚РѕРµ.</p>
-                    <div class="pp-social pp-social--editor" id="social-icons-bar" aria-label="РЎС‚Р°С‚СѓСЃ СЃРѕС†СЃРµС‚РµР№"></div>
+                    <h2 class="profile-panel__title">Социальные сети</h2>
+                    <p class="profile-panel__lead">Добавьте ссылки на профили. Активные иконки ведут на указанные адреса, серые означают, что поле ещё пустое.</p>
+                    <div class="pp-social pp-social--editor" id="social-icons-bar" aria-label="Статус соцсетей"></div>
                     <div class="social-cards-grid">
                         <div class="social-edit-card">
                             <span class="social-edit-card__label">Telegram</span>
@@ -182,7 +182,7 @@
                         </div>
                         <div class="social-edit-card">
                             <span class="social-edit-card__label">YouTube</span>
-                            <input class="input profile-field" id="social_youtube" name="social_youtube" value="{{ consultant.social_youtube|blank_field }}" placeholder="youtube.com/@РєР°РЅР°Р»" autocomplete="off">
+                            <input class="input profile-field" id="social_youtube" name="social_youtube" value="{{ consultant.social_youtube|blank_field }}" placeholder="youtube.com/@канал" autocomplete="off">
                             <span class="social-edit-card__status" data-social-status="social_youtube"></span>
                         </div>
                         <div class="social-edit-card">
@@ -191,136 +191,136 @@
                             <span class="social-edit-card__status" data-social-status="social_facebook"></span>
                         </div>
                         <div class="social-edit-card">
-                            <span class="social-edit-card__label">РЎР°Р№С‚</span>
-                            <input class="input profile-field" id="website" name="website" value="{{ consultant.website|blank_field }}" placeholder="https://РІР°С€-СЃР°Р№С‚.ru" autocomplete="off">
+                            <span class="social-edit-card__label">Сайт</span>
+                            <input class="input profile-field" id="website" name="website" value="{{ consultant.website|blank_field }}" placeholder="https://ваш-сайт.ru" autocomplete="off">
                             <span class="social-edit-card__status" data-social-status="website"></span>
                         </div>
                     </div>
                 </section>
 
                 <section class="profile-panel card" data-panel="share" hidden>
-                    <h2 class="profile-panel__title">РЎСЃС‹Р»РєР° РґР»СЏ РєР»РёРµРЅС‚РѕРІ</h2>
-                    <p class="text-body-sm text-muted">РљР»РёРµРЅС‚ СѓРІРёРґРёС‚ РІР°С€ РїСЂРѕС„РёР»СЊ, РєР°Р»РµРЅРґР°СЂРё Рё СѓСЃР»СѓРіРё.</p>
+                    <h2 class="profile-panel__title">Ссылка для клиентов</h2>
+                    <p class="text-body-sm text-muted">Клиент увидит ваш профиль, календари и услуги.</p>
                     {% if public_booking_url %}
                     <input class="input mt-lg" id="public-url-input" readonly value="{{ public_booking_url }}">
                     <div class="share-actions mt-lg">
-                        <button type="button" class="btn btn--secondary btn--sm" data-link="{{ public_booking_url }}" id="btn-copy-link">РЎРєРѕРїРёСЂРѕРІР°С‚СЊ</button>
-                        <button type="button" class="btn btn--ghost btn--sm" id="btn-toggle-qr">QR-РєРѕРґ</button>
-                        <a href="{{ public_booking_url }}" class="btn btn--ghost btn--sm" target="_blank" rel="noopener">РћС‚РєСЂС‹С‚СЊ</a>
+                        <button type="button" class="btn btn--secondary btn--sm" data-link="{{ public_booking_url }}" id="btn-copy-link">Скопировать</button>
+                        <button type="button" class="btn btn--ghost btn--sm" id="btn-toggle-qr">QR-код</button>
+                        <a href="{{ public_booking_url }}" class="btn btn--ghost btn--sm" target="_blank" rel="noopener">Открыть</a>
                     </div>
                     <div class="share-qr mt-lg" id="share-qr" hidden>
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&amp;data={{ public_booking_url|urlencode }}" alt="QR-РєРѕРґ РїСЂРѕС„РёР»СЏ" width="220" height="220" loading="lazy" decoding="async">
-                        <p class="form-field__hint">РћС‚СЃРєР°РЅРёСЂСѓР№С‚Рµ, С‡С‚РѕР±С‹ РѕС‚РєСЂС‹С‚СЊ РїСЂРѕС„РёР»СЊ РЅР° С‚РµР»РµС„РѕРЅРµ</p>
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&amp;data={{ public_booking_url|urlencode }}" alt="QR-код профиля" width="220" height="220" loading="lazy" decoding="async">
+                        <p class="form-field__hint">Отсканируйте, чтобы открыть профиль на телефоне</p>
                     </div>
                     {% else %}
-                    <p class="text-muted">РЎСЃС‹Р»РєР° РїРѕСЏРІРёС‚СЃСЏ РїРѕСЃР»Рµ СЃРѕС…СЂР°РЅРµРЅРёСЏ РїСЂРѕС„РёР»СЏ.</p>
+                    <p class="text-muted">Ссылка появится после сохранения профиля.</p>
                     {% endif %}
                 </section>
             </form>
 
             <section class="profile-panel card" data-panel="auth" hidden id="auth-panel">
-                <h2 class="profile-panel__title">РЎРїРѕСЃРѕР±С‹ РІС…РѕРґР°</h2>
-                <p class="text-body-sm text-muted mb-xl">РћСЃС‚Р°РІСЊС‚Рµ С…РѕС‚СЏ Р±С‹ РѕРґРёРЅ СЂР°Р±РѕС‡РёР№ СЃРїРѕСЃРѕР± РІС…РѕРґР°.</p>
+                <h2 class="profile-panel__title">Способы входа</h2>
+                <p class="text-body-sm text-muted mb-xl">Оставьте хотя бы один рабочий способ входа.</p>
                 <div class="auth-methods-grid">
                     <div class="auth-provider-card {% if 'telegram' in connected_providers %}is-connected{% endif %}">
-                        <div class="text-h3">РўРµР»РµРіСЂР°Рј</div>
+                        <div class="text-h3">Телеграм</div>
                         {% if 'telegram' in connected_providers %}
-                        <span class="badge badge--success mt-sm">РџРѕРґРєР»СЋС‡РµРЅ</span>
-                        <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('РћС‚РІСЏР·Р°С‚СЊ РўРµР»РµРіСЂР°Рј?');">
+                        <span class="badge badge--success mt-sm">Подключен</span>
+                        <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('Отвязать Телеграм?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="action" value="disconnect_telegram_login">
-                            <button type="submit" class="btn btn--ghost btn--sm">РћС‚РєР»СЋС‡РёС‚СЊ</button>
+                            <button type="submit" class="btn btn--ghost btn--sm">Отключить</button>
                         </form>
                         {% else %}
-                        <span class="badge badge--ghost mt-sm">РќРµ РїРѕРґРєР»СЋС‡РµРЅ</span>
-                        <a href="/accounts/telegram/login/?process=connect&next=/profile/" class="btn btn--primary btn--sm mt-lg">РџРѕРґРєР»СЋС‡РёС‚СЊ</a>
+                        <span class="badge badge--ghost mt-sm">Не подключен</span>
+                        <a href="/accounts/telegram/login/?process=connect&next=/profile/" class="btn btn--primary btn--sm mt-lg">Подключить</a>
                         {% endif %}
                     </div>
                     <div class="auth-provider-card {% if 'yandex' in connected_providers %}is-connected{% endif %}">
-                        <div class="text-h3">РЇРЅРґРµРєСЃ</div>
+                        <div class="text-h3">Яндекс</div>
                         {% if 'yandex' in connected_providers %}
-                        <span class="badge badge--success mt-sm">РџРѕРґРєР»СЋС‡РµРЅ</span>
-                        <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('РћС‚РІСЏР·Р°С‚СЊ РЇРЅРґРµРєСЃ?');">
+                        <span class="badge badge--success mt-sm">Подключен</span>
+                        <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('Отвязать Яндекс?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="action" value="disconnect_yandex_login">
-                            <button type="submit" class="btn btn--ghost btn--sm">РћС‚РєР»СЋС‡РёС‚СЊ</button>
+                            <button type="submit" class="btn btn--ghost btn--sm">Отключить</button>
                         </form>
                         {% elif yandex_oauth_enabled %}
-                        <span class="badge badge--ghost mt-sm">РќРµ РїРѕРґРєР»СЋС‡РµРЅ</span>
-                        <a href="/accounts/yandex/login/?process=connect&next=/profile/" class="btn btn--primary btn--sm mt-lg">РџРѕРґРєР»СЋС‡РёС‚СЊ</a>
+                        <span class="badge badge--ghost mt-sm">Не подключен</span>
+                        <a href="/accounts/yandex/login/?process=connect&next=/profile/" class="btn btn--primary btn--sm mt-lg">Подключить</a>
                         {% else %}
-                        <span class="badge badge--ghost mt-sm">РќРµ РЅР°СЃС‚СЂРѕРµРЅРѕ</span>
+                        <span class="badge badge--ghost mt-sm">Не настроено</span>
                         {% endif %}
                     </div>
                     <div class="auth-provider-card {% if 'vk' in connected_providers %}is-connected{% endif %}">
                         <div class="text-h3">VK</div>
                         {% if 'vk' in connected_providers %}
-                        <span class="badge badge--success mt-sm">РџРѕРґРєР»СЋС‡РµРЅ</span>
-                        <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('РћС‚РІСЏР·Р°С‚СЊ VK?');">
+                        <span class="badge badge--success mt-sm">Подключен</span>
+                        <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('Отвязать VK?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="action" value="disconnect_vk_login">
-                            <button type="submit" class="btn btn--ghost btn--sm">РћС‚РєР»СЋС‡РёС‚СЊ</button>
+                            <button type="submit" class="btn btn--ghost btn--sm">Отключить</button>
                         </form>
                         {% elif vk_oauth_enabled %}
-                        <span class="badge badge--ghost mt-sm">РќРµ РїРѕРґРєР»СЋС‡РµРЅ</span>
-                        <a href="/accounts/vk/login/?process=connect&next=/profile/" class="btn btn--primary btn--sm mt-lg">РџРѕРґРєР»СЋС‡РёС‚СЊ</a>
+                        <span class="badge badge--ghost mt-sm">Не подключен</span>
+                        <a href="/accounts/vk/login/?process=connect&next=/profile/" class="btn btn--primary btn--sm mt-lg">Подключить</a>
                         {% else %}
-                        <span class="badge badge--ghost mt-sm">РќРµ РЅР°СЃС‚СЂРѕРµРЅРѕ</span>
+                        <span class="badge badge--ghost mt-sm">Не настроено</span>
                         {% endif %}
                     </div>
                     <div class="auth-provider-card {% if primary_email_verified %}is-connected{% endif %}">
-                        <div class="text-h3">РџРѕС‡С‚Р°</div>
+                        <div class="text-h3">Почта</div>
                         {% if primary_email %}<p class="text-body-sm text-muted mt-sm">{{ primary_email }}</p>{% endif %}
                         {% if primary_email_verified %}
-                        <span class="badge badge--success mt-sm">РџРѕРґС‚РІРµСЂР¶РґРµРЅР°</span>
-                        <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('РћС‚РІСЏР·Р°С‚СЊ РїРѕС‡С‚Сѓ?');">
+                        <span class="badge badge--success mt-sm">Подтверждена</span>
+                        <form method="POST" action="/profile/" class="mt-lg" onsubmit="return confirm('Отвязать почту?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="action" value="disconnect_email_login">
-                            <button type="submit" class="btn btn--ghost btn--sm">РћС‚РєР»СЋС‡РёС‚СЊ</button>
+                            <button type="submit" class="btn btn--ghost btn--sm">Отключить</button>
                         </form>
                         {% else %}
-                        <span class="badge badge--warning mt-sm">РќРµ РїРѕРґС‚РІРµСЂР¶РґРµРЅР°</span>
-                        <a href="/integrations/" class="btn btn--primary btn--sm mt-lg">РџСЂРёРІСЏР·Р°С‚СЊ</a>
+                        <span class="badge badge--warning mt-sm">Не подтверждена</span>
+                        <a href="/integrations/" class="btn btn--primary btn--sm mt-lg">Привязать</a>
                         {% endif %}
                     </div>
                 </div>
                 {% if not has_usable_password %}
-                <p class="form-field__hint mt-xl"><a href="/accounts/password/set/" class="link-accent">Р—Р°РґР°С‚СЊ РїР°СЂРѕР»СЊ</a> РґР»СЏ РІС…РѕРґР° РїРѕ РїРѕС‡С‚Рµ.</p>
+                <p class="form-field__hint mt-xl"><a href="/accounts/password/set/" class="link-accent">Задать пароль</a> для входа по почте.</p>
                 {% endif %}
 
                 <div class="profile-2fa card mt-2xl" id="profile-2fa">
-                    <h3 class="text-h3">Р”РІСѓС…С„Р°РєС‚РѕСЂРЅР°СЏ Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ</h3>
-                    <p class="text-body-sm text-muted mt-sm">РћРїС†РёРѕРЅР°Р»СЊРЅРѕ. РљРѕРґ РёР· Google Authenticator, Authy РёР»Рё РґСЂСѓРіРѕРіРѕ TOTP-РїСЂРёР»РѕР¶РµРЅРёСЏ РїСЂРё РєР°Р¶РґРѕРј РІС…РѕРґРµ (РїРѕС‡С‚Р°, РЇРЅРґРµРєСЃ, VK, РўРµР»РµРіСЂР°Рј).</p>
+                    <h3 class="text-h3">Двухфакторная аутентификация</h3>
+                    <p class="text-body-sm text-muted mt-sm">Опционально. Код из Google Authenticator, Authy или другого TOTP-приложения при каждом входе (почта, Яндекс, VK, Телеграм).</p>
                     {% if specialist_2fa_enabled %}
-                    <p class="mt-lg"><span class="badge badge--success">Р’РєР»СЋС‡РµРЅР°</span></p>
-                    <form method="POST" action="/profile/" class="stack mt-lg" onsubmit="return confirm('РћС‚РєР»СЋС‡РёС‚СЊ 2FA?');">
+                    <p class="mt-lg"><span class="badge badge--success">Включена</span></p>
+                    <form method="POST" action="/profile/" class="stack mt-lg" onsubmit="return confirm('Отключить 2FA?');">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" name="action" value="disable_2fa">
                         <div class="form-field">
-                            <label class="form-field__label" for="disable_2fa_code">РљРѕРґ РёР· РїСЂРёР»РѕР¶РµРЅРёСЏ</label>
+                            <label class="form-field__label" for="disable_2fa_code">Код из приложения</label>
                             <input class="input" id="disable_2fa_code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code">
                         </div>
-                        <button type="submit" class="btn btn--ghost btn--sm">РћС‚РєР»СЋС‡РёС‚СЊ 2FA</button>
+                        <button type="submit" class="btn btn--ghost btn--sm">Отключить 2FA</button>
                     </form>
                     {% else %}
                     <ol class="text-body-sm mt-lg stack" style="padding-left: 1.25rem;">
-                        <li>РћС‚РєСЂРѕР№С‚Рµ РїСЂРёР»РѕР¶РµРЅРёРµ-Р°СѓС‚РµРЅС‚РёС„РёРєР°С‚РѕСЂ Рё РґРѕР±Р°РІСЊС‚Рµ Р°РєРєР°СѓРЅС‚ РїРѕ СЃСЃС‹Р»РєРµ РёР»Рё СЃРµРєСЂРµС‚Сѓ РЅРёР¶Рµ.</li>
-                        <li>Р’РІРµРґРёС‚Рµ РїРѕСЏРІРёРІС€РёР№СЃСЏ 6-Р·РЅР°С‡РЅС‹Р№ РєРѕРґ Рё РЅР°Р¶РјРёС‚Рµ В«Р’РєР»СЋС‡РёС‚СЊВ».</li>
+                        <li>Откройте приложение-аутентификатор и добавьте аккаунт по ссылке или секрету ниже.</li>
+                        <li>Введите появившийся 6-значный код и нажмите «Включить».</li>
                     </ol>
                     {% if specialist_2fa_uri %}
-                    <p class="mt-lg"><a class="link-accent" href="{{ specialist_2fa_uri }}">РћС‚РєСЂС‹С‚СЊ otpauth:// РІ РїСЂРёР»РѕР¶РµРЅРёРё</a></p>
+                    <p class="mt-lg"><a class="link-accent" href="{{ specialist_2fa_uri }}">Открыть otpauth:// в приложении</a></p>
                     {% endif %}
                     {% if specialist_2fa_secret %}
-                    <p class="form-field__hint mt-sm">РЎРµРєСЂРµС‚: <code>{{ specialist_2fa_secret }}</code></p>
+                    <p class="form-field__hint mt-sm">Секрет: <code>{{ specialist_2fa_secret }}</code></p>
                     {% endif %}
                     <form method="POST" action="/profile/" class="stack mt-lg">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" name="action" value="enable_2fa">
                         <div class="form-field">
-                            <label class="form-field__label" for="enable_2fa_code">РљРѕРґ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ</label>
+                            <label class="form-field__label" for="enable_2fa_code">Код подтверждения</label>
                             <input class="input" id="enable_2fa_code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code">
                         </div>
-                        <button type="submit" class="btn btn--primary btn--sm">Р’РєР»СЋС‡РёС‚СЊ 2FA</button>
+                        <button type="submit" class="btn btn--primary btn--sm">Включить 2FA</button>
                     </form>
                     {% endif %}
                 </div>
@@ -329,7 +329,7 @@
 
         <aside class="profile-preview-col">
             <div class="profile-preview card" id="live-preview">
-                <h3 class="profile-preview__title">РџСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ РїСЂРѕС„РёР»СЏ</h3>
+                <h3 class="profile-preview__title">Предпросмотр профиля</h3>
                 <div class="profile-preview__frame">
                     <div class="pp-banner" id="preview-banner">
                         <div class="pp-banner__glow" aria-hidden="true"></div>
@@ -344,27 +344,27 @@
                     <div class="profile-preview__body">
                         <div class="pp-head">
                             <h4 class="pp-name" id="preview-name">{{ consultant.first_name }} {{ consultant.last_name }}</h4>
-                            <p class="pp-spec" id="preview-spec">{{ consultant.category.name_category if consultant.category else "РЎРїРµС†РёР°Р»РёСЃС‚" }}</p>
+                            <p class="pp-spec" id="preview-spec">{{ consultant.category.name_category if consultant.category else "Специалист" }}</p>
                             <div class="pp-badges">
-                                <span class="pp-badge pp-badge--verified">РџСЂРѕРІРµСЂРµРЅРЅС‹Р№ СЃРїРµС†РёР°Р»РёСЃС‚</span>
+                                <span class="pp-badge pp-badge--verified">Проверенный специалист</span>
                             </div>
                             <div class="pp-rating" aria-hidden="true">
-                                <span class="pp-stars">в…в…в…в…в…</span>
-                                <span class="pp-rating-note">РћС‚Р·С‹РІС‹ СЃРєРѕСЂРѕ</span>
+                                <span class="pp-stars">?????</span>
+                                <span class="pp-rating-note">Отзывы скоро</span>
                             </div>
                         </div>
                         <div class="pp-card pp-card--about">
-                            <h5 class="pp-card__title">Рћ СЃРїРµС†РёР°Р»РёСЃС‚Рµ</h5>
-                            <p class="pp-card__role" id="preview-role">{{ consultant.category.name_category if consultant.category else "РЎРїРµС†РёР°Р»РёСЃС‚" }}</p>
-                            <p class="pp-desc" id="preview-desc">{% if consultant.profile_description %}{{ consultant.profile_description }}{% else %}<span class="pp-desc__empty">РћРїРёСЃР°РЅРёРµ РїРѕРєР° РЅРµ Р·Р°РїРѕР»РЅРµРЅРѕ. Р Р°СЃСЃРєР°Р¶РёС‚Рµ РєР»РёРµРЅС‚Р°Рј Рѕ СЃРµР±Рµ Рё СЃРІРѕРёС… СѓСЃР»СѓРіР°С….</span>{% endif %}</p>
+                            <h5 class="pp-card__title">О специалисте</h5>
+                            <p class="pp-card__role" id="preview-role">{{ consultant.category.name_category if consultant.category else "Специалист" }}</p>
+                            <p class="pp-desc" id="preview-desc">{% if consultant.profile_description %}{{ consultant.profile_description }}{% else %}<span class="pp-desc__empty">Описание пока не заполнено. Расскажите клиентам о себе и своих услугах.</span>{% endif %}</p>
                         </div>
                         <div class="pp-social" id="preview-social"></div>
                         <div class="pp-video-card" id="preview-video-card" hidden>
                             <button type="button" class="pp-video-card__trigger" id="preview-video-trigger">
-                                <span class="pp-video-card__play" aria-hidden="true">в–¶</span>
+                                <span class="pp-video-card__play" aria-hidden="true">?</span>
                                 <span class="pp-video-card__text">
-                                    <span class="pp-video-card__label">Р’РёРґРµРѕ-РїСЂРёРІРµС‚СЃС‚РІРёРµ</span>
-                                    <span class="pp-video-card__hint">РќР°Р¶РјРёС‚Рµ, С‡С‚РѕР±С‹ РїРѕСЃРјРѕС‚СЂРµС‚СЊ</span>
+                                    <span class="pp-video-card__label">Видео-приветствие</span>
+                                    <span class="pp-video-card__hint">Нажмите, чтобы посмотреть</span>
                                 </span>
                             </button>
                             <div class="pp-video-card__embed" id="preview-video" hidden></div>
@@ -376,7 +376,7 @@
                             </li>
                             {% endfor %}
                         </ul>
-                        <button type="button" class="pp-book-btn" disabled>Р—Р°РїРёСЃР°С‚СЊСЃСЏ</button>
+                        <button type="button" class="pp-book-btn" disabled>Записаться</button>
                     </div>
                 </div>
             </div>
@@ -384,11 +384,11 @@
     </div>
 
     <section class="profile-footer-stats card" id="profile-footer-stats">
-        <div class="footer-stat"><span class="footer-stat__label">Р РµРіРёСЃС‚СЂР°С†РёСЏ</span><span class="footer-stat__value" id="footer-created">вЂ”</span></div>
-        <div class="footer-stat"><span class="footer-stat__label">РџРѕСЃР»РµРґРЅРµРµ РёР·РјРµРЅРµРЅРёРµ</span><span class="footer-stat__value" id="footer-updated">вЂ”</span></div>
-        <div class="footer-stat"><span class="footer-stat__label">ID СЃРїРµС†РёР°Р»РёСЃС‚Р°</span><span class="footer-stat__value" id="footer-id">вЂ”</span></div>
-        <div class="footer-stat"><span class="footer-stat__label">Р§Р°СЃРѕРІРѕР№ РїРѕСЏСЃ</span><span class="footer-stat__value" id="footer-tz">вЂ”</span></div>
-        <div class="footer-stat"><span class="footer-stat__label">Р’РµСЂСЃРёСЏ РїСЂРѕС„РёР»СЏ</span><span class="footer-stat__value" id="footer-version">вЂ”</span></div>
+        <div class="footer-stat"><span class="footer-stat__label">Регистрация</span><span class="footer-stat__value" id="footer-created">—</span></div>
+        <div class="footer-stat"><span class="footer-stat__label">Последнее изменение</span><span class="footer-stat__value" id="footer-updated">—</span></div>
+        <div class="footer-stat"><span class="footer-stat__label">ID специалиста</span><span class="footer-stat__value" id="footer-id">—</span></div>
+        <div class="footer-stat"><span class="footer-stat__label">Часовой пояс</span><span class="footer-stat__value" id="footer-tz">—</span></div>
+        <div class="footer-stat"><span class="footer-stat__label">Версия профиля</span><span class="footer-stat__value" id="footer-version">—</span></div>
     </section>
 </div>
 
@@ -398,17 +398,17 @@
 {% block scripts %}
 <div id="avatarCropModal" class="avatar-crop-modal" hidden>
     <div class="avatar-crop-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="avatarCropTitle">
-        <h2 id="avatarCropTitle" class="text-h3">РџРѕРґРіРѕРЅРєР° С„РѕС‚Рѕ</h2>
-        <p class="text-body-sm text-muted">РџРµСЂРµС‚Р°С‰РёС‚Рµ Рё РјР°СЃС€С‚Р°Р±РёСЂСѓР№С‚Рµ С„РѕС‚Рѕ РїРѕРґ РєСЂСѓРіР»РѕРµ РѕРєРѕС€РєРѕ.</p>
+        <h2 id="avatarCropTitle" class="text-h3">Подгонка фото</h2>
+        <p class="text-body-sm text-muted">Перетащите и масштабируйте фото под круглое окошко.</p>
         <div class="avatar-crop-modal__stage">
             <canvas id="avatarCropCanvas" width="320" height="320"></canvas>
             <div id="avatarCropPreview" class="avatar-crop-modal__preview" aria-hidden="true"></div>
         </div>
-        <label class="form-field__label" for="avatarCropZoom">РњР°СЃС€С‚Р°Р±</label>
+        <label class="form-field__label" for="avatarCropZoom">Масштаб</label>
         <input id="avatarCropZoom" class="input" type="range" min="1" max="3" step="0.01" value="1">
         <div class="cluster mt-lg">
-            <button type="button" class="btn btn--primary" id="avatarCropApply">РџСЂРёРјРµРЅРёС‚СЊ</button>
-            <button type="button" class="btn btn--ghost" id="avatarCropCancel">РћС‚РјРµРЅР°</button>
+            <button type="button" class="btn btn--primary" id="avatarCropApply">Применить</button>
+            <button type="button" class="btn btn--ghost" id="avatarCropCancel">Отмена</button>
         </div>
     </div>
 </div>

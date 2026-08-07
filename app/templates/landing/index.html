@@ -63,8 +63,8 @@
             <div class="features-grid">
                 {% for feature in features %}
                 <article class="feature-card card card--static">
-                    <div class="icon-tile feature-card__icon" aria-hidden="true">
-                        <img src="/static/svg/icons/{{ feature.icon }}.svg" alt="" width="24" height="24" loading="lazy" decoding="async">
+                    <div class="icon-tile feature-card__icon"{% if feature.icon == 'telegram' %} role="img" aria-label="Telegram"{% else %} aria-hidden="true"{% endif %}>
+                        <img src="/static/svg/icons/{{ feature.icon }}.svg?v=2" alt="{% if feature.icon == 'telegram' %}Иконка Telegram{% endif %}" width="24" height="24" loading="lazy" decoding="async">
                     </div>
                     <h3 class="text-h3">{{ feature.title }}</h3>
                     <p class="text-body-sm text-muted">{{ feature.description }}</p>

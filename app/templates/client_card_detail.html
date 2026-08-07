@@ -1,92 +1,172 @@
 {% extends "layouts/app.html" %}
-{% from "components/app_page_head.html" import app_page_head %}
 {% from "components/booking_card.html" import booking_status_badge %}
 
 {% block meta_tags %}
-{% set page_title = (card.name|default('Клиент')) ~ " — " ~ site_brand_name %}
+{% set page_title = (crm_client.name|default(card.name|default('Клиент'))) ~ " — " ~ site_brand_name %}
 {% set meta_description = "Карточка клиента — " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/app.css?v=40">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=12">
+<link rel="stylesheet" href="/static/css/clients-crm.css?v=5">
+{% endblock %}
+
 {% block app_content %}
-{{ app_page_head(card.name|default('Карточка клиента'), '/clients/', '← К списку') }}
-
-{% if success %}
-<div class="alert alert--success" role="status">{{ success }}</div>
-{% endif %}
-{% if error %}
-<div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
-{% endif %}
-
-<section class="app-section">
-    <h2 class="app-section__title">Данные и контакты</h2>
-    <form method="POST" action="/clients/{{ card.id }}/" class="stack">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="update">
-        <div class="form-field">
-            <label class="form-field__label" for="card_name">Имя</label>
-            <input class="input" type="text" id="card_name" name="name" value="{{ card.name|default('') }}" placeholder="Необязательно" autocomplete="name">
-        </div>
-        <div class="form-field">
-            <label class="form-field__label" for="card_email">Почта</label>
-            <input class="input" type="email" id="card_email" name="email" value="{{ card.email|default('') }}" placeholder="Необязательно" autocomplete="email">
-        </div>
-        <div class="form-field">
-            <label class="form-field__label" for="card_phone">Телефон</label>
-            <input class="input" type="tel" id="card_phone" name="phone" value="{{ card.phone|default('') }}" placeholder="Необязательно" autocomplete="tel">
-        </div>
-        <div class="form-field">
-            <label class="form-field__label" for="card_telegram">Телеграм (ник или ссылка)</label>
-            <input class="input" type="text" id="card_telegram" name="telegram" value="{{ card.telegram|default('') }}" placeholder="@ник или t.me/...">
-        </div>
-        <div class="form-field">
-            <label class="form-field__label" for="card_notes">Примечания</label>
-            <textarea class="textarea" id="card_notes" name="notes" rows="4">{{ card.notes|default('') }}</textarea>
-        </div>
-        <button type="submit" class="btn btn--primary">Сохранить</button>
-    </form>
-
-    {% if card.email or card.telegram or card.phone %}
-    <div class="contact-links-row mt-lg">
-        {% if card.phone %}
-        <a href="tel:{{ card.phone }}" class="btn btn--secondary btn--sm">Позвонить</a>
-        {% endif %}
-        {% if card.email %}
-        <a href="mailto:{{ card.email }}" class="btn btn--secondary btn--sm">Написать на почту</a>
-        {% endif %}
-        {% if card.telegram %}
-        <a href="https://t.me/{{ card.telegram|cut('@') }}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">Открыть в Телеграм</a>
-        {% endif %}
-    </div>
-    {% endif %}
-</section>
-
-<section class="app-section">
-    <h2 class="app-section__title">История консультаций</h2>
-    <p class="text-muted mb-lg">
-        Записей всего: <strong>{{ total_bookings|default(0) }}</strong>
-        · Посещено (завершено): <strong>{{ completed_count|default(0) }}</strong>
+<div class="client-detail clients-page" id="client-detail" data-csrf="{{ csrf_token }}">
+    <p class="mb-lg">
+        <a href="/clients/" class="btn btn--ghost btn--sm">← К списку</a>
     </p>
 
-    {% if history %}
-    <ul class="history-list">
-        {% for b in history %}
-        <li class="history-list__item">
-            <span class="history-list__date">{{ b.booking_date|date('d.m.Y') }} {{ b.booking_time|time('H:i') }}</span>
-            <span class="history-list__service"> — {{ b.service.name }}{% if b.calendar %} ({{ b.calendar.name }}){% endif %}</span>
-            <div class="mt-sm">{{ booking_status_badge(b.status) }}</div>
-            {% if b.notes %}<p class="history-list__notes">{{ b.notes }}</p>{% endif %}
-        </li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p class="text-muted">Пока нет записей по этой карточке. История строится по карточке, телефону, email и Телеграм.</p>
+    {% if success %}
+    <div class="alert alert--success" role="status">{{ success }}</div>
     {% endif %}
-</section>
+    {% if error %}
+    <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% endif %}
 
-<form method="POST" action="/clients/{{ card.id }}/" onsubmit="return confirm('Удалить карточку?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <input type="hidden" name="action" value="delete">
-    <button type="submit" class="btn btn--danger">Удалить карточку</button>
-</form>
+    <header class="client-detail__header">
+        <div class="client-detail__identity" style="--avatar-color: {{ crm_client.avatar_color }}">
+            <div class="client-detail__avatar" aria-hidden="true">{{ crm_client.initials }}</div>
+            <div>
+                <h1 class="client-detail__title">{{ crm_client.name }}</h1>
+                <div class="client-detail__badges">
+                    {% if crm_client.badge_label %}
+                    <span class="badge badge--{{ 'warning' if crm_client.badge == 'vip' else 'info' if crm_client.badge == 'new' else 'secondary' }}">{{ crm_client.badge_label }}</span>
+                    {% endif %}
+                    <span class="badge badge--{{ 'success' if crm_client.status == 'active' else 'secondary' }}">{{ crm_client.status_label }}</span>
+                </div>
+                <p class="client-detail__meta">
+                    Записей: {{ total_bookings|default(0) }}
+                    · Завершено: {{ completed_count|default(0) }}
+                </p>
+            </div>
+        </div>
+        <div class="client-detail__actions">
+            {% if card.phone %}
+            <a href="tel:{{ card.phone }}" class="btn btn--secondary btn--sm">Позвонить</a>
+            {% endif %}
+            {% if card.email %}
+            <a href="mailto:{{ card.email }}" class="btn btn--secondary btn--sm">Email</a>
+            {% endif %}
+            {% if card.telegram %}
+            <a href="https://t.me/{{ card.telegram|cut('@') }}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">Telegram</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="crm-tabs" role="tablist" aria-label="Разделы карточки">
+        <button type="button" class="crm-tabs__btn is-active" role="tab" aria-selected="true" data-tab="overview" id="tab-overview">Обзор</button>
+        <button type="button" class="crm-tabs__btn" role="tab" aria-selected="false" data-tab="history" id="tab-history">История</button>
+        <button type="button" class="crm-tabs__btn" role="tab" aria-selected="false" data-tab="notes" id="tab-notes">Заметки</button>
+    </div>
+
+    <section class="client-detail__panel card" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+        <ul class="client-detail__stats">
+            <li class="client-detail__stat">
+                <span class="client-detail__stat-value">{{ total_bookings|default(0) }}</span>
+                <span class="client-detail__stat-label">Всего записей</span>
+            </li>
+            <li class="client-detail__stat">
+                <span class="client-detail__stat-value">{{ completed_count|default(0) }}</span>
+                <span class="client-detail__stat-label">Завершено</span>
+            </li>
+            <li class="client-detail__stat">
+                <span class="client-detail__stat-value">{{ crm_client.completeness.percent }}%</span>
+                <span class="client-detail__stat-label">Заполненность</span>
+            </li>
+        </ul>
+
+        <h2 class="app-section__title">Контакты и данные</h2>
+        <form method="POST" action="/clients/{{ card.id }}/" class="stack">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="update">
+            <div class="app-form-grid">
+                <div class="form-field">
+                    <label class="form-field__label" for="card_name">Имя</label>
+                    <input class="input" type="text" id="card_name" name="name" value="{{ card.name|default('') }}" placeholder="Необязательно" autocomplete="name">
+                </div>
+                <div class="form-field">
+                    <label class="form-field__label" for="card_email">Почта</label>
+                    <input class="input" type="email" id="card_email" name="email" value="{{ card.email|default('') }}" placeholder="Необязательно" autocomplete="email">
+                </div>
+                <div class="form-field">
+                    <label class="form-field__label" for="card_phone">Телефон</label>
+                    <input class="input" type="tel" id="card_phone" name="phone" value="{{ card.phone|default('') }}" placeholder="Необязательно" autocomplete="tel">
+                </div>
+                <div class="form-field">
+                    <label class="form-field__label" for="card_telegram">Телеграм</label>
+                    <input class="input" type="text" id="card_telegram" name="telegram" value="{{ card.telegram|default('') }}" placeholder="@ник или t.me/...">
+                </div>
+            </div>
+            <button type="submit" class="btn btn--primary">Сохранить</button>
+        </form>
+
+        {% if upcoming_bookings %}
+        <h2 class="app-section__title mt-2xl">Предстоящие записи</h2>
+        <ol class="crm-timeline">
+            {% for b in upcoming_bookings %}
+            <li class="crm-timeline__item">
+                <span class="crm-timeline__dot" aria-hidden="true"></span>
+                <div>
+                    <div class="crm-timeline__meta">{{ b.booking_date|date('d.m.Y') }} {{ b.booking_time|time('H:i') }}</div>
+                    <div class="crm-timeline__title">{{ b.service.name if b.service else 'Услуга' }}{% if b.calendar %} · {{ b.calendar.name }}{% endif %}</div>
+                    <div class="mt-sm">{{ booking_status_badge(b.status) }}</div>
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+        {% endif %}
+
+        <div class="client-detail__danger">
+            <form method="POST" action="/clients/{{ card.id }}/" onsubmit="return confirm('Удалить карточку?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="delete">
+                <button type="submit" class="btn btn--danger btn--sm">Удалить карточку</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="client-detail__panel card" id="panel-history" role="tabpanel" aria-labelledby="tab-history" hidden>
+        <h2 class="app-section__title">История консультаций</h2>
+        {% if history %}
+        <ol class="crm-timeline">
+            {% for b in history %}
+            <li class="crm-timeline__item">
+                <span class="crm-timeline__dot" aria-hidden="true"></span>
+                <div>
+                    <div class="crm-timeline__meta">{{ b.booking_date|date('d.m.Y') }} {{ b.booking_time|time('H:i') }}</div>
+                    <div class="crm-timeline__title">{{ b.service.name if b.service else 'Услуга' }}{% if b.calendar %} · {{ b.calendar.name }}{% endif %}</div>
+                    <div class="mt-sm">{{ booking_status_badge(b.status) }}</div>
+                    {% if b.notes %}<p class="text-muted mt-sm">{{ b.notes }}</p>{% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <div class="hub-empty">
+            <h3 class="hub-empty__title">Пока нет записей</h3>
+            <p class="hub-empty__text">История строится по карточке, телефону, email и Телеграм.</p>
+        </div>
+        {% endif %}
+    </section>
+
+    <section class="client-detail__panel card" id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" hidden>
+        <h2 class="app-section__title">Заметки</h2>
+        <form method="POST" action="/clients/{{ card.id }}/" class="stack">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="update">
+            <div class="form-field">
+                <label class="form-field__label" for="card_notes">Примечания о клиенте</label>
+                <textarea class="textarea" id="card_notes" name="notes" rows="8" placeholder="Важные детали, предпочтения, контекст…">{{ card.notes|default('') }}</textarea>
+            </div>
+            <button type="submit" class="btn btn--primary">Сохранить заметки</button>
+        </form>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/client-detail.js?v=1" defer></script>
 {% endblock %}

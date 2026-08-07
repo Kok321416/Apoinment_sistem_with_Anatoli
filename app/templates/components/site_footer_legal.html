@@ -1,0 +1,17 @@
+{# Unified compact legal footer for public + booking surfaces. Cabinet CRM uses workspace footer. #}
+<footer class="site-footer-legal{% if compact|default(true) %} site-footer-legal--compact{% endif %}" role="contentinfo">
+    <nav class="site-footer-legal__nav" aria-label="Юридическая информация">
+        <a href="/">Главная</a>
+        <span class="site-footer-legal__sep" aria-hidden="true">·</span>
+        <a href="/privacy/">Политика конфиденциальности</a>
+        <span class="site-footer-legal__sep" aria-hidden="true">·</span>
+        <a href="/terms/">Пользовательское соглашение</a>
+        <span class="site-footer-legal__sep" aria-hidden="true">·</span>
+        <a href="/support/">Контакты</a>
+        {% if support_email %}
+        <span class="site-footer-legal__sep" aria-hidden="true">·</span>
+        <a href="mailto:{{ support_email }}">{{ support_email }}</a>
+        {% endif %}
+    </nav>
+    <p class="site-footer-legal__brand">{{ site_brand_name }}</p>
+</footer>

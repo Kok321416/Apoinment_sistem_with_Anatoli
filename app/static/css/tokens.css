@@ -40,7 +40,7 @@
     --blur-orb: 80px;
 
     /* ── Typography: family ── */
-    --font-family-display: "Onest", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-family-display: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-family-base: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
     /* ── Typography: size (fluid, ~1.25–1.35× between heading levels) ── */
@@ -133,13 +133,13 @@
     --drawer-width: min(26.25rem, 100%);
     --focus-ring-width: 2px;
     --focus-ring-offset: 2px;
-    --btn-height: max(56px, var(--touch-comfortable));
-    --btn-height-sm: max(48px, var(--touch-min));
-    --btn-height-icon: var(--btn-height);
-    --btn-padding-x: var(--space-3xl);
-    --btn-padding-x-sm: var(--space-2xl);
-    --input-height: max(56px, var(--touch-comfortable));
-    --input-padding-x: var(--space-2xl);
+    --btn-height: 44px;
+    --btn-height-sm: 36px;
+    --btn-height-icon: 44px;
+    --btn-padding-x: var(--space-2xl);
+    --btn-padding-x-sm: var(--space-lg);
+    --input-height: 40px;
+    --input-padding-x: var(--space-lg);
     --icon-size-sm: 24px;
     --icon-size-md: 40px;
     --icon-size-lg: 48px;
@@ -167,60 +167,67 @@
     --opacity-glow-medium: 0.2;
     --opacity-icon: 0.9;
 
-    /* Light theme (only) */
-    --bg-900: #ffffff;
-    --bg-800: #fafafa;
-    --bg-700: #f5f5f5;
-    --bg-600: #e5e5e5;
+    /* Light theme — calm SaaS CRM surfaces */
+    --bg-900: #f8f9fa;
+    --bg-800: #fbfbfb;
+    --bg-700: #f3f4f6;
+    --bg-600: #e5e7eb;
     --surface-100: #ffffff;
-    --surface-200: #fafafa;
-    --surface-300: #f0f0f0;
-    --glass-light: rgba(0, 0, 0, 0.03);
-    --glass-medium: rgba(255, 255, 255, 0.86);
-    --glass-heavy: rgba(255, 255, 255, 0.94);
-    --glass-header: rgba(255, 255, 255, 0.9);
-    --text-primary: #0a0a0a;
-    --text-secondary: #525252;
-    --text-muted: #737373;
-    --text-disabled: #a3a3a3;
-    --text-on-accent: #fafafa;
-    --accent-primary: #111111;
-    --accent-secondary: #404040;
+    --surface-200: #ffffff;
+    --surface-300: #f8fafc;
+    --glass-light: rgba(0, 0, 0, 0.02);
+    --glass-medium: rgba(255, 255, 255, 0.92);
+    --glass-heavy: rgba(255, 255, 255, 0.96);
+    --glass-header: rgba(255, 255, 255, 0.94);
+    --text-primary: #202124;
+    --text-secondary: #6b7280;
+    --text-muted: #6b7280;
+    --text-disabled: #9ca3af;
+    --text-on-accent: #ffffff;
+    --accent-primary: #4f46e5;
+    --accent-secondary: #6366f1;
     --accent-success: #16a34a;
     --accent-warning: #d97706;
     --accent-danger: #dc2626;
-    --border-subtle: rgba(0, 0, 0, 0.05);
-    --border-default: rgba(0, 0, 0, 0.1);
-    --border-strong: rgba(0, 0, 0, 0.18);
-    --gradient-primary: linear-gradient(180deg, #171717 0%, #0a0a0a 100%);
-    --gradient-secondary: linear-gradient(180deg, #404040 0%, #262626 100%);
-    --gradient-card: linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, transparent 100%);
-    --gradient-glow-purple: radial-gradient(circle, rgba(0, 0, 0, 0.04) 0%, transparent 70%);
-    --gradient-glow-cyan: radial-gradient(circle, rgba(0, 0, 0, 0.03) 0%, transparent 70%);
-    --gradient-inner-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, transparent 100%);
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 24px 56px rgba(0, 0, 0, 0.12);
-    --shadow-glow: 0 0 0 1px rgba(0, 0, 0, 0.06);
-    --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    --accent-info: #2563eb;
+    --border-subtle: #f3f4f6;
+    --border-default: #e5e7eb;
+    --border-strong: #d1d5db;
+    --row-hover: #f8fafc;
+    --gradient-primary: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
+    --gradient-secondary: linear-gradient(180deg, #818cf8 0%, #6366f1 100%);
+    --gradient-card: none;
+    --gradient-glow-purple: none;
+    --gradient-glow-cyan: none;
+    --gradient-inner-highlight: none;
+    --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+    --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-xl: 0 12px 32px rgba(15, 23, 42, 0.1);
+    --shadow-glow: none;
+    --shadow-inner: none;
     --focus-ring-color: var(--accent-primary);
     --field-bg: #ffffff;
     --field-border: var(--border-default);
     --field-border-focus: var(--accent-primary);
     --field-border-error: var(--accent-danger);
     --field-border-success: var(--accent-success);
-    --field-glow-focus: 0 0 0 3px rgba(17, 17, 17, 0.12);
+    --field-glow-focus: 0 0 0 3px rgba(79, 70, 229, 0.18);
     --field-glow-error: 0 0 0 3px rgba(220, 38, 38, 0.15);
     --field-glow-success: 0 0 0 3px rgba(22, 163, 74, 0.15);
-    --alert-info-bg: rgba(0, 0, 0, 0.04);
+    --alert-info-bg: rgba(37, 99, 235, 0.08);
     --alert-success-bg: rgba(22, 163, 74, 0.1);
     --alert-warning-bg: rgba(217, 119, 6, 0.1);
     --alert-error-bg: rgba(220, 38, 38, 0.1);
-    --color-glow-purple: rgba(0, 0, 0, 0.06);
-    --color-glow-cyan: rgba(0, 0, 0, 0.04);
-    --theme-meta: #ffffff;
+    --color-glow-purple: transparent;
+    --color-glow-cyan: transparent;
+    --theme-meta: #f8f9fa;
+    --cabinet-sidebar-width: 252px;
+    --radius-xs: 6px;
+    --radius-sm: 8px;
+    --radius-md: 10px;
+    --radius-lg: 12px;
 }
 
 html {

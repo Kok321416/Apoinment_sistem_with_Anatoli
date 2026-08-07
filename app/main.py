@@ -17,6 +17,7 @@ from app.routers import (
     profile_api,
     public_specialist,
     services_api,
+    specialist_booking,
     telegram_webhook,
 )
 from app.security.hardening import AbuseProtectionMiddleware
@@ -61,6 +62,7 @@ app.include_router(services_api.router)
 app.include_router(profile_api.router)
 app.include_router(public_specialist.router)
 app.include_router(api.router)
+app.include_router(specialist_booking.router)
 app.include_router(oauth.router)
 app.include_router(platform_admin.router)
 app.include_router(telegram_webhook.router)

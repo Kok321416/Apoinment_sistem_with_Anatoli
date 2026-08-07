@@ -249,8 +249,9 @@ def _cabinet_nav_from_path(path: str) -> tuple[str, str]:
     """Return (nav_key, section_title) for cabinet sidenav active state."""
     p = (path or "/").rstrip("/") + "/"
     rules = (
-        ("/calendars/", "calendars", "Календари"),
-        ("/services/", "services", "Услуги"),
+        ("/manage/", "manage", "Управление услугами и календарем"),
+        ("/calendars/", "manage", "Управление услугами и календарем"),
+        ("/services/", "manage", "Управление услугами и календарем"),
         ("/booking/", "bookings", "Записи"),
         ("/clients/", "clients", "Клиенты"),
         ("/profile/", "profile", "Профиль"),

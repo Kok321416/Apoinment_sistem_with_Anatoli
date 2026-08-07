@@ -1,0 +1,15 @@
+{# Public booking funnel header — hides chrome in Telegram Mini App via CSS. #}
+<header class="booking-topbar container" role="banner">
+    <div class="booking-topbar__inner">
+        {% include "components/logo.html" %}
+        <nav class="booking-topbar__nav" aria-label="Навигация записи">
+            <a href="/">На сайт</a>
+            <a href="/privacy/">Конфиденциальность</a>
+            {% if user and user.is_authenticated %}
+            <a href="/dashboard/" class="btn btn--ghost btn--sm">Кабинет</a>
+            {% else %}
+            <a href="/login/" class="btn btn--ghost btn--sm">Войти</a>
+            {% endif %}
+        </nav>
+    </div>
+</header>

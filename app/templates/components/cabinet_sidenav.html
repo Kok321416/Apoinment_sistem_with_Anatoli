@@ -44,8 +44,7 @@
     <nav class="cabinet-nav" aria-label="Разделы кабинета">
         {{ nav_item('home', '/dashboard/', 'Главная', 'overview') }}
         {% if active_mode == 'specialist' and has_consultant %}
-            {{ nav_item('calendars', '/calendars/', 'Календари', 'calendars') }}
-            {{ nav_item('services', '/services/', 'Услуги', 'services') }}
+            {{ nav_item('manage', '/manage/', 'Управление услугами и календарем', 'calendars') }}
             {{ nav_item('bookings', '/booking/', 'Записи', 'bookings') }}
             {{ nav_item('clients', '/clients/', 'Клиенты', 'clients') }}
             {{ nav_item('profile', '/profile/', 'Профиль', 'profile') }}
@@ -104,9 +103,9 @@
         <span class="cabinet-nav__glyph" data-icon="clients" aria-hidden="true"></span>
         <span>Клиенты</span>
     </a>
-    <a href="/services/" class="cabinet-bottom-nav__item{% if cabinet_nav_active == 'services' %} is-active{% endif %}">
-        <span class="cabinet-nav__glyph" data-icon="services" aria-hidden="true"></span>
-        <span>Услуги</span>
+    <a href="/manage/" class="cabinet-bottom-nav__item{% if cabinet_nav_active == 'manage' or cabinet_nav_active == 'calendars' or cabinet_nav_active == 'services' %} is-active{% endif %}">
+        <span class="cabinet-nav__glyph" data-icon="calendars" aria-hidden="true"></span>
+        <span>Управление</span>
     </a>
     <a href="/profile/" class="cabinet-bottom-nav__item{% if cabinet_nav_active == 'profile' %} is-active{% endif %}">
         <span class="cabinet-nav__glyph" data-icon="profile" aria-hidden="true"></span>

@@ -1,0 +1,63 @@
+.manage-hub {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xl);
+}
+
+.manage-hub__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2xl);
+    align-items: start;
+}
+
+.manage-hub__panel {
+    padding: var(--space-xl);
+}
+
+.manage-hub__panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+}
+
+.manage-hub__panel-title {
+    margin: 0;
+    font-family: var(--font-family-display);
+    font-size: var(--font-size-h3);
+    font-weight: 600;
+}
+
+.manage-hub__panel-meta {
+    margin: var(--space-xs) 0 0;
+    font-size: var(--font-size-body-sm);
+    color: var(--text-muted);
+}
+
+.manage-hub__create {
+    margin-bottom: var(--space-xl);
+    padding: var(--space-lg);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--surface-100, #f8f9fa);
+}
+
+.manage-hub__create-actions {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: var(--space-lg);
+}
+
+.manage-hub__hint {
+    margin-top: var(--space-lg);
+    font-size: var(--font-size-body-sm);
+}
+
+@media (max-width: 960px) {
+    .manage-hub__grid {
+        grid-template-columns: 1fr;
+    }
+}

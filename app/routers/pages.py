@@ -334,6 +334,44 @@ async def dashboard_page(request: Request, db: AsyncSession = Depends(get_async_
         need_mode_specialist=need_mode,
     )
     if has_c and mode == MODE_SPECIALIST:
+        from app.services.clients_crm import build_crm_payload_async
+
+        consultant = (
+            await db.execute(select(Consultant).where(Consultant.user_id == user.id))
+        ).scalar_one_or_none()
+        if consultant:
+            cards = list(
+                (
+                    await db.execute(
+                        select(ClientCard)
+                        .where(ClientCard.consultant_id == consultant.id)
+                        .order_by(ClientCard.updated_at.desc(), ClientCard.id.desc())
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            crm = await build_crm_payload_async(db, consultant.id, cards)
+            ctx.update(
+                {
+                    "dash_kpi": crm["dashboard"],
+                    "dash_recent_clients": crm["clients"][:8],
+                    "dash_activity": crm["activity"],
+                }
+            )
+        else:
+            ctx.update(
+                {
+                    "dash_kpi": {
+                        "total": 0,
+                        "new_count": 0,
+                        "today_bookings": 0,
+                        "upcoming": 0,
+                    },
+                    "dash_recent_clients": [],
+                    "dash_activity": [],
+                }
+            )
         return templates.TemplateResponse("app/dashboard.html", ctx)
     return templates.TemplateResponse("app/dashboard_client.html", ctx)
 
@@ -879,9 +917,65 @@ async def logout_page(request: Request):
     return RedirectResponse("/dashboard/", status_code=302)
 
 
+@router.get("/manage/")
+async def manage_hub_page(request: Request, db: AsyncSession = Depends(get_async_db)):
+    user = await _require_user_async(request, db)
+    if not user:
+        return _login_redirect(request)
+    consultant = await require_specialist_mode_async(request, db, user)
+    from app.services.calendars_hub import build_calendars_payload_async
+    from app.services.public_client import ensure_public_slug_async, specialist_public_url
+    from app.services.services_catalog import build_catalog_payload_async
+
+    calendars = list(
+        (
+            await db.execute(
+                select(Calendar)
+                .where(Calendar.consultant_id == consultant.id)
+                .order_by(Calendar.updated_at.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    services = list(
+        (
+            await db.execute(
+                select(Service)
+                .where(Service.consultant_id == consultant.id)
+                .order_by(Service.sort_order, Service.name)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    slug = await ensure_public_slug_async(db, consultant)
+    public_url = specialist_public_url(settings.site_url, slug)
+    cal_hub = await build_calendars_payload_async(db, calendars, public_url)
+    svc_hub = await build_catalog_payload_async(db, consultant.id)
+    return templates.TemplateResponse(
+        "manage_hub.html",
+        await page_context_async(
+            request,
+            db,
+            user,
+            calendars=calendars,
+            services=services,
+            hub_calendars=cal_hub["calendars"],
+            hub_cal_dashboard=cal_hub["dashboard"],
+            hub_services=svc_hub.get("services") or [],
+            hub_svc_dashboard=svc_hub.get("dashboard") or {},
+            success=request.query_params.get("success"),
+            error=request.query_params.get("error"),
+        ),
+    )
+
+
 @router.get("/calendars/")
 @router.post("/calendars/")
 async def calendars_page(request: Request, db: AsyncSession = Depends(get_async_db)):
+    if request.method == "GET":
+        return RedirectResponse("/manage/#calendars", status_code=302)
     user = await _require_user_async(request, db)
     if not user:
         return _login_redirect(request)
@@ -965,38 +1059,16 @@ async def calendars_page(request: Request, db: AsyncSession = Depends(get_async_
         from app.services.response_cache import invalidate_consultant
 
         invalidate_consultant(consultant.id)
-    calendars = list(
-        (
-            await db.execute(
-                select(Calendar)
-                .where(Calendar.consultant_id == consultant.id)
-                .order_by(Calendar.updated_at.desc())
-            )
+        return RedirectResponse(
+            "/manage/?success=" + quote(success) + "#calendars",
+            status_code=302,
         )
-        .scalars()
-        .all()
-    )
-    from app.services.calendars_hub import build_calendars_payload_async
-    from app.services.public_client import ensure_public_slug_async, specialist_public_url
-
-    slug = await ensure_public_slug_async(db, consultant)
-    public_url = specialist_public_url(settings.site_url, slug)
-    hub_payload = await build_calendars_payload_async(db, calendars, public_url)
-    return templates.TemplateResponse(
-        "calendars.html",
-        await page_context_async(
-            request,
-            db,
-            user,
-            calendars=calendars,
-            public_booking_url=public_url,
-            hub_dashboard=hub_payload["dashboard"],
-            hub_calendars=hub_payload["calendars"],
-            hub_payload=hub_payload,
-            success=success,
-            error=error,
-        ),
-    )
+    if error:
+        return RedirectResponse(
+            "/manage/?error=" + quote(error) + "#calendars",
+            status_code=302,
+        )
+    return RedirectResponse("/manage/#calendars", status_code=302)
 
 
 @router.get("/calendars/{calendar_id}/")
@@ -1153,6 +1225,17 @@ async def calendar_settings(request: Request, calendar_id: int, db: AsyncSession
 @router.get("/services/")
 @router.post("/services/")
 async def services_page(request: Request, db: AsyncSession = Depends(get_async_db)):
+    if request.method == "GET":
+        if request.query_params.get("legacy") == "1":
+            user = await _require_user_async(request, db)
+            if not user:
+                return _login_redirect(request)
+            await require_specialist_mode_async(request, db, user)
+            return templates.TemplateResponse(
+                "services.html",
+                await page_context_async(request, db, user),
+            )
+        return RedirectResponse("/manage/#services", status_code=302)
     user = await _require_user_async(request, db)
     if not user:
         return _login_redirect(request)
@@ -1269,10 +1352,16 @@ async def services_page(request: Request, db: AsyncSession = Depends(get_async_d
         from app.services.response_cache import invalidate_consultant
 
         invalidate_consultant(consultant.id)
-    return templates.TemplateResponse(
-        "services.html",
-        await page_context_async(request, db, user, success=success, error=error),
-    )
+        return RedirectResponse(
+            "/manage/?success=" + quote(success) + "#services",
+            status_code=302,
+        )
+    if error:
+        return RedirectResponse(
+            "/manage/?error=" + quote(error) + "#services",
+            status_code=302,
+        )
+    return RedirectResponse("/manage/#services", status_code=302)
 
 
 @router.get("/book/")
@@ -1938,11 +2027,14 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
         t = card.telegram.replace("@", "").strip().split("/")[-1].split("?")[0]
         if t:
             history_q = or_(history_q, Booking.client_telegram.ilike(f"%{t}%"))
+    from sqlalchemy.orm import selectinload
+
     if cal_ids:
         history = list(
             (
                 await db.execute(
                     select(Booking)
+                    .options(selectinload(Booking.service), selectinload(Booking.calendar))
                     .where(Booking.calendar_id.in_(cal_ids), history_q)
                     .distinct()
                     .order_by(Booking.booking_date.desc())
@@ -1960,11 +2052,16 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
         if not _form_csrf_ok(request, form):
             error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
         elif form.get("action") == "update":
-            card.name = (form.get("name") or "").strip() or None
-            card.email = (form.get("email") or "").strip() or None
-            card.phone = (form.get("phone") or "").strip() or None
-            card.telegram = (form.get("telegram") or "").strip() or None
-            card.notes = (form.get("notes") or "").strip() or None
+            if "name" in form:
+                card.name = (form.get("name") or "").strip() or None
+            if "email" in form:
+                card.email = (form.get("email") or "").strip() or None
+            if "phone" in form:
+                card.phone = (form.get("phone") or "").strip() or None
+            if "telegram" in form:
+                card.telegram = (form.get("telegram") or "").strip() or None
+            if "notes" in form:
+                card.notes = (form.get("notes") or "").strip() or None
             await db.commit()
             success = "Изменения сохранены."
         elif form.get("action") == "delete":
@@ -2000,6 +2097,20 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
     else:
         total = 0
         completed = 0
+
+    from datetime import date as date_cls
+
+    from app.services.clients_crm import booking_stats_async, serialize_card
+
+    stats = await booking_stats_async(db, consultant.id, [card.id])
+    crm_client = serialize_card(card, stats, date_cls.today())
+    today = date_cls.today()
+    upcoming_bookings = [
+        b
+        for b in history
+        if b.booking_date and b.booking_date >= today and b.status in ("pending", "confirmed")
+    ][:5]
+
     return templates.TemplateResponse(
         "client_card_detail.html",
         await page_context_async(
@@ -2009,6 +2120,8 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
             consultant=consultant,
             card=card,
             history=history,
+            upcoming_bookings=upcoming_bookings,
+            crm_client=crm_client,
             total_bookings=total,
             completed_count=completed,
             success=success,

@@ -1,56 +1,49 @@
 ﻿{% extends "layouts/app.html" %}
 
 {% block meta_tags %}
-{% set page_title = "База клиентов — " ~ site_brand_name %}
+{% set page_title = "Клиенты — " ~ site_brand_name %}
 {% set meta_description = "CRM специалиста — база клиентов — " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=38">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=11">
-<link rel="stylesheet" href="/static/css/clients-crm.css?v=4">
+<link rel="stylesheet" href="/static/css/app.css?v=40">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=12">
+<link rel="stylesheet" href="/static/css/clients-crm.css?v=5">
 {% endblock %}
 
 {% block app_content %}
 <div class="clients-page" id="clients-page" data-csrf="{{ csrf_token }}">
 
-    <section class="clients-hero card" id="clients-hero">
-        <div class="clients-hero__glow clients-hero__glow--purple" aria-hidden="true"></div>
-        <div class="clients-hero__glow clients-hero__glow--cyan" aria-hidden="true"></div>
-        <div class="clients-hero__inner">
-            <div class="clients-hero__main">
-                <span class="hub-hero__glyph" data-icon="clients" aria-hidden="true"></span>
-                <div>
-                    <h1 class="clients-hero__title">Клиенты</h1>
-                    <p class="clients-hero__stat"><strong id="hero-total">{{ crm_dashboard.total }}</strong> в базе</p>
-                    <p class="clients-hero__meta" id="hero-updated">Последнее изменение: —</p>
-                </div>
-            </div>
-            <div class="clients-hero__actions">
-                <button type="button" class="btn btn--primary btn--sm" id="btn-add-client">Добавить клиента</button>
-                <button type="button" class="btn btn--secondary btn--sm" id="btn-export-clients">Экспорт</button>
-                <button type="button" class="btn btn--ghost btn--sm" id="btn-import-clients" title="Скоро">Импорт</button>
-            </div>
+    <header class="cabinet-page-header">
+        <div>
+            <h1 class="cabinet-page-header__title">Клиенты</h1>
+            <p class="cabinet-page-header__desc">База контактов, статусы и история записей. Поиск и фильтры без лишнего шума.</p>
+            <p class="clients-page__meta" id="hero-updated">Последнее изменение: —</p>
         </div>
-    </section>
+        <div class="cabinet-page-header__actions">
+            <button type="button" class="btn btn--primary btn--sm" id="btn-add-client">Добавить клиента</button>
+            <button type="button" class="btn btn--secondary btn--sm" id="btn-export-clients">Экспорт</button>
+            <button type="button" class="btn btn--ghost btn--sm" id="btn-import-clients" title="Скоро">Импорт</button>
+        </div>
+    </header>
 
     <section class="clients-dashboard" id="clients-dashboard" aria-label="Статистика CRM">
-        <div class="clients-dash-card clients-dash-card--accent">
+        <div class="clients-dash-card">
             <span class="clients-dash-card__value" data-dash="total">{{ crm_dashboard.total }}</span>
             <span class="clients-dash-card__label">Всего клиентов</span>
         </div>
-        <div class="clients-dash-card clients-dash-card--success">
+        <div class="clients-dash-card">
             <span class="clients-dash-card__value" data-dash="new_count">{{ crm_dashboard.new_count }}</span>
-            <span class="clients-dash-card__label">Новых</span>
+            <span class="clients-dash-card__label">Новые</span>
         </div>
-        <div class="clients-dash-card clients-dash-card--info">
+        <div class="clients-dash-card">
             <span class="clients-dash-card__value" data-dash="today_bookings">{{ crm_dashboard.today_bookings }}</span>
             <span class="clients-dash-card__label">Записей сегодня</span>
         </div>
-        <div class="clients-dash-card clients-dash-card--warning">
+        <div class="clients-dash-card">
             <span class="clients-dash-card__value" data-dash="upcoming">{{ crm_dashboard.upcoming }}</span>
-            <span class="clients-dash-card__label">Предстоящих встреч</span>
+            <span class="clients-dash-card__label">Предстоящие</span>
         </div>
     </section>
 
@@ -58,13 +51,13 @@
     <div class="alert alert--success" role="status">{{ success }}</div>
     {% endif %}
     {% if error %}
-    <div class="alert alert--error" role="alert">{{ error }}</div>
+    <div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
     {% endif %}
 
     <section class="clients-create card" id="clients-create" hidden>
         <div class="clients-create__head">
-            <h2 class="clients-create__title">➕ Новый клиент</h2>
-            <button type="button" class="btn btn--ghost btn--sm" id="btn-close-create" aria-label="Закрыть">✕</button>
+            <h2 class="clients-create__title">Новый клиент</h2>
+            <button type="button" class="btn btn--ghost btn--sm" id="btn-close-create" aria-label="Закрыть">Закрыть</button>
         </div>
         <form method="POST" action="/clients/" class="clients-create__form" id="clients-create-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -99,12 +92,11 @@
         <div class="clients-main">
             <section class="clients-toolbar card" id="clients-toolbar">
                 <div class="clients-toolbar__search">
-                    <span class="clients-toolbar__search-icon" aria-hidden="true">🔍</span>
-                    <input class="input" type="search" id="clients-search" placeholder="Поиск клиента..." autocomplete="off">
+                    <input class="input" type="search" id="clients-search" placeholder="Поиск клиента..." autocomplete="off" aria-label="Поиск">
                 </div>
                 <div class="clients-toolbar__filters">
-                    <select class="select" id="clients-filter" aria-label="Фильтр">
-                        <option value="all">Все</option>
+                    <select class="select" id="clients-filter" aria-label="Фильтр по статусу">
+                        <option value="all">Все статусы</option>
                         <option value="new">Новые</option>
                         <option value="active">Активные</option>
                         <option value="vip">VIP</option>
@@ -113,17 +105,64 @@
                     <select class="select" id="clients-sort" aria-label="Сортировка">
                         <option value="recent">Последние</option>
                         <option value="name">По имени</option>
-                        <option value="created">По дате создания</option>
-                        <option value="last_visit">По последнему посещению</option>
+                        <option value="created">По дате добавления</option>
+                        <option value="last_visit">По последнему контакту</option>
                     </select>
                 </div>
             </section>
 
             <section class="clients-grid-wrap" id="clients-grid-wrap" aria-live="polite">
                 {% if crm_clients %}
+                <div class="data-table-wrap clients-table-wrap" id="clients-table-wrap">
+                    <table class="data-table clients-table" id="clients-table">
+                        <thead>
+                            <tr>
+                                <th>Клиент</th>
+                                <th>Контакты</th>
+                                <th>Статус</th>
+                                <th>Последний контакт</th>
+                                <th>Записей</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="clients-table-body">
+                            {% for client in crm_clients %}
+                            <tr class="clients-table__row client-filter-row"
+                                data-id="{{ client.id }}"
+                                data-name="{{ client.name|lower }}"
+                                data-badge="{{ client.badge or '' }}"
+                                data-status="{{ client.status }}"
+                                data-created="{{ client.created_at or '' }}"
+                                data-updated="{{ client.updated_at or '' }}"
+                                data-last-visit="{{ client.last_booking or '' }}"
+                                data-search="{{ (client.name ~ ' ' ~ client.phone ~ ' ' ~ client.email ~ ' ' ~ client.telegram)|lower }}">
+                                <td>
+                                    <a class="data-table__link clients-table__name" href="{{ client.detail_url }}">{{ client.name }}</a>
+                                    {% if client.badge_label %}
+                                    <span class="badge badge--{{ 'warning' if client.badge == 'vip' else 'info' if client.badge == 'new' else 'secondary' }}">{{ client.badge_label }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="data-table__muted">
+                                    {% if client.phone %}{{ client.phone }}{% elif client.email %}{{ client.email }}{% elif client.telegram %}{{ client.telegram }}{% else %}—{% endif %}
+                                </td>
+                                <td><span class="badge badge--{{ 'success' if client.status == 'active' else 'secondary' }}">{{ client.status_label }}</span></td>
+                                <td class="data-table__muted" data-relative-kind="visit" data-relative="{{ client.last_booking or '' }}">{% if client.last_booking %}—{% else %}Нет записей{% endif %}</td>
+                                <td>{{ client.booking_count }}</td>
+                                <td>
+                                    <div class="data-table__actions">
+                                        <a href="{{ client.detail_url }}" class="btn btn--ghost btn--sm">Открыть</a>
+                                        <button type="button" class="btn btn--ghost btn--sm" data-open-drawer="{{ client.id }}">Быстро</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
                 <div class="clients-grid" id="clients-grid">
                     {% for client in crm_clients %}
-                    <article class="client-card"
+                    <article class="client-card client-filter-row"
                              data-id="{{ client.id }}"
                              data-name="{{ client.name|lower }}"
                              data-badge="{{ client.badge or '' }}"
@@ -133,58 +172,30 @@
                              data-last-visit="{{ client.last_booking or '' }}"
                              data-search="{{ (client.name ~ ' ' ~ client.phone ~ ' ' ~ client.email ~ ' ' ~ client.telegram)|lower }}"
                              style="--avatar-color: {{ client.avatar_color }}">
-                        <div class="client-card__hover-actions">
-                            <a href="{{ client.detail_url }}" class="client-card__action" title="Редактировать">✏</a>
-                            <a href="/booking/" class="client-card__action" title="Записать">📅</a>
-                            {% if client.phone or client.telegram or client.email %}
-                            <button type="button" class="client-card__action" data-action="message" title="Написать">💬</button>
-                            {% endif %}
-                            <form method="POST" action="/clients/" class="client-card__delete-form" onsubmit="return confirm('Удалить карточку клиента?');">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                <input type="hidden" name="action" value="delete">
-                                <input type="hidden" name="card_id" value="{{ client.id }}">
-                                <button type="submit" class="client-card__action client-card__action--danger" title="Удалить">🗑</button>
-                            </form>
-                        </div>
                         <div class="client-card__top">
                             <div class="client-card__avatar">{{ client.initials }}</div>
                             <div class="client-card__head">
-                                <h3 class="client-card__name">{{ client.name }}</h3>
+                                <h3 class="client-card__name"><a href="{{ client.detail_url }}">{{ client.name }}</a></h3>
                                 <div class="client-card__badges">
                                     {% if client.badge_label %}
-                                    <span class="client-card__badge client-card__badge--{{ client.badge }}">{{ client.badge_label }}</span>
+                                    <span class="badge badge--info">{{ client.badge_label }}</span>
                                     {% endif %}
-                                    <span class="client-card__status client-card__status--{{ client.status }}">
-                                        <span class="client-card__status-dot" aria-hidden="true"></span>{{ client.status_label }}
-                                    </span>
+                                    <span class="badge badge--{{ 'success' if client.status == 'active' else 'secondary' }}">{{ client.status_label }}</span>
                                 </div>
                             </div>
                         </div>
                         <ul class="client-card__contacts">
-                            {% if client.phone %}<li><span class="client-card__contact-icon">📞</span>{{ client.phone }}</li>{% endif %}
-                            {% if client.email %}<li><span class="client-card__contact-icon">✉</span>{{ client.email }}</li>{% endif %}
-                            {% if client.telegram %}<li><span class="client-card__contact-icon">✈</span>{{ client.telegram }}</li>{% endif %}
+                            {% if client.phone %}<li>{{ client.phone }}</li>{% endif %}
+                            {% if client.email %}<li>{{ client.email }}</li>{% endif %}
+                            {% if client.telegram %}<li>{{ client.telegram }}</li>{% endif %}
                             {% if not client.phone and not client.email and not client.telegram %}
                             <li class="client-card__contacts-empty">Контакты не указаны</li>
                             {% endif %}
                         </ul>
-                        <div class="client-card__completeness">
-                            <div class="client-card__completeness-bar">
-                                <div class="client-card__completeness-fill" style="width: {{ client.completeness.percent }}%"></div>
-                            </div>
-                            <span class="client-card__completeness-text">{{ client.completeness.percent }}%</span>
-                        </div>
                         <div class="client-card__footer">
-                            <div class="client-card__meta">
-                                <span class="client-card__meta-label">Последняя запись</span>
-                                <span class="client-card__meta-value" data-relative="{{ client.last_booking or '' }}">{% if client.last_booking %}—{% else %}Нет записей{% endif %}</span>
-                            </div>
-                            <div class="client-card__meta">
-                                <span class="client-card__meta-label">Записей</span>
-                                <span class="client-card__meta-value">{{ client.booking_count }}</span>
-                            </div>
+                            <span class="data-table__muted" data-relative-kind="visit" data-relative="{{ client.last_booking or '' }}">{% if client.last_booking %}—{% else %}Нет записей{% endif %}</span>
+                            <a href="{{ client.detail_url }}" class="btn btn--ghost btn--sm">Открыть</a>
                         </div>
-                        <button type="button" class="client-card__more" data-open-drawer="{{ client.id }}">Подробнее →</button>
                     </article>
                     {% endfor %}
                 </div>
@@ -193,7 +204,6 @@
                 </div>
                 {% else %}
                 <div class="hub-empty clients-empty" id="clients-empty" role="status">
-                    <span class="hub-empty__glyph" data-icon="clients" aria-hidden="true"></span>
                     <h2 class="hub-empty__title">База клиентов пуста</h2>
                     <p class="hub-empty__text">Добавьте карточку, чтобы вести историю и быстро записывать клиентов.</p>
                     <button type="button" class="btn btn--primary hub-empty__cta" id="btn-empty-add">Добавить клиента</button>
@@ -224,7 +234,7 @@
     <aside class="client-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="client-drawer-title">
         <header class="client-drawer__header">
             <h2 class="client-drawer__title" id="client-drawer-title">Карточка клиента</h2>
-            <button type="button" class="btn btn--ghost btn--sm" id="client-drawer-close" aria-label="Закрыть">✕</button>
+            <button type="button" class="btn btn--ghost btn--sm" id="client-drawer-close" aria-label="Закрыть">Закрыть</button>
         </header>
         <div class="client-drawer__body" id="client-drawer-body"></div>
         <footer class="client-drawer__footer">
@@ -238,7 +248,7 @@
 
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
-<script src="/static/js/clients-drawer.js?v=2" defer></script>
-<script src="/static/js/clients-page.js?v=1" defer></script>
+<script src="/static/js/clients-drawer.js?v=3" defer></script>
+<script src="/static/js/clients-page.js?v=3" defer></script>
 <script type="application/json" id="clients-crm-data">{{ crm_payload | tojson }}</script>
 {% endblock %}

@@ -290,6 +290,8 @@ async def specialist_calendar_book(
                 service_id = 0
         booking_time = (form.get("booking_time") or "").strip()
         booking_end = (form.get("booking_end_time") or "").strip()
+        if not error and form.get("accept_privacy") != "1":
+            error = "Нужно согласие на обработку персональных данных"
         if not error:
             auth_user = await get_current_user_async(request, db)
             booking, err = await create_public_booking_async(

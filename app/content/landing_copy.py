@@ -202,14 +202,16 @@ FOOTER = {
         {
             "title": "Документы",
             "links": [
+                {"label": "Главная", "href": "/"},
                 {"label": "Политика конфиденциальности", "href": "/privacy/"},
-                {"label": "Условия использования", "href": "/terms/"},
+                {"label": "Пользовательское соглашение", "href": "/terms/"},
             ],
         },
         {
             "title": "Контакты",
             "links": [
-                {"label": "Поддержка", "href": "mailto:{support_email}"},
+                {"label": "Поддержка", "href": "/support/"},
+                {"label": "Email", "href": "mailto:{support_email}"},
             ],
         },
     ],

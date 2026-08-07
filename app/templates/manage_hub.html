@@ -1,0 +1,199 @@
+{% extends "layouts/app.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Управление услугами и календарем — " ~ site_brand_name %}
+{% set meta_description = "Календари и услуги в одном разделе" %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/app.css?v=40">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=12">
+<link rel="stylesheet" href="/static/css/manage-hub.css?v=1">
+{% endblock %}
+
+{% block app_content %}
+<div class="manage-hub clients-page" id="manage-hub">
+    <header class="cabinet-page-header">
+        <div>
+            <h1 class="cabinet-page-header__title">Управление услугами и календарем</h1>
+            <p class="cabinet-page-header__desc">Календари сверху, услуги снизу. Настройки открываются в прежнем формате.</p>
+        </div>
+    </header>
+
+    {% if success %}
+    <div class="alert alert--success" role="status">{{ success }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="alert alert--error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <div class="manage-hub__grid">
+        <section class="manage-hub__panel card" id="calendars" aria-labelledby="manage-calendars-title">
+            <div class="manage-hub__panel-head">
+                <div>
+                    <h2 class="manage-hub__panel-title" id="manage-calendars-title">Календари</h2>
+                    <p class="manage-hub__panel-meta">Всего: {{ hub_calendars|length }} · Активных: {{ hub_cal_dashboard.active|default(0) }}</p>
+                </div>
+                <button type="button" class="btn btn--primary btn--sm" id="manage-open-cal-create">Создать календарь</button>
+            </div>
+
+            <form method="POST" action="/calendars/" class="manage-hub__create" id="manage-cal-create" hidden>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="create_calendar">
+                <div class="app-form-grid">
+                    <div class="form-field">
+                        <label class="form-field__label" for="cal_name">Название</label>
+                        <input class="input" id="cal_name" name="name" required maxlength="120" placeholder="Например, Основной">
+                    </div>
+                    <div class="form-field">
+                        <label class="form-field__label" for="cal_color">Цвет</label>
+                        <input class="input" id="cal_color" name="color" type="color" value="#4F46E5">
+                    </div>
+                </div>
+                <div class="manage-hub__create-actions">
+                    <button type="submit" class="btn btn--primary btn--sm">Сохранить</button>
+                    <button type="button" class="btn btn--ghost btn--sm" id="manage-close-cal-create">Отмена</button>
+                </div>
+            </form>
+
+            {% if hub_calendars %}
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Статус</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cal in hub_calendars %}
+                        <tr>
+                            <td>
+                                <a class="data-table__link" href="/calendars/{{ cal.id }}/">{{ cal.name }}</a>
+                            </td>
+                            <td>
+                                <span class="badge badge--{{ 'success' if cal.is_active else 'secondary' }}">
+                                    {{ 'Активен' if cal.is_active else 'Выключен' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="data-table__actions">
+                                    <a href="/calendars/{{ cal.id }}/" class="btn btn--ghost btn--sm">Расписание</a>
+                                    <a href="/calendars/{{ cal.id }}/settings/" class="btn btn--ghost btn--sm">Настройки</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="hub-empty">
+                <h3 class="hub-empty__title">Календарей пока нет</h3>
+                <p class="hub-empty__text">Создайте календарь, чтобы принимать записи.</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="manage-hub__panel card" id="services" aria-labelledby="manage-services-title">
+            <div class="manage-hub__panel-head">
+                <div>
+                    <h2 class="manage-hub__panel-title" id="manage-services-title">Услуги</h2>
+                    <p class="manage-hub__panel-meta">Всего: {{ hub_services|length }} · Активных: {{ hub_svc_dashboard.active|default(0) }}</p>
+                </div>
+                <button type="button" class="btn btn--primary btn--sm" id="manage-open-svc-create">Создать услугу</button>
+            </div>
+
+            <form method="POST" action="/services/" class="manage-hub__create" id="manage-svc-create" hidden>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="create_service">
+                <div class="app-form-grid">
+                    <div class="form-field">
+                        <label class="form-field__label" for="svc_name">Название</label>
+                        <input class="input" id="svc_name" name="name" required maxlength="120">
+                    </div>
+                    <div class="form-field">
+                        <label class="form-field__label" for="svc_calendar">Календарь</label>
+                        <select class="select" id="svc_calendar" name="calendar_id" required>
+                            <option value="">Выберите</option>
+                            {% for cal in calendars %}
+                            <option value="{{ cal.id }}">{{ cal.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label class="form-field__label" for="svc_duration">Длительность, мин</label>
+                        <input class="input" id="svc_duration" name="duration_minutes" type="number" min="5" step="5" value="60">
+                    </div>
+                    <div class="form-field">
+                        <label class="form-field__label" for="svc_price">Цена</label>
+                        <input class="input" id="svc_price" name="price" placeholder="Необязательно">
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label class="form-field__label" for="svc_desc">Описание</label>
+                    <textarea class="textarea" id="svc_desc" name="description" rows="2"></textarea>
+                </div>
+                <div class="manage-hub__create-actions">
+                    <button type="submit" class="btn btn--primary btn--sm">Сохранить</button>
+                    <button type="button" class="btn btn--ghost btn--sm" id="manage-close-svc-create">Отмена</button>
+                </div>
+            </form>
+
+            {% if hub_services %}
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Услуга</th>
+                            <th>Календарь</th>
+                            <th>Длительность</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for svc in hub_services %}
+                        <tr>
+                            <td>{{ svc.name }}</td>
+                            <td class="data-table__muted">{{ svc.calendar_name|default('—') }}</td>
+                            <td class="data-table__muted">{{ svc.duration_minutes }} мин</td>
+                            <td>
+                                <span class="badge badge--{{ 'success' if svc.is_active else 'secondary' }}">
+                                    {{ 'Активна' if svc.is_active else 'Выключена' }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="manage-hub__hint text-muted">Полное редактирование и порядок услуг: <a href="/services/?legacy=1">откройте каталог услуг</a> (API и формы сохранены). Для удобства список открывается здесь; детальные действия - через API-интерфейс прежней страницы при необходимости.</p>
+            {% else %}
+            <div class="hub-empty">
+                <h3 class="hub-empty__title">Услуг пока нет</h3>
+                <p class="hub-empty__text">Создайте услугу и привяжите её к календарю.</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    function bind(openId, closeId, formId) {
+        var openBtn = document.getElementById(openId);
+        var closeBtn = document.getElementById(closeId);
+        var form = document.getElementById(formId);
+        if (!form) return;
+        if (openBtn) openBtn.addEventListener('click', function () { form.hidden = false; });
+        if (closeBtn) closeBtn.addEventListener('click', function () { form.hidden = true; });
+    }
+    bind('manage-open-cal-create', 'manage-close-cal-create', 'manage-cal-create');
+    bind('manage-open-svc-create', 'manage-close-svc-create', 'manage-svc-create');
+})();
+</script>
+{% endblock %}

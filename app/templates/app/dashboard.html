@@ -6,6 +6,11 @@
 {% include "components/meta.html" %}
 {% endblock %}
 
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=12">
+<link rel="stylesheet" href="/static/css/specialist-book.css?v=1">
+{% endblock %}
+
 {% block app_content %}
 {% if show_telegram_welcome %}
 <div class="alert alert--success cabinet-alert" role="alert">
@@ -22,50 +27,130 @@
 </div>
 {% endif %}
 
-<section class="cabinet-empty" aria-label="Обзор кабинета">
-    <div class="cabinet-empty__art" aria-hidden="true"></div>
-    <div class="cabinet-empty__card">
-        <img class="cabinet-empty__logo" src="/static/img/brand/logo-mark-160.png?v=4" alt="" width="56" height="56" decoding="async">
-        <h1 class="cabinet-empty__title">{{ site_brand_name }}</h1>
-        <p class="cabinet-empty__lead cabinet-empty__lead--desktop">Кабинет специалиста. Выберите раздел слева: календари, услуги, записи или клиенты.</p>
-        <p class="cabinet-empty__lead cabinet-empty__lead--mobile">Кабинет специалиста. Выберите раздел в меню внизу: календари, услуги, записи или клиенты.</p>
-
-        <div class="cabinet-home-guide" aria-label="Инструкция">
-            <h2 class="cabinet-home-guide__title">С чего начать</h2>
-            <p class="cabinet-home-guide__lead">Короткая инструкция, как настроить приём клиентов.</p>
-            <ol class="cabinet-home-guide__list">
-                <li>
-                    <a href="/calendars/" class="cabinet-home-guide__link">
-                        <span class="cabinet-nav__glyph" data-icon="calendars" aria-hidden="true"></span>
-                        <span><strong>Календари</strong> - окна приёма и расписание недели</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/services/" class="cabinet-home-guide__link">
-                        <span class="cabinet-nav__glyph" data-icon="services" aria-hidden="true"></span>
-                        <span><strong>Услуги</strong> - цены и длительность</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/profile/" class="cabinet-home-guide__link">
-                        <span class="cabinet-nav__glyph" data-icon="profile" aria-hidden="true"></span>
-                        <span><strong>Профиль</strong> - фото, описание и ссылка для клиентов</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/integrations/" class="cabinet-home-guide__link">
-                        <span class="cabinet-nav__glyph" data-icon="telegram" aria-hidden="true"></span>
-                        <span><strong>Интеграции</strong> - уведомления в Telegram</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/booking/" class="cabinet-home-guide__link">
-                        <span class="cabinet-nav__glyph" data-icon="bookings" aria-hidden="true"></span>
-                        <span><strong>Записи</strong> - входящие встречи и статусы</span>
-                    </a>
-                </li>
-            </ol>
+<div class="dashboard-page clients-page">
+    <header class="cabinet-page-header">
+        <div>
+            <h1 class="cabinet-page-header__title">Обзор</h1>
+            <p class="cabinet-page-header__desc">Ключевые метрики кабинета и быстрый доступ к клиентам и записям.</p>
         </div>
+        <div class="cabinet-page-header__actions">
+            <button type="button" class="btn btn--primary btn--sm" data-specialist-book data-csrf="{{ csrf_token }}">Записать клиента</button>
+            <a href="/clients/" class="btn btn--secondary btn--sm">Клиенты</a>
+            <a href="/booking/" class="btn btn--secondary btn--sm">Записи</a>
+        </div>
+    </header>
+
+    <section class="clients-dashboard" aria-label="Показатели">
+        <div class="clients-dash-card">
+            <span class="clients-dash-card__value">{{ dash_kpi.total|default(0) }}</span>
+            <span class="clients-dash-card__label">Клиенты</span>
+        </div>
+        <div class="clients-dash-card">
+            <span class="clients-dash-card__value">{{ dash_kpi.new_count|default(0) }}</span>
+            <span class="clients-dash-card__label">Новые</span>
+        </div>
+        <div class="clients-dash-card">
+            <span class="clients-dash-card__value">{{ dash_kpi.today_bookings|default(0) }}</span>
+            <span class="clients-dash-card__label">Записей сегодня</span>
+        </div>
+        <div class="clients-dash-card">
+            <span class="clients-dash-card__value">{{ dash_kpi.upcoming|default(0) }}</span>
+            <span class="clients-dash-card__label">Предстоящие</span>
+        </div>
+    </section>
+
+    <div class="clients-layout">
+        <section class="card dashboard-recent">
+            <div class="dashboard-recent__head">
+                <h2 class="dashboard-recent__title">Последние клиенты</h2>
+                <a href="/clients/" class="btn btn--ghost btn--sm">Все</a>
+            </div>
+            {% if dash_recent_clients %}
+            <div class="data-table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Клиент</th>
+                            <th>Статус</th>
+                            <th>Записей</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in dash_recent_clients %}
+                        <tr>
+                            <td><a class="data-table__link" href="{{ c.detail_url }}">{{ c.name }}</a></td>
+                            <td><span class="badge badge--{{ 'success' if c.status == 'active' else 'secondary' }}">{{ c.status_label }}</span></td>
+                            <td class="data-table__muted">{{ c.booking_count }}</td>
+                            <td><a href="{{ c.detail_url }}" class="btn btn--ghost btn--sm">Открыть</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="hub-empty">
+                <h3 class="hub-empty__title">Клиентов пока нет</h3>
+                <p class="hub-empty__text">Добавьте первую карточку или дождитесь записей с публичной страницы.</p>
+                <a href="/clients/" class="btn btn--primary hub-empty__cta">Перейти к клиентам</a>
+            </div>
+            {% endif %}
+        </section>
+
+        <aside class="card clients-activity" aria-label="Последние действия">
+            <h2 class="clients-activity__title">Последние действия</h2>
+            <ul class="clients-activity__list">
+                {% for item in dash_activity %}
+                <li class="clients-activity__item">
+                    <span class="clients-activity__name">{{ item.name }}</span>
+                    <span class="clients-activity__action">{{ item.action }}</span>
+                </li>
+                {% else %}
+                <li class="clients-activity__empty">Действий пока нет</li>
+                {% endfor %}
+            </ul>
+        </aside>
     </div>
-</section>
+
+    <details class="card cabinet-home-guide cabinet-home-guide--collapsible">
+        <summary class="cabinet-home-guide__summary">С чего начать</summary>
+        <p class="cabinet-home-guide__lead">Короткая инструкция, как настроить приём клиентов.</p>
+        <ol class="cabinet-home-guide__list">
+            <li>
+                <a href="/calendars/" class="cabinet-home-guide__link">
+                    <span class="cabinet-nav__glyph" data-icon="calendars" aria-hidden="true"></span>
+                    <span><strong>Календари</strong> - окна приёма и расписание недели</span>
+                </a>
+            </li>
+            <li>
+                <a href="/services/" class="cabinet-home-guide__link">
+                    <span class="cabinet-nav__glyph" data-icon="services" aria-hidden="true"></span>
+                    <span><strong>Услуги</strong> - цены и длительность</span>
+                </a>
+            </li>
+            <li>
+                <a href="/profile/" class="cabinet-home-guide__link">
+                    <span class="cabinet-nav__glyph" data-icon="profile" aria-hidden="true"></span>
+                    <span><strong>Профиль</strong> - фото, описание и ссылка для клиентов</span>
+                </a>
+            </li>
+            <li>
+                <a href="/integrations/" class="cabinet-home-guide__link">
+                    <span class="cabinet-nav__glyph" data-icon="telegram" aria-hidden="true"></span>
+                    <span><strong>Интеграции</strong> - уведомления в Telegram</span>
+                </a>
+            </li>
+            <li>
+                <a href="/booking/" class="cabinet-home-guide__link">
+                    <span class="cabinet-nav__glyph" data-icon="bookings" aria-hidden="true"></span>
+                    <span><strong>Записи</strong> - входящие встречи и статусы</span>
+                </a>
+            </li>
+        </ol>
+    </details>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/specialist-book.js?v=1" defer></script>
 {% endblock %}

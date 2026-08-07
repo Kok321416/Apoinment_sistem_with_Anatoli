@@ -1,14 +1,14 @@
-п»ї{% extends "layouts/app.html" %}
+{% extends "layouts/app.html" %}
 {% from "components/app_page_head.html" import app_page_head %}
 
 {% block meta_tags %}
-{% set page_title = calendar.name ~ " вЂ” СЂР°СЃРїРёСЃР°РЅРёРµ вЂ” " ~ site_brand_name %}
-{% set meta_description = "Р РµРґР°РєС‚РѕСЂ СЂР°СЃРїРёСЃР°РЅРёСЏ РєР°Р»РµРЅРґР°СЂСЏ вЂ” " ~ site_brand_name %}
+{% set page_title = calendar.name ~ " — расписание — " ~ site_brand_name %}
+{% set meta_description = "Редактор расписания календаря — " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=38">
+<link rel="stylesheet" href="/static/css/app.css?v=40">
 <link rel="stylesheet" href="/static/css/calendar-schedule.css?v=9">
 {% endblock %}
 
@@ -24,22 +24,22 @@
     <header class="calendar-page__header">
         <div class="calendar-page__title-row">
             <div>
-                {{ app_page_head(calendar.name, '/calendars/', 'в†ђ РљР°Р»РµРЅРґР°СЂРё') }}
+                {{ app_page_head(calendar.name, '/calendars/', '< Календари') }}
                 <span class="calendar-page__status badge {% if calendar.is_active %}badge--success{% else %}badge--ghost{% endif %}" id="calendar-status">
-                    {% if calendar.is_active %}РђРєС‚РёРІРµРЅ{% else %}РќРµР°РєС‚РёРІРµРЅ{% endif %}
+                    {% if calendar.is_active %}Активен{% else %}Неактивен{% endif %}
                 </span>
             </div>
             <div class="calendar-page__header-actions">
-                <button type="button" class="btn btn--secondary btn--sm" id="copy-booking-link" data-link="{{ booking_url }}">РЎРєРѕРїРёСЂРѕРІР°С‚СЊ СЃСЃС‹Р»РєСѓ</button>
-                <a href="{{ booking_url }}" class="btn btn--ghost btn--sm" target="_blank" rel="noopener">РџСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ Р·Р°РїРёСЃРё</a>
+                <button type="button" class="btn btn--secondary btn--sm" id="copy-booking-link" data-link="{{ booking_url }}">Скопировать ссылку</button>
+                <a href="{{ booking_url }}" class="btn btn--ghost btn--sm" target="_blank" rel="noopener">Предпросмотр записи</a>
             </div>
         </div>
     </header>
 
-    <nav class="schedule-mobile-progress" id="schedule-mobile-progress" aria-label="Р Р°Р·РґРµР»С‹ СЂР°СЃРїРёСЃР°РЅРёСЏ" hidden>
-        <a class="schedule-mobile-progress__item is-active" href="#day-editor-panel" data-section="day">Р”РµРЅСЊ</a>
-        <a class="schedule-mobile-progress__item" href="#calendar-settings-panel" data-section="settings">РќР°СЃС‚СЂРѕР№РєРё</a>
-        <a class="schedule-mobile-progress__item" href="#calendar-settings-summary" data-section="summary">РџР°СЂР°РјРµС‚СЂС‹</a>
+    <nav class="schedule-mobile-progress" id="schedule-mobile-progress" aria-label="Разделы расписания" hidden>
+        <a class="schedule-mobile-progress__item is-active" href="#day-editor-panel" data-section="day">День</a>
+        <a class="schedule-mobile-progress__item" href="#calendar-settings-panel" data-section="settings">Настройки</a>
+        <a class="schedule-mobile-progress__item" href="#calendar-settings-summary" data-section="summary">Параметры</a>
     </nav>
 
     {% if success %}
@@ -50,24 +50,24 @@
     {% endif %}
 
     <div class="calendar-layout" id="calendar-layout">
-        <section class="week-grid-panel card" aria-label="РќРµРґРµР»СЊРЅР°СЏ СЃРµС‚РєР°">
+        <section class="week-grid-panel card" aria-label="Недельная сетка">
             <div class="week-grid-panel__toolbar">
-                <h2 class="week-grid-panel__title">Р Р°СЃРїРёСЃР°РЅРёРµ РЅРµРґРµР»Рё</h2>
-                <p class="week-grid-panel__hint week-grid-panel__hint--desktop">РљР»РёРєРЅРёС‚Рµ РїРѕ РґРЅСЋ РёР»Рё РѕРєРЅСѓ, С‡С‚РѕР±С‹ РѕС‚РєСЂС‹С‚СЊ СЂРµРґР°РєС‚РѕСЂ СЃРїСЂР°РІР°</p>
-                <p class="week-grid-panel__hint week-grid-panel__hint--mobile">Р›РёСЃС‚Р°Р№С‚Рµ РЅРµРґРµР»СЋ РІРїСЂР°РІРѕ. РќР°Р¶РјРёС‚Рµ РЅР° С‡С‘СЂРЅРѕРµ РѕРєРЅРѕ, С‡С‚РѕР±С‹ РїСЂР°РІРёС‚СЊ РЅРёР¶Рµ</p>
+                <h2 class="week-grid-panel__title">Расписание недели</h2>
+                <p class="week-grid-panel__hint week-grid-panel__hint--desktop">Кликните по дню или окну, чтобы открыть редактор справа</p>
+                <p class="week-grid-panel__hint week-grid-panel__hint--mobile">Листайте неделю вправо. Нажмите на чёрное окно, чтобы править ниже</p>
             </div>
-            <div class="schedule-day-chips" id="schedule-day-chips" role="tablist" aria-label="Р”РЅРё РЅРµРґРµР»Рё"></div>
+            <div class="schedule-day-chips" id="schedule-day-chips" role="tablist" aria-label="Дни недели"></div>
             <div class="week-grid-scroll">
                 <div class="week-grid-wrap" id="week-grid-wrap">
-                    <div class="week-grid-loading" id="week-grid-loading">Р—Р°РіСЂСѓР·РєР° СЂР°СЃРїРёСЃР°РЅРёСЏвЂ¦</div>
+                    <div class="week-grid-loading" id="week-grid-loading">Загрузка расписания…</div>
                     <div class="week-grid" id="week-grid" hidden></div>
                 </div>
             </div>
-            <p class="week-grid-panel__scroll-hint" aria-hidden="true">Р›РёСЃС‚Р°Р№С‚Рµ РІРїСЂР°РІРѕ, С‡С‚РѕР±С‹ СѓРІРёРґРµС‚СЊ РІСЃРµ РґРЅРё</p>
+            <p class="week-grid-panel__scroll-hint" aria-hidden="true">Листайте вправо, чтобы увидеть все дни</p>
         </section>
 
-        <section class="day-editor-panel card" aria-label="Р РµРґР°РєС‚РѕСЂ РґРЅСЏ" id="day-editor-panel">
-            <div class="day-editor-loading" id="day-editor-loading">Р’С‹Р±РµСЂРёС‚Рµ РґРµРЅСЊ</div>
+        <section class="day-editor-panel card" aria-label="Редактор дня" id="day-editor-panel">
+            <div class="day-editor-loading" id="day-editor-loading">Выберите день</div>
             <div id="day-editor"></div>
         </section>
     </div>
@@ -75,8 +75,8 @@
     <section class="calendar-settings-panel card" id="calendar-settings-panel">
         <button type="button" class="calendar-settings-panel__toggle" id="calendar-settings-toggle" aria-expanded="false" aria-controls="calendar-settings-body">
             <span class="calendar-settings-panel__head">
-                <span class="calendar-settings-panel__title">Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё</span>
-                <span class="calendar-settings-panel__lead">РџРµСЂРµСЂС‹РІС‹, Р»РёРјРёС‚С‹ Рё РЅР°РїРѕРјРёРЅР°РЅРёСЏ</span>
+                <span class="calendar-settings-panel__title">Дополнительные настройки</span>
+                <span class="calendar-settings-panel__lead">Перерывы, лимиты и напоминания</span>
             </span>
             <span class="calendar-settings-panel__chevron" aria-hidden="true"></span>
         </button>
@@ -84,49 +84,49 @@
         <form class="calendar-settings-form" id="calendar-settings-form">
             <div class="calendar-settings-form__grid">
                 <div class="settings-card">
-                    <label class="settings-card__label" for="setting-break">РџРµСЂРµСЂС‹РІ РјРµР¶РґСѓ Р·Р°РїРёСЃСЏРјРё</label>
+                    <label class="settings-card__label" for="setting-break">Перерыв между записями</label>
                     <div class="settings-card__input-wrap">
                         <input class="input" type="number" id="setting-break" name="break_between_services_minutes" min="0" value="{{ calendar.break_between_services_minutes|default(0) }}">
-                        <span class="settings-card__unit">РјРёРЅСѓС‚</span>
+                        <span class="settings-card__unit">минут</span>
                     </div>
                 </div>
                 <div class="settings-card">
-                    <label class="settings-card__label" for="setting-limit">Р›РёРјРёС‚ Р·Р°РїРёСЃРµР№ РІ РґРµРЅСЊ</label>
+                    <label class="settings-card__label" for="setting-limit">Лимит записей в день</label>
                     <div class="settings-card__input-wrap">
                         <input class="input" type="number" id="setting-limit" name="max_services_per_day" min="0" value="{{ calendar.max_services_per_day|default(0) }}">
-                        <span class="settings-card__unit">0 = Р±РµР· Р»РёРјРёС‚Р°</span>
+                        <span class="settings-card__unit">0 = без лимита</span>
                     </div>
                 </div>
                 <div class="settings-card">
-                    <label class="settings-card__label" for="setting-ahead">Р—Р°РїРёСЃСЊ Р·Р°СЂР°РЅРµРµ</label>
+                    <label class="settings-card__label" for="setting-ahead">Запись заранее</label>
                     <div class="settings-card__input-wrap">
                         <input class="input" type="number" id="setting-ahead" name="book_ahead_hours" min="0" value="{{ calendar.book_ahead_hours|default(24) }}">
-                        <span class="settings-card__unit">С‡Р°СЃРѕРІ</span>
+                        <span class="settings-card__unit">часов</span>
                     </div>
                 </div>
                 <div class="settings-card settings-card--reminders">
-                    <span class="settings-card__label">РќР°РїРѕРјРёРЅР°РЅРёСЏ РІ РўРµР»РµРіСЂР°Рј</span>
+                    <span class="settings-card__label">Напоминания в Телеграм</span>
                     <label class="settings-reminder">
                         <input type="checkbox" id="setting-reminder-first-enabled"{% if calendar.reminder_hours_first|default(0) > 0 %} checked{% endif %}>
-                        <span>Р·Р°</span>
+                        <span>за</span>
                         <input class="input input--inline" type="number" id="setting-reminder-first" name="reminder_hours_first" min="1" value="{{ calendar.reminder_hours_first|default(24) }}">
-                        <span>С‡Р°СЃРѕРІ</span>
+                        <span>часов</span>
                     </label>
                     <label class="settings-reminder">
                         <input type="checkbox" id="setting-reminder-second-enabled"{% if calendar.reminder_hours_second|default(0) > 0 %} checked{% endif %}>
-                        <span>Р·Р°</span>
+                        <span>за</span>
                         <input class="input input--inline" type="number" id="setting-reminder-second" name="reminder_hours_second" min="1" value="{{ calendar.reminder_hours_second|default(1) }}">
-                        <span>С‡Р°СЃРѕРІ</span>
+                        <span>часов</span>
                     </label>
                 </div>
             </div>
-            <button type="submit" class="btn btn--primary btn--lg calendar-settings-form__save" id="settings-save-btn">РЎРѕС…СЂР°РЅРёС‚СЊ РёР·РјРµРЅРµРЅРёСЏ</button>
+            <button type="submit" class="btn btn--primary btn--lg calendar-settings-form__save" id="settings-save-btn">Сохранить изменения</button>
         </form>
         </div>
     </section>
 
     <footer class="calendar-settings-summary card" id="calendar-settings-summary">
-        <h2 class="calendar-settings-summary__title">РўРµРєСѓС‰РёРµ РїР°СЂР°РјРµС‚СЂС‹</h2>
+        <h2 class="calendar-settings-summary__title">Текущие параметры</h2>
         <div class="calendar-page__badges" id="calendar-badges" aria-live="polite"></div>
     </footer>
 </div>

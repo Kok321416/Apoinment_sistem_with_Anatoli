@@ -335,11 +335,12 @@ def create_public_booking(
         booking_end_time=end_time_obj,
         client_name=client_name,
         client_phone=client_phone or "",
-        client_telegram=client_telegram or "",
-        client_email=client_email or "",
+        client_telegram=client_telegram or None,
+        client_email=client_email or None,
         status="pending",
         link_token=link_token,
         vk_user_id=vk_user_id,
+        source="client",
     )
     db.add(booking)
     db.commit()
@@ -502,11 +503,12 @@ async def create_public_booking_async(
         booking_end_time=end_time_obj,
         client_name=client_name,
         client_phone=client_phone or "",
-        client_telegram=client_telegram or "",
-        client_email=client_email or "",
+        client_telegram=client_telegram or None,
+        client_email=client_email or None,
         status="pending",
         link_token=link_token,
         vk_user_id=vk_user_id,
+        source="client",
     )
     db.add(booking)
     await db.commit()
@@ -523,6 +525,280 @@ async def create_public_booking_async(
 
     schedule_on_booking_created(booking.id)
     return booking, None
+
+
+def normalize_optional_email(raw: str | None) -> tuple[str | None, str | None]:
+    value = (raw or "").strip()
+    if not value:
+        return None, None
+    if "@" not in value or "." not in value.split("@")[-1]:
+        return None, "Некорректный email"
+    if len(value) > 254:
+        return None, "Email слишком длинный"
+    return value.lower(), None
+
+
+def normalize_optional_telegram(raw: str | None) -> str | None:
+    value = (raw or "").strip()
+    if not value:
+        return None
+    value = value.lstrip("@")
+    if "t.me/" in value.lower():
+        value = value.split("/")[-1].split("?")[0]
+    return value or None
+
+
+async def find_matching_client_cards_async(
+    db,
+    consultant_id: int,
+    *,
+    phone: str = "",
+    email: str | None = None,
+    telegram: str | None = None,
+    limit: int = 8,
+) -> list[ClientCard]:
+    from sqlalchemy import select
+
+    conditions = []
+    if phone:
+        conditions.append(ClientCard.phone == phone)
+    if email:
+        conditions.append(ClientCard.email == email)
+    if telegram:
+        conditions.append(ClientCard.telegram.ilike(f"%{telegram}%"))
+    if not conditions:
+        return []
+    rows = (
+        await db.execute(
+            select(ClientCard)
+            .where(ClientCard.consultant_id == consultant_id, or_(*conditions))
+            .order_by(ClientCard.updated_at.desc())
+            .limit(limit)
+        )
+    ).scalars().all()
+    return list(rows)
+
+
+async def create_specialist_booking_async(
+    db,
+    consultant: Consultant,
+    *,
+    calendar_id: int,
+    service_id: int,
+    booking_date: date,
+    booking_time_str: str,
+    booking_end_time_str: str,
+    client_name: str,
+    client_phone: str = "",
+    client_email: str = "",
+    client_telegram: str = "",
+    client_card_id: int | None = None,
+    force_new_client: bool = False,
+) -> tuple[Booking | None, str | None, list[dict] | None]:
+    """Create booking as specialist. Returns (booking, error, matches_if_conflict)."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    name = (client_name or "").strip()
+    if not name:
+        return None, "Укажите ФИО клиента", None
+
+    phone, phone_err = normalize_client_phone(client_phone)
+    if phone_err:
+        return None, phone_err, None
+    email, email_err = normalize_optional_email(client_email)
+    if email_err:
+        return None, email_err, None
+    telegram = normalize_optional_telegram(client_telegram)
+
+    calendar = (
+        await db.execute(
+            select(Calendar).where(
+                Calendar.id == calendar_id,
+                Calendar.consultant_id == consultant.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not calendar:
+        return None, "Календарь не найден", None
+    if not calendar.is_active:
+        return None, "Календарь отключён", None
+
+    service = (
+        await db.execute(
+            select(Service).where(
+                Service.id == service_id,
+                Service.consultant_id == consultant.id,
+                Service.is_active.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not service:
+        return None, "Услуга не найдена", None
+    if service.calendar_id and service.calendar_id != calendar.id:
+        return None, "Услуга не относится к этому календарю.", None
+
+    try:
+        start_time_obj = datetime.strptime(booking_time_str, "%H:%M").time()
+        end_time_obj = datetime.strptime(booking_end_time_str, "%H:%M").time()
+    except ValueError:
+        return None, "Некорректный формат времени", None
+
+    start_dt = datetime.combine(booking_date, start_time_obj)
+    end_dt = datetime.combine(booking_date, end_time_obj)
+    duration_minutes = (end_dt - start_dt).total_seconds() / 60
+    if abs(duration_minutes - service.duration_minutes) > 1:
+        return None, "Неверная длительность. Выберите время из списка доступных слотов.", None
+
+    (
+        await db.execute(select(Calendar).where(Calendar.id == calendar.id).with_for_update())
+    ).scalar_one()
+
+    day_of_week = booking_date.weekday()
+    time_slot = (
+        await db.execute(
+            select(TimeSlot).where(
+                TimeSlot.calendar_id == calendar.id,
+                TimeSlot.day_of_week == day_of_week,
+                TimeSlot.start_time <= start_time_obj,
+                TimeSlot.end_time >= end_time_obj,
+                TimeSlot.is_available.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not time_slot:
+        return None, "Выбранное время не входит в доступные окна приёма.", None
+
+    slot_taken = (
+        await db.execute(
+            select(Booking)
+            .where(
+                Booking.calendar_id == calendar.id,
+                Booking.booking_date == booking_date,
+                Booking.booking_time == start_time_obj,
+                Booking.status.in_(["pending", "confirmed"]),
+            )
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if slot_taken:
+        return None, "Это время уже занято. Выберите другой слот.", None
+
+    existing_bookings = list(
+        (
+            await db.execute(
+                select(Booking)
+                .where(
+                    Booking.calendar_id == calendar.id,
+                    Booking.booking_date == booking_date,
+                    Booking.status.in_(["pending", "confirmed"]),
+                )
+                .with_for_update()
+            )
+        )
+        .scalars()
+        .all()
+    )
+    max_per_day = calendar.max_services_per_day or 0
+    if max_per_day > 0 and len(existing_bookings) >= max_per_day:
+        return None, "Достигнут лимит записей на этот день.", None
+
+    break_minutes = calendar.break_between_services_minutes or 0
+    break_delta = timedelta(minutes=break_minutes)
+    for booking in existing_bookings:
+        if not booking.booking_end_time:
+            continue
+        booking_start = datetime.combine(booking_date, booking.booking_time)
+        booking_end = datetime.combine(booking_date, booking.booking_end_time)
+        if not (end_dt + break_delta <= booking_start or start_dt >= booking_end + break_delta):
+            return None, "Это время уже занято или слишком близко к другой записи.", None
+
+    card = None
+    if client_card_id is not None:
+        card = (
+            await db.execute(
+                select(ClientCard).where(
+                    ClientCard.id == client_card_id,
+                    ClientCard.consultant_id == consultant.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not card:
+            return None, "Карточка клиента не найдена", None
+    elif not force_new_client and (phone or email or telegram):
+        matches = await find_matching_client_cards_async(
+            db,
+            consultant.id,
+            phone=phone,
+            email=email,
+            telegram=telegram,
+        )
+        if matches:
+            return None, "found_matches", [
+                {
+                    "id": c.id,
+                    "name": c.name or f"Клиент #{c.id}",
+                    "phone": c.phone or "",
+                    "email": c.email or "",
+                    "telegram": c.telegram or "",
+                }
+                for c in matches
+            ]
+
+    if card is None:
+        if force_new_client:
+            card = ClientCard(
+                consultant_id=consultant.id,
+                name=name,
+                phone=phone or None,
+                email=email,
+                telegram=telegram,
+            )
+            db.add(card)
+            await db.flush()
+        else:
+            card = await find_or_create_client_card_async(
+                db,
+                consultant,
+                name,
+                phone,
+                email or "",
+                telegram or "",
+                client_user_id=None,
+            )
+    link_token = uuid.uuid4().hex[:24]
+    booking = Booking(
+        service_id=service.id,
+        time_slot_id=time_slot.id,
+        calendar_id=calendar.id,
+        client_card_id=card.id,
+        client_user_id=card.client_user_id,
+        booking_date=booking_date,
+        booking_time=start_time_obj,
+        booking_end_time=end_time_obj,
+        client_name=name,
+        client_phone=phone or "",
+        client_telegram=telegram,
+        client_email=email,
+        status="confirmed",
+        link_token=link_token,
+        source="specialist",
+    )
+    db.add(booking)
+    await db.commit()
+
+    booking = (
+        await db.execute(
+            select(Booking)
+            .options(selectinload(Booking.service), selectinload(Booking.calendar))
+            .where(Booking.id == booking.id)
+        )
+    ).scalar_one()
+
+    from app.services.notify_bridge import schedule_on_booking_created
+
+    schedule_on_booking_created(booking.id)
+    return booking, None, None
 
 
 def mark_past_bookings_completed(db: Session, calendars: list[Calendar]) -> None:

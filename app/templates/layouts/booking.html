@@ -6,33 +6,18 @@
     {% include "components/meta.html" %}
     {% endblock %}
     {% block page_css %}
-    <link rel="stylesheet" href="/static/css/booking.css?v=23">
+    <link rel="stylesheet" href="/static/css/booking.css?v=24">
+    <link rel="stylesheet" href="/static/css/site-chrome.css?v=1">
 {% endblock %}
     {% if telegram_mini_app_launch_url %}<meta name="ayc-telegram-launch" content="{{ telegram_mini_app_launch_url }}">{% endif %}
 </head>
 <body class="booking-page">
     {% include "components/skip_link.html" %}
-    <header class="auth-page__topbar container">
-        {% include "components/logo.html" %}
-    </header>
+    {% include "components/booking_topbar.html" %}
     <main id="main" class="booking-page__main container" tabindex="-1">
         {% block booking_content %}{% endblock %}
     </main>
-    <footer class="app-footer-mini" role="contentinfo">
-        <a href="/">На главную</a>
-        <span class="footer-sep" aria-hidden="true">·</span>
-        <a href="/privacy/">Конфиденциальность</a>
-        <span class="footer-sep" aria-hidden="true">·</span>
-        <a href="/terms/">Условия</a>
-        <span class="footer-sep" aria-hidden="true">·</span>
-        <a href="mailto:{{ support_email }}">Поддержка</a>
-        {% if telegram_bot_username %}
-        <span class="footer-sep" aria-hidden="true">·</span>
-        <a href="https://t.me/{{ telegram_bot_username }}" target="_blank" rel="noopener">Telegram</a>
-        {% endif %}
-        <span class="footer-sep" aria-hidden="true">·</span>
-        <span class="footer-brand">{{ site_brand_name }}</span>
-    </footer>
+    {% include "components/site_footer_legal.html" %}
     {% include "components/cookie_consent.html" %}
     {% include "components/yandex_metrika.html" %}
     {% include "components/telegram_webapp.html" %}

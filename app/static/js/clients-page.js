@@ -104,13 +104,15 @@
         var filter = (document.getElementById('clients-filter') || {}).value || 'all';
         var sort = (document.getElementById('clients-sort') || {}).value || 'recent';
         var q = search.trim().toLowerCase();
-        var cards = Array.from(document.querySelectorAll('.client-card'));
-        var visible = [];
+        var rows = Array.from(document.querySelectorAll('.client-filter-row'));
+        var visibleCards = [];
+        var visibleCount = 0;
+        var seenIds = {};
 
-        cards.forEach(function (card) {
-            var badge = card.getAttribute('data-badge') || '';
-            var status = card.getAttribute('data-status') || '';
-            var searchText = card.getAttribute('data-search') || '';
+        rows.forEach(function (row) {
+            var badge = row.getAttribute('data-badge') || '';
+            var status = row.getAttribute('data-status') || '';
+            var searchText = row.getAttribute('data-search') || '';
             var matchSearch = !q || searchText.indexOf(q) !== -1;
             var matchFilter = true;
             if (filter === 'new') matchFilter = badge === 'new';
@@ -118,11 +120,18 @@
             else if (filter === 'vip') matchFilter = badge === 'vip';
             else if (filter === 'archive') matchFilter = badge === 'inactive' || status === 'inactive';
             var show = matchSearch && matchFilter;
-            card.classList.toggle('is-hidden', !show);
-            if (show) visible.push(card);
+            row.classList.toggle('is-hidden', !show);
+            if (show) {
+                var id = row.getAttribute('data-id') || '';
+                if (!seenIds[id]) {
+                    seenIds[id] = true;
+                    visibleCount += 1;
+                }
+                if (row.classList.contains('client-card')) visibleCards.push(row);
+            }
         });
 
-        visible.sort(function (a, b) {
+        visibleCards.sort(function (a, b) {
             if (sort === 'name') {
                 return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '', 'ru');
             }
@@ -137,20 +146,41 @@
 
         var grid = document.getElementById('clients-grid');
         if (grid) {
-            visible.forEach(function (card) {
+            visibleCards.forEach(function (card) {
                 grid.appendChild(card);
             });
         }
 
+        var tbody = document.getElementById('clients-table-body');
+        if (tbody) {
+            var tableRows = Array.from(tbody.querySelectorAll('.clients-table__row'));
+            tableRows.sort(function (a, b) {
+                if (sort === 'name') {
+                    return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '', 'ru');
+                }
+                if (sort === 'created') {
+                    return (b.getAttribute('data-created') || '').localeCompare(a.getAttribute('data-created') || '');
+                }
+                if (sort === 'last_visit') {
+                    return (b.getAttribute('data-last-visit') || '').localeCompare(a.getAttribute('data-last-visit') || '');
+                }
+                return (b.getAttribute('data-updated') || '').localeCompare(a.getAttribute('data-updated') || '');
+            });
+            tableRows.forEach(function (row) {
+                tbody.appendChild(row);
+            });
+        }
+
         var empty = document.getElementById('clients-filter-empty');
-        if (empty) empty.hidden = visible.length > 0 || cards.length === 0;
+        var hasSource = document.querySelectorAll('.client-filter-row').length > 0;
+        if (empty) empty.hidden = visibleCount > 0 || !hasSource;
     }
 
     function initRelativeDates() {
         document.querySelectorAll('[data-relative]').forEach(function (el) {
             var iso = el.getAttribute('data-relative');
             if (!iso) return;
-            if (el.classList.contains('client-card__meta-value')) {
+            if (el.classList.contains('client-card__meta-value') || el.getAttribute('data-relative-kind') === 'visit') {
                 el.textContent = formatRelativeFuture(iso);
             } else {
                 el.textContent = formatRelative(iso);

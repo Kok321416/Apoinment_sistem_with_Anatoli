@@ -254,6 +254,11 @@ def _apply_app_schema_patches() -> None:
         logger.exception("bookings.vk_user_id patch failed")
 
     try:
+        _add_column("bookings", "source", "VARCHAR(32) NOT NULL DEFAULT 'client'")
+    except Exception:
+        logger.exception("bookings.source patch failed")
+
+    try:
         from app.models import platform as platform_models
 
         Base.metadata.create_all(

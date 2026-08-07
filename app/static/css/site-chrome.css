@@ -1,0 +1,106 @@
+/* Shared legal footer + booking topbar (site + Mini App) */
+.site-footer-legal {
+    margin-top: auto;
+    padding: var(--space-xl) var(--space-lg);
+    border-top: 1px solid var(--border-default);
+    background: var(--surface-200, #fff);
+    text-align: center;
+}
+
+.site-footer-legal--compact {
+    padding: var(--space-lg) var(--space-md);
+}
+
+.site-footer-legal__nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-xs) var(--space-sm);
+    font-size: var(--font-size-body-sm);
+}
+
+.site-footer-legal__nav a {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.site-footer-legal__nav a:hover {
+    color: var(--accent-primary);
+    text-decoration: underline;
+}
+
+.site-footer-legal__sep {
+    color: var(--text-muted);
+}
+
+.site-footer-legal__brand {
+    margin: var(--space-sm) 0 0;
+    font-size: var(--font-size-caption, 0.75rem);
+    color: var(--text-muted);
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    font-size: var(--font-size-body-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.checkbox-row input {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+}
+
+.checkbox-row a {
+    color: var(--accent-primary);
+}
+
+.booking-topbar {
+    padding-top: var(--space-lg);
+    padding-bottom: var(--space-md);
+}
+
+.booking-topbar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-lg);
+}
+
+.booking-topbar__nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-md);
+    font-size: var(--font-size-body-sm);
+}
+
+.booking-topbar__nav a:not(.btn) {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.booking-topbar__nav a:not(.btn):hover {
+    color: var(--accent-primary);
+}
+
+/* Telegram Mini App: avoid duplicating TG chrome */
+body.tg-webapp .booking-topbar__nav,
+body.tg-webapp .site-footer-legal,
+body.tg-webapp .cabinet-workspace__footer,
+html.tg-webapp .booking-topbar__nav,
+html.tg-webapp .site-footer-legal {
+    display: none !important;
+}
+
+body.tg-webapp .booking-topbar {
+    padding-top: var(--space-sm);
+}
+
+@media (max-width: 640px) {
+    .booking-topbar__nav a:not(.btn) {
+        display: none;
+    }
+}
