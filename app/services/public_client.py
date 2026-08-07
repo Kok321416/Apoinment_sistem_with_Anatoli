@@ -7,6 +7,7 @@ import secrets
 import unicodedata
 
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.models import Consultant
@@ -74,6 +75,54 @@ def ensure_public_slug(db: Session, consultant: Consultant) -> str:
         return stable
 
 
+async def ensure_public_slug_async(db: AsyncSession, consultant: Consultant) -> str:
+    stable = specialist_slug_for(consultant)
+    try:
+        row = (
+            await db.execute(
+                text("SELECT public_slug FROM consultants WHERE id = :id"),
+                {"id": consultant.id},
+            )
+        ).first()
+    except Exception:
+        await db.rollback()
+        return stable
+
+    if row and row[0]:
+        return str(row[0])
+
+    base = _slugify(f"{consultant.first_name}-{consultant.last_name}") or f"spec-{consultant.id}"
+    candidate = base
+    n = 0
+    while True:
+        try:
+            exists = (
+                await db.execute(
+                    text("SELECT id FROM consultants WHERE public_slug = :slug LIMIT 1"),
+                    {"slug": candidate},
+                )
+            ).first()
+        except Exception:
+            await db.rollback()
+            return stable
+        if not exists:
+            break
+        n += 1
+        candidate = f"{base}-{n}"
+
+    try:
+        await db.execute(
+            text("UPDATE consultants SET public_slug = :slug WHERE id = :id"),
+            {"slug": candidate, "id": consultant.id},
+        )
+        await db.commit()
+        return candidate
+    except Exception:
+        await db.rollback()
+        logger.info("public_slug column unavailable; using %s", stable)
+        return stable
+
+
 def specialist_public_url(site_url: str, slug: str) -> str:
     return f"{site_url.rstrip('/')}/s/{slug}/"
 
@@ -100,6 +149,33 @@ def resolve_consultant_by_slug(db: Session, slug: str) -> Consultant | None:
             return db.query(Consultant).filter(Consultant.id == row[0]).first()
     except Exception:
         db.rollback()
+    return None
+
+
+async def resolve_consultant_by_slug_async(db: AsyncSession, slug: str) -> Consultant | None:
+    from sqlalchemy import select, text as sql_text
+
+    slug = (slug or "").strip()
+    if not slug:
+        return None
+    if slug.startswith("id-"):
+        try:
+            cid = int(slug.replace("id-", "", 1))
+        except ValueError:
+            cid = None
+        if cid:
+            return (await db.execute(select(Consultant).where(Consultant.id == cid))).scalar_one_or_none()
+    try:
+        row = (
+            await db.execute(
+                sql_text("SELECT id FROM consultants WHERE public_slug = :slug LIMIT 1"),
+                {"slug": slug},
+            )
+        ).first()
+        if row:
+            return (await db.execute(select(Consultant).where(Consultant.id == row[0]))).scalar_one_or_none()
+    except Exception:
+        await db.rollback()
     return None
 
 
@@ -181,6 +257,52 @@ def apply_client_gate_from_user(db: Session, session: dict, *, consultant_id: in
             .filter(SocialAccount.user_id == user_id, SocialAccount.provider == "telegram")
             .first()
         )
+        if sa:
+            telegram = (sa.uid or "").strip()
+            try:
+                import json
+
+                extra = json.loads(sa.extra_data or "{}")
+                username = (extra.get("username") or "").strip().lstrip("@")
+                if username:
+                    telegram = username
+            except Exception:
+                pass
+
+    if not email and not telegram:
+        telegram = f"user:{user_id or 'guest'}"
+
+    set_client_gate(
+        session,
+        consultant_id=consultant_id,
+        name=name,
+        email=email,
+        phone=phone,
+        telegram=telegram,
+        verified=True,
+    )
+
+
+async def apply_client_gate_from_user_async(db, session: dict, *, consultant_id: int, user) -> None:
+    from sqlalchemy import select
+
+    from app.models import SocialAccount
+
+    name = client_display_name(user)
+    email = (getattr(user, "email", None) or "").strip()
+    phone = (session.get("register_phone") or session.get("pc_phone") or "").strip()
+    telegram = (session.get("pc_telegram") or "").strip()
+
+    user_id = getattr(user, "id", None)
+    if user_id and not telegram:
+        sa = (
+            await db.execute(
+                select(SocialAccount).where(
+                    SocialAccount.user_id == user_id,
+                    SocialAccount.provider == "telegram",
+                )
+            )
+        ).scalar_one_or_none()
         if sa:
             telegram = (sa.uid or "").strip()
             try:

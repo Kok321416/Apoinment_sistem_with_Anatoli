@@ -38,6 +38,18 @@ class Settings:
     db_host: str = (os.getenv("DB_HOST", "") or "").strip() or "localhost"
     db_port: str = os.getenv("DB_PORT", "3306")
     db_connect_timeout: int = _env_int("DB_CONNECT_TIMEOUT", 10)
+    db_pool_size: int = _env_int("DB_POOL_SIZE", 5)
+    db_max_overflow: int = _env_int("DB_MAX_OVERFLOW", 10)
+    # Optional shared cache / rate-limit. Empty = in-process memory fallback.
+    redis_url: str = (os.getenv("REDIS_URL", "") or "").strip()
+    # Phase F: log + count requests slower than this (ms). 0 = disable slow flag.
+    perf_slow_ms: float = float(os.getenv("PERF_SLOW_MS", "500") or "500")
+    # Expose X-Process-Time response header when true.
+    perf_timing_header: bool = (os.getenv("PERF_TIMING_HEADER", "true") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
     google_oauth_client_id: str = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
     google_oauth_client_secret: str = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
@@ -54,6 +66,8 @@ class Settings:
 
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_bot_username: str = os.getenv("TELEGRAM_BOT_USERNAME", "")
+    # If set, FastAPI receives updates at /telegram/webhook/{secret} (stop separate bot polling).
+    telegram_webhook_secret: str = (os.getenv("TELEGRAM_WEBHOOK_SECRET", "") or "").strip()
     # Separate secret for bot -> API calls (recommended; do not reuse TELEGRAM_BOT_TOKEN in new setups)
     bot_api_secret: str = (os.getenv("BOT_API_SECRET", "") or "").strip()
     # Optional; if empty, BOT_API_SECRET is accepted for /internal/cron/reminders/
@@ -109,6 +123,16 @@ class Settings:
                 f"@{self.db_host}:{self.db_port}/{self.db_name}?charset=utf8mb4"
             )
         return f"sqlite:///{self.base_dir / 'data.db'}"
+
+    @property
+    def async_database_url(self) -> str:
+        if self.db_name:
+            return (
+                f"mysql+asyncmy://{self.db_user}:{self.db_password}"
+                f"@{self.db_host}:{self.db_port}/{self.db_name}?charset=utf8mb4"
+            )
+        # aiosqlite path must be absolute-ish for SQLAlchemy URL
+        return f"sqlite+aiosqlite:///{self.base_dir / 'data.db'}"
 
 
 @lru_cache

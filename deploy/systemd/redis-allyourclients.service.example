@@ -1,0 +1,11 @@
+[Unit]
+Description=Redis for AllYourClients (optional shared cache)
+After=network.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/redis-server --daemonize no --bind 127.0.0.1 --port 6379
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -8,7 +8,17 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.config import get_settings
 from app.database import engine
-from app.routers import api, calendar_schedule, oauth, pages, platform_admin, profile_api, public_specialist, services_api
+from app.routers import (
+    api,
+    calendar_schedule,
+    oauth,
+    pages,
+    platform_admin,
+    profile_api,
+    public_specialist,
+    services_api,
+    telegram_webhook,
+)
 from app.security.hardening import AbuseProtectionMiddleware
 
 settings = get_settings()
@@ -53,15 +63,24 @@ app.include_router(public_specialist.router)
 app.include_router(api.router)
 app.include_router(oauth.router)
 app.include_router(platform_admin.router)
+app.include_router(telegram_webhook.router)
 
 
 @app.get("/health")
 async def health():
     from app.db_schema import get_schema_health
+    from app.services.perf_metrics import snapshot as perf_snapshot
+    from app.services.redis_client import redis_health
 
     schema = get_schema_health()
+    redis = redis_health()
     status = "degraded" if schema.get("degraded") else "ok"
-    return {"status": status, "schema": schema}
+    return {
+        "status": status,
+        "schema": schema,
+        "redis": redis,
+        "perf": perf_snapshot(top_n=5),
+    }
 
 
 @app.get("/sw.js")
@@ -80,41 +99,76 @@ async def service_worker():
     )
 
 
-@app.get("/internal/cron/reminders/")
-@app.post("/internal/cron/reminders/")
-async def cron_send_reminders(request: Request):
-    """Run booking reminders. Auth: CRON_SECRET or BOT_API_SECRET via header/query."""
+def _internal_secret_ok(request: Request) -> bool:
     import secrets as _secrets
-
-    from fastapi.responses import JSONResponse
-
-    from app.database import SessionLocal
-    from app.services.telegram import send_reminders
 
     expected = (settings.cron_secret or settings.bot_api_secret or "").strip()
     if not expected:
-        return JSONResponse({"ok": False, "error": "cron secret not configured"}, status_code=503)
+        return False
     got = (
         (request.headers.get("x-cron-secret") or "").strip()
         or (request.headers.get("x-bot-api-secret") or "").strip()
         or (request.query_params.get("token") or "").strip()
     )
-    if not got or not _secrets.compare_digest(got, expected):
+    return bool(got) and _secrets.compare_digest(got, expected)
+
+
+@app.get("/internal/cron/reminders/")
+@app.post("/internal/cron/reminders/")
+async def cron_send_reminders(request: Request):
+    """Run booking reminders. Auth: CRON_SECRET or BOT_API_SECRET via header/query."""
+    from fastapi.responses import JSONResponse
+
+    if not (settings.cron_secret or settings.bot_api_secret or "").strip():
+        return JSONResponse({"ok": False, "error": "cron secret not configured"}, status_code=503)
+    if not _internal_secret_ok(request):
         return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
 
-    db = SessionLocal()
     try:
-        sent = send_reminders(db)
+        from app.services.telegram import send_reminders_async
+
+        sent = await send_reminders_async()
         return {"ok": True, "sent": sent}
     except Exception as exc:
         logger.exception("cron reminders failed")
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+
+
+@app.get("/internal/metrics/")
+async def internal_metrics(request: Request):
+    """Process request latency snapshot. Auth: CRON_SECRET or BOT_API_SECRET."""
+    from fastapi.responses import JSONResponse
+
+    from app.services.perf_metrics import snapshot as perf_snapshot
+
+    if not _internal_secret_ok(request):
+        return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
+    return {"ok": True, "perf": perf_snapshot(top_n=25)}
+
+
+@app.get("/internal/explain/")
+async def internal_explain(request: Request):
+    """EXPLAIN hot queries (Phase E acceptance). Auth: CRON_SECRET or BOT_API_SECRET."""
+    from fastapi.responses import JSONResponse
+
+    from app.database import SessionLocal
+    from app.services.query_explain import explain_hot_queries, list_expected_indexes
+
+    if not _internal_secret_ok(request):
+        return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
+    db = SessionLocal()
+    try:
+        return {
+            "ok": True,
+            "expected_indexes": list_expected_indexes(),
+            "explain": explain_hot_queries(db),
+        }
     finally:
         db.close()
 
 
 @app.on_event("startup")
-def startup():
+async def startup():
     from app.db_schema import ensure_all_schema
 
     try:
@@ -126,12 +180,59 @@ def startup():
             logger.critical("SECRET_KEY is weak or default — set a long random value in production")
         if not settings.bot_api_secret:
             logger.warning("BOT_API_SECRET is not set — bot API uses TELEGRAM_BOT_TOKEN header only")
+    if settings.telegram_webhook_secret and settings.telegram_bot_token:
+        try:
+            from bot.aiogram_app import get_bot, setup_bot_meta, verify_bot_identity
+            from bot.webhook_setup import install_webhook
+
+            bot = get_bot()
+            await verify_bot_identity(bot)
+            await setup_bot_meta(bot)
+            ok = await install_webhook(bot)
+            if ok:
+                logger.info("Telegram webhook mode active (disable separate bot.run / systemd polling)")
+        except Exception:
+            logger.exception("Telegram webhook setup failed on startup")
     logger.info("FastAPI app started. SITE_URL=%s", settings.site_url)
 
 
 from app.db_schema import bootstrap_on_import
 
 bootstrap_on_import()
+
+
+@app.middleware("http")
+async def perf_timing_middleware(request: Request, call_next):
+    import time
+
+    from app.services.perf_metrics import record_request
+
+    path = request.url.path
+    if path.startswith("/static/") or path.startswith("/media/"):
+        return await call_next(request)
+    t0 = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - t0) * 1000.0
+    slow_ms = float(getattr(settings, "perf_slow_ms", 500) or 500)
+    try:
+        record_request(
+            path=path,
+            status_code=int(getattr(response, "status_code", 200) or 200),
+            duration_ms=duration_ms,
+            slow_ms=slow_ms,
+        )
+    except Exception:
+        logger.exception("perf_timing record failed")
+    if getattr(settings, "perf_timing_header", True):
+        response.headers["X-Process-Time"] = f"{duration_ms:.1f}ms"
+    if slow_ms > 0 and duration_ms >= slow_ms:
+        logger.warning(
+            "slow_request path=%s status=%s duration_ms=%.1f",
+            path,
+            getattr(response, "status_code", "?"),
+            duration_ms,
+        )
+    return response
 
 
 @app.middleware("http")
@@ -223,6 +324,7 @@ async def password_required_middleware(request: Request, call_next):
         "/tg/",
         "/my-bookings/",
         "/platform-admin/",
+        "/telegram/webhook/",
         "/health",
     )
     path = request.url.path

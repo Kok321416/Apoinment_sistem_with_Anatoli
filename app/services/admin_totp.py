@@ -70,3 +70,55 @@ def verify_admin_2fa_login(db: Session, user_id: int, code: str) -> bool:
     if not row or not row.enabled:
         return True
     return verify_totp(row.secret, code)
+
+
+async def get_admin_2fa_async(db, user_id: int) -> AdminTwoFactor | None:
+    return await db.get(AdminTwoFactor, user_id)
+
+
+async def admin_2fa_enabled_async(db, user_id: int) -> bool:
+    row = await get_admin_2fa_async(db, user_id)
+    return bool(row and row.enabled and row.secret)
+
+
+async def needs_admin_2fa_async(db, user: User) -> bool:
+    if not (user.is_staff or user.is_superuser):
+        return False
+    return await admin_2fa_enabled_async(db, user.id)
+
+
+async def verify_admin_2fa_login_async(db, user_id: int, code: str) -> bool:
+    row = await get_admin_2fa_async(db, user_id)
+    if not row or not row.enabled:
+        return True
+    return verify_totp(row.secret, code)
+
+
+async def ensure_admin_2fa_setup_async(db, user: User) -> AdminTwoFactor:
+    row = await get_admin_2fa_async(db, user.id)
+    if row:
+        return row
+    row = AdminTwoFactor(
+        user_id=user.id, secret=generate_totp_secret(), enabled=False, created_at=datetime.utcnow()
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return row
+
+
+async def enable_admin_2fa_async(db, user: User, code: str) -> tuple[bool, str]:
+    row = await ensure_admin_2fa_setup_async(db, user)
+    if not verify_totp(row.secret, code):
+        return False, "Неверный код"
+    row.enabled = True
+    row.enabled_at = datetime.utcnow()
+    await db.commit()
+    return True, "2FA включена"
+
+
+async def disable_admin_2fa_async(db, user_id: int) -> None:
+    row = await get_admin_2fa_async(db, user_id)
+    if row:
+        await db.delete(row)
+        await db.commit()

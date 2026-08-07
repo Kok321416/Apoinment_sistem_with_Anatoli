@@ -116,3 +116,90 @@ def _daily_counts(
         out.append({"date": key, "value": by_date.get(key, 0)})
         d += timedelta(days=1)
     return out
+
+
+async def analytics_snapshot_async(db) -> dict:
+    from sqlalchemy import func, select
+
+    today = date.today()
+    week_start = today - timedelta(days=6)
+    month_start = today - timedelta(days=29)
+
+    dau = (
+        await db.execute(
+            select(func.count(func.distinct(PlatformUserActivity.user_id))).where(
+                PlatformUserActivity.activity_date == today
+            )
+        )
+    ).scalar() or 0
+    wau = (
+        await db.execute(
+            select(func.count(func.distinct(PlatformUserActivity.user_id))).where(
+                PlatformUserActivity.activity_date >= week_start
+            )
+        )
+    ).scalar() or 0
+    mau = (
+        await db.execute(
+            select(func.count(func.distinct(PlatformUserActivity.user_id))).where(
+                PlatformUserActivity.activity_date >= month_start
+            )
+        )
+    ).scalar() or 0
+    signups_today = (
+        await db.execute(
+            select(func.count(User.id)).where(User.date_joined >= datetime.combine(today, datetime.min.time()))
+        )
+    ).scalar() or 0
+    signups_week = (
+        await db.execute(
+            select(func.count(User.id)).where(
+                User.date_joined >= datetime.combine(week_start, datetime.min.time())
+            )
+        )
+    ).scalar() or 0
+    bookings_week = (
+        await db.execute(select(func.count(Booking.id)).where(Booking.booking_date >= week_start))
+    ).scalar() or 0
+
+    daily_active = await _daily_counts_async(
+        db, PlatformUserActivity.activity_date, PlatformUserActivity.user_id, week_start, today, distinct_users=True
+    )
+    daily_signups = await _daily_counts_async(
+        db, func.date(User.date_joined), User.id, week_start, today, distinct_users=False
+    )
+    daily_bookings = await _daily_counts_async(
+        db, Booking.booking_date, Booking.id, week_start, today, distinct_users=False
+    )
+
+    return {
+        "dau": int(dau),
+        "wau": int(wau),
+        "mau": int(mau),
+        "signups_today": int(signups_today),
+        "signups_week": int(signups_week),
+        "bookings_week": int(bookings_week),
+        "daily_active": daily_active,
+        "daily_signups": daily_signups,
+        "daily_bookings": daily_bookings,
+    }
+
+
+async def _daily_counts_async(db, date_col, count_col, start: date, end: date, *, distinct_users: bool):
+    from sqlalchemy import func, select
+
+    if distinct_users:
+        agg = func.count(func.distinct(count_col))
+    else:
+        agg = func.count(count_col)
+    rows = await db.execute(
+        select(date_col, agg).where(date_col >= start, date_col <= end).group_by(date_col).order_by(date_col.asc())
+    )
+    by_date = {str(r[0]): int(r[1] or 0) for r in rows.all()}
+    out = []
+    d = start
+    while d <= end:
+        key = str(d)
+        out.append({"date": key, "value": by_date.get(key, 0)})
+        d += timedelta(days=1)
+    return out

@@ -136,7 +136,7 @@ def _add_unique_index(table: str, index_name: str, column: str) -> None:
 
 
 def _add_index(table: str, index_name: str, column: str) -> None:
-    """Non-unique index; idempotent."""
+    """Non-unique index; idempotent. `column` may be comma-separated for composites."""
     if not _table_exists(table):
         return
     try:
@@ -148,6 +148,32 @@ def _add_index(table: str, index_name: str, column: str) -> None:
         if "duplicate" in msg or "exists" in msg or "already" in msg:
             return
         logger.exception("Could not create index %s", index_name)
+
+
+def _apply_hot_path_indexes() -> None:
+    """Phase E: additive indexes for booking/slots/auth hot paths (idempotent)."""
+    # Already in alembic 001; keep here for deploys that only run db_schema patches.
+    _add_index("bookings", "ix_bookings_calendar_date_status", "calendar_id, booking_date, status")
+    _add_index("time_slots", "ix_time_slots_calendar_dow", "calendar_id, day_of_week, is_available")
+    # Phase E expansion
+    _add_index("bookings", "ix_bookings_telegram_id", "telegram_id")
+    _add_index("bookings", "ix_bookings_status_date", "status, booking_date")
+    _add_index("calendars", "ix_calendars_consultant_active", "consultant_id, is_active")
+    _add_index("services", "ix_services_consultant_active", "consultant_id, is_active")
+    _add_index("services", "ix_services_calendar_id", "calendar_id")
+    _add_index("consultants", "ix_consultants_user_id", "user_id")
+    _add_index(
+        "socialaccount_socialaccount",
+        "ix_socialaccount_provider_uid",
+        "provider, uid",
+    )
+    _add_index("socialaccount_socialaccount", "ix_socialaccount_user_id", "user_id")
+    _add_index("integrations", "ix_integrations_telegram_chat_id", "telegram_chat_id")
+    _add_index(
+        "consultant_client_cards",
+        "ix_client_cards_consultant_id",
+        "consultant_id",
+    )
 
 
 def _refresh_schema_health() -> None:
@@ -250,6 +276,11 @@ def _apply_app_schema_patches() -> None:
         )
     except Exception:
         logger.exception("platform admin tables create_all failed")
+
+    try:
+        _apply_hot_path_indexes()
+    except Exception:
+        logger.exception("hot-path indexes patch failed")
 
     _refresh_schema_health()
 

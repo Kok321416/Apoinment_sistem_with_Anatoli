@@ -86,3 +86,49 @@ def set_error_status(db: Session, error_id: int, status: str) -> PlatformErrorLo
     db.commit()
     db.refresh(row)
     return row
+
+
+async def list_errors_async(db, *, status: str | None = None, limit: int = 50) -> list[PlatformErrorLog]:
+    from sqlalchemy import select
+
+    stmt = select(PlatformErrorLog)
+    if status and status in ERROR_STATUSES:
+        stmt = stmt.where(PlatformErrorLog.status == status)
+    result = await db.execute(stmt.order_by(PlatformErrorLog.id.desc()).limit(limit))
+    return list(result.scalars().all())
+
+
+async def set_error_status_async(db, error_id: int, status: str) -> PlatformErrorLog | None:
+    if status not in ERROR_STATUSES:
+        return None
+    row = await db.get(PlatformErrorLog, error_id)
+    if not row:
+        return None
+    row.status = status
+    row.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(row)
+    return row
+
+
+async def list_errors_async(db, *, status: str | None = None, limit: int = 50) -> list[PlatformErrorLog]:
+    from sqlalchemy import select
+
+    stmt = select(PlatformErrorLog)
+    if status and status in ERROR_STATUSES:
+        stmt = stmt.where(PlatformErrorLog.status == status)
+    result = await db.execute(stmt.order_by(PlatformErrorLog.id.desc()).limit(limit))
+    return list(result.scalars().all())
+
+
+async def set_error_status_async(db, error_id: int, status: str) -> PlatformErrorLog | None:
+    if status not in ERROR_STATUSES:
+        return None
+    row = await db.get(PlatformErrorLog, error_id)
+    if not row:
+        return None
+    row.status = status
+    row.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(row)
+    return row

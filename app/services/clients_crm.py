@@ -91,6 +91,16 @@ def _calendar_ids(db: Session, consultant_id: int) -> list[int]:
     return [r[0] for r in rows]
 
 
+async def _calendar_ids_async(db, consultant_id: int) -> list[int]:
+    from sqlalchemy import select
+
+    return list(
+        (await db.execute(select(Calendar.id).where(Calendar.consultant_id == consultant_id)))
+        .scalars()
+        .all()
+    )
+
+
 def booking_stats(db: Session, consultant_id: int, card_ids: list[int]) -> dict[int, dict]:
     cal_ids = _calendar_ids(db, consultant_id)
     if not cal_ids or not card_ids:
@@ -108,6 +118,33 @@ def booking_stats(db: Session, consultant_id: int, card_ids: list[int]) -> dict[
         .group_by(Booking.client_card_id)
         .all()
     )
+    return {
+        cid: {"booking_count": cnt, "last_booking": last_date}
+        for cid, cnt, last_date in rows
+        if cid is not None
+    }
+
+
+async def booking_stats_async(db, consultant_id: int, card_ids: list[int]) -> dict[int, dict]:
+    from sqlalchemy import select
+
+    cal_ids = await _calendar_ids_async(db, consultant_id)
+    if not cal_ids or not card_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(
+                Booking.client_card_id,
+                func.count(Booking.id),
+                func.max(Booking.booking_date),
+            )
+            .where(
+                Booking.calendar_id.in_(cal_ids),
+                Booking.client_card_id.in_(card_ids),
+            )
+            .group_by(Booking.client_card_id)
+        )
+    ).all()
     return {
         cid: {"booking_count": cnt, "last_booking": last_date}
         for cid, cnt, last_date in rows
@@ -137,6 +174,33 @@ def consultant_booking_counts(db: Session, consultant_id: int) -> tuple[int, int
     return today_count, upcoming
 
 
+async def consultant_booking_counts_async(db, consultant_id: int) -> tuple[int, int]:
+    from sqlalchemy import select
+
+    cal_ids = await _calendar_ids_async(db, consultant_id)
+    if not cal_ids:
+        return 0, 0
+    today = date.today()
+    today_count = (
+        await db.execute(
+            select(func.count(Booking.id)).where(
+                Booking.calendar_id.in_(cal_ids),
+                Booking.booking_date == today,
+            )
+        )
+    ).scalar_one() or 0
+    upcoming = (
+        await db.execute(
+            select(func.count(Booking.id)).where(
+                Booking.calendar_id.in_(cal_ids),
+                Booking.booking_date >= today,
+                Booking.status.in_(["pending", "confirmed"]),
+            )
+        )
+    ).scalar_one() or 0
+    return today_count, upcoming
+
+
 def dashboard_stats(db: Session, consultant_id: int, cards: list[ClientCard]) -> dict:
     today = date.today()
     total = len(cards)
@@ -145,6 +209,29 @@ def dashboard_stats(db: Session, consultant_id: int, cards: list[ClientCard]) ->
         if c.created_at and (today - c.created_at.date()).days <= NEW_DAYS
     )
     today_bookings, upcoming = consultant_booking_counts(db, consultant_id)
+    completeness_vals = [card_completeness(c)["percent"] for c in cards]
+    avg_completeness = round(sum(completeness_vals) / total) if total else 0
+    last_updated = max((c.updated_at for c in cards if c.updated_at), default=None)
+    last_created = max((c.created_at for c in cards if c.created_at), default=None)
+    return {
+        "total": total,
+        "new_count": new_count,
+        "today_bookings": today_bookings,
+        "upcoming": upcoming,
+        "avg_completeness": avg_completeness,
+        "last_updated": last_updated.isoformat() if last_updated else None,
+        "last_created": last_created.isoformat() if last_created else None,
+    }
+
+
+async def dashboard_stats_async(db, consultant_id: int, cards: list[ClientCard]) -> dict:
+    today = date.today()
+    total = len(cards)
+    new_count = sum(
+        1 for c in cards
+        if c.created_at and (today - c.created_at.date()).days <= NEW_DAYS
+    )
+    today_bookings, upcoming = await consultant_booking_counts_async(db, consultant_id)
     completeness_vals = [card_completeness(c)["percent"] for c in cards]
     avg_completeness = round(sum(completeness_vals) / total) if total else 0
     last_updated = max((c.updated_at for c in cards if c.updated_at), default=None)
@@ -216,6 +303,19 @@ def build_crm_payload(db: Session, consultant_id: int, cards: list[ClientCard]) 
     today = date.today()
     serialized = [serialize_card(c, stats, today) for c in cards]
     dash = dashboard_stats(db, consultant_id, cards)
+    return {
+        "dashboard": dash,
+        "clients": serialized,
+        "activity": recent_activity(cards),
+    }
+
+
+async def build_crm_payload_async(db, consultant_id: int, cards: list[ClientCard]) -> dict:
+    card_ids = [c.id for c in cards]
+    stats = await booking_stats_async(db, consultant_id, card_ids)
+    today = date.today()
+    serialized = [serialize_card(c, stats, today) for c in cards]
+    dash = await dashboard_stats_async(db, consultant_id, cards)
     return {
         "dashboard": dash,
         "clients": serialized,

@@ -112,3 +112,15 @@ def create_platform_backup(settings: Settings | None = None) -> tuple[str | None
         logger.exception("backup failed")
         dst.unlink(missing_ok=True)
         return None, str(e)[:500]
+
+
+async def system_snapshot_async(db, settings: Settings | None = None) -> dict[str, Any]:
+    """Async wrapper: inventory/readiness helpers still use sync Session via bridge."""
+    from app.database import SessionLocal
+
+    s = settings or get_settings()
+    sdb = SessionLocal()
+    try:
+        return system_snapshot(sdb, s)
+    finally:
+        sdb.close()

@@ -80,6 +80,33 @@ def login_user(request: Request, user: User, db: Session | None = None) -> None:
         db.commit()
 
 
+async def login_user_async(request: Request, user: User, db=None) -> None:
+    """AsyncSession twin of login_user."""
+    if "session" in request.scope:
+        request.session["user_id"] = user.id
+        request.session["session_version"] = int(getattr(user, "session_version", 0) or 0)
+        request.session["has_usable_password"] = has_usable_password(user.password)
+        request.session.pop("impersonator_id", None)
+        if db is not None:
+            from sqlalchemy import select
+
+            from app.models import Consultant
+
+            has_c = (
+                await db.execute(select(Consultant.id).where(Consultant.user_id == user.id).limit(1))
+            ).first()
+            request.session["has_consultant"] = has_c is not None
+    clear_request_user_cache(request)
+    if db is not None:
+        from datetime import datetime
+
+        from app.services.platform_activity import record_user_activity_async
+
+        user.last_login = datetime.utcnow()
+        await record_user_activity_async(db, user.id, source="login")
+        await db.commit()
+
+
 def start_impersonation(request: Request, *, admin_user_id: int, target_user_id: int) -> None:
     if "session" not in request.scope:
         return
@@ -150,6 +177,34 @@ def get_current_user(request: Request, db: Session) -> AuthUser | None:
     auth: AuthUser | None = None
     if user_id:
         user = db.get(User, user_id)
+        if user and user.is_active:
+            if "session" in request.scope:
+                expected = int(getattr(user, "session_version", 0) or 0)
+                stored = request.session.get("session_version")
+                if stored is None:
+                    if expected == 0:
+                        auth = user_from_model(user)
+                elif int(stored) == expected:
+                    auth = user_from_model(user)
+            else:
+                auth = user_from_model(user)
+
+    if state is not None:
+        state._auth_user_resolved = True
+        state._auth_user = auth
+    return auth
+
+
+async def get_current_user_async(request: Request, db) -> AuthUser | None:
+    """AsyncSession variant of get_current_user."""
+    state = getattr(request, "state", None)
+    if state is not None and getattr(state, "_auth_user_resolved", False):
+        return getattr(state, "_auth_user", None)
+
+    user_id = get_session_user_id(request)
+    auth: AuthUser | None = None
+    if user_id:
+        user = await db.get(User, user_id)
         if user and user.is_active:
             if "session" in request.scope:
                 expected = int(getattr(user, "session_version", 0) or 0)

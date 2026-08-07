@@ -3,7 +3,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-import requests
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
@@ -63,11 +62,34 @@ def _send_telegram(chat_id, text: str, bot_token: str | None = None) -> bool:
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     data = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
     try:
-        r = requests.post(url, json=data, timeout=10)
-        r.raise_for_status()
+        import httpx
+
+        with httpx.Client(timeout=10.0) as client:
+            r = client.post(url, json=data)
+            r.raise_for_status()
         return True
     except Exception as e:
         logger.exception("Telegram send error: %s", e)
+        return False
+
+
+async def send_telegram_await(chat_id, text: str, bot_token: str | None = None) -> bool:
+    """Non-blocking Telegram send for async FastAPI handlers."""
+    token = (bot_token or "").strip() or settings.telegram_bot_token
+    if not token:
+        logger.warning("TELEGRAM_BOT_TOKEN not set")
+        return False
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    data = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    try:
+        import httpx
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.post(url, json=data)
+            r.raise_for_status()
+        return True
+    except Exception as e:
+        logger.exception("Telegram async send error: %s", e)
         return False
 
 
@@ -363,3 +385,19 @@ def send_reminders(db: Session) -> dict:
 
     db.commit()
     return sent
+
+
+async def send_reminders_async() -> dict:
+    """Run send_reminders off the event loop (own SessionLocal)."""
+    import asyncio
+
+    from app.database import SessionLocal
+
+    def _run() -> dict:
+        db = SessionLocal()
+        try:
+            return send_reminders(db)
+        finally:
+            db.close()
+
+    return await asyncio.to_thread(_run)

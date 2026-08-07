@@ -5,6 +5,11 @@ python-multipart==0.0.32
 python-dotenv==1.0.1
 sqlalchemy==2.0.36
 pymysql==1.1.1
+asyncmy==0.2.10
+aiosqlite==0.20.0
+greenlet==3.1.1
+alembic==1.14.1
+redis==5.2.1
 cryptography==46.0.3
 passlib==1.7.4
 itsdangerous==2.2.0
@@ -17,3 +22,5 @@ google-api-python-client==2.189.0
 gunicorn==21.2.0
 a2wsgi==1.10.8
 pytest==8.3.4
+pytest-asyncio==0.25.3
+aiogram==3.15.0

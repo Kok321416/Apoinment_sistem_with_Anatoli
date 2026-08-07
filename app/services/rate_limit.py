@@ -1,16 +1,14 @@
-"""Simple in-process rate limiting for abuse prevention.
+"""Rate limiting with optional Redis backend.
 
-Not a substitute for edge/WAF DDoS protection, but stops credential stuffing,
-signup spam, and request floods hitting the app workers.
-
-Caveat: buckets are per-process. With uvicorn/gunicorn --workers N each worker
-has its own limits (effective capacity ~ N x max_calls). Shared Redis is a
-follow-up if multi-node or strict global caps are required.
+Without Redis: per-process buckets (same as before).
+With Redis: shared sliding window across workers.
 """
 from __future__ import annotations
 
 from collections import defaultdict
 from time import time
+
+from app.services.redis_client import get_redis
 
 _buckets: dict[str, list[float]] = defaultdict(list)
 _MAX_KEYS = 20_000
@@ -18,6 +16,25 @@ _MAX_KEYS = 20_000
 
 def check_rate_limit(key: str, *, max_calls: int, window_sec: int) -> bool:
     """Return True if allowed, False if rate limited."""
+    client = get_redis()
+    if client is not None:
+        try:
+            rkey = f"ayc:rl:{key}"
+            now = time()
+            pipe = client.pipeline()
+            pipe.zremrangebyscore(rkey, 0, now - window_sec)
+            pipe.zcard(rkey)
+            _removed, count = pipe.execute()
+            if int(count) >= max_calls:
+                return False
+            pipe = client.pipeline()
+            pipe.zadd(rkey, {f"{now:.6f}": now})
+            pipe.expire(rkey, window_sec + 1)
+            pipe.execute()
+            return True
+        except Exception:
+            pass
+
     now = time()
     if len(_buckets) > _MAX_KEYS:
         _prune_stale(now, window_sec=max(window_sec, 300))
@@ -31,6 +48,12 @@ def check_rate_limit(key: str, *, max_calls: int, window_sec: int) -> bool:
 
 
 def reset_rate_limit(key: str) -> None:
+    client = get_redis()
+    if client is not None:
+        try:
+            client.delete(f"ayc:rl:{key}")
+        except Exception:
+            pass
     _buckets.pop(key, None)
 
 

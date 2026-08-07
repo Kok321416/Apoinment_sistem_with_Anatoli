@@ -9,7 +9,8 @@ _SKIP_PREFIXES = (
     "/media/",
     "/health",
     "/sw.js",
-    "/internal/cron/",
+    "/internal/",
+    "/telegram/webhook/",
     "/favicon.ico",
 )
 

@@ -31,8 +31,17 @@ def full_name(consultant: Consultant) -> str:
 
 
 def specialization(consultant: Consultant) -> str:
-    if consultant.category and consultant.category.name_category:
-        return consultant.category.name_category
+    try:
+        cat = consultant.__dict__.get("category")
+        if cat is not None and getattr(cat, "name_category", None):
+            return cat.name_category
+        # Sync Session may still lazy-load; AsyncSession must pre-load category.
+        if "category" not in consultant.__dict__ and hasattr(consultant, "category"):
+            loaded = consultant.category
+            if loaded and getattr(loaded, "name_category", None):
+                return loaded.name_category
+    except Exception:
+        pass
     return "Специалист"
 
 
@@ -88,6 +97,23 @@ def _service_counts(db: Session, consultant_id: int) -> tuple[int, int]:
     return svc_total, svc_active
 
 
+async def _service_counts_async(db, consultant_id: int) -> tuple[int, int]:
+    from sqlalchemy import select
+
+    svc_total = (
+        await db.execute(select(func.count(Service.id)).where(Service.consultant_id == consultant_id))
+    ).scalar_one() or 0
+    svc_active = (
+        await db.execute(
+            select(func.count(Service.id)).where(
+                Service.consultant_id == consultant_id,
+                Service.is_active.is_(True),
+            )
+        )
+    ).scalar_one() or 0
+    return svc_total, svc_active
+
+
 def _calendar_counts(db: Session, consultant_id: int) -> tuple[int, int]:
     cal_total = db.query(func.count(Calendar.id)).filter(Calendar.consultant_id == consultant_id).scalar() or 0
     cal_active = (
@@ -95,6 +121,23 @@ def _calendar_counts(db: Session, consultant_id: int) -> tuple[int, int]:
         .filter(Calendar.consultant_id == consultant_id, Calendar.is_active.is_(True))
         .scalar()
     ) or 0
+    return cal_total, cal_active
+
+
+async def _calendar_counts_async(db, consultant_id: int) -> tuple[int, int]:
+    from sqlalchemy import select
+
+    cal_total = (
+        await db.execute(select(func.count(Calendar.id)).where(Calendar.consultant_id == consultant_id))
+    ).scalar_one() or 0
+    cal_active = (
+        await db.execute(
+            select(func.count(Calendar.id)).where(
+                Calendar.consultant_id == consultant_id,
+                Calendar.is_active.is_(True),
+            )
+        )
+    ).scalar_one() or 0
     return cal_total, cal_active
 
 
@@ -241,9 +284,44 @@ def completeness(consultant: Consultant, db: Session, consultant_id: int) -> dic
     )
 
 
+async def completeness_async(consultant: Consultant, db, consultant_id: int) -> dict:
+    svc_total, svc_active = await _service_counts_async(db, consultant_id)
+    cal_total, cal_active = await _calendar_counts_async(db, consultant_id)
+    return compute_completeness(
+        first_name=consultant.first_name,
+        last_name=consultant.last_name,
+        email=consultant.email,
+        phone=consultant.phone,
+        profile_description=consultant.profile_description,
+        video_link=consultant.video_link,
+        has_photo=bool(consultant.profile_photo),
+        social_count=connected_social_count(consultant),
+        services_active=svc_active,
+        services_total=svc_total,
+        calendars_active=cal_active,
+        calendars_total=cal_total,
+    )
+
+
 def completion_meta(consultant: Consultant, db: Session, consultant_id: int) -> dict:
     svc_total, svc_active = _service_counts(db, consultant_id)
     cal_total, cal_active = _calendar_counts(db, consultant_id)
+    return {
+        "has_photo": bool(consultant.profile_photo),
+        "services_active": svc_active,
+        "services_total": svc_total,
+        "calendars_active": cal_active,
+        "calendars_total": cal_total,
+        "about_min_chars": ABOUT_MIN_CHARS,
+        "about_full_chars": ABOUT_FULL_CHARS,
+        "social_links_for_full": SOCIAL_LINKS_FOR_FULL,
+        "social_fields": list(SOCIAL_FIELDS),
+    }
+
+
+async def completion_meta_async(consultant: Consultant, db, consultant_id: int) -> dict:
+    svc_total, svc_active = await _service_counts_async(db, consultant_id)
+    cal_total, cal_active = await _calendar_counts_async(db, consultant_id)
     return {
         "has_photo": bool(consultant.profile_photo),
         "services_active": svc_active,
@@ -270,12 +348,58 @@ def dashboard_stats(db: Session, consultant_id: int) -> dict:
     }
 
 
+async def dashboard_stats_async(db, consultant_id: int) -> dict:
+    from sqlalchemy import select
+
+    svc_total, svc_active = await _service_counts_async(db, consultant_id)
+    cal_total, cal_active = await _calendar_counts_async(db, consultant_id)
+    clients = (
+        await db.execute(
+            select(func.count(ClientCard.id)).where(ClientCard.consultant_id == consultant_id)
+        )
+    ).scalar_one() or 0
+    return {
+        "services_total": svc_total,
+        "services_active": svc_active,
+        "calendars_total": cal_total,
+        "calendars_active": cal_active,
+        "clients_total": clients,
+    }
+
+
 def serialize_preview(consultant: Consultant, slug: str, db: Session, consultant_id: int) -> dict:
     services = (
         db.query(Service)
         .filter(Service.consultant_id == consultant_id, Service.is_active.is_(True))
         .order_by(Service.sort_order, Service.name)
         .limit(5)
+        .all()
+    )
+    return {
+        "full_name": full_name(consultant),
+        "specialization": specialization(consultant),
+        "photo_url": profile_photo_src(consultant.profile_photo) if consultant.profile_photo else None,
+        "description": consultant.profile_description or "",
+        "video_link": consultant.video_link or "",
+        "social": social_links(consultant),
+        "public_url": specialist_public_url(settings.site_url, slug),
+        "services": [{"name": s.name, "color": s.color or "#7d5cff"} for s in services],
+    }
+
+
+async def serialize_preview_async(consultant: Consultant, slug: str, db, consultant_id: int) -> dict:
+    from sqlalchemy import select
+
+    services = list(
+        (
+            await db.execute(
+                select(Service)
+                .where(Service.consultant_id == consultant_id, Service.is_active.is_(True))
+                .order_by(Service.sort_order, Service.name)
+                .limit(5)
+            )
+        )
+        .scalars()
         .all()
     )
     return {
@@ -356,6 +480,89 @@ def build_profile_payload(
     if not use_cache or not user_id:
         return _build()
     return CACHE.get_or_set(profile_key(consultant.id, user_id), _build, ttl=TTL_SEC)
+
+
+async def build_profile_payload_async(
+    db,
+    consultant: Consultant,
+    user,
+    *,
+    connected_providers: set[str],
+    primary_email: str,
+    primary_email_verified: bool,
+    has_usable_password: bool,
+    yandex_oauth_enabled: bool,
+    use_cache: bool = True,
+) -> dict:
+    from app.services.public_client import ensure_public_slug_async
+    from app.services.response_cache import TTL_SEC, profile_key
+    from app.services.ttl_cache import CACHE
+
+    user_id = int(getattr(user, "id", 0) or 0)
+    providers = frozenset(connected_providers)
+    cache_key = profile_key(consultant.id, user_id) if use_cache and user_id else None
+    if cache_key:
+        hit = CACHE.get(cache_key)
+        if hit is not None:
+            return hit
+
+    consultant_id = int(consultant.id)
+    slug = await ensure_public_slug_async(db, consultant)
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    consultant = (
+        await db.execute(
+            select(Consultant)
+            .options(selectinload(Consultant.category))
+            .where(Consultant.id == consultant_id)
+        )
+    ).scalar_one()
+    comp = await completeness_async(consultant, db, consultant_id)
+    dash = await dashboard_stats_async(db, consultant_id)
+    dash["completeness"] = comp["percent"]
+    payload = {
+        "profile": {
+            "id": consultant_id,
+            "first_name": consultant.first_name,
+            "last_name": consultant.last_name,
+            "middle_name": consultant.middle_name or "",
+            "email": consultant.email,
+            "phone": consultant.phone,
+            "telegram_nickname": consultant.telegram_nickname or "",
+            "profile_description": consultant.profile_description or "",
+            "video_link": consultant.video_link or "",
+            "photo_url": profile_photo_src(consultant.profile_photo) if consultant.profile_photo else None,
+            "full_name": full_name(consultant),
+            "specialization": specialization(consultant),
+            "created_at": consultant.created_at.isoformat() if consultant.created_at else None,
+            "updated_at": consultant.updated_at.isoformat() if consultant.updated_at else None,
+            "public_url": specialist_public_url(settings.site_url, slug),
+            "public_slug": slug,
+            **social_links(consultant),
+        },
+        "dashboard": dash,
+        "completeness": comp,
+        "completion_meta": await completion_meta_async(consultant, db, consultant_id),
+        "preview": await serialize_preview_async(consultant, slug, db, consultant_id),
+        "auth": {
+            "connected_providers": sorted(providers),
+            "primary_email": primary_email,
+            "primary_email_verified": primary_email_verified,
+            "has_usable_password": has_usable_password,
+            "yandex_oauth_enabled": yandex_oauth_enabled,
+        },
+        "footer": {
+            "created_at": consultant.created_at.isoformat() if consultant.created_at else None,
+            "updated_at": consultant.updated_at.isoformat() if consultant.updated_at else None,
+            "consultant_id": consultant_id,
+            "timezone": settings.timezone,
+            "profile_version": "v2.0",
+        },
+    }
+    if cache_key:
+        CACHE.set(cache_key, payload, ttl=TTL_SEC)
+    return payload
 
 
 def apply_profile_fields(consultant: Consultant, data: dict, normalize_url_fn) -> None:

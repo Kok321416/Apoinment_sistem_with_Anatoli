@@ -140,3 +140,82 @@ def revoke_role(db: Session, *, user_id: int, role: str) -> tuple[bool, str]:
     db.delete(row)
     db.commit()
     return True, "Роль снята"
+
+
+async def list_role_assignments_async(db, user_id: int) -> list[AdminRoleAssignment]:
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(AdminRoleAssignment)
+        .where(AdminRoleAssignment.user_id == user_id)
+        .order_by(AdminRoleAssignment.role.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def effective_roles_async(db, user: User | AuthUser) -> set[str]:
+    from sqlalchemy import select
+
+    if user.is_superuser:
+        return {ROLE_SUPER_ADMIN}
+    roles: set[str] = set()
+    if user.is_staff:
+        rows = await db.execute(
+            select(AdminRoleAssignment.role).where(AdminRoleAssignment.user_id == user.id)
+        )
+        roles = {r[0] for r in rows.all()}
+        if not roles:
+            roles.add(ROLE_ADMINISTRATOR)
+    return roles
+
+
+async def has_permission_async(db, user: User | AuthUser, permission: str) -> bool:
+    if not getattr(user, "is_platform_admin", None):
+        if not (user.is_staff or user.is_superuser):
+            return False
+    roles = await effective_roles_async(db, user)
+    for role in roles:
+        if permission in _ROLE_PERMISSIONS.get(role, frozenset()):
+            return True
+    return False
+
+
+async def assign_role_async(db, *, user_id: int, role: str, granted_by: int) -> tuple[bool, str]:
+    from sqlalchemy import select
+
+    if role not in ASSIGNABLE_ROLES:
+        return False, "Некорректная роль"
+    target = await db.get(User, user_id)
+    if not target or not target.is_staff:
+        return False, "Роли назначаются только staff-пользователям"
+    exists = (
+        await db.execute(
+            select(AdminRoleAssignment).where(
+                AdminRoleAssignment.user_id == user_id,
+                AdminRoleAssignment.role == role,
+            )
+        )
+    ).scalar_one_or_none()
+    if exists:
+        return False, "Роль уже назначена"
+    db.add(AdminRoleAssignment(user_id=user_id, role=role, granted_by_user_id=granted_by))
+    await db.commit()
+    return True, "Роль назначена"
+
+
+async def revoke_role_async(db, *, user_id: int, role: str) -> tuple[bool, str]:
+    from sqlalchemy import select
+
+    row = (
+        await db.execute(
+            select(AdminRoleAssignment).where(
+                AdminRoleAssignment.user_id == user_id,
+                AdminRoleAssignment.role == role,
+            )
+        )
+    ).scalar_one_or_none()
+    if not row:
+        return False, "Роль не найдена"
+    await db.delete(row)
+    await db.commit()
+    return True, "Роль снята"

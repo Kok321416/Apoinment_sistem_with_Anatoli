@@ -53,6 +53,31 @@ def consume_reset_token(db: Session, row: PasswordResetToken) -> None:
     row.used = True
 
 
+async def get_valid_reset_token_async(db, token: str) -> PasswordResetToken | None:
+    from sqlalchemy import select
+
+    token = (token or "").strip()
+    if not token:
+        return None
+    row = (
+        await db.execute(
+            select(PasswordResetToken).where(
+                PasswordResetToken.token == token,
+                PasswordResetToken.used.is_(False),
+            )
+        )
+    ).scalar_one_or_none()
+    if not row:
+        return None
+    if row.expires_at < datetime.utcnow():
+        return None
+    return row
+
+
+async def consume_reset_token_async(db, row: PasswordResetToken) -> None:
+    row.used = True
+
+
 def send_password_reset_email(db: Session, user: User) -> tuple[bool, str]:
     email = (user.email or user.username or "").strip()
     if not email or "@" not in email:

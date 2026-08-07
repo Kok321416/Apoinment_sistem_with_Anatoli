@@ -95,3 +95,92 @@ def billing_snapshot(db: Session) -> dict[str, Any]:
         "mrr_rub": mrr,
         "message": "Провайдер оплаты не подключён. Тарифы можно завести вручную для учёта.",
     }
+
+
+async def list_billing_plans_async(db, *, active_only: bool = False) -> list[BillingPlan]:
+    from sqlalchemy import select
+
+    stmt = select(BillingPlan).order_by(BillingPlan.sort_order.asc(), BillingPlan.id.asc())
+    if active_only:
+        stmt = stmt.where(BillingPlan.is_active.is_(True))
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def create_billing_plan_async(
+    db,
+    *,
+    code: str,
+    name: str,
+    price_rub: int,
+    interval: str = "month",
+) -> tuple[BillingPlan | None, str | None]:
+    from sqlalchemy import select
+
+    code = (code or "").strip().lower()
+    name = (name or "").strip()
+    interval = (interval or "month").strip().lower()
+    if not code or not name:
+        return None, "Укажите code и название"
+    if price_rub < 0:
+        return None, "Цена не может быть отрицательной"
+    if interval not in ("month", "year"):
+        return None, "interval: month или year"
+    exists = (await db.execute(select(BillingPlan).where(BillingPlan.code == code))).scalar_one_or_none()
+    if exists:
+        return None, "Тариф с таким code уже есть"
+    plan = BillingPlan(
+        code=code,
+        name=name,
+        price_rub=int(price_rub),
+        interval=interval,
+        is_active=True,
+        sort_order=0,
+        created_at=datetime.utcnow(),
+    )
+    db.add(plan)
+    await db.commit()
+    await db.refresh(plan)
+    return plan, None
+
+
+async def toggle_plan_active_async(db, plan_id: int) -> tuple[BillingPlan | None, str | None]:
+    plan = await db.get(BillingPlan, plan_id)
+    if not plan:
+        return None, "Тариф не найден"
+    plan.is_active = not bool(plan.is_active)
+    await db.commit()
+    await db.refresh(plan)
+    return plan, None
+
+
+async def billing_snapshot_async(db) -> dict[str, Any]:
+    from sqlalchemy import func, select
+
+    plans_total = (await db.execute(select(func.count(BillingPlan.id)))).scalar() or 0
+    active_plans = (
+        await db.execute(select(func.count(BillingPlan.id)).where(BillingPlan.is_active.is_(True)))
+    ).scalar() or 0
+    active_subs = (
+        await db.execute(
+            select(func.count(UserSubscription.id)).where(UserSubscription.status == SUB_ACTIVE)
+        )
+    ).scalar() or 0
+    mrr = 0
+    rows = await db.execute(
+        select(BillingPlan.price_rub, func.count(UserSubscription.id))
+        .join(UserSubscription, UserSubscription.plan_id == BillingPlan.id)
+        .where(UserSubscription.status == SUB_ACTIVE, BillingPlan.interval == "month")
+        .group_by(BillingPlan.id, BillingPlan.price_rub)
+    )
+    for price, cnt in rows.all():
+        mrr += int(price or 0) * int(cnt or 0)
+    return {
+        "enabled": active_plans > 0,
+        "provider": None,
+        "plans_total": int(plans_total),
+        "active_plans": int(active_plans),
+        "active_subscriptions": int(active_subs),
+        "mrr_rub": mrr,
+        "message": "Провайдер оплаты не подключён. Тарифы можно завести вручную для учёта.",
+    }

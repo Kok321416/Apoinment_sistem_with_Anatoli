@@ -22,6 +22,10 @@ class BotSettings:
     admin_telegram_username: str = os.getenv("ADMIN_TELEGRAM_USERNAME", "andrievskypsy")
     site_url: str = _site
     site_internal_url: str = _internal
+    # If set, FastAPI serves webhook at /telegram/webhook/{secret} (prod).
+    # Leave empty and use `python -m bot.run` for long polling (dev).
+    telegram_webhook_secret: str = (os.getenv("TELEGRAM_WEBHOOK_SECRET", "") or "").strip()
+    redis_url: str = (os.getenv("REDIS_URL", "") or "").strip()
 
 
 @lru_cache

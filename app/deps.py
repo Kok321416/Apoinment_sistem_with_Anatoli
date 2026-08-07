@@ -29,12 +29,31 @@ def get_consultant(db: Session, user: AuthUser) -> Consultant:
     return consultant
 
 
+async def get_consultant_async(db, user: AuthUser) -> Consultant:
+    from sqlalchemy import select
+
+    consultant = (await db.execute(select(Consultant).where(Consultant.user_id == user.id))).scalar_one_or_none()
+    if not consultant:
+        raise HTTPException(status_code=302, headers={"Location": "/become-specialist/"})
+    return consultant
+
+
 def require_specialist_mode(request: Request, db: Session, user: AuthUser) -> Consultant:
     """Specialist cabinet routes: need Consultant + active_mode=specialist."""
     from app.services.active_mode import MODE_SPECIALIST, get_active_mode
 
     consultant = get_consultant(db, user)
     mode = get_active_mode(request, db, user.id)
+    if mode != MODE_SPECIALIST:
+        raise HTTPException(status_code=302, headers={"Location": "/dashboard/?need_mode=specialist"})
+    return consultant
+
+
+async def require_specialist_mode_async(request: Request, db, user: AuthUser) -> Consultant:
+    from app.services.active_mode import MODE_SPECIALIST, get_active_mode_async
+
+    consultant = await get_consultant_async(db, user)
+    mode = await get_active_mode_async(request, db, user.id, has_consultant=True)
     if mode != MODE_SPECIALIST:
         raise HTTPException(status_code=302, headers={"Location": "/dashboard/?need_mode=specialist"})
     return consultant
@@ -48,6 +67,22 @@ def require_platform_admin(request: Request, db: Session) -> AuthUser:
     if not settings.platform_admin_enabled:
         raise HTTPException(status_code=404, detail="Not found")
     user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=302, headers={"Location": "/login/?next=/platform-admin/"})
+    if not user.is_platform_admin:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return user
+
+
+async def require_platform_admin_async(request: Request, db) -> AuthUser:
+    """AsyncSession variant of require_platform_admin."""
+    from app.auth.session import get_current_user_async
+    from app.config import get_settings
+
+    settings = get_settings()
+    if not settings.platform_admin_enabled:
+        raise HTTPException(status_code=404, detail="Not found")
+    user = await get_current_user_async(request, db)
     if not user:
         raise HTTPException(status_code=302, headers={"Location": "/login/?next=/platform-admin/"})
     if not user.is_platform_admin:

@@ -6,19 +6,20 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.auth.passwords import hash_password, verify_password
-from app.auth.session import get_current_user, login_user, logout_user
+from app.auth.session import logout_user
 from app.config import get_settings
-from app.database import get_db
-from app.models import Booking, Calendar, Category, Consultant, Integration, User
+from app.database import get_async_db
+from app.models import Booking, Calendar, Consultant, Integration, User
 from app.security.bot_api import verify_bot_request
-from app.services.bookings import parse_fio
-from app.services.email_verification import ensure_email_address, send_user_verification_email
+from app.services.dual_role_backfill import resolve_client_user_id_for_telegram_async
+from app.services.email_verification import ensure_email_address_async, send_user_verification_email_async
+from app.services.integration_telegram import claim_integration_telegram_chat_async
 from app.services.telegram import format_client_booked_message, send_telegram_to_client
-from app.services.dual_role_backfill import resolve_client_user_id_for_telegram
-from app.services.integration_telegram import claim_integration_telegram_chat
 
 router = APIRouter(prefix="/api", tags=["api"])
 settings = get_settings()
@@ -41,7 +42,7 @@ def _booking_link_expired(booking: Booking) -> bool:
 
 
 @router.post("/auth/register")
-async def api_register(request: Request, db: Session = Depends(get_db)):
+async def api_register(request: Request, db: AsyncSession = Depends(get_async_db)):
     from app.security.request_guards import client_ip
     from app.services.rate_limit import check_rate_limit
 
@@ -59,7 +60,8 @@ async def api_register(request: Request, db: Session = Depends(get_db)):
     role = (data.get("role") or "specialist").strip().lower()
     if settings.force_consultant_on_signup:
         role = "specialist"
-    if db.query(User).filter(User.username == email).first():
+    existing = (await db.execute(select(User).where(User.username == email))).scalar_one_or_none()
+    if existing:
         return JSONResponse({"error": "Уже зарегистрирован"}, status_code=400)
     user = User(
         username=email,
@@ -69,20 +71,20 @@ async def api_register(request: Request, db: Session = Depends(get_db)):
         date_joined=datetime.utcnow(),
     )
     db.add(user)
-    db.flush()
+    await db.flush()
     consultant_id = None
     if role != "client":
-        from app.services.consultant_onboarding import create_consultant_for_user
+        from app.services.consultant_onboarding import create_consultant_for_user_async
 
         fio = (data.get("fio") or "").strip() or email
         phone = (data.get("phone") or "").strip() or "+70000000000"
         if len(fio) > 255 or len(phone) > 50:
             return JSONResponse({"error": "Некорректные данные"}, status_code=400)
-        consultant = create_consultant_for_user(db, user, fio=fio, phone=phone, email=email)
+        consultant = await create_consultant_for_user_async(db, user, fio=fio, phone=phone, email=email)
         consultant_id = consultant.id
-    ensure_email_address(db, user, email, verified=False)
-    if not send_user_verification_email(db, user):
-        db.rollback()
+    await ensure_email_address_async(db, user, email, verified=False)
+    if not await send_user_verification_email_async(db, user):
+        await db.rollback()
         return JSONResponse({"error": "Не удалось отправить письмо с кодом подтверждения"}, status_code=500)
     return JSONResponse({
         "message": "Вам на почту отправлено письмо. Введите 6-значный код на странице подтверждения.",
@@ -95,7 +97,7 @@ async def api_register(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/auth/login")
-async def api_login(request: Request, db: Session = Depends(get_db)):
+async def api_login(request: Request, db: AsyncSession = Depends(get_async_db)):
     from app.security.request_guards import client_ip
     from app.services.rate_limit import check_rate_limit
 
@@ -107,14 +109,16 @@ async def api_login(request: Request, db: Session = Depends(get_db)):
     password = data.get("password")
     if not email or not password or not isinstance(email, str) or not isinstance(password, str):
         return JSONResponse({"error": "Неверный логин/пароль"}, status_code=401)
-    user = db.query(User).filter(User.username == email.strip().lower()).first()
+    user = (
+        await db.execute(select(User).where(User.username == email.strip().lower()))
+    ).scalar_one_or_none()
     if not user or not verify_password(password, user.password):
         return JSONResponse({"error": "Неверный логин/пароль"}, status_code=401)
     if not user.is_active:
         return JSONResponse({"error": "Подтвердите почту. Проверьте письмо."}, status_code=403)
-    from app.auth.login_flow import finish_login_json
+    from app.auth.login_flow import finish_login_json_async
 
-    result = finish_login_json(
+    result = await finish_login_json_async(
         request,
         user,
         db,
@@ -133,7 +137,7 @@ async def api_logout(request: Request):
 
 
 @router.post("/telegram/confirm-login")
-async def confirm_telegram_login(request: Request, db: Session = Depends(get_db)):
+async def confirm_telegram_login(request: Request, db: AsyncSession = Depends(get_async_db)):
     body = await request.body()
     if not verify_bot_request(request, body):
         return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
@@ -142,9 +146,9 @@ async def confirm_telegram_login(request: Request, db: Session = Depends(get_db)
     telegram_id = data.get("telegram_id")
     if not token or telegram_id is None:
         return JSONResponse({"success": False, "error": "token and telegram_id required"}, status_code=400)
-    from app.services.telegram_auth import confirm_login_via_bot
+    from app.services.telegram_auth import confirm_login_via_bot_async
 
-    ok, msg, req = confirm_login_via_bot(
+    ok, msg, req = await confirm_login_via_bot_async(
         db,
         token,
         telegram_id,
@@ -172,7 +176,7 @@ async def confirm_telegram_login(request: Request, db: Session = Depends(get_db)
 
 
 @router.post("/booking/confirm-telegram")
-async def confirm_booking_telegram(request: Request, db: Session = Depends(get_db)):
+async def confirm_booking_telegram(request: Request, db: AsyncSession = Depends(get_async_db)):
     body = await request.body()
     if not verify_bot_request(request, body):
         return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
@@ -181,28 +185,28 @@ async def confirm_booking_telegram(request: Request, db: Session = Depends(get_d
     telegram_id = data.get("telegram_id")
     if not link_token or telegram_id is None:
         return JSONResponse({"success": False, "error": "link_token and telegram_id required"}, status_code=400)
-    booking = db.query(Booking).filter(Booking.link_token == link_token).first()
+    booking = (
+        await db.execute(select(Booking).where(Booking.link_token == link_token))
+    ).scalar_one_or_none()
     if not booking:
         return JSONResponse({"success": False, "error": "Invalid or expired link"}, status_code=404)
-    # TTL: 48 hours from booking creation
     if _booking_link_expired(booking):
         booking.link_token = None
-        db.commit()
+        await db.commit()
         return JSONResponse({"success": False, "error": "Ссылка истекла"}, status_code=400)
     tid = int(telegram_id)
-    # Idempotent re-confirm
     if booking.telegram_id and int(booking.telegram_id) == tid:
         if booking.client_user_id is None:
-            booking.client_user_id = resolve_client_user_id_for_telegram(db, tid)
+            booking.client_user_id = await resolve_client_user_id_for_telegram_async(db, tid)
         booking.link_token = None
-        db.commit()
+        await db.commit()
         return {"success": True, "message": "Телеграм уже привязан к записи"}
     booking.telegram_id = tid
     if booking.client_user_id is None:
-        booking.client_user_id = resolve_client_user_id_for_telegram(db, tid)
+        booking.client_user_id = await resolve_client_user_id_for_telegram_async(db, tid)
     booking.link_token = None
-    db.commit()
-    db.refresh(booking)
+    await db.commit()
+    await db.refresh(booking)
     try:
         send_telegram_to_client(booking.telegram_id, format_client_booked_message(booking))
     except Exception:
@@ -211,7 +215,7 @@ async def confirm_booking_telegram(request: Request, db: Session = Depends(get_d
 
 
 @router.post("/specialist/connect-telegram")
-async def confirm_specialist_telegram(request: Request, db: Session = Depends(get_db)):
+async def confirm_specialist_telegram(request: Request, db: AsyncSession = Depends(get_async_db)):
     body = await request.body()
     if not verify_bot_request(request, body):
         return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
@@ -220,7 +224,9 @@ async def confirm_specialist_telegram(request: Request, db: Session = Depends(ge
     telegram_id = data.get("telegram_id")
     if not link_token or telegram_id is None:
         return JSONResponse({"success": False, "error": "link_token and telegram_id required"}, status_code=400)
-    integration = db.query(Integration).filter(Integration.telegram_link_token == link_token).first()
+    integration = (
+        await db.execute(select(Integration).where(Integration.telegram_link_token == link_token))
+    ).scalar_one_or_none()
     if not integration:
         return JSONResponse({"success": False, "error": "Ссылка недействительна или уже использована"}, status_code=404)
     if integration.telegram_link_token_created_at:
@@ -228,21 +234,21 @@ async def confirm_specialist_telegram(request: Request, db: Session = Depends(ge
         if age > 1800:
             integration.telegram_link_token = None
             integration.telegram_link_token_created_at = None
-            db.commit()
+            await db.commit()
             return JSONResponse({"success": False, "error": "Ссылка истекла"}, status_code=400)
-    ok, err = claim_integration_telegram_chat(
+    ok, err = await claim_integration_telegram_chat_async(
         db, integration, str(int(telegram_id)), source="bot_connect_spec"
     )
     if not ok:
         return JSONResponse({"success": False, "error": err}, status_code=409)
     integration.telegram_link_token = None
     integration.telegram_link_token_created_at = None
-    db.commit()
+    await db.commit()
     return {"success": True, "message": "Телеграм подключен"}
 
 
 @router.post("/telegram/client-bookings")
-async def api_telegram_client_bookings(request: Request, db: Session = Depends(get_db)):
+async def api_telegram_client_bookings(request: Request, db: AsyncSession = Depends(get_async_db)):
     body = await request.body()
     if not verify_bot_request(request, body):
         return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
@@ -250,11 +256,20 @@ async def api_telegram_client_bookings(request: Request, db: Session = Depends(g
     telegram_id = data.get("telegram_id")
     if telegram_id is None:
         return JSONResponse({"success": False, "error": "telegram_id required"}, status_code=400)
-    bookings = (
-        db.query(Booking)
-        .filter(Booking.telegram_id == int(telegram_id), Booking.status != "cancelled")
-        .order_by(Booking.booking_date.desc(), Booking.booking_time.desc())
-        .limit(20)
+    bookings = list(
+        (
+            await db.execute(
+                select(Booking)
+                .options(
+                    selectinload(Booking.service),
+                    selectinload(Booking.calendar).selectinload(Calendar.consultant),
+                )
+                .where(Booking.telegram_id == int(telegram_id), Booking.status != "cancelled")
+                .order_by(Booking.booking_date.desc(), Booking.booking_time.desc())
+                .limit(20)
+            )
+        )
+        .scalars()
         .all()
     )
     now = datetime.utcnow().date()
@@ -278,7 +293,7 @@ async def api_telegram_client_bookings(request: Request, db: Session = Depends(g
 
 
 @router.post("/telegram/specialist-bookings")
-async def api_telegram_specialist_bookings(request: Request, db: Session = Depends(get_db)):
+async def api_telegram_specialist_bookings(request: Request, db: AsyncSession = Depends(get_async_db)):
     body = await request.body()
     if not verify_bot_request(request, body):
         return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
@@ -286,14 +301,27 @@ async def api_telegram_specialist_bookings(request: Request, db: Session = Depen
     raw = data.get("telegram_chat_id")
     if raw is None:
         return JSONResponse({"success": False, "error": "telegram_chat_id required"}, status_code=400)
-    integration = db.query(Integration).filter(Integration.telegram_chat_id == str(raw).strip()).first()
+    integration = (
+        await db.execute(
+            select(Integration).where(Integration.telegram_chat_id == str(raw).strip())
+        )
+    ).scalar_one_or_none()
     if not integration:
         return {"success": True, "bookings": [], "is_specialist": False}
-    bookings = (
-        db.query(Booking)
-        .join(Calendar, Booking.calendar_id == Calendar.id)
-        .filter(Calendar.consultant_id == integration.consultant_id, Booking.status != "cancelled")
-        .order_by(Booking.booking_date, Booking.booking_time)
+    bookings = list(
+        (
+            await db.execute(
+                select(Booking)
+                .join(Calendar, Booking.calendar_id == Calendar.id)
+                .options(selectinload(Booking.service))
+                .where(
+                    Calendar.consultant_id == integration.consultant_id,
+                    Booking.status != "cancelled",
+                )
+                .order_by(Booking.booking_date, Booking.booking_time)
+            )
+        )
+        .scalars()
         .all()
     )
     now_dt = datetime.now()
@@ -314,14 +342,14 @@ async def api_telegram_specialist_bookings(request: Request, db: Session = Depen
 
 
 @router.post("/telegram/capabilities")
-async def api_telegram_capabilities(request: Request, db: Session = Depends(get_db)):
+async def api_telegram_capabilities(request: Request, db: AsyncSession = Depends(get_async_db)):
     body = await request.body()
     if not verify_bot_request(request, body):
         return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
     data = json.loads(body)
-    from app.services.telegram_capabilities import resolve_capabilities
+    from app.services.telegram_capabilities import resolve_capabilities_async
 
-    return resolve_capabilities(
+    return await resolve_capabilities_async(
         db,
         telegram_id=data.get("telegram_id"),
         telegram_chat_id=data.get("telegram_chat_id"),
@@ -329,26 +357,26 @@ async def api_telegram_capabilities(request: Request, db: Session = Depends(get_
 
 
 @router.post("/telegram/ui-mode")
-async def api_telegram_ui_mode(request: Request, db: Session = Depends(get_db)):
+async def api_telegram_ui_mode(request: Request, db: AsyncSession = Depends(get_async_db)):
     body = await request.body()
     if not verify_bot_request(request, body):
         return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
     data = json.loads(body)
-    from app.services.telegram_capabilities import get_ui_mode, set_ui_mode
+    from app.services.telegram_capabilities import get_ui_mode_async, set_ui_mode_async
 
     chat_id = data.get("telegram_chat_id") or data.get("chat_id")
     mode = data.get("mode")
     if mode:
-        ok, err = set_ui_mode(db, str(chat_id or ""), str(mode))
+        ok, err = await set_ui_mode_async(db, str(chat_id or ""), str(mode))
         if not ok:
             return JSONResponse({"success": False, "error": err}, status_code=400)
         return {"success": True, "mode": mode}
-    stored = get_ui_mode(db, str(chat_id or ""))
+    stored = await get_ui_mode_async(db, str(chat_id or ""))
     return {"success": True, "mode": stored}
 
 
 @router.post("/telegram/webapp-auth")
-async def api_telegram_webapp_auth(request: Request, db: Session = Depends(get_db)):
+async def api_telegram_webapp_auth(request: Request, db: AsyncSession = Depends(get_async_db)):
     """Login (or create client user) from Telegram Mini App initData."""
     try:
         data = await request.json()
@@ -356,21 +384,21 @@ async def api_telegram_webapp_auth(request: Request, db: Session = Depends(get_d
         return JSONResponse({"success": False, "error": "Invalid JSON"}, status_code=400)
     init_data = (data.get("init_data") or data.get("initData") or "").strip()
     mode = (data.get("mode") or "").strip().lower()
-    from app.services.active_mode import VALID_MODES, set_active_mode, user_has_consultant
-    from app.services.telegram_webapp_auth import find_or_create_user_from_webapp, validate_webapp_init_data
+    from app.services.active_mode import VALID_MODES, set_active_mode, user_has_consultant_async
+    from app.services.telegram_webapp_auth import find_or_create_user_from_webapp_async, validate_webapp_init_data
 
     parsed = validate_webapp_init_data(init_data)
     if not parsed:
         return JSONResponse({"success": False, "error": "Invalid initData"}, status_code=401)
     tg_user = parsed.get("user") or {}
-    user = find_or_create_user_from_webapp(db, tg_user)
+    user = await find_or_create_user_from_webapp_async(db, tg_user)
     if not user:
         return JSONResponse({"success": False, "error": "User not found"}, status_code=400)
-    has_c = user_has_consultant(db, user.id)
-    from app.auth.login_flow import finish_login_json
+    has_c = await user_has_consultant_async(db, user.id)
+    from app.auth.login_flow import finish_login_json_async
 
     next_url = (data.get("next") or "/tg/").strip() or "/tg/"
-    result = finish_login_json(
+    result = await finish_login_json_async(
         request,
         user,
         db,
@@ -388,7 +416,6 @@ async def api_telegram_webapp_auth(request: Request, db: Session = Depends(get_d
     return result
 
 
-
 def _verify_telegram_widget_hash(payload: dict, received_hash: str) -> bool:
     bot_token = settings.telegram_bot_token
     if not bot_token or not received_hash:
@@ -400,7 +427,7 @@ def _verify_telegram_widget_hash(payload: dict, received_hash: str) -> bool:
 
 
 @router.post("/booking/confirm-telegram-browser")
-async def confirm_booking_telegram_browser_api(request: Request, db: Session = Depends(get_db)):
+async def confirm_booking_telegram_browser_api(request: Request, db: AsyncSession = Depends(get_async_db)):
     data = await request.json()
     link_token = (data.get("link_token") or "").strip()
     telegram_id = data.get("id")
@@ -412,29 +439,31 @@ async def confirm_booking_telegram_browser_api(request: Request, db: Session = D
         payload["id"] = str(telegram_id)
     if not _verify_telegram_widget_hash(payload, received_hash):
         return JSONResponse({"success": False, "error": "Invalid signature"}, status_code=400)
-    booking = db.query(Booking).filter(Booking.link_token == link_token).first()
+    booking = (
+        await db.execute(select(Booking).where(Booking.link_token == link_token))
+    ).scalar_one_or_none()
     if not booking:
         return JSONResponse({"success": False, "error": "Invalid or expired link"}, status_code=404)
     if _booking_link_expired(booking):
         booking.link_token = None
-        db.commit()
+        await db.commit()
         return JSONResponse({"success": False, "error": "Ссылка истекла"}, status_code=400)
     tid = int(telegram_id)
     if booking.telegram_id and int(booking.telegram_id) == tid:
         if booking.client_user_id is None:
-            booking.client_user_id = resolve_client_user_id_for_telegram(db, tid)
+            booking.client_user_id = await resolve_client_user_id_for_telegram_async(db, tid)
         booking.link_token = None
-        db.commit()
+        await db.commit()
         return {"success": True, "message": "Телеграм уже привязан, сообщение отправлено"}
     booking.telegram_id = tid
     if booking.client_user_id is None:
-        booking.client_user_id = resolve_client_user_id_for_telegram(db, tid)
+        booking.client_user_id = await resolve_client_user_id_for_telegram_async(db, tid)
     booking.link_token = None
     username = data.get("username") or ""
     if username and not username.startswith("@"):
         username = "@" + username
     booking.client_telegram = username
-    db.commit()
+    await db.commit()
     try:
         send_telegram_to_client(booking.telegram_id, format_client_booked_message(booking))
     except Exception:

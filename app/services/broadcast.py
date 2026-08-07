@@ -377,3 +377,227 @@ def telegram_stats(db: Session) -> dict[str, int]:
         "users_broadcast_opt_in": int(opted),
         "broadcast_jobs_total": int(jobs),
     }
+
+async def _specialist_chats_async(db) -> dict[str, int | None]:
+    from sqlalchemy import select
+
+    out: dict[str, int | None] = {}
+    rows = await db.execute(
+        select(Integration, Consultant)
+        .join(Consultant, Consultant.id == Integration.consultant_id)
+        .where(Integration.telegram_chat_id.isnot(None))
+        .where(Integration.telegram_chat_id != "")
+        .where(Integration.telegram_connected.is_(True))
+    )
+    for integ, consultant in rows.all():
+        if integ.telegram_enabled is False:
+            continue
+        key = normalize_telegram_chat_id(integ.telegram_chat_id)
+        if not key:
+            continue
+        out[key] = consultant.user_id
+    return out
+
+
+async def _client_chats_async(db) -> dict[str, int | None]:
+    from sqlalchemy import select
+
+    out: dict[str, int | None] = {}
+    opted = {
+        int(r[0])
+        for r in (await db.execute(select(User.id).where(User.notify_broadcast.is_(True), User.is_active.is_(True)))).all()
+    }
+    if not opted:
+        return out
+    for uid, tg_uid in (
+        await db.execute(
+            select(SocialAccount.user_id, SocialAccount.uid).where(
+                SocialAccount.provider == "telegram", SocialAccount.user_id.in_(opted)
+            )
+        )
+    ).all():
+        key = normalize_telegram_chat_id(tg_uid)
+        if key:
+            out[key] = int(uid)
+    for tid, cuid in (
+        await db.execute(
+            select(Booking.telegram_id, Booking.client_user_id).where(
+                Booking.telegram_id.isnot(None), Booking.client_user_id.in_(opted)
+            )
+        )
+    ).all():
+        key = normalize_telegram_chat_id(tid)
+        if key and key not in out:
+            out[key] = int(cuid) if cuid else None
+    return out
+
+
+async def _test_self_chat_async(db, actor_user_id: int) -> dict[str, int | None]:
+    from sqlalchemy import select
+
+    out: dict[str, int | None] = {}
+    sa = (
+        await db.execute(
+            select(SocialAccount).where(
+                SocialAccount.provider == "telegram", SocialAccount.user_id == actor_user_id
+            )
+        )
+    ).scalar_one_or_none()
+    if sa:
+        key = normalize_telegram_chat_id(sa.uid)
+        if key:
+            out[key] = actor_user_id
+            return out
+    consultant = (
+        await db.execute(select(Consultant).where(Consultant.user_id == actor_user_id))
+    ).scalar_one_or_none()
+    if consultant:
+        integ = (
+            await db.execute(select(Integration).where(Integration.consultant_id == consultant.id))
+        ).scalar_one_or_none()
+        if integ and integ.telegram_chat_id:
+            key = normalize_telegram_chat_id(integ.telegram_chat_id)
+            if key:
+                out[key] = actor_user_id
+    return out
+
+
+async def resolve_audience_chats_async(
+    db,
+    audience: str,
+    *,
+    actor_user_id: int | None = None,
+) -> list[dict[str, Any]]:
+    audience = (audience or "").strip().lower()
+    if audience not in VALID_AUDIENCES:
+        return []
+    if audience == AUDIENCE_TEST_SELF:
+        if not actor_user_id:
+            return []
+        mapping = await _test_self_chat_async(db, actor_user_id)
+        return [{"chat_id": k, "user_id": v, "segment": AUDIENCE_TEST_SELF} for k, v in mapping.items()]
+    specialists = await _specialist_chats_async(db)
+    clients = await _client_chats_async(db)
+    specialist_keys = set(specialists)
+    client_keys = set(clients)
+    if audience == AUDIENCE_SPECIALISTS:
+        keys = specialist_keys
+        segment = AUDIENCE_SPECIALISTS
+    elif audience == AUDIENCE_CLIENTS:
+        keys = client_keys - specialist_keys
+        segment = AUDIENCE_CLIENTS
+    elif audience == AUDIENCE_DUAL:
+        keys = specialist_keys & client_keys
+        segment = AUDIENCE_DUAL
+    else:
+        keys = specialist_keys | client_keys
+        segment = AUDIENCE_ALL
+    result = []
+    for key in sorted(keys):
+        uid = specialists.get(key)
+        if uid is None:
+            uid = clients.get(key)
+        result.append({"chat_id": key, "user_id": uid, "segment": segment})
+    return result
+
+
+async def dry_run_count_async(db, audience: str, *, actor_user_id: int | None = None) -> int:
+    return len(await resolve_audience_chats_async(db, audience, actor_user_id=actor_user_id))
+
+
+async def create_broadcast_job_async(
+    db,
+    *,
+    created_by: int,
+    audience: str,
+    text: str,
+) -> tuple[TelegramBroadcastJob | None, str | None]:
+    audience = (audience or "").strip().lower()
+    text = (text or "").strip()
+    if audience not in VALID_AUDIENCES:
+        return None, "Неизвестная аудитория"
+    if not text:
+        return None, "Введите текст рассылки"
+    if len(text) > 4000:
+        return None, "Текст слишком длинный (макс. 4000 символов)"
+    recipients = await resolve_audience_chats_async(db, audience, actor_user_id=created_by)
+    if not recipients:
+        return None, "Нет получателей для выбранной аудитории (проверьте opt-in / Integration / test_self)"
+    job = TelegramBroadcastJob(
+        created_by=created_by,
+        audience=audience,
+        text=text,
+        status=JOB_QUEUED,
+        recipients_total=len(recipients),
+        recipients_sent=0,
+        recipients_failed=0,
+        created_at=datetime.utcnow(),
+    )
+    db.add(job)
+    await db.flush()
+    for r in recipients:
+        db.add(
+            TelegramBroadcastRecipient(
+                job_id=job.id,
+                chat_id=r["chat_id"],
+                user_id=r.get("user_id"),
+                segment=r.get("segment"),
+                status=REC_PENDING,
+            )
+        )
+    await db.commit()
+    await db.refresh(job)
+    return job, None
+
+
+async def cancel_broadcast_job_async(db, job_id: int) -> tuple[TelegramBroadcastJob | None, str | None]:
+    from sqlalchemy import select
+
+    job = await db.get(TelegramBroadcastJob, job_id)
+    if not job:
+        return None, "Job не найден"
+    if job.status not in (JOB_QUEUED, JOB_RUNNING):
+        return None, "Остановить можно только queued/running job"
+    job.status = JOB_CANCELLED
+    job.finished_at = datetime.utcnow()
+    job.error = (job.error or "cancelled by admin")[:500]
+    pending = list(
+        (
+            await db.execute(
+                select(TelegramBroadcastRecipient).where(
+                    TelegramBroadcastRecipient.job_id == job.id,
+                    TelegramBroadcastRecipient.status == REC_PENDING,
+                )
+            )
+        ).scalars().all()
+    )
+    for rec in pending:
+        rec.status = REC_SKIPPED
+        rec.error = "job cancelled"
+    await db.commit()
+    await db.refresh(job)
+    return job, None
+
+
+async def telegram_stats_async(db) -> dict[str, int]:
+    from sqlalchemy import func, select
+
+    integrations = (
+        await db.execute(
+            select(func.count(Integration.id)).where(
+                Integration.telegram_connected.is_(True), Integration.telegram_chat_id.isnot(None)
+            )
+        )
+    ).scalar() or 0
+    client_tg = (
+        await db.execute(select(func.count(Booking.id)).where(Booking.telegram_id.isnot(None)))
+    ).scalar() or 0
+    opted = (await db.execute(select(func.count(User.id)).where(User.notify_broadcast.is_(True)))).scalar() or 0
+    jobs = (await db.execute(select(func.count(TelegramBroadcastJob.id)))).scalar() or 0
+    return {
+        "integrations_connected": int(integrations),
+        "bookings_with_telegram": int(client_tg),
+        "users_broadcast_opt_in": int(opted),
+        "broadcast_jobs_total": int(jobs),
+    }
+

@@ -265,3 +265,199 @@ def complete_yandex_oauth(
         db.rollback()
         logger.exception("Yandex OAuth failed during %s", process)
         return None, "Внутренняя ошибка при регистрации через Яндекс. Попробуйте позже."
+
+
+async def _unique_consultant_email_async(db, email: str, user: User, yandex_id: str) -> str:
+    from sqlalchemy import select
+
+    candidate = (email or user.email or f"yandex_{yandex_id}@yandex.user").strip().lower()
+    if not candidate:
+        candidate = f"yandex_{yandex_id}@yandex.user"
+    existing = (
+        await db.execute(select(Consultant).where(Consultant.email == candidate))
+    ).scalar_one_or_none()
+    if existing and existing.user_id != user.id:
+        candidate = f"yandex_{yandex_id}@yandex.user"
+    return candidate
+
+
+async def _sync_user_email_from_yandex_async(db, user: User, email: str) -> None:
+    from sqlalchemy import select
+
+    from app.services.email_verification import ensure_email_address_async
+
+    email = (email or "").strip().lower()
+    if not email:
+        return
+    if not user.email or user.email.endswith("@yandex.user") or user.email.endswith("@telegram.user"):
+        user.email = email
+    if "@" in email and (
+        not user.username
+        or user.username.startswith("yandex_")
+        or user.username.startswith("telegram_")
+    ):
+        existing = (
+            await db.execute(select(User).where(User.username == email, User.id != user.id))
+        ).scalar_one_or_none()
+        if not existing:
+            user.username = email
+    await ensure_email_address_async(db, user, email, verified=True)
+    user.is_active = True
+
+
+async def _create_consultant_from_register_async(
+    db,
+    user: User,
+    register_fio: str,
+    register_phone: str,
+    email: str,
+    yandex_id: str,
+) -> None:
+    from app.services.consultant_onboarding import create_consultant_for_user_async
+
+    await create_consultant_for_user_async(
+        db,
+        user,
+        fio=register_fio,
+        phone=register_phone,
+        email=await _unique_consultant_email_async(db, email, user, yandex_id),
+    )
+
+
+async def _create_yandex_user_async(
+    db,
+    yandex_id: str,
+    extra: dict,
+) -> User:
+    from sqlalchemy import select
+
+    email = extra["default_email"]
+    first_name = extra["first_name"]
+    last_name = extra["last_name"]
+    username = email or f"yandex_{yandex_id}"
+    if (await db.execute(select(User).where(User.username == username))).scalar_one_or_none():
+        username = f"yandex_{yandex_id}"
+
+    user = User(
+        username=username,
+        email=email or f"yandex_{yandex_id}@yandex.user",
+        password=hash_password(secrets.token_urlsafe(32)),
+        first_name=first_name,
+        last_name=last_name,
+        is_active=True,
+        date_joined=datetime.utcnow(),
+    )
+    db.add(user)
+    await db.flush()
+    db.add(SocialAccount(
+        provider="yandex",
+        uid=yandex_id,
+        user_id=user.id,
+        extra_data=json.dumps(extra, ensure_ascii=False),
+    ))
+    await _sync_user_email_from_yandex_async(db, user, email)
+    return user
+
+
+async def _link_yandex_account_async(db, user: User, yandex_id: str, extra: dict) -> str | None:
+    from sqlalchemy import select
+
+    existing = (
+        await db.execute(
+            select(SocialAccount).where(
+                SocialAccount.provider == "yandex",
+                SocialAccount.uid == yandex_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing and existing.user_id != user.id:
+        return "Этот аккаунт Яндекс уже привязан к другому пользователю"
+    if not existing:
+        db.add(SocialAccount(
+            provider="yandex",
+            uid=yandex_id,
+            user_id=user.id,
+            extra_data=json.dumps(extra, ensure_ascii=False),
+        ))
+    await _sync_user_email_from_yandex_async(db, user, extra["default_email"])
+    return None
+
+
+async def complete_yandex_oauth_async(
+    db,
+    *,
+    process: str,
+    profile: dict,
+    register_fio: str | None,
+    register_phone: str | None,
+    connect_user_id: int | None,
+) -> tuple[User | None, str | None]:
+    from sqlalchemy import select
+
+    yandex_id = str(profile.get("id") or "").strip()
+    if not yandex_id:
+        return None, "Не удалось получить профиль Яндекса"
+
+    extra = _profile_extra(profile)
+    existing_social = (
+        await db.execute(
+            select(SocialAccount).where(
+                SocialAccount.provider == "yandex",
+                SocialAccount.uid == yandex_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+    try:
+        if process == "connect":
+            if not connect_user_id:
+                return None, "Требуется авторизация"
+            user = await db.get(User, connect_user_id)
+            if not user:
+                return None, "Пользователь не найден"
+            err = await _link_yandex_account_async(db, user, yandex_id, extra)
+            if err:
+                return None, err
+            await db.commit()
+            return user, None
+
+        if existing_social:
+            user = await db.get(User, existing_social.user_id)
+            if not user:
+                return None, "Пользователь не найден"
+            await _sync_user_email_from_yandex_async(db, user, extra["default_email"])
+            await db.commit()
+            return user, None
+
+        if process in ("signup", "signup_client"):
+            if not register_fio or not register_phone:
+                return None, "Укажите ФИО и телефон перед регистрацией через Яндекс"
+            user = await _create_yandex_user_async(db, yandex_id, extra)
+            from app.config import get_settings
+            from app.services.consultant_onboarding import apply_user_names_from_fio
+
+            force = get_settings().force_consultant_on_signup
+            as_specialist = force or process == "signup"
+            if as_specialist:
+                await _create_consultant_from_register_async(
+                    db,
+                    user,
+                    register_fio,
+                    register_phone,
+                    extra["default_email"],
+                    yandex_id,
+                )
+            else:
+                apply_user_names_from_fio(user, register_fio)
+            await db.commit()
+            return user, None
+
+        return None, "Аккаунт не найден. Сначала зарегистрируйтесь."
+    except IntegrityError as exc:
+        await db.rollback()
+        logger.exception("Yandex OAuth DB integrity error during %s", process)
+        return None, "Не удалось создать аккаунт. Возможно, почта или телефон уже используются."
+    except Exception:
+        await db.rollback()
+        logger.exception("Yandex OAuth failed during %s", process)
+        return None, "Внутренняя ошибка при регистрации через Яндекс. Попробуйте позже."

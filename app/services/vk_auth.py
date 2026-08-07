@@ -332,3 +332,228 @@ def resolve_vk_user_id_for_user(db: Session, user_id: int | None) -> int | None:
         return int(sa.uid)
     except (TypeError, ValueError):
         return None
+
+
+async def _sync_user_email_from_vk_async(db, user: User, email: str) -> None:
+    from sqlalchemy import select
+
+    from app.services.email_verification import ensure_email_address_async
+
+    email = (email or "").strip().lower()
+    if not email:
+        return
+    placeholder_suffixes = ("@vk.user", "@yandex.user", "@telegram.user")
+    if not user.email or any(user.email.endswith(s) for s in placeholder_suffixes):
+        user.email = email
+    if "@" in email and (
+        not user.username
+        or user.username.startswith("vk_")
+        or user.username.startswith("yandex_")
+        or user.username.startswith("telegram_")
+    ):
+        existing = (
+            await db.execute(select(User).where(User.username == email, User.id != user.id))
+        ).scalar_one_or_none()
+        if not existing:
+            user.username = email
+    await ensure_email_address_async(db, user, email, verified=True)
+    user.is_active = True
+
+
+async def _unique_consultant_email_async(db, email: str, user: User, vk_id: str) -> str:
+    from sqlalchemy import select
+
+    from app.models import Consultant
+
+    candidate = (email or user.email or f"vk_{vk_id}@vk.user").strip().lower()
+    if not candidate:
+        candidate = f"vk_{vk_id}@vk.user"
+    existing = (
+        await db.execute(select(Consultant).where(Consultant.email == candidate))
+    ).scalar_one_or_none()
+    if existing and existing.user_id != user.id:
+        candidate = f"vk_{vk_id}@vk.user"
+    return candidate
+
+
+async def _create_consultant_from_register_async(
+    db,
+    user: User,
+    register_fio: str,
+    register_phone: str,
+    email: str,
+    vk_id: str,
+) -> None:
+    from app.services.consultant_onboarding import create_consultant_for_user_async
+
+    await create_consultant_for_user_async(
+        db,
+        user,
+        fio=register_fio,
+        phone=register_phone,
+        email=await _unique_consultant_email_async(db, email, user, vk_id),
+    )
+
+
+async def _create_vk_user_async(db, vk_id: str, extra: dict) -> User:
+    from sqlalchemy import select
+
+    email = extra["email"]
+    first_name = extra["first_name"]
+    last_name = extra["last_name"]
+    username = email or f"vk_{vk_id}"
+    if (await db.execute(select(User).where(User.username == username))).scalar_one_or_none():
+        username = f"vk_{vk_id}"
+
+    user = User(
+        username=username,
+        email=email or f"vk_{vk_id}@vk.user",
+        password=hash_password(secrets.token_urlsafe(32)),
+        first_name=first_name,
+        last_name=last_name,
+        is_active=True,
+        date_joined=datetime.utcnow(),
+    )
+    db.add(user)
+    await db.flush()
+    db.add(
+        SocialAccount(
+            provider="vk",
+            uid=vk_id,
+            user_id=user.id,
+            extra_data=json.dumps(extra, ensure_ascii=False),
+        )
+    )
+    await _sync_user_email_from_vk_async(db, user, email)
+    return user
+
+
+async def _link_vk_account_async(db, user: User, vk_id: str, extra: dict) -> str | None:
+    from sqlalchemy import select
+
+    existing = (
+        await db.execute(
+            select(SocialAccount).where(
+                SocialAccount.provider == "vk",
+                SocialAccount.uid == vk_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing and existing.user_id != user.id:
+        return "Этот аккаунт VK уже привязан к другому пользователю"
+    if not existing:
+        db.add(
+            SocialAccount(
+                provider="vk",
+                uid=vk_id,
+                user_id=user.id,
+                extra_data=json.dumps(extra, ensure_ascii=False),
+            )
+        )
+    else:
+        existing.extra_data = json.dumps(extra, ensure_ascii=False)
+    await _sync_user_email_from_vk_async(db, user, extra["email"])
+    return None
+
+
+async def complete_vk_oauth_async(
+    db,
+    *,
+    process: str,
+    profile: dict,
+    register_fio: str | None,
+    register_phone: str | None,
+    connect_user_id: int | None,
+) -> tuple[User | None, str | None, str | None]:
+    """Returns (user, error, vk_user_id)."""
+    from sqlalchemy import select
+
+    vk_id = str(profile.get("user_id") or profile.get("id") or "").strip()
+    if not vk_id:
+        return None, "Не удалось получить профиль VK", None
+
+    extra = _profile_extra(profile)
+    existing_social = (
+        await db.execute(
+            select(SocialAccount).where(
+                SocialAccount.provider == "vk",
+                SocialAccount.uid == vk_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+    try:
+        if process == "connect":
+            if not connect_user_id:
+                return None, "Требуется авторизация", None
+            user = await db.get(User, connect_user_id)
+            if not user:
+                return None, "Пользователь не найден", None
+            err = await _link_vk_account_async(db, user, vk_id, extra)
+            if err:
+                return None, err, None
+            await db.commit()
+            return user, None, vk_id
+
+        if existing_social:
+            user = await db.get(User, existing_social.user_id)
+            if not user:
+                return None, "Пользователь не найден", None
+            await _sync_user_email_from_vk_async(db, user, extra["email"])
+            existing_social.extra_data = json.dumps(extra, ensure_ascii=False)
+            await db.commit()
+            return user, None, vk_id
+
+        if process in ("signup", "signup_client"):
+            if not register_fio or not register_phone:
+                return None, "Укажите ФИО и телефон перед регистрацией через VK", None
+            user = await _create_vk_user_async(db, vk_id, extra)
+            from app.config import get_settings
+            from app.services.consultant_onboarding import apply_user_names_from_fio
+
+            force = get_settings().force_consultant_on_signup
+            as_specialist = force or process == "signup"
+            if as_specialist:
+                await _create_consultant_from_register_async(
+                    db,
+                    user,
+                    register_fio,
+                    register_phone,
+                    extra["email"],
+                    vk_id,
+                )
+            else:
+                apply_user_names_from_fio(user, register_fio)
+            await db.commit()
+            return user, None, vk_id
+
+        return None, "Аккаунт не найден. Сначала зарегистрируйтесь.", None
+    except IntegrityError:
+        await db.rollback()
+        logger.exception("VK OAuth DB integrity error during %s", process)
+        return None, "Не удалось создать аккаунт. Возможно, почта уже используется.", None
+    except Exception:
+        await db.rollback()
+        logger.exception("VK OAuth failed during %s", process)
+        return None, "Внутренняя ошибка при входе через VK. Попробуйте позже.", None
+
+
+async def resolve_vk_user_id_for_user_async(db, user_id: int | None) -> int | None:
+    if not user_id:
+        return None
+    from sqlalchemy import select
+
+    sa = (
+        await db.execute(
+            select(SocialAccount).where(
+                SocialAccount.provider == "vk",
+                SocialAccount.user_id == user_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not sa or not sa.uid:
+        return None
+    try:
+        return int(sa.uid)
+    except (TypeError, ValueError):
+        return None

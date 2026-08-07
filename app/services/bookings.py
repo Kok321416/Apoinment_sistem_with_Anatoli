@@ -115,6 +115,96 @@ def find_or_create_client_card(
     return card
 
 
+async def find_or_create_client_card_async(
+    db,
+    consultant: Consultant,
+    client_name: str,
+    client_phone: str,
+    client_email: str,
+    client_telegram: str,
+    client_user_id: int | None = None,
+) -> ClientCard:
+    """AsyncSession twin of find_or_create_client_card."""
+    from sqlalchemy import select
+
+    card = None
+    if client_user_id is not None:
+        card = (
+            await db.execute(
+                select(ClientCard).where(
+                    ClientCard.consultant_id == consultant.id,
+                    ClientCard.client_user_id == client_user_id,
+                )
+            )
+        ).scalar_one_or_none()
+
+    if not card and (client_phone or client_email or client_telegram):
+        conditions = []
+        if client_phone:
+            conditions.append(ClientCard.phone == client_phone)
+        if client_email:
+            conditions.append(ClientCard.email == client_email)
+        if client_telegram:
+            tg_norm = client_telegram.lstrip("@").split("/")[-1].split("?")[0]
+            if tg_norm:
+                conditions.append(ClientCard.telegram.ilike(f"%{tg_norm}%"))
+        if conditions:
+            candidates = list(
+                (
+                    await db.execute(
+                        select(ClientCard).where(
+                            ClientCard.consultant_id == consultant.id,
+                            or_(*conditions),
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for cand in candidates:
+                if (
+                    client_user_id is not None
+                    and cand.client_user_id is not None
+                    and cand.client_user_id != client_user_id
+                ):
+                    continue
+                card = cand
+                break
+
+    if not card:
+        card = ClientCard(
+            consultant_id=consultant.id,
+            client_user_id=client_user_id,
+            name=client_name or None,
+            phone=client_phone or None,
+            email=client_email or None,
+            telegram=client_telegram or None,
+        )
+        db.add(card)
+        await db.flush()
+        return card
+
+    updated = False
+    if client_user_id is not None and card.client_user_id is None:
+        card.client_user_id = client_user_id
+        updated = True
+    if client_name and not card.name:
+        card.name = client_name
+        updated = True
+    if client_phone and card.phone != client_phone:
+        card.phone = client_phone
+        updated = True
+    if client_email and card.email != client_email:
+        card.email = client_email
+        updated = True
+    if client_telegram and (not card.telegram or client_telegram not in (card.telegram or "")):
+        card.telegram = client_telegram
+        updated = True
+    if updated:
+        await db.flush()
+    return card
+
+
 def create_public_booking(
     db: Session,
     calendar: Calendar,
@@ -258,6 +348,183 @@ def create_public_booking(
     return booking, None
 
 
+async def create_public_booking_async(
+    db,
+    calendar: Calendar,
+    service_id: int,
+    booking_date: date,
+    booking_time_str: str,
+    booking_end_time_str: str,
+    client_name: str,
+    client_phone: str,
+    client_email: str,
+    client_telegram: str,
+    client_user_id: int | None = None,
+    *,
+    consultant: Consultant | None = None,
+) -> tuple[Booking | None, str | None]:
+    """AsyncSession twin of create_public_booking. Notify/Google still via sync bridge."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    if consultant is None:
+        consultant = (
+            await db.execute(select(Consultant).where(Consultant.id == calendar.consultant_id))
+        ).scalar_one_or_none()
+    if not consultant:
+        return None, "Календарь не найден"
+
+    if client_user_id is not None and consultant.user_id == client_user_id:
+        return None, "Нельзя записаться к самому себе. Выберите другого специалиста или выйдите из аккаунта."
+
+    service = (
+        await db.execute(
+            select(Service).where(
+                Service.id == service_id,
+                Service.consultant_id == consultant.id,
+                Service.is_active.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not service:
+        return None, "Услуга не найдена"
+    if service.calendar_id and service.calendar_id != calendar.id:
+        return None, "Услуга не относится к этому календарю."
+
+    client_phone, phone_err = normalize_client_phone(client_phone)
+    if phone_err:
+        return None, phone_err
+
+    (
+        await db.execute(select(Calendar).where(Calendar.id == calendar.id).with_for_update())
+    ).scalar_one()
+
+    start_time_obj = datetime.strptime(booking_time_str, "%H:%M").time()
+    end_time_obj = datetime.strptime(booking_end_time_str, "%H:%M").time()
+    start_dt = datetime.combine(booking_date, start_time_obj)
+    end_dt = datetime.combine(booking_date, end_time_obj)
+    duration_minutes = (end_dt - start_dt).total_seconds() / 60
+    if abs(duration_minutes - service.duration_minutes) > 1:
+        return None, "Неверная длительность. Выберите время из списка доступных слотов."
+
+    day_of_week = booking_date.weekday()
+    time_slot = (
+        await db.execute(
+            select(TimeSlot).where(
+                TimeSlot.calendar_id == calendar.id,
+                TimeSlot.day_of_week == day_of_week,
+                TimeSlot.start_time <= start_time_obj,
+                TimeSlot.end_time >= end_time_obj,
+                TimeSlot.is_available.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not time_slot:
+        return None, "Выбранное время не входит в доступные окна приёма."
+
+    slot_taken = (
+        await db.execute(
+            select(Booking)
+            .where(
+                Booking.calendar_id == calendar.id,
+                Booking.booking_date == booking_date,
+                Booking.booking_time == start_time_obj,
+                Booking.status.in_(["pending", "confirmed"]),
+            )
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if slot_taken:
+        return None, "Это время уже занято. Выберите другой слот."
+
+    max_per_day = calendar.max_services_per_day or 0
+    existing_bookings = list(
+        (
+            await db.execute(
+                select(Booking)
+                .where(
+                    Booking.calendar_id == calendar.id,
+                    Booking.booking_date == booking_date,
+                    Booking.status.in_(["pending", "confirmed"]),
+                )
+                .with_for_update()
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if max_per_day > 0 and len(existing_bookings) >= max_per_day:
+        return None, "Достигнут лимит записей на этот день."
+
+    from zoneinfo import ZoneInfo
+
+    from app.config import get_settings
+
+    tz = ZoneInfo(get_settings().timezone)
+    book_ahead_hours = calendar.book_ahead_hours or 24
+    min_start = datetime.now(tz) + timedelta(hours=book_ahead_hours)
+    start_aware = datetime.combine(booking_date, start_time_obj, tzinfo=tz)
+    if start_aware < min_start:
+        return None, f"Запись доступна минимум за {book_ahead_hours} ч. до начала."
+
+    break_minutes = calendar.break_between_services_minutes or 0
+    break_delta = timedelta(minutes=break_minutes)
+
+    for booking in existing_bookings:
+        if not booking.booking_end_time:
+            continue
+        booking_start = datetime.combine(booking_date, booking.booking_time)
+        booking_end = datetime.combine(booking_date, booking.booking_end_time)
+        if not (end_dt + break_delta <= booking_start or start_dt >= booking_end + break_delta):
+            return None, "Это время уже занято или слишком близко к другой записи."
+
+    card = await find_or_create_client_card_async(
+        db,
+        consultant,
+        client_name,
+        client_phone,
+        client_email,
+        client_telegram,
+        client_user_id=client_user_id,
+    )
+    link_token = uuid.uuid4().hex[:24]
+    from app.services.vk_auth import resolve_vk_user_id_for_user_async
+
+    vk_user_id = await resolve_vk_user_id_for_user_async(db, client_user_id)
+    booking = Booking(
+        service_id=service.id,
+        time_slot_id=time_slot.id,
+        calendar_id=calendar.id,
+        client_card_id=card.id,
+        client_user_id=client_user_id,
+        booking_date=booking_date,
+        booking_time=start_time_obj,
+        booking_end_time=end_time_obj,
+        client_name=client_name,
+        client_phone=client_phone or "",
+        client_telegram=client_telegram or "",
+        client_email=client_email or "",
+        status="pending",
+        link_token=link_token,
+        vk_user_id=vk_user_id,
+    )
+    db.add(booking)
+    await db.commit()
+
+    booking = (
+        await db.execute(
+            select(Booking)
+            .options(selectinload(Booking.service), selectinload(Booking.calendar))
+            .where(Booking.id == booking.id)
+        )
+    ).scalar_one()
+
+    from app.services.notify_bridge import schedule_on_booking_created
+
+    schedule_on_booking_created(booking.id)
+    return booking, None
+
+
 def mark_past_bookings_completed(db: Session, calendars: list[Calendar]) -> None:
     from zoneinfo import ZoneInfo
 
@@ -277,6 +544,39 @@ def mark_past_bookings_completed(db: Session, calendars: list[Calendar]) -> None
         if end_dt <= now:
             b.status = "completed"
     db.commit()
+
+
+async def mark_past_bookings_completed_async(db, calendars: list[Calendar]) -> None:
+    from zoneinfo import ZoneInfo
+
+    from sqlalchemy import select
+
+    from app.config import get_settings
+
+    tz = ZoneInfo(get_settings().timezone or "Europe/Moscow")
+    now = datetime.now(tz).replace(tzinfo=None)
+    calendar_ids = [c.id for c in calendars]
+    if not calendar_ids:
+        return
+    bookings = list(
+        (
+            await db.execute(
+                select(Booking).where(
+                    Booking.calendar_id.in_(calendar_ids),
+                    Booking.status == "confirmed",
+                )
+            )
+        ).scalars().all()
+    )
+    changed = False
+    for b in bookings:
+        end_time = b.booking_end_time or b.booking_time
+        end_dt = datetime.combine(b.booking_date, end_time)
+        if end_dt <= now:
+            b.status = "completed"
+            changed = True
+    if changed:
+        await db.commit()
 
 
 def reschedule_booking(
@@ -362,4 +662,106 @@ def reschedule_booking(
         )
     except Exception:
         pass
+    return None
+
+
+async def reschedule_booking_async(
+    db,
+    booking: Booking,
+    new_date: date,
+    new_time_str: str,
+) -> str | None:
+    """AsyncSession twin of reschedule_booking. Notify via background bridge after commit."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    calendar = booking.calendar
+    service = booking.service
+    if calendar is None or service is None:
+        row = (
+            await db.execute(
+                select(Booking)
+                .options(selectinload(Booking.service), selectinload(Booking.calendar))
+                .where(Booking.id == booking.id)
+            )
+        ).scalar_one_or_none()
+        if not row:
+            return "Запись или услуга не найдена"
+        booking = row
+        calendar = booking.calendar
+        service = booking.service
+    if not calendar or not service:
+        return "Запись или услуга не найдена"
+
+    try:
+        start_time_obj = datetime.strptime(new_time_str, "%H:%M").time()
+    except (TypeError, ValueError):
+        return "Некорректное время"
+
+    end_dt = datetime.combine(new_date, start_time_obj) + timedelta(minutes=service.duration_minutes)
+    end_time_obj = end_dt.time()
+
+    day_of_week = new_date.weekday()
+    time_slot = (
+        await db.execute(
+            select(TimeSlot).where(
+                TimeSlot.calendar_id == calendar.id,
+                TimeSlot.day_of_week == day_of_week,
+                TimeSlot.start_time <= start_time_obj,
+                TimeSlot.end_time >= end_time_obj,
+                TimeSlot.is_available.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not time_slot:
+        return "Выбранное время не входит в доступные окна приёма."
+
+    break_minutes = calendar.break_between_services_minutes or 0
+    break_delta = timedelta(minutes=break_minutes)
+    start_dt = datetime.combine(new_date, start_time_obj)
+
+    existing = list(
+        (
+            await db.execute(
+                select(Booking).where(
+                    Booking.calendar_id == calendar.id,
+                    Booking.booking_date == new_date,
+                    Booking.status.in_(["pending", "confirmed"]),
+                    Booking.id != booking.id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for other in existing:
+        if not other.booking_end_time:
+            continue
+        other_start = datetime.combine(new_date, other.booking_time)
+        other_end = datetime.combine(new_date, other.booking_end_time)
+        if not (end_dt + break_delta <= other_start or start_dt >= other_end + break_delta):
+            return "Это время уже занято."
+
+    old_date = booking.booking_date
+    old_time = booking.booking_time
+    old_end = booking.booking_end_time
+
+    booking.booking_date = new_date
+    booking.booking_time = start_time_obj
+    booking.booking_end_time = end_time_obj
+    booking.time_slot_id = time_slot.id
+    booking.reminder_24h_sent = False
+    booking.reminder_1h_sent = False
+    booking.specialist_reminder_24h_sent = False
+    booking.specialist_reminder_1h_sent = False
+    await db.commit()
+
+    from app.services.notify_bridge import schedule_rescheduled
+
+    schedule_rescheduled(
+        booking.id,
+        old_date=old_date,
+        old_time=old_time,
+        old_end_time=old_end,
+    )
     return None

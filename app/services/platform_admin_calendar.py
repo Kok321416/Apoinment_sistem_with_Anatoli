@@ -76,6 +76,39 @@ def bookings_for_week(
     return query.all()
 
 
+async def bookings_for_week_async(
+    db,
+    week_start: date,
+    *,
+    consultant_id: int | None = None,
+    calendar_id: int | None = None,
+    status: str | None = None,
+) -> list[Booking]:
+    from datetime import timedelta
+
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    week_end = week_start + timedelta(days=6)
+    stmt = (
+        select(Booking)
+        .options(
+            selectinload(Booking.service),
+            selectinload(Booking.calendar).selectinload(Calendar.consultant),
+        )
+        .where(Booking.booking_date >= week_start, Booking.booking_date <= week_end)
+        .order_by(Booking.booking_date.asc(), Booking.booking_time.asc(), Booking.id.asc())
+    )
+    if calendar_id:
+        stmt = stmt.where(Booking.calendar_id == calendar_id)
+    elif consultant_id:
+        stmt = stmt.join(Calendar).where(Calendar.consultant_id == consultant_id)
+    if status and status in BOOKING_STATUSES:
+        stmt = stmt.where(Booking.status == status)
+    result = await db.execute(stmt)
+    return list(result.scalars().unique().all())
+
+
 def build_week_calendar(
     bookings: list[Booking],
     week_start: date,

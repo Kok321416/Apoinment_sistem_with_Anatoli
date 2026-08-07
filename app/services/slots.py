@@ -1,40 +1,26 @@
 from datetime import date, datetime, timedelta
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.models import Booking, Calendar, Service, TimeSlot
 from app.services.calendar_schedule import is_day_disabled
 
 
-def get_available_slots(
-    db: Session,
+def _compute_available_slots(
+    *,
     calendar: Calendar,
     service: Service,
     booking_date: date,
+    time_slots: list[TimeSlot],
+    existing_bookings: list[Booking],
     exclude_booking_id: int | None = None,
 ) -> dict:
     day_of_week = booking_date.weekday()
     if is_day_disabled(calendar, day_of_week):
         return {"available_slots": [], "available_windows": []}
-    time_slots = (
-        db.query(TimeSlot)
-        .filter(
-            TimeSlot.calendar_id == calendar.id,
-            TimeSlot.day_of_week == day_of_week,
-            TimeSlot.is_available.is_(True),
-        )
-        .order_by(TimeSlot.start_time)
-        .all()
-    )
-    existing_bookings = (
-        db.query(Booking)
-        .filter(
-            Booking.calendar_id == calendar.id,
-            Booking.booking_date == booking_date,
-            Booking.status.in_(["pending", "confirmed"]),
-        )
-        .all()
-    )
+
     if exclude_booking_id:
         existing_bookings = [b for b in existing_bookings if b.id != exclude_booking_id]
 
@@ -97,3 +83,88 @@ def get_available_slots(
             current_time += timedelta(minutes=step_minutes)
 
     return {"available_slots": available_times, "available_windows": available_windows}
+
+
+def get_available_slots(
+    db: Session,
+    calendar: Calendar,
+    service: Service,
+    booking_date: date,
+    exclude_booking_id: int | None = None,
+) -> dict:
+    day_of_week = booking_date.weekday()
+    if is_day_disabled(calendar, day_of_week):
+        return {"available_slots": [], "available_windows": []}
+    time_slots = (
+        db.query(TimeSlot)
+        .filter(
+            TimeSlot.calendar_id == calendar.id,
+            TimeSlot.day_of_week == day_of_week,
+            TimeSlot.is_available.is_(True),
+        )
+        .order_by(TimeSlot.start_time)
+        .all()
+    )
+    existing_bookings = (
+        db.query(Booking)
+        .filter(
+            Booking.calendar_id == calendar.id,
+            Booking.booking_date == booking_date,
+            Booking.status.in_(["pending", "confirmed"]),
+        )
+        .all()
+    )
+    return _compute_available_slots(
+        calendar=calendar,
+        service=service,
+        booking_date=booking_date,
+        time_slots=time_slots,
+        existing_bookings=existing_bookings,
+        exclude_booking_id=exclude_booking_id,
+    )
+
+
+async def get_available_slots_async(
+    db: AsyncSession,
+    calendar: Calendar,
+    service: Service,
+    booking_date: date,
+    exclude_booking_id: int | None = None,
+) -> dict:
+    """Async hot-path for public / specialist slot JSON endpoints."""
+    day_of_week = booking_date.weekday()
+    if is_day_disabled(calendar, day_of_week):
+        return {"available_slots": [], "available_windows": []}
+
+    time_slots = list(
+        (
+            await db.execute(
+                select(TimeSlot)
+                .where(
+                    TimeSlot.calendar_id == calendar.id,
+                    TimeSlot.day_of_week == day_of_week,
+                    TimeSlot.is_available.is_(True),
+                )
+                .order_by(TimeSlot.start_time)
+            )
+        ).scalars().all()
+    )
+    existing_bookings = list(
+        (
+            await db.execute(
+                select(Booking).where(
+                    Booking.calendar_id == calendar.id,
+                    Booking.booking_date == booking_date,
+                    Booking.status.in_(["pending", "confirmed"]),
+                )
+            )
+        ).scalars().all()
+    )
+    return _compute_available_slots(
+        calendar=calendar,
+        service=service,
+        booking_date=booking_date,
+        time_slots=time_slots,
+        existing_bookings=existing_bookings,
+        exclude_booking_id=exclude_booking_id,
+    )

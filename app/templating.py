@@ -269,14 +269,7 @@ def _cabinet_nav_from_path(path: str) -> tuple[str, str]:
     return "home", "Кабинет"
 
 
-def page_context(request, db, user=None, **extra):
-    from app.services.active_mode import get_active_mode, get_cached_has_consultant
-
-    has_consultant = False
-    active_mode = "client"
-    if user is not None and db is not None:
-        has_consultant = get_cached_has_consultant(request, db, user.id)
-        active_mode = get_active_mode(request, db, user.id, has_consultant=has_consultant)
+def _page_context_base(request, user, *, has_consultant: bool, active_mode: str, header: dict, **extra):
     nav_key, section_title = _cabinet_nav_from_path(getattr(request.url, "path", "/") or "/")
     ctx = {
         "request": request,
@@ -307,7 +300,7 @@ def page_context(request, db, user=None, **extra):
         "load_telegram_webapp": False,
         "cabinet_nav_active": nav_key,
         "cabinet_section_title": section_title,
-        **build_header_context(db, user, request),
+        **header,
         **extra,
     }
     if "session" in getattr(request, "scope", {}):
@@ -317,9 +310,143 @@ def page_context(request, db, user=None, **extra):
     return ctx
 
 
+def page_context(request, db, user=None, **extra):
+    from app.services.active_mode import get_active_mode, get_cached_has_consultant
+
+    has_consultant = False
+    active_mode = "client"
+    if user is not None and db is not None:
+        has_consultant = get_cached_has_consultant(request, db, user.id)
+        active_mode = get_active_mode(request, db, user.id, has_consultant=has_consultant)
+    return _page_context_base(
+        request,
+        user,
+        has_consultant=has_consultant,
+        active_mode=active_mode,
+        header=build_header_context(db, user, request),
+        **extra,
+    )
+
+
+async def build_header_context_async(db, user, request=None) -> dict:
+    """Async twin of build_header_context (AsyncSession)."""
+    if not user:
+        return {"header_consultant_name": "", "header_account_display": ""}
+    try:
+        if request is not None and "session" in getattr(request, "scope", {}):
+            cached_name = request.session.get("header_consultant_name")
+            cached_account = request.session.get("header_account_display")
+            if cached_name is not None and cached_account is not None:
+                return {
+                    "header_consultant_name": cached_name,
+                    "header_account_display": cached_account,
+                }
+
+        from sqlalchemy import select
+
+        from app.models import Consultant, EmailAddress
+
+        name = ""
+        if hasattr(user, "get_full_name"):
+            name = (user.get_full_name() or "").strip()
+
+        account = (user.email or "").strip()
+        if not account and "@" in (user.username or ""):
+            account = user.username
+
+        consultant = None
+        if db is not None and (not name or not account):
+            consultant = (
+                await db.execute(select(Consultant).where(Consultant.user_id == user.id))
+            ).scalar_one_or_none()
+
+        if not name and consultant:
+            parts = [
+                consultant.first_name or "",
+                consultant.middle_name or "",
+                consultant.last_name or "",
+            ]
+            name = " ".join(p for p in parts if p).strip()
+
+        if not account and db is not None:
+            primary = (
+                await db.execute(
+                    select(EmailAddress).where(
+                        EmailAddress.user_id == user.id,
+                        EmailAddress.primary.is_(True),
+                    )
+                )
+            ).scalar_one_or_none()
+            if primary and primary.email:
+                account = primary.email
+        if not account and consultant and consultant.email:
+            account = consultant.email
+
+        top = account or user.username or ""
+        bottom = name
+        if bottom and bottom.lower() == top.lower():
+            bottom = ""
+        if not bottom:
+            bottom = "Специалист"
+
+        if request is not None and "session" in getattr(request, "scope", {}):
+            request.session["header_consultant_name"] = bottom
+            request.session["header_account_display"] = top
+
+        return {
+            "header_consultant_name": bottom,
+            "header_account_display": top,
+        }
+    except Exception:
+        return {
+            "header_consultant_name": "Специалист",
+            "header_account_display": getattr(user, "username", "") or "",
+        }
+
+
+async def page_context_async(request, db, user=None, **extra):
+    from app.services.active_mode import get_active_mode_async, get_cached_has_consultant_async
+
+    has_consultant = False
+    active_mode = "client"
+    if user is not None and db is not None:
+        has_consultant = await get_cached_has_consultant_async(request, db, user.id)
+        active_mode = await get_active_mode_async(
+            request, db, user.id, has_consultant=has_consultant
+        )
+    header = await build_header_context_async(db, user, request)
+    return _page_context_base(
+        request,
+        user,
+        has_consultant=has_consultant,
+        active_mode=active_mode,
+        header=header,
+        **extra,
+    )
+
+
 def landing_context(request, db, user=None, **extra):
     year = datetime.now().year
     ctx = page_context(request, db, user, **extra)
+    ctx.update(
+        {
+            "landing_meta": LANDING_META,
+            "hero": HERO,
+            "value_points": VALUE_POINTS,
+            "features": FEATURES,
+            "how_it_works": HOW_IT_WORKS,
+            "cta_block": CTA_BLOCK,
+            "apps_teaser": LANDING_APPS_TEASER,
+            "faq_items": faq_with_support(settings.support_email),
+            "footer_copy": footer_with_context(settings.support_email, settings.site_brand_name, year),
+        }
+    )
+    return ctx
+
+
+async def landing_context_async(request, db, user=None, **extra):
+    year = datetime.now().year
+    ctx = await page_context_async(request, db, user, **extra)
     ctx.update(
         {
             "landing_meta": LANDING_META,
@@ -342,8 +469,20 @@ def guide_context(request, db, user=None, **extra):
     return ctx
 
 
+async def guide_context_async(request, db, user=None, **extra):
+    ctx = await landing_context_async(request, db, user, **extra)
+    ctx.update({"guide_meta": GUIDE_META, "guide": GUIDE})
+    return ctx
+
+
 def apps_context(request, db, user=None, **extra):
     ctx = landing_context(request, db, user, **extra)
     # Use apps_page (not apps) — avoids clashing with URL_MAP key "apps".
+    ctx.update({"apps_meta": APPS_META, "apps_page": APPS_PAGE})
+    return ctx
+
+
+async def apps_context_async(request, db, user=None, **extra):
+    ctx = await landing_context_async(request, db, user, **extra)
     ctx.update({"apps_meta": APPS_META, "apps_page": APPS_PAGE})
     return ctx

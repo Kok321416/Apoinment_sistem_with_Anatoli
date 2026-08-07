@@ -4,34 +4,34 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.session import get_current_user
+from app.auth.session import get_current_user_async
 from app.config import get_settings
-from app.database import get_db
+from app.database import get_async_db
 from app.models import Calendar, Consultant, Service, TimeSlot
-from app.services.bookings import create_public_booking, normalize_client_phone
+from app.services.bookings import create_public_booking_async
 from app.services.email import send_verification_email
 from app.services.public_client import (
+    apply_client_gate_from_user_async,
     clear_client_gate,
     client_gate_ok,
     make_email_code,
+    resolve_consultant_by_slug_async,
     set_client_gate,
 )
-from app.services.slots import get_available_slots
-from app.templating import page_context, templates
+from app.services.slots import get_available_slots_async
+from app.templating import page_context_async, templates
 
 router = APIRouter(tags=["public-specialist"])
 settings = get_settings()
 
 
-def _get_consultant_by_slug(db: Session, slug: str) -> Consultant:
-    from app.services.public_client import resolve_consultant_by_slug
-
-    consultant = resolve_consultant_by_slug(db, slug)
+async def _get_consultant_by_slug_async(db, slug: str) -> Consultant:
+    consultant = await resolve_consultant_by_slug_async(db, slug)
     if not consultant:
         raise HTTPException(status_code=404, detail="Специалист не найден")
-    # Transient (not ORM): templates and redirects use consultant.public_slug
     consultant.public_slug = slug
     return consultant
 
@@ -45,12 +45,10 @@ def _sync_booking_session(request: Request) -> None:
     request.session["booking_client_email"] = request.session.get("pc_email", "")
 
 
-def _require_gate(request: Request, consultant: Consultant, next_path: str, db: Session | None = None):
-    auth_user = get_current_user(request, db) if db is not None else None
+async def _require_gate(request: Request, consultant: Consultant, next_path: str, db):
+    auth_user = await get_current_user_async(request, db)
     if auth_user:
-        from app.services.public_client import apply_client_gate_from_user
-
-        apply_client_gate_from_user(
+        await apply_client_gate_from_user_async(
             db,
             request.session,
             consultant_id=consultant.id,
@@ -65,30 +63,38 @@ def _require_gate(request: Request, consultant: Consultant, next_path: str, db: 
 
 
 @router.get("/s/{slug}/")
-async def specialist_public_home(request: Request, slug: str, db: Session = Depends(get_db)):
-    consultant = _get_consultant_by_slug(db, slug)
-    gate = _require_gate(request, consultant, f"/s/{slug}/", db)
+async def specialist_public_home(request: Request, slug: str, db: AsyncSession = Depends(get_async_db)):
+    consultant = await _get_consultant_by_slug_async(db, slug)
+    gate = await _require_gate(request, consultant, f"/s/{slug}/", db)
     if gate:
         return gate
 
-    calendars = (
-        db.query(Calendar)
-        .filter(Calendar.consultant_id == consultant.id, Calendar.is_active.is_(True))
-        .order_by(Calendar.name)
+    calendars = list(
+        (
+            await db.execute(
+                select(Calendar)
+                .where(Calendar.consultant_id == consultant.id, Calendar.is_active.is_(True))
+                .order_by(Calendar.name)
+            )
+        )
+        .scalars()
         .all()
     )
     calendars_data = []
     for cal in calendars:
         svc_count = (
-            db.query(Service)
-            .filter(Service.calendar_id == cal.id, Service.is_active.is_(True))
-            .count()
-        )
+            await db.execute(
+                select(func.count(Service.id)).where(
+                    Service.calendar_id == cal.id,
+                    Service.is_active.is_(True),
+                )
+            )
+        ).scalar_one()
         calendars_data.append({"calendar": cal, "services_count": svc_count})
 
     return templates.TemplateResponse(
         "public/specialist.html",
-        page_context(
+        await page_context_async(
             request,
             db,
             None,
@@ -103,12 +109,11 @@ async def specialist_public_home(request: Request, slug: str, db: Session = Depe
 
 @router.get("/s/{slug}/welcome/")
 @router.post("/s/{slug}/welcome/")
-async def specialist_welcome(request: Request, slug: str, db: Session = Depends(get_db)):
+async def specialist_welcome(request: Request, slug: str, db: AsyncSession = Depends(get_async_db)):
     """Login gate before public booking (same visual as /login/)."""
-    from app.services.public_client import apply_client_gate_from_user
     from app.utils.safe_redirect import login_url_with_next, safe_next_url
 
-    consultant = _get_consultant_by_slug(db, slug)
+    consultant = await _get_consultant_by_slug_async(db, slug)
     next_url = request.query_params.get("next") or f"/s/{slug}/"
     if not next_url.startswith(f"/s/{slug}"):
         next_url = f"/s/{slug}/"
@@ -124,9 +129,9 @@ async def specialist_welcome(request: Request, slug: str, db: Session = Depends(
     err_key = request.query_params.get("error") or ""
     error = welcome_errors.get(err_key)
 
-    auth_user = get_current_user(request, db)
+    auth_user = await get_current_user_async(request, db)
     if auth_user:
-        apply_client_gate_from_user(
+        await apply_client_gate_from_user_async(
             db, request.session, consultant_id=consultant.id, user=auth_user
         )
         _sync_booking_session(request)
@@ -134,7 +139,7 @@ async def specialist_welcome(request: Request, slug: str, db: Session = Depends(
 
     return templates.TemplateResponse(
         "public/welcome.html",
-        page_context(
+        await page_context_async(
             request,
             db,
             None,
@@ -150,8 +155,8 @@ async def specialist_welcome(request: Request, slug: str, db: Session = Depends(
 
 @router.get("/s/{slug}/verify-email/")
 @router.post("/s/{slug}/verify-email/")
-async def specialist_verify_email(request: Request, slug: str, db: Session = Depends(get_db)):
-    consultant = _get_consultant_by_slug(db, slug)
+async def specialist_verify_email(request: Request, slug: str, db: AsyncSession = Depends(get_async_db)):
+    consultant = await _get_consultant_by_slug_async(db, slug)
     next_url = request.query_params.get("next") or f"/s/{slug}/"
     email = (request.query_params.get("email") or request.session.get("pc_email_pending") or "").strip()
     error = success = None
@@ -194,7 +199,7 @@ async def specialist_verify_email(request: Request, slug: str, db: Session = Dep
 
     return templates.TemplateResponse(
         "public/verify_email.html",
-        page_context(
+        await page_context_async(
             request,
             db,
             None,
@@ -209,8 +214,8 @@ async def specialist_verify_email(request: Request, slug: str, db: Session = Dep
 
 
 @router.get("/s/{slug}/logout-client/")
-async def specialist_client_logout(request: Request, slug: str, db: Session = Depends(get_db)):
-    consultant = _get_consultant_by_slug(db, slug)
+async def specialist_client_logout(request: Request, slug: str, db: AsyncSession = Depends(get_async_db)):
+    await _get_consultant_by_slug_async(db, slug)
     clear_client_gate(request.session)
     for key in (
         "booking_contact_done",
@@ -229,34 +234,39 @@ async def specialist_calendar_book(
     request: Request,
     slug: str,
     calendar_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
-    consultant = _get_consultant_by_slug(db, slug)
+    consultant = await _get_consultant_by_slug_async(db, slug)
     calendar = (
-        db.query(Calendar)
-        .filter(
-            Calendar.id == calendar_id,
-            Calendar.consultant_id == consultant.id,
-            Calendar.is_active.is_(True),
+        await db.execute(
+            select(Calendar).where(
+                Calendar.id == calendar_id,
+                Calendar.consultant_id == consultant.id,
+                Calendar.is_active.is_(True),
+            )
         )
-        .first()
-    )
+    ).scalar_one_or_none()
     if not calendar:
         raise HTTPException(status_code=404, detail="Календарь не найден")
 
-    gate = _require_gate(request, consultant, f"/s/{slug}/c/{calendar_id}/", db)
+    gate = await _require_gate(request, consultant, f"/s/{slug}/c/{calendar_id}/", db)
     if gate:
         return gate
     _sync_booking_session(request)
 
-    services = (
-        db.query(Service)
-        .filter(
-            Service.consultant_id == consultant.id,
-            Service.is_active.is_(True),
-            Service.calendar_id == calendar.id,
+    services = list(
+        (
+            await db.execute(
+                select(Service)
+                .where(
+                    Service.consultant_id == consultant.id,
+                    Service.is_active.is_(True),
+                    Service.calendar_id == calendar.id,
+                )
+                .order_by(Service.name)
+            )
         )
-        .order_by(Service.name)
+        .scalars()
         .all()
     )
 
@@ -281,8 +291,8 @@ async def specialist_calendar_book(
         booking_time = (form.get("booking_time") or "").strip()
         booking_end = (form.get("booking_end_time") or "").strip()
         if not error:
-            auth_user = get_current_user(request, db)
-            booking, err = create_public_booking(
+            auth_user = await get_current_user_async(request, db)
+            booking, err = await create_public_booking_async(
                 db,
                 calendar,
                 service_id,
@@ -294,13 +304,14 @@ async def specialist_calendar_book(
                 request.session.get("pc_email", ""),
                 request.session.get("pc_telegram", ""),
                 client_user_id=(auth_user.id if auth_user else None),
+                consultant=consultant,
             )
             if err:
                 error = err
             else:
                 return templates.TemplateResponse(
                     "booking_success.html",
-                    page_context(
+                    await page_context_async(
                         request,
                         db,
                         None,
@@ -316,11 +327,12 @@ async def specialist_calendar_book(
 
     weekly: dict[str, list] = {str(i): [] for i in range(7)}
     for slot in (
-        db.query(TimeSlot)
-        .filter(TimeSlot.calendar_id == calendar.id, TimeSlot.is_available.is_(True))
-        .order_by(TimeSlot.day_of_week, TimeSlot.start_time)
-        .all()
-    ):
+        await db.execute(
+            select(TimeSlot)
+            .where(TimeSlot.calendar_id == calendar.id, TimeSlot.is_available.is_(True))
+            .order_by(TimeSlot.day_of_week, TimeSlot.start_time)
+        )
+    ).scalars().all():
         weekly[str(slot.day_of_week)].append(
             {
                 "start_time": slot.start_time.strftime("%H:%M"),
@@ -330,7 +342,7 @@ async def specialist_calendar_book(
 
     return templates.TemplateResponse(
         "public/calendar_book.html",
-        page_context(
+        await page_context_async(
             request,
             db,
             None,
@@ -351,18 +363,22 @@ async def specialist_calendar_slots(
     request: Request,
     slug: str,
     calendar_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     date: str | None = None,
     service_id: int | None = None,
 ):
-    consultant = _get_consultant_by_slug(db, slug)
+    consultant = await _get_consultant_by_slug_async(db, slug)
     if not client_gate_ok(request.session, consultant.id):
         return JSONResponse({"available_slots": [], "available_windows": [], "error": "gate"}, status_code=403)
     calendar = (
-        db.query(Calendar)
-        .filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id, Calendar.is_active.is_(True))
-        .first()
-    )
+        await db.execute(
+            select(Calendar).where(
+                Calendar.id == calendar_id,
+                Calendar.consultant_id == consultant.id,
+                Calendar.is_active.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
     if not calendar:
         raise HTTPException(status_code=404, detail="Календарь не найден")
     if not date or not service_id:
@@ -372,10 +388,14 @@ async def specialist_calendar_slots(
     except ValueError:
         return {"available_slots": [], "available_windows": []}
     service = (
-        db.query(Service)
-        .filter(Service.id == service_id, Service.consultant_id == consultant.id, Service.is_active.is_(True))
-        .first()
-    )
+        await db.execute(
+            select(Service).where(
+                Service.id == service_id,
+                Service.consultant_id == consultant.id,
+                Service.is_active.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
     if not service:
         return {"available_slots": [], "available_windows": []}
-    return get_available_slots(db, calendar, service, booking_date)
+    return await get_available_slots_async(db, calendar, service, booking_date)

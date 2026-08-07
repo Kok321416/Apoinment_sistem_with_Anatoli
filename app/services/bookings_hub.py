@@ -186,6 +186,23 @@ def stats_bookings(db: Session, cal_ids: list[int]) -> list[Booking]:
     )
 
 
+async def stats_bookings_async(db, cal_ids: list[int]) -> list[Booking]:
+    if not cal_ids:
+        return []
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(Booking)
+        .options(selectinload(Booking.service), selectinload(Booking.calendar))
+        .where(
+            Booking.calendar_id.in_(cal_ids),
+            Booking.status.in_(["pending", "confirmed", "completed"]),
+        )
+    )
+    return list(result.scalars().unique().all())
+
+
 def build_bookings_payload(
     db: Session,
     cal_ids: list[int],
@@ -195,6 +212,23 @@ def build_bookings_payload(
     now: time,
 ) -> dict:
     all_stats = stats_bookings(db, cal_ids)
+    return {
+        "dashboard": dashboard_stats(all_stats, today),
+        "upcoming_groups": group_by_day(upcoming, today, now),
+        "past_groups": group_by_day(past, today, now, reverse=True),
+        "sidebar": sidebar_data(upcoming, today, now),
+    }
+
+
+async def build_bookings_payload_async(
+    db,
+    cal_ids: list[int],
+    upcoming: list[Booking],
+    past: list[Booking],
+    today: date,
+    now: time,
+) -> dict:
+    all_stats = await stats_bookings_async(db, cal_ids)
     return {
         "dashboard": dashboard_stats(all_stats, today),
         "upcoming_groups": group_by_day(upcoming, today, now),

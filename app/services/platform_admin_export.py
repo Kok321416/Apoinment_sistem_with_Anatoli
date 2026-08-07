@@ -79,3 +79,75 @@ def export_bookings_csv(db: Session, *, limit: int = 5000) -> str:
 
 def export_filename(prefix: str) -> str:
     return f"{prefix}_{date.today().isoformat()}.csv"
+
+
+async def export_users_csv_async(db, *, limit: int = 5000) -> str:
+    from sqlalchemy import select
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(
+        ["id", "email", "username", "first_name", "last_name", "is_active", "is_staff", "date_joined"]
+    )
+    result = await db.execute(select(User).order_by(User.id.asc()).limit(limit))
+    for u in result.scalars().all():
+        writer.writerow(
+            [
+                u.id,
+                u.email,
+                u.username,
+                u.first_name,
+                u.last_name,
+                int(u.is_active),
+                int(u.is_staff),
+                u.date_joined,
+            ]
+        )
+    return buf.getvalue()
+
+
+async def export_bookings_csv_async(db, *, limit: int = 5000) -> str:
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(
+        [
+            "id",
+            "booking_date",
+            "booking_time",
+            "status",
+            "client_name",
+            "client_phone",
+            "client_user_id",
+            "consultant_id",
+            "calendar_id",
+            "service_name",
+        ]
+    )
+    result = await db.execute(
+        select(Booking)
+        .options(selectinload(Booking.service), selectinload(Booking.calendar))
+        .order_by(Booking.id.desc())
+        .limit(limit)
+    )
+    for b in result.scalars().unique().all():
+        consultant_id = ""
+        if b.calendar and isinstance(b.calendar, Calendar):
+            consultant_id = b.calendar.consultant_id
+        writer.writerow(
+            [
+                b.id,
+                b.booking_date,
+                b.booking_time,
+                b.status,
+                b.client_name,
+                b.client_phone,
+                b.client_user_id or "",
+                consultant_id,
+                b.calendar_id,
+                b.service.name if b.service else "",
+            ]
+        )
+    return buf.getvalue()

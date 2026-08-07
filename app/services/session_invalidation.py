@@ -14,3 +14,13 @@ def invalidate_user_sessions(db: Session, user_id: int) -> tuple[User | None, st
     db.commit()
     db.refresh(user)
     return user, None
+
+
+async def invalidate_user_sessions_async(db, user_id: int) -> tuple[User | None, str | None]:
+    user = await db.get(User, user_id)
+    if not user:
+        return None, "Пользователь не найден"
+    user.session_version = int(getattr(user, "session_version", 0) or 0) + 1
+    await db.commit()
+    await db.refresh(user)
+    return user, None

@@ -18,6 +18,14 @@ services:
     networks:
       - app_network
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app_network
+    restart: unless-stopped
+
   web:
     build: .
     command: >
@@ -30,6 +38,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       - DEBUG=${DEBUG:-False}
       - DB_NAME=${DB_NAME:-appointment_db}
@@ -37,18 +47,24 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=db
       - DB_PORT=3306
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - PERF_SLOW_MS=${PERF_SLOW_MS:-500}
+      - PERF_TIMING_HEADER=${PERF_TIMING_HEADER:-true}
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - SITE_URL=${SITE_URL}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET:-}
       - BOT_API_SECRET=${BOT_API_SECRET}
       - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID}
       - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET}
     networks:
       - app_network
 
+  # Long-polling fallback. Prefer webhook: set TELEGRAM_WEBHOOK_SECRET on `web` and omit this service.
   bot:
+    profiles: ["polling"]
     build: .
     command: python -m bot.run
     volumes:
@@ -63,9 +79,11 @@ services:
       - DB_PORT=3306
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET:-}
       - BOT_API_SECRET=${BOT_API_SECRET}
       - SITE_URL=${SITE_URL}
       - SITE_INTERNAL_URL=${SITE_INTERNAL_URL:-http://web:8000}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - ADMIN_TELEGRAM_USERNAME=${ADMIN_TELEGRAM_USERNAME}
     networks:
       - app_network

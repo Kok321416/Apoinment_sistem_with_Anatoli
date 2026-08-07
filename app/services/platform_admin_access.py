@@ -76,3 +76,34 @@ def admin_home_url(db: Session, user: AuthUser) -> str:
         if perms.get(key):
             return url
     return "/platform-admin/security/"
+
+
+async def admin_permissions_async(db, user: AuthUser) -> dict[str, bool]:
+    from app.services.admin_rbac import has_permission_async
+
+    out: dict[str, bool] = {}
+    for nav, perm in NAV_PERMISSIONS.items():
+        if perm is None:
+            out[nav] = True
+        else:
+            out[nav] = await has_permission_async(db, user, perm)
+    out["users_write"] = await has_permission_async(db, user, PERM_USERS_WRITE)
+    out["security"] = True
+    return out
+
+
+async def require_admin_permission_async(db, user: AuthUser, permission: str) -> None:
+    from app.services.admin_rbac import has_permission_async
+
+    if not await has_permission_async(db, user, permission):
+        raise HTTPException(status_code=403, detail="Недостаточно прав для этого раздела")
+
+
+async def admin_home_url_async(db, user: AuthUser) -> str:
+    perms = await admin_permissions_async(db, user)
+    if perms.get("dashboard"):
+        return "/platform-admin/"
+    for key, url in _HOME_FALLBACK:
+        if perms.get(key):
+            return url
+    return "/platform-admin/security/"

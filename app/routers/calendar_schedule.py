@@ -1,4 +1,4 @@
-"""REST endpoints for calendar schedule editor."""
+"""REST endpoints for calendar schedule editor (AsyncSession)."""
 from __future__ import annotations
 
 import logging
@@ -6,27 +6,28 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.session import get_current_user
-from app.database import get_db
-from app.deps import require_specialist_mode
+from app.auth.session import get_current_user_async
+from app.database import get_async_db
+from app.deps import require_specialist_mode_async
 from app.models import Calendar, TimeSlot, User
 from app.security.csrf import validate_csrf_token
 from app.services.calendar_schedule import (
     build_day_payload,
     build_schedule_payload,
-    clear_day_slots,
-    copy_day_slots,
+    clear_day_slots_async,
+    copy_day_slots_async,
     parse_time_str,
-    preset_fulltime,
-    preset_workweek,
+    preset_fulltime_async,
+    preset_workweek_async,
     set_day_working,
-    slots_by_day,
+    slots_by_day_async,
     validate_slot_times,
 )
-from app.services.entity_delete import delete_time_slot
+from app.services.entity_delete import delete_time_slot_async
 
 router = APIRouter(tags=["calendar-schedule"])
 logger = logging.getLogger(__name__)
@@ -45,51 +46,46 @@ def _csrf_from_request(request: Request, data: dict | None = None) -> str | None
     return None
 
 
-def _require_calendar(request: Request, db: Session, calendar_id: int) -> tuple[User, Calendar]:
-    user = get_current_user(request, db)
+async def _require_calendar(request: Request, db: AsyncSession, calendar_id: int) -> tuple[User, Calendar]:
+    user = await get_current_user_async(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    consultant = require_specialist_mode(request, db, user)
+    consultant = await require_specialist_mode_async(request, db, user)
     calendar = (
-        db.query(Calendar)
-        .filter(Calendar.id == calendar_id, Calendar.consultant_id == consultant.id)
-        .first()
-    )
+        await db.execute(
+            select(Calendar).where(
+                Calendar.id == calendar_id,
+                Calendar.consultant_id == consultant.id,
+            )
+        )
+    ).scalar_one_or_none()
     if not calendar:
         raise HTTPException(status_code=404, detail="Календарь не найден")
     return user, calendar
 
 
-def _require_slot(db: Session, calendar: Calendar, slot_id: int) -> TimeSlot:
-    slot = (
-        db.query(TimeSlot)
-        .filter(TimeSlot.id == slot_id, TimeSlot.calendar_id == calendar.id)
-        .first()
-    )
-    if not slot:
-        raise HTTPException(status_code=404, detail="Временное окно не найдено")
-    return slot
-
-
-def _schedule_response(calendar: Calendar, db: Session, *, bust: bool = False) -> dict:
+async def _schedule_response(calendar: Calendar, db: AsyncSession, *, bust: bool = False) -> dict:
     from app.services.response_cache import TTL_SEC, invalidate_calendar, schedule_key
     from app.services.ttl_cache import CACHE
 
     if bust:
         invalidate_calendar(calendar.id, consultant_id=calendar.consultant_id)
 
-    def _build() -> dict:
-        grouped = slots_by_day(db, calendar.id)
-        return build_schedule_payload(calendar, grouped)
+    key = schedule_key(calendar.id)
+    hit = CACHE.get(key)
+    if hit is not None:
+        return hit
+    grouped = await slots_by_day_async(db, calendar.id)
+    payload = build_schedule_payload(calendar, grouped)
+    CACHE.set(key, payload, ttl=TTL_SEC)
+    return payload
 
-    return CACHE.get_or_set(schedule_key(calendar.id), _build, ttl=TTL_SEC)
 
-
-def _commit_db(db: Session) -> None:
+async def _commit_db(db: AsyncSession) -> None:
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError as exc:
-        db.rollback()
+        await db.rollback()
         logger.exception("calendar schedule commit failed")
         raise HTTPException(
             status_code=400,
@@ -144,25 +140,31 @@ class CalendarSettingsBody(BaseModel):
 
 
 @router.get("/calendars/{calendar_id}/schedule")
-async def get_schedule(calendar_id: int, request: Request, db: Session = Depends(get_db)):
-    _, calendar = _require_calendar(request, db, calendar_id)
-    return JSONResponse(_schedule_response(calendar, db))
+async def get_schedule(
+    calendar_id: int, request: Request, db: AsyncSession = Depends(get_async_db)
+):
+    _, calendar = await _require_calendar(request, db, calendar_id)
+    return JSONResponse(await _schedule_response(calendar, db))
 
 
 @router.get("/calendars/{calendar_id}/day/{weekday}")
-async def get_day(calendar_id: int, weekday: int, request: Request, db: Session = Depends(get_db)):
+async def get_day(
+    calendar_id: int, weekday: int, request: Request, db: AsyncSession = Depends(get_async_db)
+):
     if weekday < 0 or weekday > 6:
         raise HTTPException(status_code=400, detail="Некорректный день недели")
-    _, calendar = _require_calendar(request, db, calendar_id)
-    grouped = slots_by_day(db, calendar.id)
+    _, calendar = await _require_calendar(request, db, calendar_id)
+    grouped = await slots_by_day_async(db, calendar.id)
     return JSONResponse(build_day_payload(calendar, grouped, weekday))
 
 
 @router.post("/time-slots")
-async def create_time_slot(body: TimeSlotCreate, request: Request, db: Session = Depends(get_db)):
+async def create_time_slot(
+    body: TimeSlotCreate, request: Request, db: AsyncSession = Depends(get_async_db)
+):
     if not _json_csrf_ok(request, _csrf_from_request(request, body.model_dump())):
         raise HTTPException(status_code=403, detail="CSRF")
-    _, calendar = _require_calendar(request, db, body.calendar_id)
+    _, calendar = await _require_calendar(request, db, body.calendar_id)
     start_t = parse_time_str(body.start_time)
     end_t = parse_time_str(body.end_time)
     if start_t is None or end_t is None:
@@ -178,25 +180,29 @@ async def create_time_slot(body: TimeSlotCreate, request: Request, db: Session =
         is_available=True,
     )
     db.add(slot)
-    _commit_db(db)
-    db.refresh(slot)
+    await _commit_db(db)
+    await db.refresh(slot)
     from app.services.calendar_schedule import serialize_slot
 
     return JSONResponse({
         "slot": serialize_slot(slot),
-        "schedule": _schedule_response(calendar, db, bust=True),
+        "schedule": await _schedule_response(calendar, db, bust=True),
         "message": "Окно добавлено",
     })
 
 
 @router.put("/time-slots/{slot_id}")
-async def update_time_slot(slot_id: int, body: TimeSlotUpdate, request: Request, db: Session = Depends(get_db)):
+async def update_time_slot(
+    slot_id: int, body: TimeSlotUpdate, request: Request, db: AsyncSession = Depends(get_async_db)
+):
     if not _json_csrf_ok(request, _csrf_from_request(request, body.model_dump())):
         raise HTTPException(status_code=403, detail="CSRF")
-    slot = db.query(TimeSlot).filter(TimeSlot.id == slot_id).first()
+    slot = (
+        await db.execute(select(TimeSlot).where(TimeSlot.id == slot_id))
+    ).scalar_one_or_none()
     if not slot:
         raise HTTPException(status_code=404, detail="Временное окно не найдено")
-    _, calendar = _require_calendar(request, db, slot.calendar_id)
+    _, calendar = await _require_calendar(request, db, slot.calendar_id)
     start_t = parse_time_str(body.start_time) if body.start_time else slot.start_time
     end_t = parse_time_str(body.end_time) if body.end_time else slot.end_time
     if body.start_time and start_t is None:
@@ -208,140 +214,157 @@ async def update_time_slot(slot_id: int, body: TimeSlotUpdate, request: Request,
         raise HTTPException(status_code=400, detail=err)
     slot.start_time = start_t
     slot.end_time = end_t
-    _commit_db(db)
+    await _commit_db(db)
     from app.services.calendar_schedule import serialize_slot
 
     return JSONResponse({
         "slot": serialize_slot(slot),
-        "schedule": _schedule_response(calendar, db, bust=True),
+        "schedule": await _schedule_response(calendar, db, bust=True),
         "message": "Окно обновлено",
     })
 
 
 @router.delete("/time-slots/{slot_id}")
-async def remove_time_slot(slot_id: int, request: Request, db: Session = Depends(get_db)):
+async def remove_time_slot(
+    slot_id: int, request: Request, db: AsyncSession = Depends(get_async_db)
+):
     token = _csrf_from_request(request)
     if not _json_csrf_ok(request, token):
         raise HTTPException(status_code=403, detail="CSRF")
-    slot = db.query(TimeSlot).filter(TimeSlot.id == slot_id).first()
+    slot = (
+        await db.execute(select(TimeSlot).where(TimeSlot.id == slot_id))
+    ).scalar_one_or_none()
     if not slot:
         raise HTTPException(status_code=404, detail="Временное окно не найдено")
-    _, calendar = _require_calendar(request, db, slot.calendar_id)
-    ok, msg = delete_time_slot(db, slot)
+    _, calendar = await _require_calendar(request, db, slot.calendar_id)
+    ok, msg = await delete_time_slot_async(db, slot)
     if not ok:
         raise HTTPException(status_code=400, detail=msg)
     return JSONResponse({
-        "schedule": _schedule_response(calendar, db, bust=True),
+        "schedule": await _schedule_response(calendar, db, bust=True),
         "message": msg or "Окно удалено",
     })
 
 
 @router.post("/calendars/{calendar_id}/copy-day")
-async def copy_day(calendar_id: int, body: CopyDayBody, request: Request, db: Session = Depends(get_db)):
+async def copy_day(
+    calendar_id: int, body: CopyDayBody, request: Request, db: AsyncSession = Depends(get_async_db)
+):
     if not _json_csrf_ok(request, _csrf_from_request(request, body.model_dump())):
         raise HTTPException(status_code=403, detail="CSRF")
-    _, calendar = _require_calendar(request, db, calendar_id)
+    _, calendar = await _require_calendar(request, db, calendar_id)
     if body.source_day < 0 or body.source_day > 6:
         raise HTTPException(status_code=400, detail="Некорректный исходный день")
-    created = copy_day_slots(db, calendar, body.source_day, body.target_days, replace=True)
-    _commit_db(db)
+    created = await copy_day_slots_async(db, calendar, body.source_day, body.target_days, replace=True)
+    await _commit_db(db)
     return JSONResponse({
         "created": created,
-        "schedule": _schedule_response(calendar, db, bust=True),
+        "schedule": await _schedule_response(calendar, db, bust=True),
         "message": "Расписание скопировано",
     })
 
 
 @router.post("/calendars/{calendar_id}/copy-week")
-async def copy_week(calendar_id: int, body: PresetWorkweekBody, request: Request, db: Session = Depends(get_db)):
+async def copy_week(
+    calendar_id: int, body: PresetWorkweekBody, request: Request, db: AsyncSession = Depends(get_async_db)
+):
     return await preset_workweek_endpoint(calendar_id, body, request, db)
 
 
 @router.post("/calendars/{calendar_id}/preset/workweek")
 async def preset_workweek_endpoint(
-    calendar_id: int, body: PresetWorkweekBody, request: Request, db: Session = Depends(get_db)
+    calendar_id: int, body: PresetWorkweekBody, request: Request, db: AsyncSession = Depends(get_async_db)
 ):
     if not _json_csrf_ok(request, _csrf_from_request(request, body.model_dump())):
         raise HTTPException(status_code=403, detail="CSRF")
-    _, calendar = _require_calendar(request, db, calendar_id)
-    created = preset_workweek(db, calendar, body.source_day)
-    _commit_db(db)
+    _, calendar = await _require_calendar(request, db, calendar_id)
+    created = await preset_workweek_async(db, calendar, body.source_day)
+    await _commit_db(db)
     return JSONResponse({
         "created": created,
-        "schedule": _schedule_response(calendar, db, bust=True),
+        "schedule": await _schedule_response(calendar, db, bust=True),
         "message": "Рабочая неделя создана",
     })
 
 
 @router.post("/calendars/{calendar_id}/preset/fulltime")
 async def preset_fulltime_endpoint(
-    calendar_id: int, body: PresetFulltimeBody, request: Request, db: Session = Depends(get_db)
+    calendar_id: int, body: PresetFulltimeBody, request: Request, db: AsyncSession = Depends(get_async_db)
 ):
     if not _json_csrf_ok(request, _csrf_from_request(request, body.model_dump())):
         raise HTTPException(status_code=403, detail="CSRF")
-    _, calendar = _require_calendar(request, db, calendar_id)
-    created = preset_fulltime(db, calendar, body.days)
-    _commit_db(db)
+    _, calendar = await _require_calendar(request, db, calendar_id)
+    created = await preset_fulltime_async(db, calendar, body.days)
+    await _commit_db(db)
     return JSONResponse({
         "created": created,
-        "schedule": _schedule_response(calendar, db, bust=True),
+        "schedule": await _schedule_response(calendar, db, bust=True),
         "message": "Режим 24/7 применён",
     })
 
 
 @router.delete("/calendars/{calendar_id}/day/{weekday}")
-async def delete_day_slots(calendar_id: int, weekday: int, request: Request, db: Session = Depends(get_db)):
+async def delete_day_slots(
+    calendar_id: int, weekday: int, request: Request, db: AsyncSession = Depends(get_async_db)
+):
     token = _csrf_from_request(request)
     if not _json_csrf_ok(request, token):
         raise HTTPException(status_code=403, detail="CSRF")
     if weekday < 0 or weekday > 6:
         raise HTTPException(status_code=400, detail="Некорректный день недели")
-    _, calendar = _require_calendar(request, db, calendar_id)
-    removed = clear_day_slots(db, calendar.id, weekday)
-    _commit_db(db)
+    _, calendar = await _require_calendar(request, db, calendar_id)
+    removed = await clear_day_slots_async(db, calendar.id, weekday)
+    await _commit_db(db)
     return JSONResponse({
         "removed": removed,
-        "schedule": _schedule_response(calendar, db, bust=True),
+        "schedule": await _schedule_response(calendar, db, bust=True),
         "message": "День очищен",
     })
 
 
 @router.patch("/calendars/{calendar_id}/day/{weekday}")
 async def patch_day_working(
-    calendar_id: int, weekday: int, body: DayWorkingBody, request: Request, db: Session = Depends(get_db)
+    calendar_id: int,
+    weekday: int,
+    body: DayWorkingBody,
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
 ):
     if not _json_csrf_ok(request, _csrf_from_request(request, body.model_dump())):
         raise HTTPException(status_code=403, detail="CSRF")
     if weekday < 0 or weekday > 6:
         raise HTTPException(status_code=400, detail="Некорректный день недели")
-    _, calendar = _require_calendar(request, db, calendar_id)
+    _, calendar = await _require_calendar(request, db, calendar_id)
     set_day_working(calendar, weekday, body.is_working)
-    _commit_db(db)
-    grouped = slots_by_day(db, calendar.id)
+    await _commit_db(db)
+    grouped = await slots_by_day_async(db, calendar.id)
     return JSONResponse({
         "day": build_day_payload(calendar, grouped, weekday),
-        "schedule": _schedule_response(calendar, db, bust=True),
+        "schedule": await _schedule_response(calendar, db, bust=True),
         "message": "Рабочий день обновлён" if body.is_working else "День отмечен как выходной",
     })
 
 
 @router.put("/calendars/{calendar_id}/settings")
 async def update_calendar_settings(
-    calendar_id: int, body: CalendarSettingsBody, request: Request, db: Session = Depends(get_db)
+    calendar_id: int,
+    body: CalendarSettingsBody,
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
 ):
     if not _json_csrf_ok(request, _csrf_from_request(request, body.model_dump())):
         raise HTTPException(status_code=403, detail="CSRF")
-    _, calendar = _require_calendar(request, db, calendar_id)
+    _, calendar = await _require_calendar(request, db, calendar_id)
     calendar.break_between_services_minutes = max(0, body.break_between_services_minutes)
     calendar.max_services_per_day = max(0, body.max_services_per_day)
     calendar.book_ahead_hours = max(0, body.book_ahead_hours)
     calendar.reminder_hours_first = body.reminder_hours_first if body.reminder_first_enabled else 0
     calendar.reminder_hours_second = body.reminder_hours_second if body.reminder_second_enabled else 0
-    db.commit()
+    await db.commit()
     from app.services.response_cache import invalidate_calendar
 
     invalidate_calendar(calendar.id, consultant_id=calendar.consultant_id)
     return JSONResponse({
-        "settings": _schedule_response(calendar, db)["settings"],
+        "settings": (await _schedule_response(calendar, db))["settings"],
         "message": "Настройки сохранены",
     })

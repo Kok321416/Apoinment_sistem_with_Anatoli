@@ -6,27 +6,37 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.session import get_current_user, login_user
+from app.auth.login_flow import finish_login_async
+from app.auth.session import get_current_user_async, login_user_async
 from app.config import get_settings
-from app.database import get_db
+from app.database import get_async_db
 from app.deps import normalize_phone
 from app.models import EmailAddress, SocialAccount, User
 from app.security.csrf import validate_csrf_token
-from app.services.email_verification import resend_verification_email, verify_email_code
-from app.services.login_methods import can_disconnect_social
-from app.services.telegram_auth import consume_completed_login, create_login_request, get_completed_login
+from app.services.email_verification import (
+    resend_verification_email_async,
+    verify_email_code_async,
+    verify_email_token_async,
+)
+from app.services.login_methods import can_disconnect_social_async
+from app.services.telegram_auth import (
+    consume_completed_login_async,
+    create_login_request_async,
+    get_completed_login_async,
+)
 from app.services.yandex_auth import (
     build_authorize_url,
-    complete_yandex_oauth,
+    complete_yandex_oauth_async,
     exchange_code_for_token,
     fetch_yandex_profile,
     yandex_oauth_configured,
 )
 from app.services.vk_auth import (
     build_authorize_url as build_vk_authorize_url,
-    complete_vk_oauth,
+    complete_vk_oauth_async,
     exchange_code_for_token as exchange_vk_code_for_token,
     fetch_vk_profile,
     generate_pkce_pair,
@@ -34,7 +44,7 @@ from app.services.vk_auth import (
     vk_messaging_configured,
     vk_oauth_configured,
 )
-from app.templating import page_context, templates
+from app.templating import page_context_async, templates
 from app.utils.safe_redirect import safe_next_url, signup_error_redirect
 
 router = APIRouter(prefix="/accounts", tags=["oauth"])
@@ -47,9 +57,9 @@ def _form_csrf_ok(request: Request, form) -> bool:
     return validate_csrf_token(request, token)
 
 
-def _oauth_return(
+async def _oauth_return_async(
     request: Request,
-    db: Session,
+    db: AsyncSession,
     user,
     next_url: str,
     *,
@@ -59,11 +69,11 @@ def _oauth_return(
 ):
     """Return to browser, Capacitor, or Telegram Mini App (HTTPS bridge → reopen)."""
     from app.services.client_channel import normalize_client_channel
-    from app.services.native_auth_handoff import create_native_handoff
+    from app.services.native_auth_handoff import create_native_handoff_async
 
     channel = normalize_client_channel(client_channel)
     if channel == "native":
-        handoff = create_native_handoff(db, user_id=user.id, next_url=next_url)
+        handoff = await create_native_handoff_async(db, user_id=user.id, next_url=next_url)
         if connect and connect_success_message:
             request.session["integrations_success"] = connect_success_message
         bridge = (
@@ -73,8 +83,7 @@ def _oauth_return(
         return RedirectResponse(bridge, status_code=302)
 
     if channel == "tg":
-        # OAuth finished in external browser; reopen Mini App with one-time handoff.
-        handoff = create_native_handoff(db, user_id=user.id, next_url=next_url or "/tg/")
+        handoff = await create_native_handoff_async(db, user_id=user.id, next_url=next_url or "/tg/")
         if connect and connect_success_message:
             request.session["integrations_success"] = connect_success_message
         bridge = (
@@ -84,14 +93,12 @@ def _oauth_return(
         return RedirectResponse(bridge, status_code=302)
 
     if connect:
-        login_user(request, user, db)
+        await login_user_async(request, user, db)
         if connect_success_message:
             request.session["integrations_success"] = connect_success_message
         return RedirectResponse(next_url, status_code=302)
 
-    from app.auth.login_flow import finish_login
-
-    return finish_login(request, user, db, next_url)
+    return await finish_login_async(request, user, db, next_url)
 
 
 @router.get("/open-native/")
@@ -179,20 +186,19 @@ setTimeout(function(){{ window.location.href = {json.dumps(deep)}; }}, 200);
 
 
 @router.get("/native-handoff/{token}/")
-async def native_auth_handoff(token: str, request: Request, db: Session = Depends(get_db)):
+async def native_auth_handoff(token: str, request: Request, db: AsyncSession = Depends(get_async_db)):
     """Consume one-time token inside Capacitor WebView and finish login there."""
-    from app.auth.login_flow import finish_login
-    from app.services.native_auth_handoff import consume_native_handoff
+    from app.services.native_auth_handoff import consume_native_handoff_async
 
-    user, next_url = consume_native_handoff(db, token)
+    user, next_url = await consume_native_handoff_async(db, token)
     if not user:
         return RedirectResponse("/login/?error=handoff_expired", status_code=302)
-    return finish_login(request, user, db, next_url)
+    return await finish_login_async(request, user, db, next_url)
 
 
 @router.get("/telegram/login/")
-async def telegram_login_page(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
+async def telegram_login_page(request: Request, db: AsyncSession = Depends(get_async_db)):
+    user = await get_current_user_async(request, db)
     process = request.query_params.get("process", "login")
     next_url = safe_next_url(request.query_params.get("next"))
     from app.services.client_channel import normalize_client_channel
@@ -202,7 +208,7 @@ async def telegram_login_page(request: Request, db: Session = Depends(get_db)):
     if process == "connect":
         if not user:
             return RedirectResponse(f"/login/?next={next_url}", status_code=302)
-        req = create_login_request(
+        req = await create_login_request_async(
             db,
             next_url=next_url,
             process="connect",
@@ -215,7 +221,7 @@ async def telegram_login_page(request: Request, db: Session = Depends(get_db)):
         register_fio = request.session.pop("register_fio", None)
         register_phone = request.session.pop("register_phone", None)
         if process in ("signup", "signup_client") and register_fio and register_phone:
-            req = create_login_request(
+            req = await create_login_request_async(
                 db,
                 next_url=next_url,
                 process=process,
@@ -226,37 +232,49 @@ async def telegram_login_page(request: Request, db: Session = Depends(get_db)):
         elif process in ("signup", "signup_client"):
             return RedirectResponse(signup_error_redirect(next_url, "telegram_signup"), status_code=302)
         else:
-            req = create_login_request(
+            req = await create_login_request_async(
                 db, next_url=next_url, process="login", client_channel=client_channel
             )
 
     bot_username = settings.telegram_bot_username.lstrip("@")
     if not bot_username:
-        return templates.TemplateResponse("telegram_login.html", page_context(
-            request, db, user,
-            error="TELEGRAM_BOT_USERNAME не настроен на сервере.",
-            login_token=None,
-            bot_url=None,
-            next_url=next_url,
-        ))
+        return templates.TemplateResponse(
+            "telegram_login.html",
+            await page_context_async(
+                request,
+                db,
+                user,
+                error="TELEGRAM_BOT_USERNAME не настроен на сервере.",
+                login_token=None,
+                bot_url=None,
+                next_url=next_url,
+            ),
+        )
 
     bot_url = f"https://t.me/{bot_username}?start=login_{req.token}"
     tg_app_url = f"tg://resolve?domain={bot_username}&start=login_{req.token}"
-    return templates.TemplateResponse("telegram_login.html", page_context(
-        request, db, user,
-        login_token=req.token,
-        bot_url=bot_url,
-        tg_app_url=tg_app_url,
-        next_url=next_url,
-        error=None,
-    ))
+    return templates.TemplateResponse(
+        "telegram_login.html",
+        await page_context_async(
+            request,
+            db,
+            user,
+            login_token=req.token,
+            bot_url=bot_url,
+            tg_app_url=tg_app_url,
+            next_url=next_url,
+            error=None,
+        ),
+    )
 
 
 @router.get("/telegram/login/status/{token}/")
-async def telegram_login_status(token: str, db: Session = Depends(get_db)):
+async def telegram_login_status(token: str, db: AsyncSession = Depends(get_async_db)):
     from app.models import TelegramLoginRequest
 
-    req = db.query(TelegramLoginRequest).filter(TelegramLoginRequest.token == token).first()
+    req = (
+        await db.execute(select(TelegramLoginRequest).where(TelegramLoginRequest.token == token))
+    ).scalar_one_or_none()
     if not req:
         return JSONResponse({"completed": False, "error": "not_found"})
     if req.completed and req.complete_token:
@@ -270,28 +288,28 @@ async def telegram_login_status(token: str, db: Session = Depends(get_db)):
 
 
 @router.get("/telegram/complete/{complete_token}/")
-async def telegram_complete_login(complete_token: str, request: Request, db: Session = Depends(get_db)):
-    req = get_completed_login(db, complete_token)
+async def telegram_complete_login(
+    complete_token: str, request: Request, db: AsyncSession = Depends(get_async_db)
+):
+    req = await get_completed_login_async(db, complete_token)
     if not req or not req.user_id:
         return RedirectResponse("/login/?error=telegram_expired", status_code=302)
-    user = db.get(User, req.user_id)
+    user = await db.get(User, req.user_id)
     if not user:
         return RedirectResponse("/login/", status_code=302)
-    from app.auth.login_flow import finish_login
 
-    consume_completed_login(db, req)
-    # Mark welcome only after full login (including 2FA).
+    await consume_completed_login_async(db, req)
     next_url = safe_next_url(req.next_url)
     request.session["show_telegram_welcome"] = True
-    return finish_login(request, user, db, next_url)
+    return await finish_login_async(request, user, db, next_url)
 
 
 @router.get("/yandex/login/")
-async def yandex_login(request: Request, db: Session = Depends(get_db)):
+async def yandex_login(request: Request, db: AsyncSession = Depends(get_async_db)):
     if not yandex_oauth_configured():
         return RedirectResponse("/login/?error=yandex_config", status_code=302)
 
-    user = get_current_user(request, db)
+    user = await get_current_user_async(request, db)
     process = request.query_params.get("process", "login")
     next_url = safe_next_url(request.query_params.get("next"))
 
@@ -319,7 +337,7 @@ async def yandex_login(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/yandex/callback/")
-async def yandex_callback(request: Request, db: Session = Depends(get_db)):
+async def yandex_callback(request: Request, db: AsyncSession = Depends(get_async_db)):
     try:
         if request.query_params.get("error"):
             return RedirectResponse("/login/?error=yandex_denied", status_code=302)
@@ -349,7 +367,7 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
             register_fio = (request.session.pop("register_fio", None) or "").strip() or None
             register_phone = normalize_phone(request.session.pop("register_phone", None)) or None
 
-        user, err = complete_yandex_oauth(
+        user, err = await complete_yandex_oauth_async(
             db,
             process=process,
             profile=profile,
@@ -363,7 +381,7 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
             return RedirectResponse("/login/?error=yandex_failed", status_code=302)
 
         if process == "connect":
-            return _oauth_return(
+            return await _oauth_return_async(
                 request,
                 db,
                 user,
@@ -373,20 +391,20 @@ async def yandex_callback(request: Request, db: Session = Depends(get_db)):
                 connect_success_message="Яндекс привязан.",
             )
 
-        return _oauth_return(request, db, user, next_url, client_channel=client_channel)
+        return await _oauth_return_async(request, db, user, next_url, client_channel=client_channel)
     except Exception:
         logger.exception("Unhandled Yandex OAuth callback error")
-        db.rollback()
+        await db.rollback()
         next_fallback = safe_next_url(request.session.pop("yandex_oauth_next", "/"), default="/")
         return RedirectResponse(signup_error_redirect(next_fallback, "yandex_failed"), status_code=302)
 
 
 @router.get("/vk/login/")
-async def vk_login(request: Request, db: Session = Depends(get_db)):
+async def vk_login(request: Request, db: AsyncSession = Depends(get_async_db)):
     if not vk_oauth_configured():
         return RedirectResponse("/login/?error=vk_config", status_code=302)
 
-    user = get_current_user(request, db)
+    user = await get_current_user_async(request, db)
     process = request.query_params.get("process", "login")
     next_url = safe_next_url(request.query_params.get("next"))
 
@@ -421,12 +439,11 @@ async def vk_login(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/vk/callback/")
-async def vk_callback(request: Request, db: Session = Depends(get_db)):
+async def vk_callback(request: Request, db: AsyncSession = Depends(get_async_db)):
     try:
         if request.query_params.get("error"):
             return RedirectResponse("/login/?error=vk_denied", status_code=302)
 
-        # VK ID may return flat params or JSON payload=
         code = request.query_params.get("code")
         state = request.query_params.get("state")
         device_id = request.query_params.get("device_id") or ""
@@ -480,7 +497,9 @@ async def vk_callback(request: Request, db: Session = Depends(get_db)):
             from app.models import Booking
             from app.services.vk_messages import notify_client_booked_vk
 
-            booking = db.query(Booking).filter(Booking.link_token == link_token).first()
+            booking = (
+                await db.execute(select(Booking).where(Booking.link_token == link_token))
+            ).scalar_one_or_none()
             if not booking:
                 return RedirectResponse("/?error=vk_booking", status_code=302)
             vk_id = str(profile.get("user_id") or profile.get("id") or "").strip()
@@ -488,14 +507,12 @@ async def vk_callback(request: Request, db: Session = Depends(get_db)):
                 booking.vk_user_id = int(vk_id)
             except (TypeError, ValueError):
                 return RedirectResponse("/login/?error=vk_profile", status_code=302)
-            db.commit()
-            db.refresh(booking)
+            await db.commit()
+            await db.refresh(booking)
             notify_client_booked_vk(booking)
             write_url = vk_group_write_url() if vk_messaging_configured() else None
-            # Prefer returning to booking success if we know calendar; else dashboard
             redirect = next_url if next_url and next_url != "/" else "/"
             if write_url:
-                # After OAuth, ask user to allow community messages
                 request.session["vk_allow_messages_hint"] = write_url
             return RedirectResponse(f"{redirect}?vk=confirmed", status_code=302)
 
@@ -504,7 +521,7 @@ async def vk_callback(request: Request, db: Session = Depends(get_db)):
             register_fio = (request.session.pop("register_fio", None) or "").strip() or None
             register_phone = normalize_phone(request.session.pop("register_phone", None)) or None
 
-        user, err, _vk_id = complete_vk_oauth(
+        user, err, _vk_id = await complete_vk_oauth_async(
             db,
             process=process,
             profile=profile,
@@ -518,7 +535,7 @@ async def vk_callback(request: Request, db: Session = Depends(get_db)):
             return RedirectResponse("/login/?error=vk_failed", status_code=302)
 
         if process == "connect":
-            return _oauth_return(
+            return await _oauth_return_async(
                 request,
                 db,
                 user,
@@ -528,31 +545,30 @@ async def vk_callback(request: Request, db: Session = Depends(get_db)):
                 connect_success_message="VK привязан.",
             )
 
-        return _oauth_return(request, db, user, next_url, client_channel=client_channel)
+        return await _oauth_return_async(request, db, user, next_url, client_channel=client_channel)
     except Exception:
         logger.exception("Unhandled VK OAuth callback error")
-        db.rollback()
+        await db.rollback()
         next_fallback = safe_next_url(request.session.pop("vk_oauth_next", "/"), default="/")
         return RedirectResponse(signup_error_redirect(next_fallback, "vk_failed"), status_code=302)
 
 
 @router.get("/confirm-email/{token}/")
-async def confirm_email(request: Request, token: str, db: Session = Depends(get_db)):
-    from app.services.email_verification import verify_email_token
-
-    user = get_current_user(request, db)
-    db_user, err = verify_email_token(db, token)
+async def confirm_email(request: Request, token: str, db: AsyncSession = Depends(get_async_db)):
+    user = await get_current_user_async(request, db)
+    db_user, err = await verify_email_token_async(db, token)
     if db_user:
         return RedirectResponse("/login/?verified=1&email=" + (db_user.email or ""), status_code=302)
-    return templates.TemplateResponse("email_confirm_result.html", page_context(
-        request, db, user, error=err, success=False,
-    ))
+    return templates.TemplateResponse(
+        "email_confirm_result.html",
+        await page_context_async(request, db, user, error=err, success=False),
+    )
 
 
 @router.get("/verify-email/")
 @router.post("/verify-email/")
-async def verify_email_page(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
+async def verify_email_page(request: Request, db: AsyncSession = Depends(get_async_db)):
+    user = await get_current_user_async(request, db)
     next_after = safe_next_url(request.query_params.get("next"), default="")
     if user and user.is_active:
         return RedirectResponse(next_after or "/dashboard/", status_code=302)
@@ -566,7 +582,7 @@ async def verify_email_page(request: Request, db: Session = Depends(get_db)):
             email = (form.get("email") or email or "").strip()
         elif form.get("action") == "resend":
             email = (form.get("email") or "").strip()
-            ok, msg = resend_verification_email(db, email)
+            ok, msg = await resend_verification_email_async(db, email)
             if ok:
                 success = msg
             else:
@@ -574,7 +590,7 @@ async def verify_email_page(request: Request, db: Session = Depends(get_db)):
         else:
             email = (form.get("email") or "").strip()
             code = (form.get("code") or "").strip()
-            db_user, err = verify_email_code(db, email, code)
+            db_user, err = await verify_email_code_async(db, email, code)
             if db_user:
                 from urllib.parse import urlencode
 
@@ -583,22 +599,27 @@ async def verify_email_page(request: Request, db: Session = Depends(get_db)):
                     params["next"] = next_after
                 return RedirectResponse("/login/?" + urlencode(params), status_code=302)
             error = err
-    return templates.TemplateResponse("email_verification_sent.html", page_context(
-        request, db, user,
-        email=email,
-        error=error,
-        success=success,
-        email_verify_hours=settings.email_verify_hours,
-        next_url=next_after,
-    ))
+    return templates.TemplateResponse(
+        "email_verification_sent.html",
+        await page_context_async(
+            request,
+            db,
+            user,
+            email=email,
+            error=error,
+            success=success,
+            email_verify_hours=settings.email_verify_hours,
+            next_url=next_after,
+        ),
+    )
 
 
 @router.get("/password/set/")
 @router.post("/password/set/")
-async def set_password_page(request: Request, db: Session = Depends(get_db)):
+async def set_password_page(request: Request, db: AsyncSession = Depends(get_async_db)):
     from app.auth.passwords import hash_password
 
-    user = get_current_user(request, db)
+    user = await get_current_user_async(request, db)
     if not user:
         return RedirectResponse("/login/", status_code=302)
     if user.has_usable_password:
@@ -613,9 +634,9 @@ async def set_password_page(request: Request, db: Session = Depends(get_db)):
         elif len(p1) < 8:
             error = "Пароль должен быть не менее 8 символов"
         else:
-            db_user = db.get(User, user.id)
+            db_user = await db.get(User, user.id)
             db_user.password = hash_password(p1)
-            db.commit()
+            await db.commit()
             if "session" in request.scope:
                 request.session["has_usable_password"] = True
             from app.auth.session import clear_request_user_cache
@@ -623,15 +644,18 @@ async def set_password_page(request: Request, db: Session = Depends(get_db)):
             clear_request_user_cache(request)
             next_url = safe_next_url(request.query_params.get("next"))
             return RedirectResponse(next_url, status_code=302)
-    return templates.TemplateResponse("password_set.html", page_context(request, db, user, error=error))
+    return templates.TemplateResponse(
+        "password_set.html",
+        await page_context_async(request, db, user, error=error),
+    )
 
 
 @router.get("/password/reset/")
 @router.post("/password/reset/")
-async def password_reset_page(request: Request, db: Session = Depends(get_db)):
+async def password_reset_page(request: Request, db: AsyncSession = Depends(get_async_db)):
     from app.auth.passwords import hash_password
     from app.security.csrf import validate_csrf_token
-    from app.services.password_reset import consume_reset_token, get_valid_reset_token
+    from app.services.password_reset import consume_reset_token_async, get_valid_reset_token_async
 
     token = (request.query_params.get("token") or "").strip()
     error = None
@@ -642,12 +666,12 @@ async def password_reset_page(request: Request, db: Session = Depends(get_db)):
             error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
             return templates.TemplateResponse(
                 "password_reset.html",
-                page_context(request, db, None, error=error, token=token),
+                await page_context_async(request, db, None, error=error, token=token),
             )
         token = (form.get("token") or token or "").strip()
         p1 = form.get("password1", "")
         p2 = form.get("password2", "")
-        row = get_valid_reset_token(db, token)
+        row = await get_valid_reset_token_async(db, token)
         if not row:
             error = "Ссылка недействительна или истекла."
         elif p1 != p2:
@@ -655,28 +679,28 @@ async def password_reset_page(request: Request, db: Session = Depends(get_db)):
         elif len(p1) < 8:
             error = "Пароль должен быть не менее 8 символов"
         else:
-            db_user = db.get(User, row.user_id)
+            db_user = await db.get(User, row.user_id)
             if not db_user:
                 error = "Пользователь не найден."
             else:
                 db_user.password = hash_password(p1)
-                consume_reset_token(db, row)
-                db.commit()
+                await consume_reset_token_async(db, row)
+                await db.commit()
                 return RedirectResponse("/login/?success=password_reset", status_code=302)
     elif not token:
         error = "Укажите ссылку из письма."
-    elif not get_valid_reset_token(db, token):
+    elif not await get_valid_reset_token_async(db, token):
         error = "Ссылка недействительна или истекла."
     return templates.TemplateResponse(
         "password_reset.html",
-        page_context(request, db, None, error=error, token=token),
+        await page_context_async(request, db, None, error=error, token=token),
     )
 
 
 @router.get("/social/connections/")
 @router.post("/social/connections/")
-async def social_connections(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
+async def social_connections(request: Request, db: AsyncSession = Depends(get_async_db)):
+    user = await get_current_user_async(request, db)
     if not user:
         return RedirectResponse("/login/", status_code=302)
     success = error = None
@@ -684,43 +708,83 @@ async def social_connections(request: Request, db: Session = Depends(get_db)):
         form = await request.form()
         action = form.get("action")
         if action == "disconnect_telegram":
-            ok, msg = can_disconnect_social(db, user, "telegram")
+            ok, msg = await can_disconnect_social_async(db, user, "telegram")
             if not ok:
                 error = msg
             else:
-                for acc in db.query(SocialAccount).filter(
-                    SocialAccount.user_id == user.id, SocialAccount.provider == "telegram"
-                ).all():
-                    db.delete(acc)
-                db.commit()
+                rows = list(
+                    (
+                        await db.execute(
+                            select(SocialAccount).where(
+                                SocialAccount.user_id == user.id,
+                                SocialAccount.provider == "telegram",
+                            )
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                for acc in rows:
+                    await db.delete(acc)
+                await db.commit()
                 success = "Телеграм отвязан."
         elif action == "disconnect_yandex":
-            ok, msg = can_disconnect_social(db, user, "yandex")
+            ok, msg = await can_disconnect_social_async(db, user, "yandex")
             if not ok:
                 error = msg
             else:
-                for acc in db.query(SocialAccount).filter(
-                    SocialAccount.user_id == user.id, SocialAccount.provider == "yandex"
-                ).all():
-                    db.delete(acc)
-                db.commit()
+                rows = list(
+                    (
+                        await db.execute(
+                            select(SocialAccount).where(
+                                SocialAccount.user_id == user.id,
+                                SocialAccount.provider == "yandex",
+                            )
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                for acc in rows:
+                    await db.delete(acc)
+                await db.commit()
                 success = "Яндекс отвязан."
         elif action == "disconnect_vk":
-            ok, msg = can_disconnect_social(db, user, "vk")
+            ok, msg = await can_disconnect_social_async(db, user, "vk")
             if not ok:
                 error = msg
             else:
-                for acc in db.query(SocialAccount).filter(
-                    SocialAccount.user_id == user.id, SocialAccount.provider == "vk"
-                ).all():
-                    db.delete(acc)
-                db.commit()
+                rows = list(
+                    (
+                        await db.execute(
+                            select(SocialAccount).where(
+                                SocialAccount.user_id == user.id,
+                                SocialAccount.provider == "vk",
+                            )
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                for acc in rows:
+                    await db.delete(acc)
+                await db.commit()
                 success = "VK отвязан."
         elif action == "disconnect_email":
-            rows = db.query(EmailAddress).filter(EmailAddress.user_id == user.id).all()
-            has_social = db.query(SocialAccount).filter(
-                SocialAccount.user_id == user.id,
-                SocialAccount.provider.in_(("telegram", "yandex", "vk")),
+            rows = list(
+                (
+                    await db.execute(select(EmailAddress).where(EmailAddress.user_id == user.id))
+                )
+                .scalars()
+                .all()
+            )
+            has_social = (
+                await db.execute(
+                    select(SocialAccount.id).where(
+                        SocialAccount.user_id == user.id,
+                        SocialAccount.provider.in_(("telegram", "yandex", "vk")),
+                    ).limit(1)
+                )
             ).first()
             if not rows or not any(r.verified for r in rows):
                 error = "Подтверждённая почта не привязана."
@@ -729,20 +793,36 @@ async def social_connections(request: Request, db: Session = Depends(get_db)):
             else:
                 for row in rows:
                     row.verified = False
-                db.commit()
+                await db.commit()
                 success = "Почта отвязана."
-    accounts = db.query(SocialAccount).filter(SocialAccount.user_id == user.id).all()
-    primary = db.query(EmailAddress).filter(EmailAddress.user_id == user.id, EmailAddress.primary.is_(True)).first()
-    return templates.TemplateResponse("social_connections.html", page_context(
-        request, db, user,
-        social_accounts=accounts,
-        has_telegram=any(a.provider == "telegram" for a in accounts),
-        has_yandex=any(a.provider == "yandex" for a in accounts),
-        has_vk=any(a.provider == "vk" for a in accounts),
-        yandex_oauth_enabled=yandex_oauth_configured(),
-        vk_oauth_enabled=vk_oauth_configured(),
-        email_address=primary.email if primary else (user.email or ""),
-        email_verified=bool(primary and primary.verified),
-        success=success,
-        error=error,
-    ))
+    accounts = list(
+        (await db.execute(select(SocialAccount).where(SocialAccount.user_id == user.id)))
+        .scalars()
+        .all()
+    )
+    primary = (
+        await db.execute(
+            select(EmailAddress).where(
+                EmailAddress.user_id == user.id,
+                EmailAddress.primary.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    return templates.TemplateResponse(
+        "social_connections.html",
+        await page_context_async(
+            request,
+            db,
+            user,
+            social_accounts=accounts,
+            has_telegram=any(a.provider == "telegram" for a in accounts),
+            has_yandex=any(a.provider == "yandex" for a in accounts),
+            has_vk=any(a.provider == "vk" for a in accounts),
+            yandex_oauth_enabled=yandex_oauth_configured(),
+            vk_oauth_enabled=vk_oauth_configured(),
+            email_address=primary.email if primary else (user.email or ""),
+            email_verified=bool(primary and primary.verified),
+            success=success,
+            error=error,
+        ),
+    )

@@ -74,3 +74,64 @@ def apply_user_names_from_fio(user: User, fio: str) -> None:
         user.first_name = first_name
     if last_name:
         user.last_name = last_name
+
+
+async def find_consultant_for_user_async(db, user_id: int) -> Consultant | None:
+    from sqlalchemy import select
+
+    return (
+        await db.execute(select(Consultant).where(Consultant.user_id == user_id))
+    ).scalar_one_or_none()
+
+
+async def create_consultant_for_user_async(
+    db,
+    user: User,
+    *,
+    fio: str,
+    phone: str,
+    email: str | None = None,
+) -> Consultant:
+    existing = await find_consultant_for_user_async(db, user.id)
+    if existing:
+        return existing
+
+    from sqlalchemy import select
+
+    first_name, last_name, middle_name = parse_fio(fio)
+    category = (
+        await db.execute(select(Category).where(Category.name_category == "Общая"))
+    ).scalar_one_or_none()
+    if not category:
+        category = Category(name_category="Общая")
+        db.add(category)
+        await db.flush()
+
+    consultant_email = (email or user.email or "").strip() or f"user{user.id}@local.user"
+    clash = (
+        await db.execute(select(Consultant).where(Consultant.email == consultant_email))
+    ).scalar_one_or_none()
+    if clash:
+        consultant_email = f"user{user.id}.{consultant_email}"
+
+    phone_n = normalize_phone(phone)
+    consultant = Consultant(
+        user_id=user.id,
+        first_name=first_name or (user.first_name or ""),
+        last_name=last_name or (user.last_name or ""),
+        middle_name=middle_name or "",
+        email=consultant_email[:254],
+        phone=phone_n,
+        telegram_nickname="",
+        category_of_specialist_id=category.id,
+    )
+    db.add(consultant)
+    await db.flush()
+    db.add(Integration(consultant_id=consultant.id))
+
+    if first_name and not (user.first_name or "").strip():
+        user.first_name = first_name
+    if last_name and not (user.last_name or "").strip():
+        user.last_name = last_name
+
+    return consultant

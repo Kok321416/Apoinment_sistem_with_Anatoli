@@ -122,6 +122,22 @@ def slots_by_day(db: Session, calendar_id: int) -> list[list[TimeSlot]]:
     return grouped
 
 
+async def slots_by_day_async(db, calendar_id: int) -> list[list[TimeSlot]]:
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(TimeSlot)
+        .where(TimeSlot.calendar_id == calendar_id)
+        .order_by(TimeSlot.day_of_week, TimeSlot.start_time)
+    )
+    slots = list(result.scalars().all())
+    grouped: list[list[TimeSlot]] = [[] for _ in range(7)]
+    for slot in slots:
+        if 0 <= slot.day_of_week <= 6:
+            grouped[slot.day_of_week].append(slot)
+    return grouped
+
+
 def serialize_week(calendar: Calendar, grouped: list[list[TimeSlot]]) -> list[dict]:
     disabled = parse_disabled_weekdays(getattr(calendar, "disabled_weekdays", None))
     week: list[dict] = []
@@ -192,6 +208,26 @@ def clear_day_slots(db: Session, calendar_id: int, weekday: int) -> int:
     return len(slots)
 
 
+async def clear_day_slots_async(db, calendar_id: int, weekday: int) -> int:
+    from sqlalchemy import select
+
+    from app.services.entity_delete import detach_bookings_from_slots_async
+
+    result = await db.execute(
+        select(TimeSlot).where(
+            TimeSlot.calendar_id == calendar_id,
+            TimeSlot.day_of_week == weekday,
+        )
+    )
+    slots = list(result.scalars().all())
+    if not slots:
+        return 0
+    await detach_bookings_from_slots_async(db, [slot.id for slot in slots])
+    for slot in slots:
+        await db.delete(slot)
+    return len(slots)
+
+
 def copy_day_slots(db: Session, calendar: Calendar, source_day: int, target_days: list[int], replace: bool = True) -> int:
     source_slots = (
         db.query(TimeSlot)
@@ -217,8 +253,43 @@ def copy_day_slots(db: Session, calendar: Calendar, source_day: int, target_days
     return created
 
 
+async def copy_day_slots_async(
+    db, calendar: Calendar, source_day: int, target_days: list[int], replace: bool = True
+) -> int:
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(TimeSlot)
+        .where(TimeSlot.calendar_id == calendar.id, TimeSlot.day_of_week == source_day)
+        .order_by(TimeSlot.start_time)
+    )
+    source_slots = list(result.scalars().all())
+    created = 0
+    for target_day in target_days:
+        if target_day < 0 or target_day > 6 or target_day == source_day:
+            continue
+        if replace:
+            await clear_day_slots_async(db, calendar.id, target_day)
+        for slot in source_slots:
+            db.add(
+                TimeSlot(
+                    calendar_id=calendar.id,
+                    day_of_week=target_day,
+                    start_time=slot.start_time,
+                    end_time=slot.end_time,
+                    is_available=slot.is_available,
+                )
+            )
+            created += 1
+    return created
+
+
 def preset_workweek(db: Session, calendar: Calendar, source_day: int) -> int:
     return copy_day_slots(db, calendar, source_day, list(range(5)), replace=True)
+
+
+async def preset_workweek_async(db, calendar: Calendar, source_day: int) -> int:
+    return await copy_day_slots_async(db, calendar, source_day, list(range(5)), replace=True)
 
 
 def preset_fulltime(db: Session, calendar: Calendar, days: list[int] | None = None) -> int:
@@ -237,6 +308,31 @@ def preset_fulltime(db: Session, calendar: Calendar, days: list[int] | None = No
             end_time=end,
             is_available=True,
         ))
+        created += 1
+        disabled = parse_disabled_weekdays(getattr(calendar, "disabled_weekdays", None))
+        disabled.discard(day)
+        calendar.disabled_weekdays = format_disabled_weekdays(disabled)
+    return created
+
+
+async def preset_fulltime_async(db, calendar: Calendar, days: list[int] | None = None) -> int:
+    target_days = days if days is not None else list(range(7))
+    start = time(0, 0)
+    end = time(23, 59)
+    created = 0
+    for day in target_days:
+        if day < 0 or day > 6:
+            continue
+        await clear_day_slots_async(db, calendar.id, day)
+        db.add(
+            TimeSlot(
+                calendar_id=calendar.id,
+                day_of_week=day,
+                start_time=start,
+                end_time=end,
+                is_available=True,
+            )
+        )
         created += 1
         disabled = parse_disabled_weekdays(getattr(calendar, "disabled_weekdays", None))
         disabled.discard(day)

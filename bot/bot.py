@@ -1,4 +1,9 @@
-"""Telegram bot for appointment system (FastAPI backend)."""
+"""Legacy sync Telegram bot (requests + long polling).
+
+Prefer aiogram 3: handlers in `bot/handlers/`, FastAPI webhook when
+`TELEGRAM_WEBHOOK_SECRET` is set, or `python -m bot.run` for polling.
+This module is kept for reference / emergency rollback only.
+"""
 import json
 import logging
 import threading

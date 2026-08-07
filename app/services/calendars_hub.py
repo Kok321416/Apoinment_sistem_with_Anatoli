@@ -73,6 +73,73 @@ def per_calendar_stats(db: Session, cal_ids: list[int]) -> dict[int, dict]:
     return stats
 
 
+async def per_calendar_stats_async(db, cal_ids: list[int]) -> dict[int, dict]:
+    from sqlalchemy import select
+
+    if not cal_ids:
+        return {}
+
+    stats = {
+        cid: {
+            "slots": 0,
+            "services": 0,
+            "today_bookings": 0,
+            "last_booking": None,
+            "total_bookings": 0,
+        }
+        for cid in cal_ids
+    }
+
+    for cid, cnt in (
+        await db.execute(
+            select(TimeSlot.calendar_id, func.count(TimeSlot.id))
+            .where(TimeSlot.calendar_id.in_(cal_ids))
+            .group_by(TimeSlot.calendar_id)
+        )
+    ).all():
+        stats[cid]["slots"] = cnt
+
+    for cid, cnt in (
+        await db.execute(
+            select(Service.calendar_id, func.count(Service.id))
+            .where(Service.calendar_id.in_(cal_ids), Service.is_active.is_(True))
+            .group_by(Service.calendar_id)
+        )
+    ).all():
+        if cid:
+            stats[cid]["services"] = cnt
+
+    today = date.today()
+    for cid, cnt in (
+        await db.execute(
+            select(Booking.calendar_id, func.count(Booking.id))
+            .where(Booking.calendar_id.in_(cal_ids), Booking.booking_date == today)
+            .group_by(Booking.calendar_id)
+        )
+    ).all():
+        stats[cid]["today_bookings"] = cnt
+
+    for cid, cnt in (
+        await db.execute(
+            select(Booking.calendar_id, func.count(Booking.id))
+            .where(Booking.calendar_id.in_(cal_ids))
+            .group_by(Booking.calendar_id)
+        )
+    ).all():
+        stats[cid]["total_bookings"] = cnt
+
+    for cid, last_date in (
+        await db.execute(
+            select(Booking.calendar_id, func.max(Booking.booking_date))
+            .where(Booking.calendar_id.in_(cal_ids))
+            .group_by(Booking.calendar_id)
+        )
+    ).all():
+        stats[cid]["last_booking"] = last_date
+
+    return stats
+
+
 def dashboard_stats(calendars: list[Calendar], stats_map: dict[int, dict]) -> dict:
     total = len(calendars)
     active = sum(1 for c in calendars if c.is_active)
@@ -146,6 +213,20 @@ def serialize_calendar(calendar: Calendar, booking_url: str, stats: dict) -> dic
 def build_calendars_payload(db: Session, calendars: list[Calendar], public_url: str) -> dict:
     cal_ids = _calendar_ids(calendars)
     stats_map = per_calendar_stats(db, cal_ids)
+    serialized = [
+        serialize_calendar(cal, f"{public_url}c/{cal.id}/", stats_map.get(cal.id, {}))
+        for cal in calendars
+    ]
+    return {
+        "dashboard": dashboard_stats(calendars, stats_map),
+        "calendars": serialized,
+        "public_url": public_url,
+    }
+
+
+async def build_calendars_payload_async(db, calendars: list[Calendar], public_url: str) -> dict:
+    cal_ids = _calendar_ids(calendars)
+    stats_map = await per_calendar_stats_async(db, cal_ids)
     serialized = [
         serialize_calendar(cal, f"{public_url}c/{cal.id}/", stats_map.get(cal.id, {}))
         for cal in calendars

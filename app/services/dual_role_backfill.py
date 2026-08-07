@@ -121,6 +121,30 @@ def resolve_client_user_id_for_telegram(db: Session, telegram_id: Any) -> int | 
     return None
 
 
+async def resolve_client_user_id_for_telegram_async(db, telegram_id: Any) -> int | None:
+    """Return User.id if telegram_id maps to exactly one SocialAccount user, else None."""
+    from sqlalchemy import select
+
+    key = _norm_uid(telegram_id)
+    if not key:
+        return None
+    variants = {key}
+    if key.isdigit():
+        variants.add(str(int(key)))
+    rows = (
+        await db.execute(
+            select(SocialAccount.user_id).where(
+                SocialAccount.provider == "telegram",
+                SocialAccount.uid.in_(list(variants)),
+            )
+        )
+    ).all()
+    user_ids = {int(r[0]) for r in rows if r[0] is not None}
+    if len(user_ids) == 1:
+        return next(iter(user_ids))
+    return None
+
+
 def format_backfill_report(data: dict[str, Any]) -> str:
     mode = "DRY-RUN" if data.get("dry_run") else "APPLY"
     lines = [

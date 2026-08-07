@@ -32,6 +32,21 @@ def find_integration_by_chat_id(db: Session, chat_id: str, *, exclude_id: int | 
     return None
 
 
+async def find_integration_by_chat_id_async(db, chat_id: str, *, exclude_id: int | None = None) -> Integration | None:
+    from sqlalchemy import select
+
+    key = normalize_telegram_chat_id(chat_id)
+    if not key:
+        return None
+    q = select(Integration).where(Integration.telegram_chat_id.isnot(None))
+    if exclude_id is not None:
+        q = q.where(Integration.id != exclude_id)
+    for row in (await db.execute(q)).scalars().all():
+        if normalize_telegram_chat_id(row.telegram_chat_id) == key:
+            return row
+    return None
+
+
 def _log_chat_change(
     db: Session,
     integration: Integration,
@@ -97,6 +112,41 @@ def claim_integration_telegram_chat(
     return True, "OK"
 
 
+async def claim_integration_telegram_chat_async(
+    db,
+    integration: Integration,
+    chat_id: str,
+    *,
+    bot_token: str | None = None,
+    enable: bool = True,
+    source: str = "claim",
+    actor_user_id: int | None = None,
+) -> tuple[bool, str]:
+    key = normalize_telegram_chat_id(chat_id)
+    if not key:
+        return False, "Укажите идентификатор чата."
+    conflict = await find_integration_by_chat_id_async(db, key, exclude_id=integration.id)
+    if conflict:
+        return False, "Этот Telegram уже подключён к другому специалисту. Отключите его там или используйте другой чат."
+    old = integration.telegram_chat_id
+    integration.telegram_chat_id = key
+    if bot_token is not None:
+        token = (bot_token or "").strip()
+        integration.telegram_bot_token = token or None
+    integration.telegram_connected = True
+    if enable:
+        integration.telegram_enabled = True
+    _log_chat_change(
+        db,
+        integration,
+        old_chat_id=old,
+        new_chat_id=key,
+        source=source,
+        actor_user_id=actor_user_id,
+    )
+    return True, "OK"
+
+
 def clear_integration_telegram_chat(
     db: Session,
     integration: Integration,
@@ -115,6 +165,21 @@ def clear_integration_telegram_chat(
         integration,
         old_chat_id=old,
         new_chat_id=None,
+        source=source,
+        actor_user_id=actor_user_id,
+    )
+
+
+async def clear_integration_telegram_chat_async(
+    db,
+    integration: Integration,
+    *,
+    source: str = "disconnect",
+    actor_user_id: int | None = None,
+) -> None:
+    clear_integration_telegram_chat(
+        db,
+        integration,
         source=source,
         actor_user_id=actor_user_id,
     )

@@ -54,6 +54,28 @@ def list_email_deliveries(
     return query.limit(limit).all()
 
 
+async def list_email_deliveries_async(
+    db,
+    *,
+    status: str | None = None,
+    q: str = "",
+    limit: int = 50,
+) -> list[EmailDeliveryLog]:
+    from sqlalchemy import or_, select
+
+    stmt = select(EmailDeliveryLog).order_by(EmailDeliveryLog.id.desc())
+    if status:
+        stmt = stmt.where(EmailDeliveryLog.status == status)
+    q = (q or "").strip()
+    if q:
+        like = f"%{q}%"
+        stmt = stmt.where(
+            or_(EmailDeliveryLog.to_email.ilike(like), EmailDeliveryLog.subject.ilike(like))
+        )
+    result = await db.execute(stmt.limit(limit))
+    return list(result.scalars().all())
+
+
 def resend_email_delivery(db: Session, log_id: int) -> tuple[EmailDeliveryLog | None, str | None]:
     row = db.get(EmailDeliveryLog, log_id)
     if not row:
