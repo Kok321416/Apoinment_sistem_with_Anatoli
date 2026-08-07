@@ -190,7 +190,7 @@ class Booking(Base):
     specialist_reminder_1h_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     google_event_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # client = public funnel; specialist = created by specialist in cabinet
-    source: Mapped[str] = mapped_column(String(32), default="client")
+    source: Mapped[str | None] = mapped_column(String(32), nullable=True, default="client", server_default="client")
 
     service = relationship("Service", back_populates="bookings")
     calendar = relationship("Calendar", back_populates="bookings")

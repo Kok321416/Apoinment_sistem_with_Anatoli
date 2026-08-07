@@ -254,9 +254,19 @@ def _apply_app_schema_patches() -> None:
         logger.exception("bookings.vk_user_id patch failed")
 
     try:
-        _add_column("bookings", "source", "VARCHAR(32) NOT NULL DEFAULT 'client'")
+        _add_column("bookings", "source", "VARCHAR(32) NULL DEFAULT 'client'")
     except Exception:
         logger.exception("bookings.source patch failed")
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "UPDATE bookings SET source = 'client' "
+                    "WHERE source IS NULL OR source = ''"
+                )
+            )
+    except Exception:
+        logger.exception("bookings.source backfill failed")
 
     try:
         from app.models import platform as platform_models

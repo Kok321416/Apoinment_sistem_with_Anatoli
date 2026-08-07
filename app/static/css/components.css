@@ -34,7 +34,7 @@
 }
 
 .btn:active:not(:disabled):not(.is-disabled):not(.is-loading) {
-    transform: none;
+    transform: translateY(var(--space-2xs));
 }
 
 .btn--sm {
@@ -60,18 +60,17 @@
 .btn--primary {
     background: var(--accent-primary);
     color: var(--text-on-accent);
-    box-shadow: none;
+    box-shadow: var(--shadow-sm);
 }
 
 .btn--primary:hover:not(:disabled):not(.is-disabled):not(.is-loading) {
-    transform: none;
-    box-shadow: none;
-    filter: brightness(1.08);
+    transform: translateY(calc(var(--space-2xs) * -1));
+    box-shadow: var(--shadow-md);
+    filter: brightness(1.05);
 }
 
 .btn--primary:active:not(:disabled):not(.is-disabled):not(.is-loading) {
-    filter: brightness(0.96);
-    box-shadow: none;
+    box-shadow: var(--shadow-sm);
 }
 
 .btn--secondary {
@@ -442,214 +441,48 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-xs);
-    padding: 2px var(--space-sm);
-    border-radius: var(--radius-sm);
-    font-family: var(--font-family-base);
-    font-size: 12px;
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-body-sm);
     font-weight: var(--font-weight-medium);
-    line-height: 1.35;
+    line-height: var(--line-height-caption);
     border: 1px solid transparent;
 }
 
 .badge--primary {
-    background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+    background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
     color: var(--accent-primary);
-    border-color: color-mix(in srgb, var(--accent-primary) 22%, transparent);
+    border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 
 .badge--secondary {
-    background: #f3f4f6;
-    color: var(--text-secondary);
-    border-color: var(--border-default);
+    background: color-mix(in srgb, var(--accent-secondary) 16%, transparent);
+    color: var(--accent-secondary);
+    border-color: color-mix(in srgb, var(--accent-secondary) 25%, transparent);
 }
 
 .badge--success {
     background: var(--alert-success-bg);
     color: var(--accent-success);
-    border-color: color-mix(in srgb, var(--accent-success) 25%, transparent);
+    border-color: rgba(59, 228, 200, 0.3);
 }
 
 .badge--warning {
     background: var(--alert-warning-bg);
     color: var(--accent-warning);
-    border-color: color-mix(in srgb, var(--accent-warning) 25%, transparent);
+    border-color: rgba(245, 166, 35, 0.3);
 }
 
 .badge--danger {
     background: var(--alert-error-bg);
     color: var(--accent-danger);
-    border-color: color-mix(in srgb, var(--accent-danger) 25%, transparent);
-}
-
-.badge--info {
-    background: var(--alert-info-bg);
-    color: var(--accent-info);
-    border-color: color-mix(in srgb, var(--accent-info) 25%, transparent);
+    border-color: rgba(255, 92, 122, 0.3);
 }
 
 .badge--ghost {
-    background: transparent;
+    background: var(--glass-light);
     color: var(--text-secondary);
     border-color: var(--border-default);
-}
-
-/* Data table (Attio-like) */
-.data-table-wrap {
-    overflow: auto;
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    background: var(--surface-100);
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: var(--font-family-base);
-    font-size: 14px;
-}
-
-.data-table th,
-.data-table td {
-    padding: 10px 14px;
-    text-align: left;
-    border-bottom: 1px solid var(--border-default);
-    vertical-align: middle;
-}
-
-.data-table th {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    background: var(--surface-300);
-    white-space: nowrap;
-}
-
-.data-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.data-table tbody tr:hover td {
-    background: var(--row-hover);
-}
-
-.data-table__link {
-    color: var(--text-primary);
-    font-weight: 500;
-    text-decoration: none;
-}
-
-.data-table__link:hover {
-    color: var(--accent-primary);
-}
-
-.data-table__muted {
-    color: var(--text-secondary);
-    font-size: 13px;
-}
-
-.data-table__actions {
-    display: flex;
-    gap: var(--space-xs);
-    justify-content: flex-end;
-}
-
-/* Skeleton */
-.skeleton {
-    display: block;
-    border-radius: var(--radius-sm);
-    background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
-    background-size: 200% 100%;
-    animation: skeleton-shine 1.2s ease-in-out infinite;
-}
-
-@keyframes skeleton-shine {
-    0% { background-position: 100% 0; }
-    100% { background-position: -100% 0; }
-}
-
-/* CRM tabs */
-.crm-tabs {
-    display: flex;
-    gap: var(--space-xs);
-    border-bottom: 1px solid var(--border-default);
-    margin-bottom: var(--space-2xl);
-}
-
-.crm-tabs__btn {
-    appearance: none;
-    border: none;
-    background: transparent;
-    padding: var(--space-md) var(--space-lg);
-    font-family: var(--font-family-base);
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-}
-
-.crm-tabs__btn:hover {
-    color: var(--text-primary);
-}
-
-.crm-tabs__btn.is-active {
-    color: var(--accent-primary);
-    border-bottom-color: var(--accent-primary);
-}
-
-.crm-tabs__btn:focus-visible {
-    outline: var(--focus-ring-width) solid var(--focus-ring-color);
-    outline-offset: var(--focus-ring-offset);
-}
-
-.crm-tab-panel[hidden] {
-    display: none;
-}
-
-/* Timeline */
-.crm-timeline {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-}
-
-.crm-timeline__item {
-    position: relative;
-    padding: 0 0 var(--space-2xl) var(--space-3xl);
-    border-left: 2px solid var(--border-default);
-    margin-left: 7px;
-}
-
-.crm-timeline__item:last-child {
-    border-left-color: transparent;
-    padding-bottom: 0;
-}
-
-.crm-timeline__dot {
-    position: absolute;
-    left: -7px;
-    top: 4px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: var(--surface-100);
-    border: 2px solid var(--accent-primary);
-}
-
-.crm-timeline__meta {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-bottom: var(--space-xs);
-}
-
-.crm-timeline__title {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
 }
 
 /* ═══════════════════════════════════════

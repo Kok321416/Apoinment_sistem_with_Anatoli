@@ -16,7 +16,7 @@ def upgrade() -> None:
     if "source" not in cols:
         op.add_column(
             "bookings",
-            sa.Column("source", sa.String(32), nullable=False, server_default="client"),
+            sa.Column("source", sa.String(32), nullable=True, server_default="client"),
         )
 
 

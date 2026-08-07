@@ -29,7 +29,7 @@
     gap: var(--space-2xl);
 }
 
-/* Hero — flat SaaS header (glow disabled) */
+/* Hero */
 .calendars-hero,
 .bookings-hero,
 .clients-hero,
@@ -43,16 +43,30 @@
 .calendars-hero__glow,
 .bookings-hero__glow,
 .clients-hero__glow,
-.profile-hero__glow,
+.profile-hero__glow {
+    display: none;
+}
+
 .calendars-hero__glow--purple,
 .bookings-hero__glow--purple,
 .clients-hero__glow--purple,
-.profile-hero__glow--purple,
+.profile-hero__glow--purple {
+    width: 260px;
+    height: 260px;
+    top: -70px;
+    left: -30px;
+    background: var(--gradient-glow-purple);
+}
+
 .calendars-hero__glow--cyan,
 .bookings-hero__glow--cyan,
 .clients-hero__glow--cyan,
 .profile-hero__glow--cyan {
-    display: none !important;
+    width: 200px;
+    height: 200px;
+    bottom: -50px;
+    right: 8%;
+    background: var(--gradient-glow-cyan);
 }
 
 .calendars-hero__inner,
@@ -66,7 +80,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-xl);
-    padding: var(--space-2xl) var(--space-3xl);
+    padding: var(--space-3xl);
     background: var(--surface-200);
 }
 
@@ -139,18 +153,17 @@
 .stat-card {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     gap: var(--space-xs);
-    min-height: 96px;
+    min-height: 110px;
     padding: var(--space-xl);
     border-radius: var(--radius-md);
     background: var(--surface-200);
     border: 1px solid var(--border-default);
-    text-align: left;
-    transition: border-color 0.15s ease, background 0.15s ease;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     min-width: 0;
-    box-shadow: none;
 }
 
 .calendars-dash-card:hover,
@@ -159,9 +172,8 @@
 .dashboard-card:hover,
 .stat-card:hover {
     transform: none;
-    box-shadow: none;
+    box-shadow: var(--shadow-sm);
     border-color: var(--border-strong);
-    background: var(--row-hover, var(--surface-100));
 }
 
 .calendars-dash-card__value,
@@ -169,12 +181,10 @@
 .clients-dash-card__value,
 .dashboard-card__value,
 .stat-card__value {
-    font-family: var(--font-family-display);
-    font-size: clamp(1.375rem, 2.4vw, 1.75rem);
-    font-weight: 600;
-    line-height: 1.1;
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    font-weight: var(--font-weight-bold);
+    line-height: 1;
     overflow-wrap: anywhere;
-    color: var(--text-primary);
 }
 
 .calendars-dash-card__label,
@@ -671,50 +681,4 @@
         animation: none !important;
         transition: none !important;
     }
-}
-
-/* Dashboard overview */
-.dashboard-page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2xl);
-}
-
-.dashboard-recent {
-    padding: var(--space-xl);
-}
-
-.dashboard-recent__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-md);
-    margin-bottom: var(--space-lg);
-}
-
-.dashboard-recent__title {
-    margin: 0;
-    font-family: var(--font-family-display);
-    font-size: var(--font-size-h3);
-    font-weight: 600;
-}
-
-.cabinet-home-guide--collapsible {
-    padding: var(--space-xl) var(--space-2xl);
-}
-
-.cabinet-home-guide__summary {
-    cursor: pointer;
-    font-family: var(--font-family-display);
-    font-size: var(--font-size-h3);
-    font-weight: 600;
-    list-style: none;
-}
-
-.cabinet-home-guide__summary::-webkit-details-marker {
-    display: none;
-}
-
-.cabinet-home-guide--collapsible[open] .cabinet-home-guide__lead {
-    margin-top: var(--space-md);
 }
