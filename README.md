@@ -47,8 +47,7 @@ app/           # FastAPI (routers, models, services, templates, static)
 bot/           # Telegram bot
 mobile/        # Capacitor Android
 tests/         # pytest
-docs/          # design system, audit, TG setup
-PROMPTS/       # актуальные чеклисты агентов
+docs/          # design system, TG setup
 scripts/       # migrate / bot / reminders
 ```
 
@@ -56,12 +55,9 @@ scripts/       # migrate / bot / reminders
 
 ## Документация
 
-- `AGENTS.md` — оркестрация агентов
-- `docs/PROJECT_AUDIT.md` — аудит и план очистки
 - `docs/DESIGN_SYSTEM.md` — UI-токены
 - `docs/TELEGRAM_MINI_APP_SETUP.md` — Mini App
 - `mobile/README.md` — Android shell
-- `docs/archive/` — устаревшие планы
 
 ## Деплой
 

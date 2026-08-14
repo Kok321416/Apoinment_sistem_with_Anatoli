@@ -23,20 +23,10 @@ env/
 # IDE
 .vscode/
 .idea/
-.cursor/mcp.json
+.cursor/
+PROMPTS/
+AGENTS.md
 *.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Secrets
-secrets.json
-*.key
-*.pem
-telegram_token.txt
 
 # Local junk / hosting leftovers
 index.php

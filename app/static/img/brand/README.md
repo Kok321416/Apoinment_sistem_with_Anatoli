@@ -1,8 +1,7 @@
 # Brand pack — «Все клиенты здесь» (light)
 
-Mark: календарь + человек + галочка (Flux, 2026-08).
-Источники: `logo-source-flux.png`, мастер `logo-mark-master.png`.
-Пересборка: `python scripts/install_new_logo.py`
+Mark: календарь + человек + галочка.
+Мастер: `logo-mark-master.png`.
 
 | Asset | File | Where |
 |-------|------|-------|
