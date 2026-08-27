@@ -154,17 +154,30 @@ def resolve_consultant_by_slug(db: Session, slug: str) -> Consultant | None:
 
 async def resolve_consultant_by_slug_async(db: AsyncSession, slug: str) -> Consultant | None:
     from sqlalchemy import select, text as sql_text
+    from sqlalchemy.orm import selectinload
 
     slug = (slug or "").strip()
     if not slug:
         return None
+
+    async def _load(consultant_id: int) -> Consultant | None:
+        # Eager-load category: public/specialist.html reads consultant.category
+        # (async MissingGreenlet → 500 on /s/{slug}/ without this).
+        return (
+            await db.execute(
+                select(Consultant)
+                .options(selectinload(Consultant.category))
+                .where(Consultant.id == consultant_id)
+            )
+        ).scalar_one_or_none()
+
     if slug.startswith("id-"):
         try:
             cid = int(slug.replace("id-", "", 1))
         except ValueError:
             cid = None
         if cid:
-            return (await db.execute(select(Consultant).where(Consultant.id == cid))).scalar_one_or_none()
+            return await _load(cid)
     try:
         row = (
             await db.execute(
@@ -173,7 +186,7 @@ async def resolve_consultant_by_slug_async(db: AsyncSession, slug: str) -> Consu
             )
         ).first()
         if row:
-            return (await db.execute(select(Consultant).where(Consultant.id == row[0]))).scalar_one_or_none()
+            return await _load(row[0])
     except Exception:
         await db.rollback()
     return None
