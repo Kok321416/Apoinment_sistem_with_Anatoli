@@ -5,15 +5,23 @@
         /Telegram/i.test(navigator.userAgent || "") ||
         !!document.querySelector("[data-tg-hub]");
     if (!need) return;
+
+    function loadLocalBoot() {
+        if (window.__AYC_TG_BOOT_LOADED__) return;
+        window.__AYC_TG_BOOT_LOADED__ = true;
+        var s2 = document.createElement("script");
+        s2.src = "/static/js/telegram-webapp.js?v=16";
+        s2.async = true;
+        document.body.appendChild(s2);
+    }
+
     var s1 = document.createElement("script");
     s1.src = "https://telegram.org/js/telegram-web-app.js";
     s1.async = true;
-    s1.onload = function () {
-        var s2 = document.createElement("script");
-        s2.src = "/static/js/telegram-webapp.js?v=15";
-        s2.async = true;
-        document.body.appendChild(s2);
-    };
+    s1.onload = loadLocalBoot;
+    s1.onerror = loadLocalBoot;
+    // Android: if telegram.org is slow/blocked, still boot local shell.
+    setTimeout(loadLocalBoot, 2500);
     document.body.appendChild(s1);
 })();
 </script>

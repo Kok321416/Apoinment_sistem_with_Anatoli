@@ -34,6 +34,28 @@ def test_normalize_email_optional():
 
 
 @pytest.mark.asyncio
+async def test_search_client_cards_by_name_and_telegram():
+    from app.services.bookings import search_client_cards_async
+
+    card_a = MagicMock(id=1, name="Вася Пупкин", telegram="@vasya", phone=None, email=None)
+    card_b = MagicMock(id=2, name="Мария", telegram="@mary", phone=None, email=None)
+
+    async def execute(stmt):
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [card_a]
+        return result
+
+    db = AsyncMock()
+    db.execute = execute
+    rows = await search_client_cards_async(db, consultant_id=1, query="вас")
+    assert rows == [card_a]
+
+    rows_empty = await search_client_cards_async(db, consultant_id=1, query="  ")
+    assert rows_empty == []
+
+
+
+@pytest.mark.asyncio
 async def test_specialist_booking_requires_name():
     db = AsyncMock()
     consultant = MagicMock(id=1)

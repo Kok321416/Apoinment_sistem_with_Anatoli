@@ -579,6 +579,50 @@ async def find_matching_client_cards_async(
     return list(rows)
 
 
+async def search_client_cards_async(
+    db,
+    consultant_id: int,
+    query: str,
+    *,
+    limit: int = 12,
+) -> list[ClientCard]:
+    """Live search for specialist booking: name, telegram nick, phone, email."""
+    from sqlalchemy import select
+
+    q = (query or "").strip()
+    if len(q) < 1:
+        return []
+    like = f"%{q}%"
+    tg = q.lstrip("@")
+    conditions = [
+        ClientCard.name.ilike(like),
+        ClientCard.telegram.ilike(like),
+        ClientCard.phone.ilike(like),
+        ClientCard.email.ilike(like),
+    ]
+    if tg and tg != q:
+        conditions.append(ClientCard.telegram.ilike(f"%{tg}%"))
+    rows = (
+        await db.execute(
+            select(ClientCard)
+            .where(ClientCard.consultant_id == consultant_id, or_(*conditions))
+            .order_by(ClientCard.updated_at.desc())
+            .limit(limit)
+        )
+    ).scalars().all()
+    return list(rows)
+
+
+def serialize_client_card_match(card: ClientCard) -> dict:
+    return {
+        "id": card.id,
+        "name": card.name or f"Клиент #{card.id}",
+        "phone": card.phone or "",
+        "email": card.email or "",
+        "telegram": card.telegram or "",
+    }
+
+
 async def create_specialist_booking_async(
     db,
     consultant: Consultant,
@@ -734,16 +778,7 @@ async def create_specialist_booking_async(
             telegram=telegram,
         )
         if matches:
-            return None, "found_matches", [
-                {
-                    "id": c.id,
-                    "name": c.name or f"Клиент #{c.id}",
-                    "phone": c.phone or "",
-                    "email": c.email or "",
-                    "telegram": c.telegram or "",
-                }
-                for c in matches
-            ]
+            return None, "found_matches", [serialize_client_card_match(c) for c in matches]
 
     if card is None:
         if force_new_client:

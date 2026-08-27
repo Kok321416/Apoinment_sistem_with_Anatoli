@@ -9,7 +9,14 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/auth.css?v=21">
-<link rel="stylesheet" href="/static/css/tg-webapp.css?v=15">
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=16">
+<style>
+  html, body.tg-hub-page {
+    background: #ffffff !important;
+    color: #0a0a0a !important;
+    min-height: 100%;
+  }
+</style>
 {% endblock %}
 
 {% block body_class %}{% if user and user.is_authenticated %}tg-hub-page{% else %}auth-page tg-hub-page{% endif %}{% endblock %}

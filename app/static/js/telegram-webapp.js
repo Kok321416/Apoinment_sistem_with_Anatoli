@@ -69,17 +69,26 @@
         var shell = document.getElementById("tg-scroll-root");
         try {
             applySafeArea(tg);
-            var h = Math.round(tg.viewportStableHeight || tg.viewportHeight || window.innerHeight || 0);
+            var h = Math.round(
+                tg.viewportStableHeight || tg.viewportHeight || window.innerHeight || document.documentElement.clientHeight || 0
+            );
+            if (!h || h < 200) {
+                h = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0, 480);
+            }
             if (h > 0) {
                 root.style.setProperty("--tg-viewport-stable-height", h + "px");
                 root.style.height = h + "px";
                 root.style.maxHeight = h + "px";
+                root.style.background = "#ffffff";
                 if (body) {
                     body.style.height = h + "px";
                     body.style.maxHeight = h + "px";
+                    body.style.background = "#ffffff";
+                    body.style.color = "#0a0a0a";
                 }
                 if (shell) {
                     shell.style.height = h + "px";
+                    shell.style.background = "#ffffff";
                 }
             }
         } catch (e) {}

@@ -11,7 +11,11 @@ from app.database import get_async_db
 from app.deps import require_specialist_mode_async
 from app.models import Calendar, Service
 from app.security.csrf import validate_csrf_token
-from app.services.bookings import create_specialist_booking_async
+from app.services.bookings import (
+    create_specialist_booking_async,
+    search_client_cards_async,
+    serialize_client_card_match,
+)
 from app.services.slots import get_available_slots_async
 
 router = APIRouter(prefix="/api/specialist", tags=["specialist-booking"])
@@ -21,6 +25,21 @@ async def _require_user(request: Request, db: AsyncSession):
     from app.auth.session import get_current_user_async
 
     return await get_current_user_async(request, db)
+
+
+@router.get("/clients/")
+async def search_clients(
+    request: Request,
+    q: str = "",
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Search specialist CRM cards by name, telegram, phone or email."""
+    user = await _require_user(request, db)
+    if not user:
+        return JSONResponse({"error": "Требуется вход"}, status_code=401)
+    consultant = await require_specialist_mode_async(request, db, user)
+    cards = await search_client_cards_async(db, consultant.id, q)
+    return {"clients": [serialize_client_card_match(c) for c in cards]}
 
 
 @router.get("/calendars/")

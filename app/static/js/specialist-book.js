@@ -1,6 +1,7 @@
 /**
- * Specialist manual booking wizard (cabinet).
+ * Specialist manual booking wizard (cabinet + TG webview same JS).
  * POST /api/specialist/bookings/
+ * GET  /api/specialist/clients/?q=
  */
 (function () {
     "use strict";
@@ -15,11 +16,23 @@
         return root.querySelector(sel);
     }
 
+    function esc(s) {
+        return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
     function csrfToken() {
         var m = document.querySelector('meta[name="csrf-token"]');
         if (m && m.content) return m.content;
         var page = document.querySelector("[data-csrf]");
         return page ? page.getAttribute("data-csrf") : "";
+    }
+
+    function contactLine(m) {
+        return [m.phone, m.email, m.telegram].filter(Boolean).join(" · ");
     }
 
     function openModal(opts) {
@@ -35,7 +48,7 @@
                 '<h2 class="sb-modal__title" id="sb-title">Записать клиента</h2>' +
                 '<button type="button" class="btn btn--ghost btn--sm" data-sb-close aria-label="Закрыть">Закрыть</button>' +
                 "</header>" +
-                '<p class="sb-modal__note">Вы вносите данные клиента как специалист. Согласие клиента на обработку ПДн оформляется вне этой формы (см. Политику конфиденциальности).</p>' +
+                '<p class="sb-modal__note">Найдите клиента по имени или Telegram-нику. Если карточки нет - заполните данные вручную.</p>' +
                 '<div class="sb-modal__steps" id="sb-steps" aria-label="Шаги"></div>' +
                 '<div class="sb-modal__body" id="sb-body"></div>' +
                 '<div class="sb-modal__status" id="sb-status" role="status" hidden></div>' +
@@ -64,9 +77,14 @@
             client_card_id: null,
             force_new_client: false,
             matches: [],
+            search_q: "",
+            search_results: [],
+            search_loading: false,
+            selected_card: null,
         };
 
         var steps = ["Клиент", "Календарь", "Услуга", "Дата и время", "Проверка"];
+        var searchTimer = null;
 
         function setStatus(msg, isError) {
             var box = qs(modal, "#sb-status");
@@ -84,45 +102,137 @@
                 .join("");
         }
 
+        function applyCard(card) {
+            state.client_card_id = card.id;
+            state.selected_card = card;
+            state.force_new_client = false;
+            state.client_name = card.name || "";
+            state.client_phone = card.phone || "";
+            state.client_email = card.email || "";
+            state.client_telegram = card.telegram || "";
+            state.matches = [];
+            state.search_results = [];
+        }
+
+        function clearSelectedCard() {
+            state.client_card_id = null;
+            state.selected_card = null;
+            state.force_new_client = false;
+        }
+
+        function renderClientResults(list, emptyText) {
+            if (!list || !list.length) {
+                return emptyText ? '<p class="sb-search__empty text-muted">' + esc(emptyText) + "</p>" : "";
+            }
+            return (
+                '<ul class="sb-search__list">' +
+                list
+                    .map(function (m) {
+                        var selected = state.client_card_id === m.id;
+                        return (
+                            '<li><button type="button" class="sb-card sb-card--client' +
+                            (selected ? " is-selected" : "") +
+                            '" data-pick-card="' +
+                            m.id +
+                            '">' +
+                            "<div><strong>" +
+                            esc(m.name) +
+                            "</strong>" +
+                            (contactLine(m)
+                                ? '<span class="sb-card__meta">' + esc(contactLine(m)) + "</span>"
+                                : "") +
+                            "</div>" +
+                            '<span class="sb-card__action">' +
+                            (selected ? "Выбрана" : "Выбрать") +
+                            "</span></button></li>"
+                        );
+                    })
+                    .join("") +
+                "</ul>"
+            );
+        }
+
         function renderBody() {
             var body = qs(modal, "#sb-body");
             var nextBtn = qs(modal, "[data-sb-next]");
             var prevBtn = qs(modal, "[data-sb-prev]");
             prevBtn.hidden = state.step === 0;
-            nextBtn.textContent = state.step === steps.length - 1 ? "Создать запись" : "Далее";
+            nextBtn.hidden = false;
+            nextBtn.disabled = false;
+            nextBtn.textContent = state.step === steps.length - 1 ? "Записать" : "Далее";
 
             if (state.step === 0) {
+                var selectedBlock = state.selected_card
+                    ? '<div class="sb-selected" role="status">' +
+                      "<div><strong>Выбрана карточка:</strong> " +
+                      esc(state.selected_card.name) +
+                      (contactLine(state.selected_card)
+                          ? '<span class="sb-card__meta">' + esc(contactLine(state.selected_card)) + "</span>"
+                          : "") +
+                      '</div><button type="button" class="btn btn--ghost btn--sm" data-clear-card>Сменить</button></div>'
+                    : "";
+
+                var resultsBlock = "";
+                if (state.search_loading) {
+                    resultsBlock = '<p class="text-muted">Ищем…</p>';
+                } else if (state.search_q.trim().length >= 1) {
+                    resultsBlock = renderClientResults(
+                        state.search_results,
+                        "Никого не нашли. Заполните поля ниже для новой карточки."
+                    );
+                } else if (state.matches.length) {
+                    resultsBlock =
+                        '<p class="sb-search__hint">Найдены похожие клиенты:</p>' +
+                        renderClientResults(state.matches) +
+                        '<button type="button" class="btn btn--ghost btn--sm" data-force-new>Создать новую карточку</button>';
+                }
+
                 body.innerHTML =
+                    '<div class="form-field"><label class="form-field__label" for="sb-search">Поиск по имени или Telegram</label>' +
+                    '<input class="input" id="sb-search" type="search" autocomplete="off" placeholder="Начните вводить имя или @ник" value="' +
+                    esc(state.search_q) +
+                    '"></div>' +
+                    selectedBlock +
+                    '<div class="sb-search" id="sb-search-results">' +
+                    resultsBlock +
+                    "</div>" +
+                    '<div class="sb-manual' +
+                    (state.selected_card ? " is-locked" : "") +
+                    '">' +
+                    '<p class="sb-manual__title">' +
+                    (state.selected_card ? "Данные из карточки" : "Или новый клиент") +
+                    "</p>" +
                     '<div class="form-field"><label class="form-field__label" for="sb-name">ФИО *</label>' +
-                    '<input class="input" id="sb-name" required value="' +
-                    (state.client_name || "") +
+                    '<input class="input" id="sb-name" required ' +
+                    (state.selected_card ? "readonly " : "") +
+                    'value="' +
+                    esc(state.client_name) +
                     '"></div>' +
                     '<div class="app-form-grid">' +
-                    '<div class="form-field"><label class="form-field__label" for="sb-phone">Телефон</label><input class="input" id="sb-phone" value="' +
-                    (state.client_phone || "") +
+                    '<div class="form-field"><label class="form-field__label" for="sb-phone">Телефон</label><input class="input" id="sb-phone" ' +
+                    (state.selected_card ? "readonly " : "") +
+                    'value="' +
+                    esc(state.client_phone) +
                     '"></div>' +
-                    '<div class="form-field"><label class="form-field__label" for="sb-email">Email</label><input class="input" id="sb-email" type="email" value="' +
-                    (state.client_email || "") +
+                    '<div class="form-field"><label class="form-field__label" for="sb-email">Email</label><input class="input" id="sb-email" type="email" ' +
+                    (state.selected_card ? "readonly " : "") +
+                    'value="' +
+                    esc(state.client_email) +
                     '"></div>' +
-                    '<div class="form-field"><label class="form-field__label" for="sb-tg">Telegram</label><input class="input" id="sb-tg" placeholder="@username" value="' +
-                    (state.client_telegram || "") +
-                    '"></div></div>' +
-                    (state.matches.length
-                        ? '<div class="sb-matches"><p>Найдены похожие клиенты:</p><ul>' +
-                          state.matches
-                              .map(function (m) {
-                                  return (
-                                      '<li><button type="button" class="btn btn--secondary btn--sm" data-pick-card="' +
-                                      m.id +
-                                      '">' +
-                                      m.name +
-                                      (m.phone ? " · " + m.phone : "") +
-                                      "</button></li>"
-                                  );
-                              })
-                              .join("") +
-                          '</ul><button type="button" class="btn btn--ghost btn--sm" data-force-new>Создать новую карточку</button></div>'
-                        : "");
+                    '<div class="form-field"><label class="form-field__label" for="sb-tg">Telegram</label><input class="input" id="sb-tg" placeholder="@username" ' +
+                    (state.selected_card ? "readonly " : "") +
+                    'value="' +
+                    esc(state.client_telegram) +
+                    '"></div></div></div>';
+
+                var searchInput = qs(modal, "#sb-search");
+                if (searchInput && !state.selected_card) {
+                    searchInput.focus();
+                    if (typeof searchInput.setSelectionRange === "function") {
+                        var len = searchInput.value.length;
+                        searchInput.setSelectionRange(len, len);
+                    }
+                }
             } else if (state.step === 1) {
                 body.innerHTML =
                     '<div class="sb-cards">' +
@@ -138,7 +248,7 @@
                                 (!c.is_active ? "disabled" : "") +
                                 ">" +
                                 "<strong>" +
-                                c.name +
+                                esc(c.name) +
                                 "</strong>" +
                                 '<span class="badge badge--' +
                                 (c.is_active ? "success" : "secondary") +
@@ -163,7 +273,7 @@
                                   '" data-svc="' +
                                   s.id +
                                   '"><strong>' +
-                                  s.name +
+                                  esc(s.name) +
                                   "</strong><span>" +
                                   s.duration_minutes +
                                   " мин</span></button>"
@@ -176,7 +286,7 @@
                 body.innerHTML =
                     '<div class="form-field"><label class="form-field__label" for="sb-date">Дата</label>' +
                     '<input class="input" type="date" id="sb-date" value="' +
-                    (state.booking_date || "") +
+                    esc(state.booking_date) +
                     '"></div>' +
                     '<div id="sb-slots" class="sb-slots">' +
                     (state.slots.length
@@ -192,12 +302,12 @@
                                       '<button type="button" class="sb-slot' +
                                       (state.booking_time === start ? " is-selected" : "") +
                                       '" data-start="' +
-                                      start +
+                                      esc(start) +
                                       '" data-end="' +
-                                      end +
+                                      esc(end) +
                                       '">' +
-                                      start +
-                                      (end ? "–" + end : "") +
+                                      esc(start) +
+                                      (end ? "–" + esc(end) : "") +
                                       "</button>"
                                   );
                               })
@@ -208,19 +318,51 @@
                 body.innerHTML =
                     '<dl class="sb-summary">' +
                     "<div><dt>Клиент</dt><dd>" +
-                    (state.client_name || "—") +
+                    esc(state.client_name || "—") +
+                    (state.client_card_id ? ' <span class="text-muted">(карточка #' + state.client_card_id + ")</span>" : "") +
                     "</dd></div>" +
                     "<div><dt>Контакты</dt><dd>" +
-                    [state.client_phone, state.client_email, state.client_telegram].filter(Boolean).join(" · ") +
+                    esc([state.client_phone, state.client_email, state.client_telegram].filter(Boolean).join(" · ") || "—") +
                     "</dd></div>" +
                     "<div><dt>Дата и время</dt><dd>" +
-                    state.booking_date +
+                    esc(state.booking_date) +
                     " " +
-                    state.booking_time +
-                    (state.booking_end_time ? "–" + state.booking_end_time : "") +
+                    esc(state.booking_time) +
+                    (state.booking_end_time ? "–" + esc(state.booking_end_time) : "") +
                     "</dd></div>" +
                     "</dl>";
             }
+        }
+
+        async function searchClients(q) {
+            state.search_q = q;
+            if (!q.trim()) {
+                state.search_results = [];
+                state.search_loading = false;
+                renderBody();
+                return;
+            }
+            state.search_loading = true;
+            renderBody();
+            try {
+                var res = await fetch("/api/specialist/clients/?q=" + encodeURIComponent(q.trim()), {
+                    credentials: "same-origin",
+                });
+                var data = await res.json();
+                if (state.search_q.trim() !== q.trim()) return;
+                state.search_results = data.clients || [];
+            } catch (e) {
+                state.search_results = [];
+            }
+            state.search_loading = false;
+            renderBody();
+        }
+
+        function scheduleSearch(q) {
+            if (searchTimer) clearTimeout(searchTimer);
+            searchTimer = setTimeout(function () {
+                searchClients(q);
+            }, 250);
         }
 
         async function loadCalendars() {
@@ -269,12 +411,14 @@
         }
 
         function readStep0() {
-            state.client_name = (qs(modal, "#sb-name") || {}).value || "";
-            state.client_phone = (qs(modal, "#sb-phone") || {}).value || "";
-            state.client_email = (qs(modal, "#sb-email") || {}).value || "";
-            state.client_telegram = (qs(modal, "#sb-tg") || {}).value || "";
+            if (!state.selected_card) {
+                state.client_name = (qs(modal, "#sb-name") || {}).value || "";
+                state.client_phone = (qs(modal, "#sb-phone") || {}).value || "";
+                state.client_email = (qs(modal, "#sb-email") || {}).value || "";
+                state.client_telegram = (qs(modal, "#sb-tg") || {}).value || "";
+            }
             if (!state.client_name.trim()) {
-                setStatus("Укажите ФИО клиента", true);
+                setStatus("Укажите ФИО или выберите карточку из поиска", true);
                 return false;
             }
             return true;
@@ -285,27 +429,12 @@
             var payload = {
                 csrf_token: csrfToken() || opts.csrf || "",
                 client_name: state.client_name,
-                client_phone: state.client_phone || null,
-                client_email: state.client_email || null,
-                client_telegram: state.client_telegram || null,
                 calendar_id: state.calendar_id,
                 service_id: state.service_id,
                 booking_date: state.booking_date,
                 booking_time: state.booking_time,
                 booking_end_time: state.booking_end_time,
-                client_card_id: state.client_card_id,
-                force_new_client: state.force_new_client,
             };
-            Object.keys(payload).forEach(function (k) {
-                if (payload[k] === null || payload[k] === "") delete payload[k];
-            });
-            payload.csrf_token = csrfToken() || opts.csrf || "";
-            payload.client_name = state.client_name;
-            payload.calendar_id = state.calendar_id;
-            payload.service_id = state.service_id;
-            payload.booking_date = state.booking_date;
-            payload.booking_time = state.booking_time;
-            payload.booking_end_time = state.booking_end_time;
             if (state.client_phone) payload.client_phone = state.client_phone;
             if (state.client_email) payload.client_email = state.client_email;
             if (state.client_telegram) payload.client_telegram = state.client_telegram;
@@ -324,7 +453,7 @@
             if (res.status === 409 && data.error === "found_matches") {
                 state.matches = data.matches || [];
                 state.step = 0;
-                setStatus(data.message || "Найдены похожие клиенты", true);
+                setStatus(data.message || "Найдены похожие клиенты. Выберите карточку.", true);
                 renderSteps();
                 renderBody();
                 return;
@@ -339,6 +468,17 @@
             setTimeout(function () {
                 modal.remove();
             }, 600);
+        }
+
+        function findCardById(id) {
+            var pools = [state.search_results, state.matches];
+            for (var i = 0; i < pools.length; i++) {
+                for (var j = 0; j < pools[i].length; j++) {
+                    if (pools[i][j].id === id) return pools[i][j];
+                }
+            }
+            if (state.selected_card && state.selected_card.id === id) return state.selected_card;
+            return null;
         }
 
         modal.addEventListener("click", function (e) {
@@ -369,15 +509,31 @@
             }
             var pick = t.closest("[data-pick-card]");
             if (pick) {
-                state.client_card_id = parseInt(pick.getAttribute("data-pick-card"), 10);
-                state.force_new_client = false;
-                state.matches = [];
-                setStatus("Выбрана существующая карточка", false);
+                var cid = parseInt(pick.getAttribute("data-pick-card"), 10);
+                var card = findCardById(cid);
+                if (!card) {
+                    card = {
+                        id: cid,
+                        name: state.client_name || "Клиент #" + cid,
+                        phone: state.client_phone || "",
+                        email: state.client_email || "",
+                        telegram: state.client_telegram || "",
+                    };
+                }
+                applyCard(card);
+                setStatus("Карточка выбрана. Нажмите «Далее».", false);
+                renderBody();
+                return;
+            }
+            if (t.closest("[data-clear-card]")) {
+                clearSelectedCard();
+                setStatus("", false);
+                renderBody();
                 return;
             }
             if (t.closest("[data-force-new]")) {
                 state.force_new_client = true;
-                state.client_card_id = null;
+                clearSelectedCard();
                 state.matches = [];
                 setStatus("Будет создана новая карточка", false);
                 renderBody();
@@ -439,6 +595,13 @@
                 return;
             }
             await submit();
+        });
+
+        modal.addEventListener("input", function (e) {
+            if (e.target && e.target.id === "sb-search") {
+                if (state.selected_card) return;
+                scheduleSearch(e.target.value || "");
+            }
         });
 
         modal.addEventListener("change", function (e) {
