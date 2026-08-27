@@ -1,6 +1,7 @@
 """Public specialist pages: share link → client gate → calendars → services → book."""
 from datetime import date, datetime
 from urllib.parse import urlencode
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -26,6 +27,7 @@ from app.templating import page_context_async, templates
 
 router = APIRouter(tags=["public-specialist"])
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 async def _get_consultant_by_slug_async(db, slug: str) -> Consultant:
@@ -69,25 +71,35 @@ async def specialist_public_home(request: Request, slug: str, db: AsyncSession =
 
     auth_user = await get_current_user_async(request, db)
     if auth_user:
-        await apply_client_gate_from_user_async(
-            db,
-            request.session,
-            consultant_id=consultant.id,
-            user=auth_user,
-        )
-        _sync_booking_session(request)
-        from app.services.diagnostics_service import touch_client_specialist_link
-
         try:
-            await touch_client_specialist_link(
+            await apply_client_gate_from_user_async(
                 db,
-                client_user_id=auth_user.id,
+                request.session,
                 consultant_id=consultant.id,
-                source="visit",
+                user=auth_user,
             )
-            await db.commit()
+            _sync_booking_session(request)
         except Exception:
-            await db.rollback()
+            logger.exception("client gate apply failed for /s/%s/", slug)
+
+        # Same user opening own public page: skip link write (not a client visit).
+        if getattr(auth_user, "id", None) != getattr(consultant, "user_id", None):
+            from app.services.diagnostics_service import touch_client_specialist_link
+
+            try:
+                await touch_client_specialist_link(
+                    db,
+                    client_user_id=auth_user.id,
+                    consultant_id=consultant.id,
+                    source="visit",
+                )
+                await db.commit()
+            except Exception:
+                await db.rollback()
+                logger.exception("touch_client_specialist_link failed for /s/%s/", slug)
+
+        # rollback()/commit() can expire ORM state — always reload for the template.
+        consultant = await _get_consultant_by_slug_async(db, slug)
 
     calendars = list(
         (

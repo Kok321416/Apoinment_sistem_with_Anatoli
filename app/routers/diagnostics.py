@@ -50,7 +50,18 @@ async def diagnostics_hub(request: Request, db: AsyncSession = Depends(get_async
     if not user:
         return _login_redirect(request)
 
-    psychologists = await list_client_psychologists(db, user.id)
+    try:
+        psychologists = await list_client_psychologists(db, user.id)
+    except Exception:
+        # Table may be missing on first boot before create_all; do not 500 the cabinet.
+        from app.db_schema import ensure_all_schema
+
+        ensure_all_schema()
+        try:
+            psychologists = await list_client_psychologists(db, user.id)
+        except Exception:
+            psychologists = []
+
     selected_id = request.query_params.get("consultant_id")
     selected = None
     if selected_id:
@@ -66,10 +77,15 @@ async def diagnostics_hub(request: Request, db: AsyncSession = Depends(get_async
     attempts = []
     if selected:
         request.session["diagnostics_consultant_id"] = selected.id
-        attempts = [
-            attempt_to_view(a)
-            for a in await list_attempts_for_client(db, client_user_id=user.id, consultant_id=selected.id)
-        ]
+        try:
+            attempts = [
+                attempt_to_view(a)
+                for a in await list_attempts_for_client(
+                    db, client_user_id=user.id, consultant_id=selected.id
+                )
+            ]
+        except Exception:
+            attempts = []
 
     tests = list_tests(only_runnable=False)
     return templates.TemplateResponse(

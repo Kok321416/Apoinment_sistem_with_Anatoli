@@ -25,15 +25,38 @@ async def touch_client_specialist_link(
     client_user_id: int,
     consultant_id: int,
     source: str = "visit",
-) -> ClientSpecialistLink:
-    row = (
-        await db.execute(
-            select(ClientSpecialistLink).where(
-                ClientSpecialistLink.client_user_id == client_user_id,
-                ClientSpecialistLink.consultant_id == consultant_id,
+) -> ClientSpecialistLink | None:
+    if not client_user_id or not consultant_id:
+        return None
+    if client_user_id and consultant_id:
+        # Avoid self-link noise when specialist opens own public URL while logged in.
+        owner = (
+            await db.execute(select(Consultant.user_id).where(Consultant.id == consultant_id))
+        ).scalar_one_or_none()
+        if owner and int(owner) == int(client_user_id):
+            return None
+    try:
+        row = (
+            await db.execute(
+                select(ClientSpecialistLink).where(
+                    ClientSpecialistLink.client_user_id == client_user_id,
+                    ClientSpecialistLink.consultant_id == consultant_id,
+                )
             )
-        )
-    ).scalar_one_or_none()
+        ).scalar_one_or_none()
+    except Exception:
+        # First-deploy race: tables not created yet.
+        from app.db_schema import ensure_all_schema
+
+        ensure_all_schema()
+        row = (
+            await db.execute(
+                select(ClientSpecialistLink).where(
+                    ClientSpecialistLink.client_user_id == client_user_id,
+                    ClientSpecialistLink.consultant_id == consultant_id,
+                )
+            )
+        ).scalar_one_or_none()
     now = datetime.utcnow()
     if row:
         row.last_opened_at = now
