@@ -32,8 +32,8 @@
 
     {% if tg_show_mode_switcher %}
     <div class="tg-hub__switch" role="group" aria-label="Режим">
-        <a href="/tg/?mode=specialist" class="{% if tg_mode == tg_mode_specialist %}is-active{% endif %}">Специалист</a>
         <a href="/tg/?mode=client" class="{% if tg_mode == tg_mode_client %}is-active{% endif %}">Клиент</a>
+        <a href="/tg/?mode=specialist" class="{% if tg_mode == tg_mode_specialist %}is-active{% endif %}">Специалист</a>
     </div>
     {% endif %}
 
@@ -67,13 +67,7 @@
             <span class="tg-hub__card-title">Мои записи</span>
             <span class="tg-hub__card-desc">Ближайшие и история</span>
         </a>
-        {% if tg_has_consultant %}
-        <a class="tg-hub__card-link" href="/tg/?mode=specialist">
-            <span class="tg-hub__card-icon" data-icon="overview" aria-hidden="true"></span>
-            <span class="tg-hub__card-title">Кабинет специалиста</span>
-            <span class="tg-hub__card-desc">Переключить режим</span>
-        </a>
-        {% else %}
+        {% if not tg_has_consultant %}
         <a class="tg-hub__card-link" href="/become-specialist/">
             <span class="tg-hub__card-icon" data-icon="profile" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Стать специалистом</span>

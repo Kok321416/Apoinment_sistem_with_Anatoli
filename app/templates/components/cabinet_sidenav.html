@@ -63,7 +63,17 @@
                 <span class="cabinet-nav__glyph" data-icon="telegram" aria-hidden="true"></span>
                 <span class="cabinet-nav__label">Telegram</span>
             </a>
-            {% if not has_consultant %}
+            {% if has_consultant %}
+            <form method="POST" action="/account/mode/" class="cabinet-sidenav__switch-specialist">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="mode" value="specialist">
+                <input type="hidden" name="next" value="/dashboard/">
+                <button type="submit" class="cabinet-nav__item">
+                    <span class="cabinet-nav__glyph" data-icon="overview" aria-hidden="true"></span>
+                    <span class="cabinet-nav__label">Кабинет специалиста</span>
+                </button>
+            </form>
+            {% else %}
             {{ nav_item('become', '/become-specialist/', 'Стать специалистом', 'profile') }}
             {% endif %}
         {% endif %}

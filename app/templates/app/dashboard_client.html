@@ -9,7 +9,7 @@
 {% block app_content %}
 {% if need_mode_specialist %}
 <div class="alert alert--info cabinet-alert" role="alert">
-    Чтобы открыть кабинет специалиста, переключите режим слева на «Специалист».
+    Чтобы открыть кабинет специалиста, нажмите кнопку ниже в «Быстрых действиях».
 </div>
 {% endif %}
 
@@ -39,10 +39,15 @@
                 </li>
                 {% if has_consultant %}
                 <li>
-                    <a href="/calendars/" class="cabinet-home-guide__link">
-                        <span class="cabinet-nav__glyph" data-icon="overview" aria-hidden="true"></span>
-                        <span><strong>Кабинет специалиста</strong> - переключите режим в меню на «Специалист»</span>
-                    </a>
+                    <form method="POST" action="/account/mode/" class="cabinet-home-guide__link-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="mode" value="specialist">
+                        <input type="hidden" name="next" value="/dashboard/">
+                        <button type="submit" class="cabinet-home-guide__link">
+                            <span class="cabinet-nav__glyph" data-icon="overview" aria-hidden="true"></span>
+                            <span><strong>Кабинет специалиста</strong> - расписание, клиенты, записи</span>
+                        </button>
+                    </form>
                 </li>
                 {% else %}
                 <li>

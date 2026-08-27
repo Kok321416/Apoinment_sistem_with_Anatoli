@@ -110,7 +110,7 @@ def test_integration_chat_id_conflict_rejected():
 
 
 def test_active_mode_session_helpers():
-    from app.services.active_mode import set_active_mode
+    from app.services.active_mode import get_active_mode, set_active_mode
     from starlette.requests import Request
 
     scope = {
@@ -132,3 +132,45 @@ def test_active_mode_session_helpers():
     assert request.session.get("active_mode") == "client"
     set_active_mode(request, "specialist", has_consultant=True)
     assert request.session.get("active_mode") == "specialist"
+
+
+def test_default_active_mode_is_client_even_with_consultant():
+    from app.services.active_mode import get_active_mode
+    from starlette.requests import Request
+
+    db = _session()
+    cat = Category(name_category="Общая")
+    db.add(cat)
+    db.flush()
+    user = User(username="spec", password="x", email="s@t.c", date_joined=datetime.now())
+    db.add(user)
+    db.flush()
+    db.add(
+        Consultant(
+            first_name="A",
+            last_name="B",
+            email="s@t.c",
+            phone="+7999",
+            category_of_specialist_id=cat.id,
+            user_id=user.id,
+        )
+    )
+    db.commit()
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "headers": [],
+        "path": "/dashboard/",
+        "raw_path": b"/dashboard/",
+        "query_string": b"",
+        "client": ("127.0.0.1", 123),
+        "server": ("test", 80),
+        "scheme": "http",
+        "session": {"has_consultant": True},
+    }
+    request = Request(scope)
+    assert get_active_mode(request, db, user.id) == "client"
+    db.close()

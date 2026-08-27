@@ -198,8 +198,6 @@ async def telegram_mini_app_entry(request: Request, db: AsyncSession = Depends(g
     from app.services.active_mode import (
         MODE_CLIENT,
         MODE_SPECIALIST,
-        VALID_MODES,
-        get_active_mode_async,
         set_active_mode,
         user_has_consultant_async,
     )
@@ -207,9 +205,15 @@ async def telegram_mini_app_entry(request: Request, db: AsyncSession = Depends(g
     user = await get_current_user_async(request, db)
     mode_q = (request.query_params.get("mode") or "").strip().lower()
     has_c = bool(user and await user_has_consultant_async(db, user.id))
-    if user and mode_q in VALID_MODES:
-        set_active_mode(request, mode_q, has_consultant=has_c)
-    active = await get_active_mode_async(request, db, user.id) if user else MODE_CLIENT
+    if user:
+        if mode_q == MODE_SPECIALIST and has_c:
+            set_active_mode(request, MODE_SPECIALIST, has_consultant=has_c)
+            active = MODE_SPECIALIST
+        else:
+            set_active_mode(request, MODE_CLIENT, has_consultant=has_c)
+            active = MODE_CLIENT
+    else:
+        active = MODE_CLIENT
     return templates.TemplateResponse(
         "public/tg_mini_app.html",
         await page_context_async(
@@ -220,7 +224,7 @@ async def telegram_mini_app_entry(request: Request, db: AsyncSession = Depends(g
             load_telegram_webapp=True,
             tg_mode=active,
             tg_has_consultant=has_c,
-            tg_show_mode_switcher=has_c,
+            tg_show_mode_switcher=bool(has_c and active == MODE_SPECIALIST),
             tg_mode_client=MODE_CLIENT,
             tg_mode_specialist=MODE_SPECIALIST,
         ),

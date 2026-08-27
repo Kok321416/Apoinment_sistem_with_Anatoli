@@ -44,7 +44,7 @@ async def get_cached_has_consultant_async(request: Request, db, user_id: int) ->
 
 
 def default_mode_for_user(db: Session, user_id: int) -> str:
-    return MODE_SPECIALIST if user_has_consultant(db, user_id) else MODE_CLIENT
+    return MODE_CLIENT
 
 
 def get_active_mode(
@@ -66,7 +66,7 @@ def get_active_mode(
         return raw
     if has_consultant is None:
         has_consultant = get_cached_has_consultant(request, db, user_id)
-    mode = MODE_SPECIALIST if has_consultant else MODE_CLIENT
+    mode = MODE_CLIENT
     request.session["active_mode"] = mode
     return mode
 
@@ -90,7 +90,7 @@ async def get_active_mode_async(
         return raw
     if has_consultant is None:
         has_consultant = await get_cached_has_consultant_async(request, db, user_id)
-    mode = MODE_SPECIALIST if has_consultant else MODE_CLIENT
+    mode = MODE_CLIENT
     request.session["active_mode"] = mode
     return mode
 
