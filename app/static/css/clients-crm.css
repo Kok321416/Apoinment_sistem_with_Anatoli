@@ -95,9 +95,9 @@
     border-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 .client-card__action--danger:hover {
-    background: rgba(255, 92, 122, 0.12);
+    background: var(--alert-error-bg);
     color: var(--accent-danger);
-    border-color: rgba(255, 92, 122, 0.3);
+    border-color: color-mix(in srgb, var(--accent-danger) 30%, transparent);
 }
 .client-card__delete-form {
     margin: 0;
@@ -144,11 +144,11 @@
     font-weight: var(--font-weight-medium);
 }
 .client-card__badge--new {
-    background: rgba(59, 228, 200, 0.12);
+    background: var(--alert-success-bg);
     color: var(--accent-success);
 }
 .client-card__badge--vip {
-    background: rgba(245, 166, 35, 0.15);
+    background: var(--alert-warning-bg);
     color: var(--accent-warning);
 }
 .client-card__badge--regular {

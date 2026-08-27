@@ -316,9 +316,9 @@
 .week-slot[data-day="4"],
 .week-slot[data-day="5"],
 .week-slot[data-day="6"] {
-    background: #111111;
-    color: #fafafa;
-    border-color: #111111;
+    background: var(--accent-primary);
+    color: var(--text-on-accent);
+    border-color: var(--accent-primary);
 }
 
 .day-editor__add-row .select,
@@ -379,7 +379,7 @@
 
 .toggle-switch input:checked + .toggle-switch__track {
     background: var(--accent-success);
-    border-color: rgba(59, 228, 200, 0.5);
+    border-color: color-mix(in srgb, var(--accent-success) 50%, transparent);
 }
 
 .toggle-switch__track::after {
@@ -390,7 +390,7 @@
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background: #fff;
+    background: var(--surface-100);
     transition: transform var(--schedule-transition);
 }
 
@@ -419,8 +419,8 @@
 }
 
 .slot-card--editing {
-    border-color: color-mix(in srgb, #111111 45%, transparent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, #111111 20%, transparent);
+    border-color: color-mix(in srgb, var(--accent-primary) 45%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 20%, transparent);
 }
 
 .slot-card__time {
@@ -452,16 +452,16 @@
 }
 
 .slot-card__action:hover {
-    background: rgba(108, 99, 255, 0.12);
+    background: var(--alert-info-bg);
     color: var(--text-primary);
-    border-color: rgba(108, 99, 255, 0.35);
+    border-color: var(--border-strong);
     transform: translateY(-1px);
 }
 
 .slot-card__action--danger:hover {
-    background: rgba(255, 92, 122, 0.12);
+    background: var(--alert-error-bg);
     color: var(--accent-danger);
-    border-color: rgba(255, 92, 122, 0.4);
+    border-color: color-mix(in srgb, var(--accent-danger) 40%, transparent);
 }
 
 .slot-card__action-icon {
@@ -494,7 +494,7 @@
 
 .slot-card__btn--danger:hover {
     color: var(--accent-danger);
-    border-color: rgba(255, 92, 122, 0.4);
+    border-color: color-mix(in srgb, var(--accent-danger) 40%, transparent);
 }
 
 .day-editor__add {

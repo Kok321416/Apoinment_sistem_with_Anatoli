@@ -246,24 +246,24 @@
     flex-shrink: 0;
 }
 .bkg-card__status--pending {
-    color: #92400e;
-    background: #fffbeb;
-    border-color: #fde68a;
+    color: var(--accent-warning);
+    background: var(--alert-warning-bg);
+    border-color: color-mix(in srgb, var(--accent-warning) 35%, transparent);
 }
 .bkg-card__status--confirmed {
-    color: #065f46;
-    background: #ecfdf5;
-    border-color: #a7f3d0;
+    color: var(--accent-success);
+    background: var(--alert-success-bg);
+    border-color: color-mix(in srgb, var(--accent-success) 35%, transparent);
 }
 .bkg-card__status--completed {
-    color: #171717;
-    background: #f5f5f5;
-    border-color: #d4d4d4;
+    color: var(--text-primary);
+    background: var(--surface-300);
+    border-color: var(--border-default);
 }
 .bkg-card__status--cancelled {
-    color: #9f1239;
-    background: #fff1f2;
-    border-color: #fecdd3;
+    color: var(--accent-danger);
+    background: var(--alert-error-bg);
+    border-color: color-mix(in srgb, var(--accent-danger) 35%, transparent);
 }
 .bkg-card__meta {
     list-style: none;

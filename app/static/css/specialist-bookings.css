@@ -261,10 +261,10 @@
     border-radius: var(--radius-full);
 }
 
-.day-dot.confirmed { background: rgba(59, 228, 200, 0.9); }
-.day-dot.pending { background: rgba(245, 166, 35, 0.95); }
-.day-dot.completed { background: rgba(148, 163, 184, 0.9); }
-.day-dot.cancelled { background: rgba(255, 92, 122, 0.9); }
+.day-dot.confirmed { background: var(--accent-success); }
+.day-dot.pending { background: var(--accent-warning); }
+.day-dot.completed { background: var(--text-muted); }
+.day-dot.cancelled { background: var(--accent-danger); }
 
 .day-events {
     display: flex;
@@ -284,10 +284,10 @@
     text-overflow: ellipsis;
 }
 
-.cal-event.confirmed { background: rgba(59, 228, 200, 0.85); color: var(--surface-900); }
-.cal-event.pending { background: rgba(245, 166, 35, 0.9); color: var(--surface-900); }
-.cal-event.completed { background: rgba(148, 163, 184, 0.85); }
-.cal-event.cancelled { background: rgba(255, 92, 122, 0.85); }
+.cal-event.confirmed { background: var(--accent-success); color: var(--text-on-accent); }
+.cal-event.pending { background: var(--accent-warning); color: var(--text-on-accent); }
+.cal-event.completed { background: var(--text-muted); color: var(--text-on-accent); }
+.cal-event.cancelled { background: var(--accent-danger); color: var(--text-on-accent); }
 
 .cal-event:hover {
     filter: brightness(1.08);
@@ -311,10 +311,10 @@
     vertical-align: middle;
 }
 
-.legend-dot.confirmed { background: rgba(59, 228, 200, 0.85); }
-.legend-dot.pending { background: rgba(245, 166, 35, 0.9); }
-.legend-dot.completed { background: rgba(148, 163, 184, 0.85); }
-.legend-dot.cancelled { background: rgba(255, 92, 122, 0.85); }
+.legend-dot.confirmed { background: var(--accent-success); }
+.legend-dot.pending { background: var(--accent-warning); }
+.legend-dot.completed { background: var(--text-muted); }
+.legend-dot.cancelled { background: var(--accent-danger); }
 
 .event-popover {
     position: fixed;

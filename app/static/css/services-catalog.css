@@ -471,7 +471,7 @@
 }
 .toggle-switch input:checked + .toggle-switch__track {
     background: var(--accent-success);
-    border-color: rgba(59, 228, 200, 0.5);
+    border-color: color-mix(in srgb, var(--accent-success) 50%, transparent);
 }
 .toggle-switch__track::after {
     content: "";

@@ -26,7 +26,7 @@
 
 .booking-hero__meta {
     margin-top: var(--space-sm);
-    color: rgba(255, 255, 255, 0.85);
+    color: color-mix(in srgb, var(--text-on-accent) 85%, transparent);
     font-size: var(--font-size-body-sm);
 }
 
@@ -70,7 +70,7 @@
 
 .booking-step.is-done {
     color: var(--accent-success);
-    border-color: rgba(59, 228, 200, 0.35);
+    border-color: color-mix(in srgb, var(--accent-success) 35%, transparent);
 }
 
 .booking-layout {
@@ -246,16 +246,16 @@
 
 .booking-cal__day.is-selected {
     background: var(--gradient-primary);
-    color: #fff;
+    color: var(--text-on-accent);
 }
 
 .booking-cal__day.is-workday {
-    color: #f4f7ff;
-    font-weight: 600;
+    color: var(--text-primary);
+    font-weight: var(--font-weight-semibold);
 }
 
 .booking-cal__day.is-workday:not(.is-selected):not(.is-past) {
-    background: rgba(66, 201, 107, 0.08);
+    background: var(--alert-success-bg);
 }
 
 .booking-cal__day-num {
@@ -266,13 +266,13 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #42c96b;
-    box-shadow: 0 0 0 2px rgba(66, 201, 107, 0.25);
+    background: var(--accent-success);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-success) 25%, transparent);
     flex-shrink: 0;
 }
 
 .booking-cal__day.is-selected .booking-cal__dot {
-    background: #fff;
+    background: var(--text-on-accent);
     box-shadow: none;
 }
 
@@ -303,8 +303,8 @@
     width: 9px;
     height: 9px;
     border-radius: 50%;
-    background: #42c96b;
-    box-shadow: 0 0 0 3px rgba(66, 201, 107, 0.2);
+    background: var(--accent-success);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-success) 20%, transparent);
     flex-shrink: 0;
 }
 
@@ -368,13 +368,13 @@
 
 .booking-notice--warn {
     background: var(--alert-warning-bg);
-    border: 1px solid rgba(245, 166, 35, 0.25);
+    border: 1px solid color-mix(in srgb, var(--accent-warning) 25%, transparent);
     color: var(--accent-warning);
 }
 
 .booking-notice--success {
     background: var(--alert-success-bg);
-    border: 1px solid rgba(59, 228, 200, 0.25);
+    border: 1px solid color-mix(in srgb, var(--accent-success) 25%, transparent);
     color: var(--accent-success);
 }
 
@@ -594,7 +594,7 @@
 }
 
 .book-cal-panel--month .booking-cal__day.is-workday:not(.is-selected):not(.is-past) {
-    background: rgba(66, 201, 107, 0.12);
+    background: var(--alert-success-bg);
 }
 
 .book-cal-panel--month .booking-cal__day.is-workday:not(.is-selected):not(.is-past)::after {

@@ -85,19 +85,11 @@
     box-shadow: var(--field-glow-focus);
 }
 
-.auth-method--telegram {
-    border-color: rgba(42, 171, 238, 0.45);
-    color: var(--accent-secondary);
-}
-
-.auth-method--yandex {
-    border-color: rgba(252, 63, 29, 0.4);
-    color: #ff6b52;
-}
-
+.auth-method--telegram,
+.auth-method--yandex,
 .auth-method--vk {
-    border-color: rgba(0, 119, 255, 0.45);
-    color: #4c9bff;
+    border-color: var(--border-strong);
+    color: var(--text-primary);
 }
 
 .auth-method__icon {

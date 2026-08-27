@@ -587,7 +587,7 @@
 }
 
 .auth-provider-card.is-connected {
-    border-color: rgba(59, 228, 200, 0.35);
+    border-color: color-mix(in srgb, var(--accent-success) 35%, transparent);
     background: var(--alert-success-bg);
 }
 

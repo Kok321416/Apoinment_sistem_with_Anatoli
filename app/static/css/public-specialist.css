@@ -1,28 +1,29 @@
-/* Public specialist landing — Calendly-like conversion layout */
+/* Public specialist landing — light monochrome (design tokens) */
 .booking-page:has(.ps-hero) {
     background:
-        radial-gradient(ellipse 70% 45% at 10% -10%, color-mix(in srgb, var(--accent-primary) 20%, transparent), transparent 55%),
-        radial-gradient(ellipse 55% 40% at 95% 5%, color-mix(in srgb, var(--accent-secondary) 12%, transparent), transparent 50%),
-        #0b0d12;
+        radial-gradient(ellipse 70% 45% at 8% -5%, rgba(0, 0, 0, 0.04), transparent 55%),
+        radial-gradient(ellipse 50% 35% at 100% 0%, rgba(0, 0, 0, 0.03), transparent 50%),
+        var(--bg-800);
 }
 
 .ps-crumbs {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-sm);
     align-items: center;
-    margin: 0 0 1.5rem;
-    font-size: 0.8125rem;
-    color: rgba(244, 247, 255, 0.55);
+    margin: 0 0 var(--space-xl);
+    font-size: var(--font-size-body-sm);
+    color: var(--text-muted);
 }
 
 .ps-crumbs a {
-    color: var(--accent-secondary);
+    color: var(--text-secondary);
     text-decoration: none;
 }
 
 .ps-crumbs a:hover,
 .ps-crumbs a:focus-visible {
+    color: var(--accent-primary);
     text-decoration: underline;
     outline: none;
 }
@@ -30,15 +31,14 @@
 .ps-hero {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 2rem;
+    gap: var(--space-2xl);
     align-items: center;
-    padding: 1.75rem;
-    border-radius: 22px;
-    background: rgba(23, 28, 43, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(16px);
-    animation: ps-rise 0.55s ease both;
+    padding: var(--space-2xl);
+    border-radius: var(--radius-xl);
+    background: var(--surface-100);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-sm);
+    animation: ps-rise 0.55s var(--ease-out) both;
 }
 
 .ps-hero__photo {
@@ -46,53 +46,52 @@
     height: 168px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
-    box-shadow: 0 12px 40px color-mix(in srgb, var(--accent-primary) 30%, transparent);
-    transition: transform 0.35s ease;
+    border: 2px solid var(--border-strong);
+    box-shadow: var(--shadow-xs);
+    transition: transform var(--duration-base) var(--ease-out);
 }
 
 .ps-hero:hover .ps-hero__photo {
-    transform: scale(1.03);
+    transform: scale(1.02);
 }
 
 .ps-hero__photo--empty {
     display: grid;
     place-items: center;
-    background: linear-gradient(145deg, #2a3148, #171c2b);
-    color: #f4f7ff;
+    background: var(--gradient-primary);
+    color: var(--text-on-accent);
     font-size: 3rem;
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
 }
 
 .ps-hero__badges {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
 }
 
 .ps-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.3rem 0.7rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #f4f7ff;
-    background: color-mix(in srgb, var(--accent-primary) 25%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    background: var(--surface-300);
+    border: 1px solid var(--border-default);
 }
 
 .ps-badge--soft {
-    background: color-mix(in srgb, var(--accent-secondary) 16%, transparent);
-    border-color: color-mix(in srgb, var(--accent-secondary) 30%, transparent);
-    color: #9fd0ff;
+    background: var(--surface-200);
+    color: var(--text-secondary);
 }
 
 .ps-badge--ok {
-    background: rgba(66, 201, 107, 0.14);
-    border-color: rgba(66, 201, 107, 0.35);
-    color: #8de0a8;
+    background: var(--alert-success-bg);
+    border-color: color-mix(in srgb, var(--accent-success) 35%, transparent);
+    color: var(--accent-success);
 }
 
 .ps-hero__name {
@@ -102,61 +101,62 @@
     font-weight: var(--font-weight-bold);
     line-height: var(--line-height-heading);
     letter-spacing: var(--letter-spacing-tight);
-    color: #f4f7ff;
+    color: var(--text-primary);
 }
 
 .ps-hero__about {
-    margin: 1rem 0 0;
+    margin: var(--space-lg) 0 0;
     max-width: 42rem;
-    color: rgba(244, 247, 255, 0.72);
+    color: var(--text-secondary);
     white-space: pre-wrap;
-    line-height: 1.55;
+    line-height: var(--line-height-body);
 }
 
 .ps-hero__cta {
-    margin-top: 1.5rem;
+    margin-top: var(--space-xl);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem 1.25rem;
+    gap: var(--space-lg) var(--space-xl);
 }
 
 .ps-btn-book {
     min-width: 10rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .ps-btn-book:hover,
 .ps-btn-book:focus-visible {
-    transform: scale(1.03);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 25%, transparent);
+    transform: scale(1.02);
+    box-shadow: var(--field-glow-focus);
 }
 
 .ps-trust-mini {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 1rem;
-    font-size: 0.8125rem;
-    color: rgba(244, 247, 255, 0.58);
+    gap: var(--space-sm) var(--space-lg);
+    font-size: var(--font-size-body-sm);
+    color: var(--text-muted);
 }
 
 .ps-trust-mini span::before {
-    content: "•";
-    margin-right: 0.45rem;
-    color: var(--accent-primary);
+    content: "·";
+    margin-right: var(--space-sm);
+    color: var(--text-disabled);
 }
 
 .ps-welcome {
-    margin-top: 1.5rem;
+    margin-top: var(--space-xl);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem 1.25rem;
-    padding: 1.25rem 1.5rem;
-    border-radius: 22px;
-    background: linear-gradient(135deg, color-mix(in srgb, var(--accent-secondary) 25%, transparent), color-mix(in srgb, var(--accent-primary) 20%, transparent));
-    border: 1px solid color-mix(in srgb, var(--accent-secondary) 30%, transparent);
-    animation: ps-rise 0.6s ease 0.05s both;
+    gap: var(--space-lg) var(--space-xl);
+    padding: var(--space-xl) var(--space-2xl);
+    border-radius: var(--radius-xl);
+    background: var(--surface-100);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-xs);
+    animation: ps-rise 0.6s var(--ease-out) 0.05s both;
 }
 
 .ps-welcome__icon {
@@ -165,8 +165,8 @@
     border-radius: 50%;
     display: grid;
     place-items: center;
-    background: rgba(11, 13, 18, 0.35);
-    color: #9fd0ff;
+    background: var(--surface-300);
+    color: var(--text-primary);
 }
 
 .ps-welcome__text {
@@ -176,55 +176,55 @@
 
 .ps-welcome__eyebrow {
     margin: 0;
-    font-size: 0.75rem;
+    font-size: var(--font-size-caption);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: rgba(244, 247, 255, 0.7);
+    letter-spacing: var(--letter-spacing-eyebrow);
+    color: var(--text-muted);
 }
 
 .ps-welcome__title {
-    margin: 0.2rem 0 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #f4f7ff;
+    margin: var(--space-2xs) 0 0;
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
 }
 
 .ps-welcome__name {
-    margin: 0.35rem 0 0;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #fff;
+    margin: var(--space-xs) 0 0;
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
 }
 
 .ps-welcome__meta {
-    margin: 0.35rem 0 0;
+    margin: var(--space-xs) 0 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
-    color: rgba(244, 247, 255, 0.75);
-    font-size: 0.875rem;
+    gap: var(--space-md);
+    color: var(--text-secondary);
+    font-size: var(--font-size-body-sm);
 }
 
 .ps-steps {
     list-style: none;
-    margin: 1.75rem 0 0;
+    margin: var(--space-2xl) 0 0;
     padding: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: var(--space-md);
 }
 
 .ps-steps__item {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    padding: 0.7rem 1.25rem;
-    border-radius: 9999px;
-    background: rgba(23, 28, 43, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    color: rgba(244, 247, 255, 0.55);
-    font-size: 0.875rem;
-    font-weight: 700;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-xl);
+    border-radius: var(--radius-full);
+    background: var(--surface-100);
+    border: 1px solid var(--border-default);
+    color: var(--text-muted);
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-bold);
 }
 
 .ps-steps__item span {
@@ -232,32 +232,33 @@
     height: auto;
     border-radius: 0;
     display: inline;
-    place-items: unset;
     background: transparent;
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
 }
 
 .ps-steps__item.is-active {
-    color: #fff;
+    color: var(--text-on-accent);
     border: none;
     background: var(--gradient-primary);
-    box-shadow: 0 0 40px color-mix(in srgb, var(--accent-primary) 25%, transparent);
+    box-shadow: var(--shadow-xs);
 }
 
 .ps-steps__item.is-active span {
     background: transparent;
-    color: #fff;
+    color: var(--text-on-accent);
 }
 
 .ps-section-title {
     margin: 0;
+    font-family: var(--font-family-display);
     font-size: clamp(1.35rem, 2.5vw, 1.75rem);
-    color: #f4f7ff;
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
 }
 
 .ps-section-sub {
-    margin: 0.5rem 0 0;
-    color: rgba(244, 247, 255, 0.6);
+    margin: var(--space-sm) 0 0;
+    color: var(--text-secondary);
     max-width: 40rem;
 }
 
@@ -265,59 +266,58 @@
 .ps-video,
 .ps-social,
 .ps-calendars {
-    margin-top: 2.75rem;
-    animation: ps-rise 0.65s ease both;
+    margin-top: var(--space-4xl);
+    animation: ps-rise 0.65s var(--ease-out) both;
 }
 
 .ps-why__grid {
-    margin-top: 1.25rem;
+    margin-top: var(--space-xl);
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1rem;
+    gap: var(--space-lg);
 }
 
 .ps-why__card {
-    padding: 1.25rem;
-    border-radius: 22px;
-    background: #171c2b;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    padding: var(--space-xl);
+    border-radius: var(--radius-xl);
+    background: var(--surface-100);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-xs);
+    transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out), border-color var(--duration-base) var(--ease-out);
 }
 
 .ps-why__card:hover {
-    transform: translateY(-4px);
-    border-color: color-mix(in srgb, var(--accent-primary) 40%, transparent);
-    box-shadow: 0 16px 40px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+    transform: translateY(-3px);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
 }
 
 .ps-why__icon {
     font-size: 1.25rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--space-md);
 }
 
 .ps-why__card h3 {
     margin: 0;
-    font-size: 1rem;
-    color: #f4f7ff;
+    font-size: var(--font-size-body);
+    color: var(--text-primary);
 }
 
 .ps-why__card p {
-    margin: 0.5rem 0 0;
-    font-size: 0.875rem;
-    color: rgba(244, 247, 255, 0.62);
-    line-height: 1.45;
+    margin: var(--space-sm) 0 0;
+    font-size: var(--font-size-body-sm);
+    color: var(--text-secondary);
+    line-height: var(--line-height-caption);
 }
 
 .ps-video__frame {
-    margin-top: 1.25rem;
+    margin-top: var(--space-xl);
     position: relative;
     min-height: min(52vw, 380px);
-    border-radius: 22px;
+    border-radius: var(--radius-xl);
     overflow: hidden;
-    background:
-        radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent-primary) 30%, transparent), transparent 45%),
-        #121826;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--surface-300);
+    border: 1px solid var(--border-default);
 }
 
 .ps-video__play {
@@ -325,14 +325,14 @@
     inset: 0;
     display: grid;
     place-content: center;
-    gap: 0.75rem;
+    gap: var(--space-md);
     justify-items: center;
     border: 0;
     background: transparent;
-    color: #f4f7ff;
+    color: var(--text-primary);
     cursor: pointer;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-semibold);
 }
 
 .ps-video__play-icon {
@@ -340,9 +340,9 @@
     height: 4.5rem;
     border-radius: 50%;
     background: var(--gradient-primary);
-    box-shadow: 0 12px 36px color-mix(in srgb, var(--accent-primary) 40%, transparent);
+    box-shadow: var(--shadow-md);
     position: relative;
-    transition: transform 0.2s ease;
+    transition: transform var(--duration-fast) var(--ease-out);
 }
 
 .ps-video__play-icon::after {
@@ -353,12 +353,12 @@
     transform: translate(-50%, -50%);
     border-style: solid;
     border-width: 10px 0 10px 16px;
-    border-color: transparent transparent transparent #fff;
+    border-color: transparent transparent transparent var(--text-on-accent);
 }
 
 .ps-video__play:hover .ps-video__play-icon,
 .ps-video__play:focus-visible .ps-video__play-icon {
-    transform: scale(1.06);
+    transform: scale(1.05);
 }
 
 .ps-video__embed {
@@ -373,10 +373,10 @@
 }
 
 .ps-social__row {
-    margin-top: 1.25rem;
+    margin-top: var(--space-xl);
     display: flex;
     flex-wrap: wrap;
-    gap: 0.85rem;
+    gap: var(--space-md);
 }
 
 .ps-social__btn {
@@ -385,19 +385,19 @@
     border-radius: 50%;
     display: grid;
     place-items: center;
-    color: #f4f7ff;
-    background: #171c2b;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    background: var(--surface-100);
+    border: 1px solid var(--border-default);
     text-decoration: none;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
 }
 
 .ps-social__btn:hover,
 .ps-social__btn:focus-visible {
-    transform: translateY(-3px) scale(1.05);
+    transform: translateY(-2px);
     outline: none;
-    border-color: color-mix(in srgb, var(--accent-primary) 60%, transparent);
-    box-shadow: 0 0 24px color-mix(in srgb, var(--accent-primary) 30%, transparent);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
 }
 
 .ps-calendars__head {
@@ -405,13 +405,13 @@
     flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
-    gap: 1rem;
+    gap: var(--space-lg);
 }
 
 .ps-calendars__tools {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: var(--space-md);
 }
 
 .ps-search .input,
@@ -420,25 +420,26 @@
 }
 
 .ps-cal-grid {
-    margin-top: 1.35rem;
+    margin-top: var(--space-xl);
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 1rem;
+    gap: var(--space-lg);
 }
 
 .ps-cal-card {
     position: relative;
-    border-radius: 22px;
+    border-radius: var(--radius-xl);
     overflow: hidden;
-    background: #171c2b;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    background: var(--surface-100);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-xs);
+    transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out), border-color var(--duration-base) var(--ease-out);
 }
 
 .ps-cal-card:hover {
-    transform: translateY(-6px) scale(1.01);
-    border-color: color-mix(in srgb, var(--cal-color) 55%, transparent);
-    box-shadow: 0 18px 44px color-mix(in srgb, var(--cal-color) 28%, transparent);
+    transform: translateY(-4px);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
 }
 
 .ps-cal-card.is-hidden {
@@ -446,117 +447,120 @@
 }
 
 .ps-cal-card__stripe {
-    height: 6px;
+    height: 4px;
     background: var(--cal-color, var(--accent-primary));
 }
 
 .ps-cal-card__body {
-    padding: 1.25rem 1.35rem 1.4rem;
+    padding: var(--space-xl) var(--space-xl) var(--space-2xl);
 }
 
 .ps-cal-card__title {
     margin: 0;
-    font-size: 1.15rem;
-    color: #f4f7ff;
+    font-size: var(--font-size-h3);
+    color: var(--text-primary);
 }
 
 .ps-cal-card__meta {
-    margin: 0.45rem 0 0;
-    color: rgba(244, 247, 255, 0.6);
-    font-size: 0.875rem;
+    margin: var(--space-sm) 0 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-body-sm);
 }
 
 .ps-cal-card__hint {
-    margin: 0.75rem 0 0;
-    font-size: 0.8125rem;
-    color: #8de0a8;
+    margin: var(--space-md) 0 0;
+    font-size: var(--font-size-body-sm);
+    color: var(--accent-success);
 }
 
 .ps-cal-card__btn {
-    margin-top: 1.1rem;
+    margin-top: var(--space-lg);
 }
 
 .ps-cal-empty {
-    margin-top: 1rem;
-    color: rgba(244, 247, 255, 0.6);
+    margin-top: var(--space-lg);
+    color: var(--text-muted);
 }
 
 .ps-empty {
-    margin-top: 1.35rem;
-    padding: 2.5rem 1.5rem;
+    margin-top: var(--space-xl);
+    padding: var(--space-4xl) var(--space-xl);
     text-align: center;
-    border-radius: 22px;
-    background: #171c2b;
-    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-xl);
+    background: var(--surface-100);
+    border: 1px dashed var(--border-default);
 }
 
 .ps-empty__art {
     width: 4.5rem;
     height: 4.5rem;
-    margin: 0 auto 1rem;
+    margin: 0 auto var(--space-lg);
     border-radius: 50%;
-    background:
-        radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--accent-primary) 55%, transparent), transparent 55%),
-        #121826;
+    background: var(--surface-300);
 }
 
 .ps-empty h3 {
     margin: 0;
-    color: #f4f7ff;
+    color: var(--text-primary);
 }
 
 .ps-empty p {
-    margin: 0.5rem 0 0;
-    color: rgba(244, 247, 255, 0.6);
+    margin: var(--space-sm) 0 0;
+    color: var(--text-secondary);
 }
 
 .ps-sticky {
     position: fixed;
-    right: 1.25rem;
-    bottom: 1.25rem;
-    z-index: 40;
+    right: var(--space-xl);
+    bottom: var(--space-xl);
+    z-index: var(--z-sticky);
     max-width: min(22rem, calc(100vw - 2rem));
-    animation: ps-rise 0.35s ease both;
+    animation: ps-rise 0.35s var(--ease-out) both;
 }
 
 .ps-sticky__inner {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 0.9rem 1rem;
-    border-radius: 18px;
-    background: rgba(23, 28, 43, 0.94);
-    border: 1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
-    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(14px);
+    gap: var(--space-lg);
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-lg);
+    background: var(--glass-heavy);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(var(--blur-md));
 }
 
 .ps-sticky__label {
     margin: 0;
-    font-size: 0.7rem;
+    font-size: var(--font-size-caption);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: rgba(244, 247, 255, 0.55);
+    letter-spacing: var(--letter-spacing-eyebrow);
+    color: var(--text-muted);
 }
 
 .ps-sticky__name {
-    margin: 0.15rem 0 0;
-    font-weight: 700;
-    color: #f4f7ff;
+    margin: var(--space-2xs) 0 0;
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
 }
 
 .booking-page:has(.ps-hero) .app-footer-mini {
-    margin-top: 3rem;
+    margin-top: var(--space-5xl);
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem 1rem;
+    gap: var(--space-md) var(--space-lg);
     justify-content: center;
+    color: var(--text-muted);
+}
+
+.booking-page:has(.ps-hero) .app-footer-mini a {
+    color: var(--text-secondary);
 }
 
 @keyframes ps-rise {
     from {
         opacity: 0;
-        transform: translateY(14px);
+        transform: translateY(12px);
     }
     to {
         opacity: 1;
@@ -593,9 +597,9 @@
     }
 
     .ps-sticky {
-        left: 0.75rem;
-        right: 0.75rem;
-        bottom: 0.75rem;
+        left: var(--space-md);
+        right: var(--space-md);
+        bottom: var(--space-md);
         max-width: none;
     }
 
