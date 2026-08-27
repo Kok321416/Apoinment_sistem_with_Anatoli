@@ -11,6 +11,7 @@ from app.database import engine
 from app.routers import (
     api,
     calendar_schedule,
+    diagnostics,
     oauth,
     pages,
     platform_admin,
@@ -57,6 +58,7 @@ app.mount("/static", StaticFiles(directory=str(settings.static_dir)), name="stat
 app.mount("/media", StaticFiles(directory=str(settings.media_root)), name="media")
 
 app.include_router(pages.router)
+app.include_router(diagnostics.router)
 app.include_router(calendar_schedule.router)
 app.include_router(services_api.router)
 app.include_router(profile_api.router)

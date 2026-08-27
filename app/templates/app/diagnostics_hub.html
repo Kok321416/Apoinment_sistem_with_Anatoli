@@ -1,0 +1,75 @@
+{% extends "layouts/app.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Диагностика — " ~ site_brand_name %}
+{% set meta_description = "Психологические опросники и история результатов" %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=12">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=1">
+{% endblock %}
+
+{% block app_content %}
+{% set cabinet_section_title = "Диагностика" %}
+<div class="diag-page">
+    <header class="diag-page__head">
+        <h1 class="text-h1">Диагностика</h1>
+        <p class="text-body-sm text-muted">Добровольные опросники. Результаты сохраняются в историю и видны выбранному психологу.</p>
+    </header>
+
+    {% if not psychologists %}
+    <div class="card card--static">
+        <p class="text-body">Пока нет сохранённых психологов. Откройте профиль специалиста по ссылке или запишитесь на консультацию — он появится здесь.</p>
+        <a class="btn btn--primary mt-lg" href="/book/">Записаться</a>
+    </div>
+    {% else %}
+    <form method="POST" action="/diagnostics/select/" class="diag-select card card--static">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="form-field__label" for="consultant_id">Специалист</label>
+        <select class="input" id="consultant_id" name="consultant_id" onchange="this.form.submit()">
+            {% for c in psychologists %}
+            <option value="{{ c.id }}" {% if selected_consultant and selected_consultant.id == c.id %}selected{% endif %}>
+                {{ c.first_name }} {{ c.last_name }}
+            </option>
+            {% endfor %}
+        </select>
+        <noscript><button type="submit" class="btn btn--secondary btn--sm mt-md">Выбрать</button></noscript>
+    </form>
+
+    <section class="diag-section" aria-labelledby="diag-tests-title">
+        <h2 class="text-h2" id="diag-tests-title">Доступные тесты</h2>
+        <div class="diag-grid">
+            {% for t in tests %}
+            <article class="diag-card card card--static">
+                <h3 class="diag-card__title">{{ t.title }}</h3>
+                <p class="text-body-sm text-muted">{{ t.short_description }}</p>
+                <p class="diag-card__meta">~{{ t.duration_minutes }} мин
+                    {% if not t.runnable %} · скоро{% endif %}
+                </p>
+                {% if t.runnable and selected_consultant %}
+                <a class="btn btn--primary btn--sm" href="/diagnostics/tests/{{ t.code }}/?consultant_id={{ selected_consultant.id }}">Пройти</a>
+                {% else %}
+                <span class="btn btn--ghost btn--sm" aria-disabled="true">Пока недоступен</span>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="diag-section" aria-labelledby="diag-history-title">
+        <h2 class="text-h2" id="diag-history-title">История результатов</h2>
+        {% if attempts %}
+        <div class="diag-history">
+            {% for r in attempts %}
+            {% include "components/diagnostics_result_card.html" %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-body-sm text-muted">Пока нет прохождений. Выберите тест выше.</p>
+        {% endif %}
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

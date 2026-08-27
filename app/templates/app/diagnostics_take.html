@@ -1,0 +1,50 @@
+{% extends "layouts/app.html" %}
+
+{% block meta_tags %}
+{% set page_title = test.title ~ " — диагностика" %}
+{% set meta_description = test.short_description %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=1">
+{% endblock %}
+
+{% block app_content %}
+<div class="diag-page diag-take">
+    <p class="mb-lg"><a class="btn btn--ghost btn--sm" href="/diagnostics/?consultant_id={{ consultant.id }}">← К списку</a></p>
+    <header class="diag-page__head">
+        <h1 class="text-h1">{{ test.title }}</h1>
+        <p class="text-body-sm text-muted">Специалист: {{ consultant.first_name }} {{ consultant.last_name }}</p>
+        <p class="text-body-sm text-muted">{{ test.source_citation[:220] }}{% if test.source_citation|length > 220 %}…{% endif %}</p>
+    </header>
+
+    <form method="POST" action="/diagnostics/tests/{{ test.code }}/submit/" class="diag-form card card--static">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="consultant_id" value="{{ consultant.id }}">
+        <input type="hidden" name="source" value="cabinet">
+        {% if request.session.get('diagnostics_invitation_id') %}
+        <input type="hidden" name="invitation_id" value="{{ request.session.get('diagnostics_invitation_id') }}">
+        {% endif %}
+
+        <ol class="diag-items">
+            {% for item in test.items %}
+            <li class="diag-item">
+                <p class="diag-item__q"><span class="diag-item__n">{{ loop.index }}.</span> {{ item.text }}</p>
+                <div class="diag-item__opts" role="radiogroup" aria-label="Вопрос {{ loop.index }}">
+                    {% for label, val in item.options %}
+                    <label class="diag-opt">
+                        <input type="radio" name="{{ item.id }}" value="{{ val }}" required>
+                        <span>{{ label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+
+        <p class="text-body-sm text-muted mt-3xl">Отправляя ответы, вы соглашаетесь, что результат не является диагнозом и сохраняется в вашем профиле и у выбранного специалиста.</p>
+        <button type="submit" class="btn btn--primary mt-lg">Завершить и сохранить</button>
+    </form>
+</div>
+{% endblock %}

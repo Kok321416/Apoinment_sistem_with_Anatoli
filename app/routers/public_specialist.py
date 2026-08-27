@@ -69,6 +69,21 @@ async def specialist_public_home(request: Request, slug: str, db: AsyncSession =
     if gate:
         return gate
 
+    auth_user = await get_current_user_async(request, db)
+    if auth_user:
+        from app.services.diagnostics_service import touch_client_specialist_link
+
+        try:
+            await touch_client_specialist_link(
+                db,
+                client_user_id=auth_user.id,
+                consultant_id=consultant.id,
+                source="visit",
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+
     calendars = list(
         (
             await db.execute(
@@ -311,17 +326,38 @@ async def specialist_calendar_book(
             if err:
                 error = err
             else:
+                from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+                from app.services.diagnostics_service import touch_client_specialist_link
+
+                show_diag = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
+                diag_url = f"/diagnostics/?consultant_id={consultant.id}"
+                if auth_user:
+                    try:
+                        await touch_client_specialist_link(
+                            db,
+                            client_user_id=auth_user.id,
+                            consultant_id=consultant.id,
+                            source="booking",
+                        )
+                        await db.commit()
+                    except Exception:
+                        await db.rollback()
+                    request.session["diagnostics_consultant_id"] = consultant.id
+                else:
+                    diag_url = f"/login/?next={diag_url}"
                 return templates.TemplateResponse(
                     "booking_success.html",
                     await page_context_async(
                         request,
                         db,
-                        None,
+                        auth_user,
                         booking=booking,
                         calendar=calendar,
                         service=booking.service,
                         consultant=consultant,
                         back_url=f"/s/{slug}/",
+                        show_diagnostics_cta=show_diag,
+                        diagnostics_url=diag_url,
                     ),
                 )
 

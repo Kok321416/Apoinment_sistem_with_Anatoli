@@ -164,6 +164,51 @@
             <button type="submit" class="btn btn--primary">Сохранить заметки</button>
         </form>
     </section>
+
+    {% if show_diagnostics %}
+    <section class="client-detail__diagnostics mt-3xl" aria-labelledby="diag-block-title">
+        <div class="diag-block-head">
+            <h2 class="app-section__title" id="diag-block-title">Результаты диагностики</h2>
+            <button type="button" class="btn btn--secondary btn--sm" id="diag-invite-btn" data-card-id="{{ card.id }}" data-csrf="{{ csrf_token }}">Ссылка на диагностику</button>
+        </div>
+        <p class="text-body-sm text-muted" id="diag-invite-url" hidden></p>
+        {% if diagnostic_results %}
+        <div class="diag-history mt-lg">
+            {% for r in diagnostic_results %}
+            {% include "components/diagnostics_result_card.html" %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-body-sm text-muted mt-lg">Клиент ещё не проходил опросники.</p>
+        {% endif %}
+    </section>
+    <link rel="stylesheet" href="/static/css/diagnostics.css?v=1">
+    <script>
+    (function () {
+        var btn = document.getElementById('diag-invite-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            fetch('/api/specialist/diagnostics/invite/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': btn.dataset.csrf || ''},
+                credentials: 'same-origin',
+                body: JSON.stringify({client_card_id: Number(btn.dataset.cardId), test_codes: []})
+            }).then(function (r) { return r.json(); }).then(function (data) {
+                var el = document.getElementById('diag-invite-url');
+                if (!el) return;
+                if (data && data.ok && data.url) {
+                    el.hidden = false;
+                    el.textContent = data.url;
+                    if (navigator.clipboard) navigator.clipboard.writeText(data.url);
+                } else {
+                    el.hidden = false;
+                    el.textContent = 'Не удалось создать ссылку.';
+                }
+            }).catch(function () {});
+        });
+    })();
+    </script>
+    {% endif %}
 </div>
 {% endblock %}
 

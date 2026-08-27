@@ -2101,6 +2101,8 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
     from datetime import date as date_cls
 
     from app.services.clients_crm import booking_stats_async, serialize_card
+    from app.services.diagnostics_service import attempt_to_view, list_attempts_for_card
+    from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
 
     stats = await booking_stats_async(db, consultant.id, [card.id])
     crm_client = serialize_card(card, stats, date_cls.today())
@@ -2110,6 +2112,15 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
         for b in history
         if b.booking_date and b.booking_date >= today and b.status in ("pending", "confirmed")
     ][:5]
+
+    diagnostic_results = []
+    if consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
+        diagnostic_results = [
+            attempt_to_view(a)
+            for a in await list_attempts_for_card(
+                db, consultant_id=consultant.id, client_card_id=card.id
+            )
+        ]
 
     return templates.TemplateResponse(
         "client_card_detail.html",
@@ -2126,6 +2137,8 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
             completed_count=completed,
             success=success,
             error=error,
+            diagnostic_results=diagnostic_results,
+            show_diagnostics=bool(diagnostic_results is not None and consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)),
         ),
     )
 

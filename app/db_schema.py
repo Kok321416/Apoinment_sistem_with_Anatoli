@@ -8,6 +8,8 @@ from sqlalchemy import inspect, text
 
 from app.database import Base, engine
 from app.models import auth as auth_models  # noqa: F401 - register models
+from app.models import diagnostics as diagnostics_models  # noqa: F401 - register models
+from app.models import core as core_models  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +196,11 @@ def _refresh_schema_health() -> None:
 
 def _apply_app_schema_patches() -> None:
     """Column patches required by current ORM models on legacy MySQL tables."""
+    try:
+        _add_column("consultant_menu_category", "code", "VARCHAR(64) NOT NULL DEFAULT 'general'")
+    except Exception:
+        logger.exception("consultant_menu_category.code patch failed")
+
     try:
         _add_column("consultants", "public_slug", "VARCHAR(64) NULL")
         _add_unique_index("consultants", "ix_consultants_public_slug", "public_slug")

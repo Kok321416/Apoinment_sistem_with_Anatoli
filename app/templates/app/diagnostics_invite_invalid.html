@@ -1,0 +1,8 @@
+{% extends "layouts/auth.html" %}
+{% block auth_content %}
+<div class="auth-card card card--static">
+    <h1 class="text-h1">Ссылка недоступна</h1>
+    <p class="text-body">{{ error|default('Ссылка на диагностику недействительна или истекла.') }}</p>
+    <a class="btn btn--primary mt-lg" href="/">На главную</a>
+</div>
+{% endblock %}

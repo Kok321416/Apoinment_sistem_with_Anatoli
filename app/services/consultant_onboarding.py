@@ -33,10 +33,15 @@ def create_consultant_for_user(
         return existing
 
     first_name, last_name, middle_name = parse_fio(fio)
-    category = db.query(Category).filter(Category.name_category == "Общая").first()
+    category = db.query(Category).filter(Category.code == "psychologist").first()
     if not category:
-        category = Category(name_category="Общая")
+        category = db.query(Category).filter(Category.name_category == "Психолог").first()
+    if not category:
+        category = Category(name_category="Психолог", code="psychologist")
         db.add(category)
+        db.flush()
+    elif not getattr(category, "code", None) or category.code == "general":
+        category.code = "psychologist"
         db.flush()
 
     consultant_email = (email or user.email or "").strip() or f"user{user.id}@local.user"
@@ -100,11 +105,18 @@ async def create_consultant_for_user_async(
 
     first_name, last_name, middle_name = parse_fio(fio)
     category = (
-        await db.execute(select(Category).where(Category.name_category == "Общая"))
+        await db.execute(select(Category).where(Category.code == "psychologist"))
     ).scalar_one_or_none()
     if not category:
-        category = Category(name_category="Общая")
+        category = (
+            await db.execute(select(Category).where(Category.name_category == "Психолог"))
+        ).scalar_one_or_none()
+    if not category:
+        category = Category(name_category="Психолог", code="psychologist")
         db.add(category)
+        await db.flush()
+    elif not getattr(category, "code", None) or category.code == "general":
+        category.code = "psychologist"
         await db.flush()
 
     consultant_email = (email or user.email or "").strip() or f"user{user.id}@local.user"

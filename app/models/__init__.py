@@ -12,6 +12,7 @@ from app.models.core import (
     Service,
     TimeSlot,
 )
+from app.models.diagnostics import ClientSpecialistLink, DiagnosticAttempt, DiagnosticInvitation
 from app.models.platform import (
     AdminAuditLog,
     AdminRoleAssignment,
@@ -61,4 +62,7 @@ __all__ = [
     "TelegramBroadcastRecipient",
     "UserSubscription",
     "PlatformErrorLog",
+    "ClientSpecialistLink",
+    "DiagnosticInvitation",
+    "DiagnosticAttempt",
 ]

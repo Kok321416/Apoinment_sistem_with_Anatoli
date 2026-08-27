@@ -91,6 +91,18 @@
         <p class="text-body-sm text-success" id="vkSuccessNote" hidden>Готово! Проверьте сообщения VK.</p>
     </div>
     {% endif %}
+
+    {% if show_diagnostics_cta %}
+    <div class="card card--static mt-3xl diag-cta">
+        <h3 class="text-h3">Диагностика (по желанию)</h3>
+        <p class="text-body-sm text-muted">Можете пройти опросники до консультации. Это добровольно — результаты сохранятся у вас и у специалиста.</p>
+        <div class="stack mt-lg">
+            <a class="btn btn--primary" href="{{ diagnostics_url }}">Перейти к диагностике</a>
+            <a class="btn btn--ghost" href="{{ back_url or '/' }}">Пропустить</a>
+        </div>
+    </div>
+    {% endif %}
+
     {% if back_url %}
     <p class="mt-3xl text-center"><a class="btn btn--ghost" href="{{ back_url }}">К профилю специалиста</a></p>
     {% endif %}

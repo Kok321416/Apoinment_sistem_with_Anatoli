@@ -23,6 +23,8 @@ class Category(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name_category: Mapped[str] = mapped_column(String(255), default="")
+    # Extensible specialist type code: psychologist | coach | tutor | general
+    code: Mapped[str] = mapped_column(String(64), default="general")
 
 
 class Consultant(Base):
