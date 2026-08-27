@@ -19,10 +19,25 @@ def test_normalize_phone_empty_ok():
     assert normalize_client_phone("   ") == ("", None)
 
 
+def test_normalize_phone_required():
+    phone, err = normalize_client_phone("", required=True)
+    assert phone == ""
+    assert err
+
+
 def test_normalize_phone_invalid():
     phone, err = normalize_client_phone("123")
     assert phone == ""
     assert err
+
+
+def test_normalize_phone_ru_mobile():
+    phone, err = normalize_client_phone("+7 (999) 123-45-67")
+    assert err is None
+    assert phone == "+79991234567"
+    phone2, err2 = normalize_client_phone("89991234567")
+    assert err2 is None
+    assert phone2 == "+79991234567"
 
 
 def test_normalize_email_optional():

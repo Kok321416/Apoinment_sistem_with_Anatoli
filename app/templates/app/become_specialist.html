@@ -22,7 +22,7 @@
     </div>
     <div class="form-field">
         <label class="form-field__label" for="phone">Телефон</label>
-        <input class="input" type="tel" id="phone" name="phone" required value="{{ phone or '' }}" autocomplete="tel" placeholder="+7...">
+        <input class="input" type="tel" id="phone" name="phone" data-phone-mask data-phone-lazy="0" required value="{{ phone or '' }}" autocomplete="tel" inputmode="numeric" placeholder="+7 (___) ___-__-__">
     </div>
     <button type="submit" class="btn btn--primary">Создать профиль специалиста</button>
     <a href="/dashboard/" class="btn btn--ghost">Позже</a>

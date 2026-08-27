@@ -1,4 +1,3 @@
-import re
 import uuid
 from datetime import date, datetime, timedelta
 
@@ -9,15 +8,19 @@ from app.models import Booking, Calendar, ClientCard, Consultant, Service, TimeS
 from app.services.telegram import on_booking_created, on_booking_updated, notify_booking_rescheduled
 
 
-def normalize_client_phone(raw: str) -> tuple[str, str | None]:
-    if not (raw or "").strip():
+def normalize_client_phone(raw: str, *, required: bool = False) -> tuple[str, str | None]:
+    """Return (+7XXXXXXXXXX, None) or ("", error). Empty allowed unless required=True."""
+    from app.deps import normalize_phone
+
+    text = (raw or "").strip()
+    if not text:
+        if required:
+            return "", "Укажите номер телефона"
         return "", None
-    digits = re.sub(r"\D", "", raw)
-    if not digits:
-        return "", "Телефон должен содержать только цифры"
-    if len(digits) < 10:
-        return "", "Телефон должен содержать не менее 10 цифр"
-    return digits, None
+    phone = normalize_phone(text)
+    if not phone:
+        return "", "Укажите телефон в формате +7 (XXX) XXX-XX-XX"
+    return phone, None
 
 
 def parse_fio(fio_str: str) -> tuple[str, str, str]:
@@ -232,7 +235,7 @@ def create_public_booking(
     if service.calendar_id and service.calendar_id != calendar.id:
         return None, "Услуга не относится к этому календарю."
 
-    client_phone, phone_err = normalize_client_phone(client_phone)
+    client_phone, phone_err = normalize_client_phone(client_phone, required=True)
     if phone_err:
         return None, phone_err
 
@@ -392,7 +395,7 @@ async def create_public_booking_async(
     if service.calendar_id and service.calendar_id != calendar.id:
         return None, "Услуга не относится к этому календарю."
 
-    client_phone, phone_err = normalize_client_phone(client_phone)
+    client_phone, phone_err = normalize_client_phone(client_phone, required=True)
     if phone_err:
         return None, phone_err
 
@@ -647,7 +650,7 @@ async def create_specialist_booking_async(
     if not name:
         return None, "Укажите ФИО клиента", None
 
-    phone, phone_err = normalize_client_phone(client_phone)
+    phone, phone_err = normalize_client_phone(client_phone, required=False)
     if phone_err:
         return None, phone_err, None
     email, email_err = normalize_optional_email(client_email)
@@ -769,6 +772,10 @@ async def create_specialist_booking_async(
         ).scalar_one_or_none()
         if not card:
             return None, "Карточка клиента не найдена", None
+        if not phone and card.phone:
+            phone, phone_err = normalize_client_phone(card.phone, required=False)
+            if phone_err:
+                return None, phone_err, None
     elif not force_new_client and (phone or email or telegram):
         matches = await find_matching_client_cards_async(
             db,
@@ -779,6 +786,9 @@ async def create_specialist_booking_async(
         )
         if matches:
             return None, "found_matches", [serialize_client_card_match(c) for c in matches]
+
+    if not phone:
+        return None, "Укажите номер телефона", None
 
     if card is None:
         if force_new_client:
@@ -801,6 +811,9 @@ async def create_specialist_booking_async(
                 telegram or "",
                 client_user_id=None,
             )
+    elif phone and card.phone != phone:
+        card.phone = phone
+
     link_token = uuid.uuid4().hex[:24]
     booking = Booking(
         service_id=service.id,

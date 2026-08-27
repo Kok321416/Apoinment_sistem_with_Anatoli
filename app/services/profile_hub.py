@@ -566,6 +566,8 @@ async def build_profile_payload_async(
 
 
 def apply_profile_fields(consultant: Consultant, data: dict, normalize_url_fn) -> None:
+    from app.deps import normalize_phone
+
     if "first_name" in data and data["first_name"] is not None:
         consultant.first_name = data["first_name"]
     if "last_name" in data and data["last_name"] is not None:
@@ -573,7 +575,13 @@ def apply_profile_fields(consultant: Consultant, data: dict, normalize_url_fn) -
     if "middle_name" in data and data["middle_name"] is not None:
         consultant.middle_name = data["middle_name"]
     if "phone" in data and data["phone"] is not None:
-        consultant.phone = data["phone"]
+        normalized = normalize_phone(data["phone"])
+        raw_phone = str(data["phone"] or "").strip()
+        if normalized:
+            consultant.phone = normalized
+        elif not raw_phone:
+            consultant.phone = ""
+        # Incomplete draft while typing: keep previous value
     if "telegram_nickname" in data and data["telegram_nickname"] is not None:
         consultant.telegram_nickname = data["telegram_nickname"]
     if "email" in data and data["email"] is not None:

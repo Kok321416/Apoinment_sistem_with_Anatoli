@@ -127,6 +127,9 @@ def test_normalize_phone_fits_db_column():
     from app.deps import normalize_phone
 
     assert normalize_phone("+7 (999) 123-45-67") == "+79991234567"
+    assert normalize_phone("89991234567") == "+79991234567"
+    assert normalize_phone("9991234567") == "+79991234567"
+    assert normalize_phone("123") == ""
     assert len(normalize_phone("+7 (999) 123-45-67")) <= 15
 
 

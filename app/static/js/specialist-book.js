@@ -197,6 +197,13 @@
                         '<button type="button" class="btn btn--ghost btn--sm" data-force-new>Создать новую карточку</button>';
                 }
 
+                var phoneLocked =
+                    !!(
+                        state.selected_card &&
+                        state.client_phone &&
+                        (!window.AycPhone || AycPhone.isComplete(state.client_phone))
+                    );
+
                 body.innerHTML =
                     '<div class="form-field"><label class="form-field__label" for="sb-search">Поиск по имени или Telegram</label>' +
                     '<input class="input" id="sb-search" type="search" autocomplete="off" placeholder="Начните вводить имя или @ник" value="' +
@@ -219,8 +226,8 @@
                     esc(state.client_name) +
                     '"></div>' +
                     '<div class="app-form-grid">' +
-                    '<div class="form-field"><label class="form-field__label" for="sb-phone">Телефон</label><input class="input" id="sb-phone" ' +
-                    (state.selected_card ? "readonly " : "") +
+                    '<div class="form-field"><label class="form-field__label" for="sb-phone">Телефон *</label><input class="input" id="sb-phone" type="tel" data-phone-mask data-phone-required="1" required inputmode="numeric" autocomplete="tel" placeholder="+7 (___) ___-__-__" ' +
+                    (phoneLocked ? "readonly " : "") +
                     'value="' +
                     esc(state.client_phone) +
                     '"></div>' +
@@ -234,6 +241,12 @@
                     'value="' +
                     esc(state.client_telegram) +
                     '"></div></div></div>';
+
+                var phoneInput = qs(modal, "#sb-phone");
+                if (phoneInput && window.AycPhone) {
+                    phoneInput._aycPhoneBound = false;
+                    AycPhone.bind(phoneInput, { showEmptyMask: true });
+                }
 
                 var searchInput = qs(modal, "#sb-search");
                 if (searchInput && !state.selected_card) {
@@ -421,15 +434,29 @@
         }
 
         function readStep0() {
+            var phoneEl = qs(modal, "#sb-phone");
             if (!state.selected_card) {
                 state.client_name = (qs(modal, "#sb-name") || {}).value || "";
-                state.client_phone = (qs(modal, "#sb-phone") || {}).value || "";
+                state.client_phone = (phoneEl || {}).value || "";
                 state.client_email = (qs(modal, "#sb-email") || {}).value || "";
                 state.client_telegram = (qs(modal, "#sb-tg") || {}).value || "";
+            } else if (phoneEl && !phoneEl.readOnly) {
+                state.client_phone = phoneEl.value || "";
             }
             if (!state.client_name.trim()) {
                 setStatus("Укажите ФИО или выберите карточку из поиска", true);
                 return false;
+            }
+            var phoneOk = window.AycPhone
+                ? AycPhone.isComplete(state.client_phone)
+                : /\+?7\d{10}/.test(String(state.client_phone || "").replace(/\D/g, "").replace(/^8/, "7"));
+            if (!phoneOk) {
+                setStatus("Укажите полный номер телефона в формате +7 (___) ___-__-__", true);
+                if (phoneEl) phoneEl.focus();
+                return false;
+            }
+            if (window.AycPhone) {
+                state.client_phone = AycPhone.toE164(state.client_phone) || state.client_phone;
             }
             return true;
         }
@@ -444,8 +471,8 @@
                 booking_date: state.booking_date,
                 booking_time: state.booking_time,
                 booking_end_time: state.booking_end_time,
+                client_phone: state.client_phone || "",
             };
-            if (state.client_phone) payload.client_phone = state.client_phone;
             if (state.client_email) payload.client_email = state.client_email;
             if (state.client_telegram) payload.client_telegram = state.client_telegram;
             if (state.client_card_id) payload.client_card_id = state.client_card_id;

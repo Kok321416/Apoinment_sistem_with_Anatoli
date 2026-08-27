@@ -325,6 +325,12 @@ async def specialist_calendar_book(
                 service_id = 0
         booking_time = (form.get("booking_time") or "").strip()
         booking_end = (form.get("booking_end_time") or "").strip()
+        client_phone = (form.get("client_phone") or form.get("phone") or "").strip()
+        if client_phone:
+            request.session["pc_phone"] = client_phone
+            request.session["booking_client_phone"] = client_phone
+        else:
+            client_phone = request.session.get("pc_phone", "")
         if not error and form.get("accept_privacy") != "1":
             error = "Нужно согласие на обработку персональных данных"
         if not error:
@@ -337,7 +343,7 @@ async def specialist_calendar_book(
                 booking_time,
                 booking_end,
                 request.session.get("pc_name", ""),
-                request.session.get("pc_phone", ""),
+                client_phone,
                 request.session.get("pc_email", ""),
                 request.session.get("pc_telegram", ""),
                 client_user_id=(auth_user.id if auth_user else None),
@@ -409,6 +415,7 @@ async def specialist_calendar_book(
             services=services,
             error=error,
             client_name=request.session.get("pc_name", ""),
+            client_phone=request.session.get("pc_phone", ""),
             slug=slug,
             today=date.today().isoformat(),
             weekly_windows_json=json.dumps(weekly, ensure_ascii=False),

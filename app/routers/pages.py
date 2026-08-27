@@ -544,7 +544,7 @@ async def register_page(request: Request, db: AsyncSession = Depends(get_async_d
         elif form.get("accept_privacy") != "1":
             error = "Нужно принять политику конфиденциальности и условия использования."
         elif not fio or not phone:
-            error = "Укажите ФИО и номер телефона"
+            error = "Укажите ФИО и полный номер телефона в формате +7 (XXX) XXX-XX-XX"
         elif auth_method == "yandex":
             from app.services.yandex_auth import yandex_oauth_configured
             if not yandex_oauth_configured():
@@ -681,7 +681,7 @@ async def become_specialist_page(request: Request, db: AsyncSession = Depends(ge
         if not _form_csrf_ok(request, form):
             error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
         elif not fio or not phone:
-            error = "Укажите ФИО и номер телефона"
+            error = "Укажите ФИО и полный номер телефона в формате +7 (XXX) XXX-XX-XX"
         else:
             try:
                 await create_consultant_for_user_async(
@@ -1820,7 +1820,7 @@ async def profile_page(request: Request, db: AsyncSession = Depends(get_async_db
                 consultant.first_name = form.get("first_name", "")
                 consultant.last_name = form.get("last_name", "")
                 consultant.middle_name = form.get("middle_name", "")
-                consultant.phone = form.get("phone", "")
+                consultant.phone = normalize_phone(form.get("phone")) or consultant.phone
                 consultant.telegram_nickname = form.get("telegram_nickname", "")
                 consultant.email = form.get("email", "")
                 consultant.profile_description = form.get("profile_description", "")
@@ -1935,18 +1935,23 @@ async def client_cards_list(request: Request, db: AsyncSession = Depends(get_asy
         if not _form_csrf_ok(request, form):
             error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
         elif form.get("action") == "create":
-            db.add(
-                ClientCard(
-                    consultant_id=consultant.id,
-                    name=(form.get("name") or "").strip() or None,
-                    email=(form.get("email") or "").strip() or None,
-                    phone=(form.get("phone") or "").strip() or None,
-                    telegram=(form.get("telegram") or "").strip() or None,
-                    notes=(form.get("notes") or "").strip() or None,
+            phone_raw = (form.get("phone") or "").strip()
+            phone_n = normalize_phone(phone_raw) if phone_raw else ""
+            if phone_raw and not phone_n:
+                error = "Укажите телефон в формате +7 (XXX) XXX-XX-XX"
+            else:
+                db.add(
+                    ClientCard(
+                        consultant_id=consultant.id,
+                        name=(form.get("name") or "").strip() or None,
+                        email=(form.get("email") or "").strip() or None,
+                        phone=phone_n or None,
+                        telegram=(form.get("telegram") or "").strip() or None,
+                        notes=(form.get("notes") or "").strip() or None,
+                    )
                 )
-            )
-            await db.commit()
-            success = "Карточка клиента создана."
+                await db.commit()
+                success = "Карточка клиента создана."
         elif form.get("action") == "delete":
             card_id = _form_int(form, "card_id")
             card = None
@@ -2061,13 +2066,22 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
             if "email" in form:
                 card.email = (form.get("email") or "").strip() or None
             if "phone" in form:
-                card.phone = (form.get("phone") or "").strip() or None
-            if "telegram" in form:
-                card.telegram = (form.get("telegram") or "").strip() or None
-            if "notes" in form:
-                card.notes = (form.get("notes") or "").strip() or None
-            await db.commit()
-            success = "Изменения сохранены."
+                phone_raw = (form.get("phone") or "").strip()
+                if phone_raw:
+                    phone_n = normalize_phone(phone_raw)
+                    if not phone_n:
+                        error = "Укажите телефон в формате +7 (XXX) XXX-XX-XX"
+                    else:
+                        card.phone = phone_n
+                else:
+                    card.phone = None
+            if not error:
+                if "telegram" in form:
+                    card.telegram = (form.get("telegram") or "").strip() or None
+                if "notes" in form:
+                    card.notes = (form.get("notes") or "").strip() or None
+                await db.commit()
+                success = "Изменения сохранены."
         elif form.get("action") == "delete":
             ok, msg = await delete_client_card_async(db, card)
             if ok:

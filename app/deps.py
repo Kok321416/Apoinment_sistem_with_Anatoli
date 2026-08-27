@@ -124,18 +124,23 @@ def blank_field(value: str | None) -> str:
 
 
 def normalize_phone(phone: str | None) -> str:
-    """Store phone in E.164-ish form that fits consultants.phone (max 15 chars)."""
+    """Normalize RU mobile to +7XXXXXXXXXX (fits consultants.phone max 15).
+
+    Accepts masks like +7 (999) 123-45-67, 8XXXXXXXXXX, 9XXXXXXXXX.
+    Returns empty string if incomplete or not a Russian mobile number.
+    """
     raw = (phone or "").strip()
     if not raw:
         return ""
     digits = "".join(ch for ch in raw if ch.isdigit())
-    if len(digits) == 11 and digits.startswith("8"):
+    if not digits:
+        return ""
+    if digits.startswith("8") and len(digits) >= 11:
         digits = "7" + digits[1:]
-    if len(digits) == 11 and digits.startswith("7"):
+    elif digits.startswith("9") and len(digits) == 10:
+        digits = "7" + digits
+    if len(digits) > 11 and digits.startswith("7"):
+        digits = digits[:11]
+    if len(digits) == 11 and digits.startswith("7") and digits[1] == "9":
         return f"+{digits}"
-    if raw.startswith("+") and len(raw) <= 15:
-        return raw
-    if digits:
-        normalized = f"+{digits}"
-        return normalized[:15]
-    return raw[:15]
+    return ""

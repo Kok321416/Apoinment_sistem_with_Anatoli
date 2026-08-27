@@ -61,6 +61,8 @@
                     type="tel"
                     id="phone"
                     name="phone"
+                    data-phone-mask
+                    data-phone-lazy="0"
                     required
                     inputmode="numeric"
                     autocomplete="tel"
@@ -138,7 +140,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/imask"></script>
 <script>
 (function() {
     var form = document.getElementById('register-form');
@@ -149,13 +150,6 @@
     var passwordConfirm = document.getElementById('password_confirm');
     var phoneEl = document.getElementById('phone');
     var fioEl = document.getElementById('fio');
-    var phoneMask = null;
-    if (phoneEl && window.IMask) {
-    phoneMask = IMask(phoneEl, {
-        mask: '+{7} (000) 000-00-00',
-        lazy: false
-    });
-    }
     function normalizeSpaces(s) {
     return (s || '').replace(/\s+/g, ' ').trim();
 }
@@ -232,9 +226,10 @@ if (fioEl) {
     });
 
     form.addEventListener('submit', function(e) {
-        if (phoneMask && !phoneMask.masked.isComplete) {
+        if (window.AycPhone && phoneEl && !AycPhone.isComplete(phoneEl.value)) {
             e.preventDefault();
             alert('Укажите полный номер телефона');
+            phoneEl.focus();
             return;
         }
 

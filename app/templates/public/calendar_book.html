@@ -93,6 +93,23 @@
                 <p class="text-body-sm text-muted" id="bookReviewText">Проверьте услугу, дату и время перед подтверждением.</p>
             </div>
             <div class="form-field mt-lg">
+                <label class="form-field__label" for="client_phone">Телефон</label>
+                <input
+                    class="input"
+                    type="tel"
+                    id="client_phone"
+                    name="client_phone"
+                    data-phone-mask
+                    data-phone-lazy="0"
+                    required
+                    inputmode="numeric"
+                    autocomplete="tel"
+                    placeholder="+7 (___) ___-__-__"
+                    value="{{ client_phone or '' }}"
+                >
+                <p class="form-field__hint">Обязательно. Только номер в формате +7.</p>
+            </div>
+            <div class="form-field mt-lg">
                 <label class="checkbox-row">
                     <input type="checkbox" name="accept_privacy" id="accept_privacy" value="1" required>
                     <span>Согласен(на) на обработку персональных данных согласно <a href="/privacy/" target="_blank" rel="noopener">Политике конфиденциальности</a></span>
@@ -106,5 +123,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/public-calendar-book.js?v=6" defer></script>
+<script src="/static/js/public-calendar-book.js?v=7" defer></script>
 {% endblock %}

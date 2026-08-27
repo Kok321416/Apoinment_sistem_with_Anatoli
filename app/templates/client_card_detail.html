@@ -117,7 +117,7 @@
                 </div>
                 <div class="form-field">
                     <label class="form-field__label" for="card_phone">Телефон</label>
-                    <input class="input" type="tel" id="card_phone" name="phone" value="{{ card.phone|default('') }}" placeholder="Необязательно" autocomplete="tel">
+                    <input class="input" type="tel" id="card_phone" name="phone" data-phone-mask value="{{ card.phone|default('') }}" placeholder="+7 (___) ___-__-__" autocomplete="tel" inputmode="numeric">
                 </div>
                 <div class="form-field">
                     <label class="form-field__label" for="card_telegram">Телеграм</label>
@@ -267,7 +267,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/specialist-book.js?v=4" defer></script>
+<script src="/static/js/specialist-book.js?v=5" defer></script>
 <script src="/static/js/client-detail.js?v=2" defer></script>
 {% if show_diagnostics %}
 <script>
