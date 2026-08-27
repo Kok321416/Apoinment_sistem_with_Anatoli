@@ -978,11 +978,11 @@ async def manage_hub_page(request: Request, db: AsyncSession = Depends(get_async
 @router.get("/calendars/")
 @router.post("/calendars/")
 async def calendars_page(request: Request, db: AsyncSession = Depends(get_async_db)):
-    if request.method == "GET":
-        return RedirectResponse("/manage/#calendars", status_code=302)
     user = await _require_user_async(request, db)
     if not user:
         return _login_redirect(request)
+    if request.method == "GET":
+        return RedirectResponse("/manage/#calendars", status_code=302)
     consultant = await require_specialist_mode_async(request, db, user)
     success = error = None
     if request.method == "POST":
@@ -1230,10 +1230,10 @@ async def calendar_settings(request: Request, calendar_id: int, db: AsyncSession
 @router.post("/services/")
 async def services_page(request: Request, db: AsyncSession = Depends(get_async_db)):
     if request.method == "GET":
+        user = await _require_user_async(request, db)
+        if not user:
+            return _login_redirect(request)
         if request.query_params.get("legacy") == "1":
-            user = await _require_user_async(request, db)
-            if not user:
-                return _login_redirect(request)
             await require_specialist_mode_async(request, db, user)
             return templates.TemplateResponse(
                 "services.html",

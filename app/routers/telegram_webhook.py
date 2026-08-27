@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 import secrets
 
-from aiogram.types import Update
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
@@ -23,6 +22,8 @@ async def telegram_webhook(secret: str, request: Request):
         or not secrets.compare_digest(secret, expected)
     ):
         raise HTTPException(status_code=403, detail="forbidden")
+
+    from aiogram.types import Update
 
     from bot.aiogram_app import get_bot, get_dispatcher
 

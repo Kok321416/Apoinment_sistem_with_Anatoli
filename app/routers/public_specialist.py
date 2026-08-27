@@ -64,13 +64,18 @@ async def _require_gate(request: Request, consultant: Consultant, next_path: str
 
 @router.get("/s/{slug}/")
 async def specialist_public_home(request: Request, slug: str, db: AsyncSession = Depends(get_async_db)):
+    """Public specialist profile. Login is required only when starting a booking."""
     consultant = await _get_consultant_by_slug_async(db, slug)
-    gate = await _require_gate(request, consultant, f"/s/{slug}/", db)
-    if gate:
-        return gate
 
     auth_user = await get_current_user_async(request, db)
     if auth_user:
+        await apply_client_gate_from_user_async(
+            db,
+            request.session,
+            consultant_id=consultant.id,
+            user=auth_user,
+        )
+        _sync_booking_session(request)
         from app.services.diagnostics_service import touch_client_specialist_link
 
         try:
@@ -107,17 +112,20 @@ async def specialist_public_home(request: Request, slug: str, db: AsyncSession =
         ).scalar_one()
         calendars_data.append({"calendar": cal, "services_count": svc_count})
 
+    gated = client_gate_ok(request.session, consultant.id)
     return templates.TemplateResponse(
         "public/specialist.html",
         await page_context_async(
             request,
             db,
-            None,
+            auth_user,
             consultant=consultant,
             calendars_data=calendars_data,
-            client_name=request.session.get("pc_name", ""),
-            client_email=request.session.get("pc_email", ""),
-            client_telegram=request.session.get("pc_telegram", ""),
+            client_name=request.session.get("pc_name", "") if gated else "",
+            client_email=request.session.get("pc_email", "") if gated else "",
+            client_telegram=request.session.get("pc_telegram", "") if gated else "",
+            client_gated=gated,
+            welcome_url=f"/s/{slug}/welcome/?next=/s/{slug}/",
         ),
     )
 

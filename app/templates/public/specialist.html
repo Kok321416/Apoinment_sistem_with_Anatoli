@@ -87,6 +87,15 @@
     </div>
     <a class="btn btn--ghost btn--sm" href="/s/{{ consultant.public_slug }}/logout-client/">Изменить данные</a>
 </section>
+{% elif not client_gated %}
+<section class="ps-welcome ps-welcome--guest" aria-label="Вход для записи">
+    <div class="ps-welcome__text">
+        <p class="ps-welcome__eyebrow">Запись</p>
+        <h2 class="ps-welcome__title">Профиль открыт без входа</h2>
+        <p class="ps-welcome__meta">Чтобы выбрать время, войдите или зарегистрируйтесь - займёт минуту.</p>
+    </div>
+    <a class="btn btn--primary btn--sm" href="{{ welcome_url }}">Войти для записи</a>
+</section>
 {% endif %}
 
 <ol class="ps-steps" aria-label="Этапы записи">
