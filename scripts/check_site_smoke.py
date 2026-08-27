@@ -16,16 +16,17 @@ def fetch(path: str, *, follow: bool = True, timeout: float = 25.0) -> tuple[int
     t0 = time.perf_counter()
     req = urllib.request.Request(url, headers={"User-Agent": "ayc-site-smoke/1.0"})
     try:
-        opener = urllib.request.build_opener(
-            urllib.request.HTTPRedirectHandler() if follow else urllib.request.HTTPHandler()
-        )
-        if not follow:
-            class NoRedirect(urllib.request.HTTPRedirectHandler):
-                def redirect_request(self, *a, **k):
-                    return None
+        if follow:
+            with urllib.request.urlopen(req, timeout=timeout, context=ssl.create_default_context()) as resp:
+                body = resp.read(8000).decode("utf-8", errors="replace")
+                return resp.status, time.perf_counter() - t0, body
 
-            opener = urllib.request.build_opener(NoRedirect)
-        with opener.open(req, timeout=timeout, context=ssl.create_default_context()) as resp:
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *a, **k):
+                return None
+
+        opener = urllib.request.build_opener(NoRedirect)
+        with opener.open(req, timeout=timeout) as resp:
             body = resp.read(8000).decode("utf-8", errors="replace")
             return resp.status, time.perf_counter() - t0, body
     except urllib.error.HTTPError as e:
