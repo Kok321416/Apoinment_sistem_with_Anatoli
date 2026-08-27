@@ -69,7 +69,7 @@ body.tg-webapp {
     padding-top: var(--tg-safe-top);
     padding-right: var(--tg-safe-right);
     padding-left: var(--tg-safe-left);
-    padding-bottom: calc(var(--tg-safe-bottom) + 12px);
+    padding-bottom: calc(var(--tg-safe-bottom) + var(--tg-keyboard-inset, var(--keyboard-inset, 0px)) + 12px);
 }
 
 .tg-scroll-root a,
@@ -966,4 +966,58 @@ body.tg-webapp .bookings-status-pill {
     flex: 0 0 auto;
     min-height: var(--tg-touch, 44px);
     padding: 8px 12px;
+}
+
+/* -- Adaptive fluid shell (site pages inside Mini App) ----- */
+html.tg-webapp .container,
+body.tg-webapp .container,
+html.tg-webapp .cabinet-workspace__main,
+body.tg-webapp .booking-page__main,
+body.tg-webapp .auth-page__main {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+html.tg-webapp .card,
+html.tg-webapp .auth-card,
+html.tg-webapp .booking-panel,
+html.tg-webapp .book-cal-panel,
+html.tg-webapp .profile-panel,
+html.tg-webapp .diag-card {
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+html.tg-webapp .input,
+html.tg-webapp .textarea,
+html.tg-webapp .select,
+html.tg-webapp .btn {
+    font-size: 16px; /* prevent iOS zoom */
+    max-width: 100%;
+}
+
+html.tg-keyboard-open .tg-scroll-root,
+html.keyboard-open.tg-webapp .tg-scroll-root {
+    padding-bottom: calc(var(--tg-safe-bottom) + var(--tg-keyboard-inset, var(--keyboard-inset, 0px)) + 16px);
+}
+
+html.tg-webapp .sb-modal__panel,
+html.tg-webapp .modal__panel {
+    width: calc(100% - 24px);
+    max-height: calc(var(--tg-viewport-stable-height, var(--app-vh)) - 24px);
+}
+
+@media (max-width: 420px) {
+    html.tg-webapp .hub-stats,
+    html.tg-webapp .dash-stats,
+    html.tg-webapp .app-nav-grid {
+        grid-template-columns: 1fr;
+    }
+
+    body.tg-webapp .auth-methods--grid {
+        grid-template-columns: 1fr;
+    }
 }

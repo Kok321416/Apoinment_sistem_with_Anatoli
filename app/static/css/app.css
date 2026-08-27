@@ -1,6 +1,7 @@
 /* App cabinet — dashboard and internal pages (Stage 5+) */
 .app-shell {
-    min-height: 100vh;
+    min-height: var(--app-vh);
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
 }
@@ -718,14 +719,14 @@
 
 /* ═══ Cabinet shell (Flowbite sidenav + Cursor-like empty workspace) ═══ */
 .cabinet-shell {
-    min-height: 100vh;
+    min-height: var(--app-vh);
     min-height: 100dvh;
     background: var(--bg-900);
 }
 
 .cabinet-frame {
     display: flex;
-    min-height: 100vh;
+    min-height: var(--app-vh);
     min-height: 100dvh;
 }
 
@@ -738,7 +739,7 @@
     flex-direction: column;
     width: var(--cabinet-sidenav-width);
     flex-shrink: 0;
-    height: 100vh;
+    height: var(--app-vh);
     height: 100dvh;
     padding: var(--space-lg);
     gap: var(--space-md);
@@ -1180,7 +1181,7 @@ html[data-theme="dark"] .brand__mark {
 
     .cabinet-workspace__main {
         padding: var(--space-xl) var(--space-lg);
-        padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset, 0px));
     }
 
     .cabinet-workspace__footer {
@@ -1197,7 +1198,7 @@ html[data-theme="dark"] .brand__mark {
         grid-auto-flow: column;
         grid-auto-columns: minmax(0, 1fr);
         gap: 2px;
-        padding: var(--space-xs) var(--space-sm) calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
+        padding: var(--space-xs) var(--space-sm) calc(var(--space-xs) + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset, 0px));
         background: var(--surface-100);
         border-top: 1px solid var(--border-default);
     }

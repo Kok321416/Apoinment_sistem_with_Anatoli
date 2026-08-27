@@ -1,6 +1,6 @@
 /* Auth pages — login, register */
 .auth-page {
-    min-height: 100vh;
+    min-height: var(--app-vh);
     display: flex;
     flex-direction: column;
 }

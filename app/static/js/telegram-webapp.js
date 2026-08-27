@@ -69,14 +69,21 @@
         var shell = document.getElementById("tg-scroll-root");
         try {
             applySafeArea(tg);
+            var vv = window.visualViewport;
             var h = Math.round(
-                tg.viewportStableHeight || tg.viewportHeight || window.innerHeight || document.documentElement.clientHeight || 0
+                tg.viewportStableHeight ||
+                    tg.viewportHeight ||
+                    (vv && vv.height) ||
+                    window.innerHeight ||
+                    document.documentElement.clientHeight ||
+                    0
             );
             if (!h || h < 200) {
                 h = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0, 480);
             }
             if (h > 0) {
                 root.style.setProperty("--tg-viewport-stable-height", h + "px");
+                root.style.setProperty("--app-vh", h + "px");
                 root.style.height = h + "px";
                 root.style.maxHeight = h + "px";
                 root.style.background = "#ffffff";
@@ -90,6 +97,14 @@
                     shell.style.height = h + "px";
                     shell.style.background = "#ffffff";
                 }
+            }
+            if (vv) {
+                var inner = window.innerHeight || h;
+                var keyboard = Math.max(0, Math.round(inner - vv.height - (vv.offsetTop || 0)));
+                root.style.setProperty("--tg-keyboard-inset", keyboard + "px");
+                root.style.setProperty("--keyboard-inset", keyboard + "px");
+                root.classList.toggle("tg-keyboard-open", keyboard > 72);
+                root.classList.toggle("keyboard-open", keyboard > 72);
             }
         } catch (e) {}
     }
@@ -371,6 +386,23 @@
                 tg.onEvent("contentSafeAreaChanged", function () {
                     applySafeArea(tg);
                 });
+            }
+
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener(
+                    "resize",
+                    function () {
+                        applyViewport(tg);
+                    },
+                    { passive: true }
+                );
+                window.visualViewport.addEventListener(
+                    "scroll",
+                    function () {
+                        applyViewport(tg);
+                    },
+                    { passive: true }
+                );
             }
 
             window.__TG_WEBAPP__ = {

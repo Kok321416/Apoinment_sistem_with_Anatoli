@@ -1,15 +1,18 @@
 /*
  * Responsive Design System — shared adaptive behavior.
  * Prefer tokens + fluid CSS; keep media queries minimal and token-driven.
+ * Breakpoints (project): 1440 / 1280 / 1024 / 768 / 480 / 360.
  */
 
 /* Base: prevent page-level horizontal bleed without hiding bugs in admin */
 html {
     max-width: 100%;
+    height: 100%;
 }
 
 body {
     max-width: 100%;
+    min-width: 0;
     overflow-x: clip;
     padding-left: var(--safe-left);
     padding-right: var(--safe-right);
@@ -18,9 +21,14 @@ body {
 img,
 svg,
 video,
-canvas {
+canvas,
+iframe {
     max-width: 100%;
     height: auto;
+}
+
+iframe {
+    width: 100%;
 }
 
 /* Fluid / safe text wrapping for long emails, names, telegram handles */
@@ -36,6 +44,18 @@ canvas {
 .text-break {
     overflow-wrap: anywhere;
     word-break: break-word;
+}
+
+a,
+p,
+li,
+td,
+th,
+label,
+.card,
+.form-field__hint,
+.alert {
+    overflow-wrap: anywhere;
 }
 
 /* Shared responsive grids */
@@ -80,9 +100,24 @@ canvas {
     margin-top: 0;
 }
 
+.input,
+.textarea,
+.select,
+.btn {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.textarea {
+    min-width: 0;
+    width: 100%;
+    resize: vertical;
+}
+
 /* Contained scroll for wide tables (no page-wide horizontal scroll) */
 .table-wrap,
-.pa-table-wrap {
+.pa-table-wrap,
+.table-scroll {
     width: 100%;
     max-width: 100%;
     overflow-x: auto;
@@ -90,15 +125,25 @@ canvas {
     overscroll-behavior-x: contain;
 }
 
+.table-wrap table,
+.pa-table-wrap table,
+.table-scroll table {
+    min-width: 36rem;
+}
+
 /* Touch-friendly controls */
 @media (pointer: coarse) {
     .btn,
     .btn--sm,
     .input,
+    .select,
     .auth-method,
     .app-header__menu-btn,
     .tg-hub__card-link,
-    .app-mode-toggle__btn {
+    .app-mode-toggle__btn,
+    .cabinet-bottom-nav__item,
+    .profile-sidebar__btn,
+    .book-cal-progress__item {
         min-height: var(--touch-min);
     }
 
@@ -122,10 +167,38 @@ canvas {
 
 .toast-stack {
     right: max(var(--space-lg), var(--safe-right));
-    bottom: max(var(--space-lg), var(--safe-bottom));
+    bottom: max(var(--space-lg), calc(var(--safe-bottom) + var(--keyboard-inset, 0px)));
+    left: auto;
+    max-width: min(24rem, calc(100vw - 2 * var(--space-lg)));
 }
 
-/* Token-driven breakpoint tuning (DS: 1024 / 768 / 480) */
+/* Modals / drawers: stay inside viewport */
+.sb-modal,
+.modal,
+.drawer-overlay,
+[role="dialog"].is-open {
+    max-width: 100vw;
+}
+
+.sb-modal__panel,
+.modal__panel,
+.drawer,
+.avatar-crop-modal,
+#avatarCropModal {
+    max-width: min(100vw - 1.5rem, 36rem);
+    max-height: min(var(--app-vh), 100dvh);
+    max-height: calc(var(--app-vh) - var(--safe-top) - var(--safe-bottom) - 1rem);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Token-driven breakpoint tuning */
+@media (max-width: 1280px) {
+    :root {
+        --container-padding: clamp(var(--space-lg), 2vw, var(--space-2xl));
+    }
+}
+
 @media (max-width: 1024px) {
     :root {
         --container-padding: clamp(var(--space-lg), 2vw, var(--space-2xl));
@@ -146,6 +219,10 @@ canvas {
 
     .grid-12 {
         gap: var(--space-2xl);
+    }
+
+    .auth-methods--grid {
+        grid-template-columns: 1fr 1fr;
     }
 }
 
@@ -170,6 +247,7 @@ canvas {
 
     .cluster {
         gap: var(--space-md);
+        flex-wrap: wrap;
     }
 
     .app-footer-mini {
@@ -188,6 +266,27 @@ canvas {
     .book-cal-layout {
         grid-template-columns: 1fr !important;
     }
+
+    .btn-row,
+    .form-actions,
+    .share-actions,
+    .cluster--actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+        width: 100%;
+    }
+
+    .btn-row > .btn,
+    .form-actions > .btn,
+    .share-actions > .btn {
+        flex: 1 1 auto;
+        min-width: min(100%, 9rem);
+    }
+
+    .app-form-grid {
+        grid-template-columns: 1fr !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -195,6 +294,7 @@ canvas {
         --container-padding: var(--space-md);
         --space-8xl: var(--space-6xl);
         --grid-gap: var(--space-lg);
+        --grid-card-min: min(100%, 16rem);
     }
 
     .hub-stats,
@@ -211,7 +311,41 @@ canvas {
         padding: var(--space-2xl) !important;
     }
 
+    .auth-methods--grid {
+        grid-template-columns: 1fr;
+    }
+
     .book-cal-step {
         white-space: normal;
     }
+
+    .btn-row > .btn,
+    .form-actions > .btn,
+    .share-actions > .btn {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+}
+
+@media (max-width: 360px) {
+    :root {
+        --container-padding: var(--space-sm);
+        --font-size-body: 0.9375rem;
+    }
+
+    .cabinet-bottom-nav__item {
+        font-size: 0.6rem;
+        padding-inline: 2px;
+    }
+}
+
+/* Keyboard open: keep sticky footers / toasts above OS keyboard */
+html.keyboard-open .cabinet-bottom-nav,
+html.keyboard-open .book-cal-sticky,
+html.keyboard-open .ps-sticky {
+    transform: translateY(calc(-1 * var(--keyboard-inset, 0px)));
+}
+
+html.keyboard-open .toast-stack {
+    bottom: max(var(--space-lg), calc(var(--safe-bottom) + var(--keyboard-inset, 0px)));
 }

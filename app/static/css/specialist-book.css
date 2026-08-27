@@ -17,7 +17,8 @@
 .sb-modal__panel {
     position: relative;
     width: min(560px, 100%);
-    max-height: min(90vh, 720px);
+    max-width: calc(100vw - 1.5rem);
+    max-height: min(90vh, calc(var(--app-vh) - 2rem), 720px);
     overflow: auto;
     background: var(--surface-200, #fff);
     border: 1px solid var(--border-default);
