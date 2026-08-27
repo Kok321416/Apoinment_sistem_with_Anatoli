@@ -9,15 +9,15 @@
     <link rel="stylesheet" href="/static/css/landing.css?v=25">
     {% endblock %}
     {% if telegram_mini_app_launch_url %}<meta name="ayc-telegram-launch" content="{{ telegram_mini_app_launch_url }}">{% endif %}
+    {% if load_telegram_webapp %}
+    {% include "components/telegram_webapp.html" %}
+    {% endif %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
     {% include "components/skip_link.html" %}
     {% block body %}{% endblock %}
     {% include "components/cookie_consent.html" %}
     {% include "components/yandex_metrika.html" %}
-    {% if load_telegram_webapp %}
-    {% include "components/telegram_webapp.html" %}
-    {% endif %}
     {% block scripts %}{% endblock %}
     <script src="/static/js/theme-toggle.js?v=2" defer></script>
     <script src="/static/js/capacitor-bridge.js?v=3" defer></script>

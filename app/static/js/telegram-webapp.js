@@ -307,9 +307,27 @@
             });
     }
 
+    function bootShellOnly() {
+        try {
+            document.documentElement.classList.add("tg-webapp");
+            document.body.classList.add("tg-webapp");
+            ensureScrollShell();
+            window.__TG_WEBAPP__ = window.__TG_WEBAPP__ || {
+                initData: "",
+                initDataUnsafe: {},
+                version: "",
+                platform: "",
+                haptic: haptic,
+            };
+        } catch (e) {}
+    }
+
     function boot() {
         var tg = window.Telegram && window.Telegram.WebApp;
-        if (!tg) return;
+        if (!tg) {
+            bootShellOnly();
+            return;
+        }
 
         try {
             document.documentElement.classList.add("tg-webapp");
@@ -403,9 +421,25 @@
         }
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", boot);
-    } else {
-        boot();
+    function scheduleBoot() {
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", boot);
+        } else {
+            boot();
+        }
+    }
+
+    scheduleBoot();
+    if (!(window.Telegram && window.Telegram.WebApp)) {
+        var tries = 0;
+        var waitSdk = window.setInterval(function () {
+            tries += 1;
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.clearInterval(waitSdk);
+                boot();
+            } else if (tries >= 20) {
+                window.clearInterval(waitSdk);
+            }
+        }, 100);
     }
 })();
