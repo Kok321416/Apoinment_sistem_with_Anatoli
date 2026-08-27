@@ -16,10 +16,14 @@
 <body class="{% block body_class %}{% endblock %}">
     {% include "components/skip_link.html" %}
     {% block body %}{% endblock %}
+    {% if not load_telegram_webapp %}
     {% include "components/cookie_consent.html" %}
     {% include "components/yandex_metrika.html" %}
+    {% endif %}
     {% block scripts %}{% endblock %}
+    {% if not load_telegram_webapp %}
     <script src="/static/js/theme-toggle.js?v=2" defer></script>
     <script src="/static/js/capacitor-bridge.js?v=3" defer></script>
+    {% endif %}
 </body>
 </html>

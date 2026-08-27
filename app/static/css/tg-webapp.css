@@ -141,11 +141,12 @@ body.tg-webapp .card {
 }
 
 body.tg-webapp .cookie-consent {
-    left: var(--tg-pad-x);
-    right: var(--tg-pad-x);
-    bottom: calc(var(--tg-safe-bottom) + 12px);
-    max-width: calc(100% - 2 * var(--tg-pad-x));
-    border-radius: var(--tg-radius);
+    display: none !important;
+}
+
+body.tg-booking-page .auth-page__topbar,
+body.tg-booking-page .app-footer-mini {
+    display: none !important;
 }
 
 /* ── Auth / hub entry ─────────────────────────────────────── */

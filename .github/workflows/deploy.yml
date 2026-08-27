@@ -277,3 +277,9 @@ jobs:
           fi
 
           echo "✅ Deploy completed. Web: Passenger (passenger_wsgi.py), Bot: $BOT_LOG"
+
+          echo "🔥 Warming Mini App (Passenger cold start)"
+          WARM_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://allyourclients.ru/tg/" 2>/dev/null || echo "000")
+          echo "Warm /tg/ => HTTP $WARM_CODE"
+          curl -s -o /dev/null --max-time 15 "https://allyourclients.ru/static/js/vendor/telegram-web-app.js?v=1" || true
+          curl -s -o /dev/null --max-time 15 "https://allyourclients.ru/health/mini-app" || true

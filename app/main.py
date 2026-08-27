@@ -87,6 +87,41 @@ async def health():
     }
 
 
+@app.get("/health/mini-app")
+async def health_mini_app():
+    """Public checklist for Telegram Mini App (DNS/HTTPS/assets/session)."""
+    from pathlib import Path
+
+    sdk = Path(settings.static_dir) / "js" / "vendor" / "telegram-web-app.js"
+    boot = Path(settings.static_dir) / "js" / "telegram-webapp.js"
+    issues: list[str] = []
+    if not sdk.is_file():
+        issues.append("missing_static_vendor_telegram_web_app_js")
+    if not boot.is_file():
+        issues.append("missing_static_telegram_webapp_boot_js")
+    if settings.session_same_site != "none" and settings.site_url.startswith("https://"):
+        issues.append("session_same_site_should_be_none_for_telegram_webview")
+    if not settings.telegram_bot_token:
+        issues.append("telegram_bot_token_not_set")
+    return {
+        "status": "ok" if not issues else "degraded",
+        "site_url": settings.site_url.rstrip("/"),
+        "session_same_site": settings.session_same_site,
+        "telegram_bot_username": settings.telegram_bot_username or None,
+        "webhook_configured": bool(settings.telegram_webhook_secret),
+        "assets": {
+            "vendor_sdk_bytes": sdk.stat().st_size if sdk.is_file() else 0,
+            "boot_js_bytes": boot.stat().st_size if boot.is_file() else 0,
+        },
+        "issues": issues,
+        "dns_hint": "AAAA for allyourclients.ru must be absent; only A -> 31.31.197.47",
+        "endpoints": {
+            "hub": "/tg/",
+            "webapp_auth": "/api/telegram/webapp-auth",
+        },
+    }
+
+
 @app.get("/sw.js")
 async def service_worker():
     """Root-scoped SW so PWA can cache /static/* without caching HTML/API."""

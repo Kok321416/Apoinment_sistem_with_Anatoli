@@ -384,7 +384,7 @@ async def api_telegram_webapp_auth(request: Request, db: AsyncSession = Depends(
         return JSONResponse({"success": False, "error": "Invalid JSON"}, status_code=400)
     init_data = (data.get("init_data") or data.get("initData") or "").strip()
     mode = (data.get("mode") or "").strip().lower()
-    from app.services.active_mode import VALID_MODES, set_active_mode, user_has_consultant_async
+    from app.services.active_mode import set_active_mode, user_has_consultant_async
     from app.services.telegram_webapp_auth import find_or_create_user_from_webapp_async, validate_webapp_init_data
 
     parsed = validate_webapp_init_data(init_data)
@@ -411,8 +411,12 @@ async def api_telegram_webapp_auth(request: Request, db: AsyncSession = Depends(
     )
     if result.get("requires_2fa"):
         return JSONResponse(result)
-    if mode in VALID_MODES:
+    if mode == "specialist" and has_c:
         set_active_mode(request, mode, has_consultant=has_c)
+    else:
+        from app.services.active_mode import MODE_CLIENT
+
+        set_active_mode(request, MODE_CLIENT, has_consultant=has_c)
     return result
 
 

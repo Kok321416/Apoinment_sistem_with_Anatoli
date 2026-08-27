@@ -9,15 +9,21 @@
     <link rel="stylesheet" href="/static/css/booking.css?v=24">
 {% endblock %}
     {% if telegram_mini_app_launch_url %}<meta name="ayc-telegram-launch" content="{{ telegram_mini_app_launch_url }}">{% endif %}
+    {% if load_telegram_webapp %}
+    {% include "components/telegram_webapp.html" %}
+    {% endif %}
 </head>
-<body class="booking-page">
+<body class="booking-page{% if load_telegram_webapp %} tg-booking-page{% endif %}">
+    {% if not load_telegram_webapp %}
     {% include "components/skip_link.html" %}
     <header class="auth-page__topbar container">
         {% include "components/logo.html" %}
     </header>
+    {% endif %}
     <main id="main" class="booking-page__main container" tabindex="-1">
         {% block booking_content %}{% endblock %}
     </main>
+    {% if not load_telegram_webapp %}
     <footer class="app-footer-mini" role="contentinfo">
         <a href="/">На главную</a>
         <span class="footer-sep" aria-hidden="true">·</span>
@@ -35,9 +41,11 @@
     </footer>
     {% include "components/cookie_consent.html" %}
     {% include "components/yandex_metrika.html" %}
-    {% include "components/telegram_webapp.html" %}
+    {% endif %}
     {% block scripts %}{% endblock %}
+    {% if not load_telegram_webapp %}
     <script src="/static/js/theme-toggle.js?v=2" defer></script>
     <script src="/static/js/capacitor-bridge.js?v=3" defer></script>
+    {% endif %}
 </body>
 </html>

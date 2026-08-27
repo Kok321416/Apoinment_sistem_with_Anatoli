@@ -270,8 +270,17 @@ def _cabinet_nav_from_path(path: str) -> tuple[str, str]:
     return "home", "Кабинет"
 
 
+def _resolve_load_telegram_webapp(request, extra: dict) -> bool:
+    if "load_telegram_webapp" in extra:
+        return bool(extra.pop("load_telegram_webapp"))
+    from app.services.telegram_webview import is_telegram_webview
+
+    return is_telegram_webview(request)
+
+
 def _page_context_base(request, user, *, has_consultant: bool, active_mode: str, header: dict, **extra):
     nav_key, section_title = _cabinet_nav_from_path(getattr(request.url, "path", "/") or "/")
+    load_tg = _resolve_load_telegram_webapp(request, extra)
     ctx = {
         "request": request,
         "user": user,
@@ -298,7 +307,7 @@ def _page_context_base(request, user, *, has_consultant: bool, active_mode: str,
         "active_mode": active_mode,
         "show_mode_switcher": bool(user and has_consultant and active_mode == "specialist"),
         "impersonator_id": None,
-        "load_telegram_webapp": False,
+        "load_telegram_webapp": load_tg,
         "cabinet_nav_active": nav_key,
         "cabinet_section_title": section_title,
         **header,
