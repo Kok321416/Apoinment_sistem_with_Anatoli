@@ -101,7 +101,14 @@ def normalize_url(value: str | None) -> str | None:
     if not value or value.lower() in ("none", "null"):
         return None
     if value.startswith(("http://", "https://")):
+        # Guard against stored "https://None"
+        host = value.split("://", 1)[-1].strip().lower()
+        if not host or host in ("none", "null"):
+            return None
         return value
+    # Telegram @username → t.me link
+    if value.startswith("@") and " " not in value:
+        return f"https://t.me/{value.lstrip('@')}"
     return f"https://{value.lstrip('/')}"
 
 
@@ -109,6 +116,9 @@ def blank_field(value: str | None) -> str:
     """Hide empty DB values and literal 'None' strings in form fields."""
     text = (value or "").strip()
     if not text or text.lower() in ("none", "null"):
+        return ""
+    lowered = text.lower()
+    if lowered in ("http://none", "https://none", "http://null", "https://null"):
         return ""
     return text
 
