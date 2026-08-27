@@ -7,9 +7,9 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=41">
+<link rel="stylesheet" href="/static/css/app.css?v=44">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=13">
-<link rel="stylesheet" href="/static/css/clients-crm.css?v=7">
+<link rel="stylesheet" href="/static/css/clients-crm.css?v=8">
 {% endblock %}
 
 {% block app_content %}
@@ -184,7 +184,7 @@
                                 <span class="client-card__meta-value">{{ client.booking_count }}</span>
                             </div>
                         </div>
-                        <button type="button" class="client-card__more" data-open-drawer="{{ client.id }}">Подробнее →</button>
+                        <a href="{{ client.detail_url }}" class="client-card__more">Подробнее</a>
                     </article>
                     {% endfor %}
                 </div>
@@ -219,26 +219,11 @@
     </div>
 </div>
 
-<div class="client-drawer" id="client-drawer" hidden aria-hidden="true">
-    <div class="client-drawer__backdrop" id="client-drawer-backdrop"></div>
-    <aside class="client-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="client-drawer-title">
-        <header class="client-drawer__header">
-            <h2 class="client-drawer__title" id="client-drawer-title">Карточка клиента</h2>
-            <button type="button" class="btn btn--ghost btn--sm" id="client-drawer-close" aria-label="Закрыть">✕</button>
-        </header>
-        <div class="client-drawer__body" id="client-drawer-body"></div>
-        <footer class="client-drawer__footer">
-            <a href="#" class="btn btn--primary btn--block" id="client-drawer-open-full">Открыть полностью</a>
-        </footer>
-    </aside>
-</div>
-
 <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
-<script src="/static/js/clients-drawer.js?v=2" defer></script>
-<script src="/static/js/clients-page.js?v=1" defer></script>
+<script src="/static/js/clients-page.js?v=2" defer></script>
 <script type="application/json" id="clients-crm-data">{{ crm_payload | tojson }}</script>
 {% endblock %}

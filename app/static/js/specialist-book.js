@@ -83,6 +83,16 @@
             selected_card: null,
         };
 
+        if (opts && opts.client && opts.client.id) {
+            state.client_card_id = opts.client.id;
+            state.selected_card = opts.client;
+            state.client_name = opts.client.name || "";
+            state.client_phone = opts.client.phone || "";
+            state.client_email = opts.client.email || "";
+            state.client_telegram = opts.client.telegram || "";
+            state.step = 1;
+        }
+
         var steps = ["Клиент", "Календарь", "Услуга", "Дата и время", "Проверка"];
         var searchTimer = null;
 
@@ -617,13 +627,24 @@
         renderBody();
     }
 
-    document.addEventListener("click", function (e) {
+.document.addEventListener("click", function (e) {
         var btn = e.target.closest("[data-specialist-book]");
         if (!btn) return;
         e.preventDefault();
-        openModal({
+        var opts = {
             csrf: btn.getAttribute("data-csrf") || csrfToken(),
-        });
+        };
+        var cid = btn.getAttribute("data-client-id");
+        if (cid) {
+            opts.client = {
+                id: Number(cid),
+                name: btn.getAttribute("data-client-name") || "",
+                phone: btn.getAttribute("data-client-phone") || "",
+                email: btn.getAttribute("data-client-email") || "",
+                telegram: btn.getAttribute("data-client-telegram") || "",
+            };
+        }
+        openModal(opts);
     });
 
     window.AYCSpecialistBook = { open: openModal };

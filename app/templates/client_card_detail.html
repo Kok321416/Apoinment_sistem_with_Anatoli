@@ -8,16 +8,20 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=40">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=12">
-<link rel="stylesheet" href="/static/css/clients-crm.css?v=7">
+<link rel="stylesheet" href="/static/css/app.css?v=44">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=13">
+<link rel="stylesheet" href="/static/css/clients-crm.css?v=8">
+<link rel="stylesheet" href="/static/css/specialist-book.css?v=5">
+{% if show_diagnostics %}
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=2">
+{% endif %}
 {% endblock %}
 
 {% block app_content %}
 <div class="client-detail clients-page" id="client-detail" data-csrf="{{ csrf_token }}">
-    <p class="mb-lg">
-        <a href="/clients/" class="btn btn--ghost btn--sm">← К списку</a>
-    </p>
+    <nav class="client-detail__crumb" aria-label="Навигация">
+        <a href="/clients/" class="client-detail__back">← Клиенты</a>
+    </nav>
 
     {% if success %}
     <div class="alert alert--success" role="status">{{ success }}</div>
@@ -26,39 +30,55 @@
     <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}
 
-    <header class="client-detail__header">
+    <header class="client-detail__hero card">
         <div class="client-detail__identity" style="--avatar-color: {{ crm_client.avatar_color }}">
             <div class="client-detail__avatar" aria-hidden="true">{{ crm_client.initials }}</div>
-            <div>
+            <div class="client-detail__hero-main">
                 <h1 class="client-detail__title">{{ crm_client.name }}</h1>
                 <div class="client-detail__badges">
                     {% if crm_client.badge_label %}
-                    <span class="badge badge--{{ 'warning' if crm_client.badge == 'vip' else 'info' if crm_client.badge == 'new' else 'secondary' }}">{{ crm_client.badge_label }}</span>
+                    <span class="client-card__badge client-card__badge--{{ crm_client.badge }}">{{ crm_client.badge_label }}</span>
                     {% endif %}
-                    <span class="badge badge--{{ 'success' if crm_client.status == 'active' else 'secondary' }}">{{ crm_client.status_label }}</span>
+                    <span class="client-card__status client-card__status--{{ crm_client.status }}">
+                        <span class="client-card__status-dot" aria-hidden="true"></span>{{ crm_client.status_label }}
+                    </span>
                 </div>
                 <p class="client-detail__meta">
                     Записей: {{ total_bookings|default(0) }}
                     · Завершено: {{ completed_count|default(0) }}
+                    · Карточка: {{ crm_client.completeness.percent }}%
                 </p>
             </div>
         </div>
         <div class="client-detail__actions">
+            <button
+                type="button"
+                class="btn btn--primary"
+                data-specialist-book
+                data-csrf="{{ csrf_token }}"
+                data-client-id="{{ card.id }}"
+                data-client-name="{{ crm_client.name|e }}"
+                data-client-phone="{{ card.phone|default('', true)|e }}"
+                data-client-email="{{ card.email|default('', true)|e }}"
+                data-client-telegram="{{ card.telegram|default('', true)|e }}"
+            >Записать на приём</button>
             {% if card.phone %}
-            <a href="tel:{{ card.phone }}" class="btn btn--secondary btn--sm">Позвонить</a>
-            {% endif %}
-            {% if card.email %}
-            <a href="mailto:{{ card.email }}" class="btn btn--secondary btn--sm">Email</a>
+            <a href="tel:{{ card.phone }}" class="btn btn--secondary">Позвонить</a>
             {% endif %}
             {% if card.telegram %}
-            <a href="https://t.me/{{ card.telegram|cut('@') }}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">Telegram</a>
+            <a href="https://t.me/{{ card.telegram|cut('@') }}" target="_blank" rel="noopener" class="btn btn--secondary">Telegram</a>
+            {% elif card.email %}
+            <a href="mailto:{{ card.email }}" class="btn btn--secondary">Email</a>
             {% endif %}
         </div>
     </header>
 
     <div class="crm-tabs" role="tablist" aria-label="Разделы карточки">
         <button type="button" class="crm-tabs__btn is-active" role="tab" aria-selected="true" data-tab="overview" id="tab-overview">Обзор</button>
-        <button type="button" class="crm-tabs__btn" role="tab" aria-selected="false" data-tab="history" id="tab-history">История</button>
+        <button type="button" class="crm-tabs__btn" role="tab" aria-selected="false" data-tab="bookings" id="tab-bookings">Записи</button>
+        {% if show_diagnostics %}
+        <button type="button" class="crm-tabs__btn" role="tab" aria-selected="false" data-tab="diagnostics" id="tab-diagnostics">Диагностика</button>
+        {% endif %}
         <button type="button" class="crm-tabs__btn" role="tab" aria-selected="false" data-tab="notes" id="tab-notes">Заметки</button>
     </div>
 
@@ -76,10 +96,14 @@
                 <span class="client-detail__stat-value">{{ crm_client.completeness.percent }}%</span>
                 <span class="client-detail__stat-label">Заполненность</span>
             </li>
+            <li class="client-detail__stat">
+                <span class="client-detail__stat-value">{{ upcoming_bookings|length }}</span>
+                <span class="client-detail__stat-label">Предстоящих</span>
+            </li>
         </ul>
 
-        <h2 class="app-section__title">Контакты и данные</h2>
-        <form method="POST" action="/clients/{{ card.id }}/" class="stack">
+        <h2 class="client-detail__section-title">Контакты и данные</h2>
+        <form method="POST" action="/clients/{{ card.id }}/" class="stack client-detail__form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="update">
             <div class="app-form-grid">
@@ -104,7 +128,7 @@
         </form>
 
         {% if upcoming_bookings %}
-        <h2 class="app-section__title mt-2xl">Предстоящие записи</h2>
+        <h2 class="client-detail__section-title">Ближайшие записи</h2>
         <ol class="crm-timeline">
             {% for b in upcoming_bookings %}
             <li class="crm-timeline__item">
@@ -117,6 +141,7 @@
             </li>
             {% endfor %}
         </ol>
+        <p class="client-detail__panel-link"><button type="button" class="link-accent" data-goto-tab="bookings">Все записи →</button></p>
         {% endif %}
 
         <div class="client-detail__danger">
@@ -128,8 +153,43 @@
         </div>
     </section>
 
-    <section class="client-detail__panel card" id="panel-history" role="tabpanel" aria-labelledby="tab-history" hidden>
-        <h2 class="app-section__title">История консультаций</h2>
+    <section class="client-detail__panel card" id="panel-bookings" role="tabpanel" aria-labelledby="tab-bookings" hidden>
+        <div class="client-detail__panel-head">
+            <div>
+                <h2 class="client-detail__section-title client-detail__section-title--flush">Записи специалиста</h2>
+                <p class="client-detail__hint">Только вы видите этот раздел. Здесь история и создание записи для клиента.</p>
+            </div>
+            <button
+                type="button"
+                class="btn btn--primary"
+                data-specialist-book
+                data-csrf="{{ csrf_token }}"
+                data-client-id="{{ card.id }}"
+                data-client-name="{{ crm_client.name|e }}"
+                data-client-phone="{{ card.phone|default('', true)|e }}"
+                data-client-email="{{ card.email|default('', true)|e }}"
+                data-client-telegram="{{ card.telegram|default('', true)|e }}"
+            >Новая запись</button>
+        </div>
+
+        {% if upcoming_bookings %}
+        <h3 class="client-detail__subhead">Предстоящие</h3>
+        <ol class="crm-timeline">
+            {% for b in upcoming_bookings %}
+            <li class="crm-timeline__item">
+                <span class="crm-timeline__dot" aria-hidden="true"></span>
+                <div>
+                    <div class="crm-timeline__meta">{{ b.booking_date|date('d.m.Y') }} {{ b.booking_time|time('H:i') }}</div>
+                    <div class="crm-timeline__title">{{ b.service.name if b.service else 'Услуга' }}{% if b.calendar %} · {{ b.calendar.name }}{% endif %}</div>
+                    <div class="mt-sm">{{ booking_status_badge(b.status) }}</div>
+                    {% if b.notes %}<p class="text-muted mt-sm">{{ b.notes }}</p>{% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+        {% endif %}
+
+        <h3 class="client-detail__subhead">История</h3>
         {% if history %}
         <ol class="crm-timeline">
             {% for b in history %}
@@ -145,15 +205,54 @@
             {% endfor %}
         </ol>
         {% else %}
-        <div class="hub-empty">
+        <div class="hub-empty client-detail__empty">
             <h3 class="hub-empty__title">Пока нет записей</h3>
-            <p class="hub-empty__text">История строится по карточке, телефону, email и Телеграм.</p>
+            <p class="hub-empty__text">Создайте первую запись для этого клиента.</p>
+            <button
+                type="button"
+                class="btn btn--primary hub-empty__cta"
+                data-specialist-book
+                data-csrf="{{ csrf_token }}"
+                data-client-id="{{ card.id }}"
+                data-client-name="{{ crm_client.name|e }}"
+                data-client-phone="{{ card.phone|default('', true)|e }}"
+                data-client-email="{{ card.email|default('', true)|e }}"
+                data-client-telegram="{{ card.telegram|default('', true)|e }}"
+            >Записать клиента</button>
         </div>
         {% endif %}
     </section>
 
+    {% if show_diagnostics %}
+    <section class="client-detail__panel card client-detail__diag-panel" id="panel-diagnostics" role="tabpanel" aria-labelledby="tab-diagnostics" hidden>
+        <div class="client-diag">
+            <div class="client-diag__head">
+                <div>
+                    <p class="client-diag__eyebrow">Только для специалиста</p>
+                    <h2 class="client-diag__title" id="diag-block-title">Диагностика</h2>
+                    <p class="client-diag__lead">Результаты опросников и ссылка для клиента. Клиент этот блок не видит в вашей карточке.</p>
+                </div>
+                <button type="button" class="btn btn--primary" id="diag-invite-btn" data-card-id="{{ card.id }}" data-csrf="{{ csrf_token }}">Ссылка на диагностику</button>
+            </div>
+            <p class="client-diag__invite" id="diag-invite-url" hidden></p>
+            {% if diagnostic_results %}
+            <div class="diag-history client-diag__list">
+                {% for r in diagnostic_results %}
+                {% include "components/diagnostics_result_card.html" %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="client-diag__empty">
+                <p>Клиент ещё не проходил опросники.</p>
+                <p class="text-muted text-body-sm">Отправьте ссылку — результаты появятся здесь.</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
     <section class="client-detail__panel card" id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" hidden>
-        <h2 class="app-section__title">Заметки</h2>
+        <h2 class="client-detail__section-title">Заметки</h2>
         <form method="POST" action="/clients/{{ card.id }}/" class="stack">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="update">
@@ -164,54 +263,37 @@
             <button type="submit" class="btn btn--primary">Сохранить заметки</button>
         </form>
     </section>
-
-    {% if show_diagnostics %}
-    <section class="client-detail__diagnostics mt-3xl" aria-labelledby="diag-block-title">
-        <div class="diag-block-head">
-            <h2 class="app-section__title" id="diag-block-title">Результаты диагностики</h2>
-            <button type="button" class="btn btn--secondary btn--sm" id="diag-invite-btn" data-card-id="{{ card.id }}" data-csrf="{{ csrf_token }}">Ссылка на диагностику</button>
-        </div>
-        <p class="text-body-sm text-muted" id="diag-invite-url" hidden></p>
-        {% if diagnostic_results %}
-        <div class="diag-history mt-lg">
-            {% for r in diagnostic_results %}
-            {% include "components/diagnostics_result_card.html" %}
-            {% endfor %}
-        </div>
-        {% else %}
-        <p class="text-body-sm text-muted mt-lg">Клиент ещё не проходил опросники.</p>
-        {% endif %}
-    </section>
-    <link rel="stylesheet" href="/static/css/diagnostics.css?v=2">
-    <script>
-    (function () {
-        var btn = document.getElementById('diag-invite-btn');
-        if (!btn) return;
-        btn.addEventListener('click', function () {
-            fetch('/api/specialist/diagnostics/invite/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': btn.dataset.csrf || ''},
-                credentials: 'same-origin',
-                body: JSON.stringify({client_card_id: Number(btn.dataset.cardId), test_codes: []})
-            }).then(function (r) { return r.json(); }).then(function (data) {
-                var el = document.getElementById('diag-invite-url');
-                if (!el) return;
-                if (data && data.ok && data.url) {
-                    el.hidden = false;
-                    el.textContent = data.url;
-                    if (navigator.clipboard) navigator.clipboard.writeText(data.url);
-                } else {
-                    el.hidden = false;
-                    el.textContent = 'Не удалось создать ссылку.';
-                }
-            }).catch(function () {});
-        });
-    })();
-    </script>
-    {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/client-detail.js?v=1" defer></script>
+<script src="/static/js/specialist-book.js?v=4" defer></script>
+<script src="/static/js/client-detail.js?v=2" defer></script>
+{% if show_diagnostics %}
+<script>
+(function () {
+    var btn = document.getElementById('diag-invite-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+        fetch('/api/specialist/diagnostics/invite/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': btn.dataset.csrf || ''},
+            credentials: 'same-origin',
+            body: JSON.stringify({client_card_id: Number(btn.dataset.cardId), test_codes: []})
+        }).then(function (r) { return r.json(); }).then(function (data) {
+            var el = document.getElementById('diag-invite-url');
+            if (!el) return;
+            if (data && data.ok && data.url) {
+                el.hidden = false;
+                el.textContent = data.url;
+                if (navigator.clipboard) navigator.clipboard.writeText(data.url);
+            } else {
+                el.hidden = false;
+                el.textContent = 'Не удалось создать ссылку.';
+            }
+        }).catch(function () {});
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}
