@@ -57,16 +57,16 @@
                 data-specialist-book
                 data-csrf="{{ csrf_token }}"
                 data-client-id="{{ card.id }}"
-                data-client-name="{{ crm_client.name|e }}"
-                data-client-phone="{{ card.phone|default('', true)|e }}"
-                data-client-email="{{ card.email|default('', true)|e }}"
-                data-client-telegram="{{ card.telegram|default('', true)|e }}"
+                data-client-name="{{ crm_client.name }}"
+                data-client-phone="{{ card.phone or '' }}"
+                data-client-email="{{ card.email or '' }}"
+                data-client-telegram="{{ card.telegram or '' }}"
             >Записать на приём</button>
             {% if card.phone %}
             <a href="tel:{{ card.phone }}" class="btn btn--secondary">Позвонить</a>
             {% endif %}
             {% if card.telegram %}
-            <a href="https://t.me/{{ card.telegram|cut('@') }}" target="_blank" rel="noopener" class="btn btn--secondary">Telegram</a>
+            <a href="https://t.me/{{ card.telegram|replace('@', '') }}" target="_blank" rel="noopener" class="btn btn--secondary">Telegram</a>
             {% elif card.email %}
             <a href="mailto:{{ card.email }}" class="btn btn--secondary">Email</a>
             {% endif %}
@@ -165,10 +165,10 @@
                 data-specialist-book
                 data-csrf="{{ csrf_token }}"
                 data-client-id="{{ card.id }}"
-                data-client-name="{{ crm_client.name|e }}"
-                data-client-phone="{{ card.phone|default('', true)|e }}"
-                data-client-email="{{ card.email|default('', true)|e }}"
-                data-client-telegram="{{ card.telegram|default('', true)|e }}"
+                data-client-name="{{ crm_client.name }}"
+                data-client-phone="{{ card.phone or '' }}"
+                data-client-email="{{ card.email or '' }}"
+                data-client-telegram="{{ card.telegram or '' }}"
             >Новая запись</button>
         </div>
 
@@ -214,10 +214,10 @@
                 data-specialist-book
                 data-csrf="{{ csrf_token }}"
                 data-client-id="{{ card.id }}"
-                data-client-name="{{ crm_client.name|e }}"
-                data-client-phone="{{ card.phone|default('', true)|e }}"
-                data-client-email="{{ card.email|default('', true)|e }}"
-                data-client-telegram="{{ card.telegram|default('', true)|e }}"
+                data-client-name="{{ crm_client.name }}"
+                data-client-phone="{{ card.phone or '' }}"
+                data-client-email="{{ card.email or '' }}"
+                data-client-telegram="{{ card.telegram or '' }}"
             >Записать клиента</button>
         </div>
         {% endif %}

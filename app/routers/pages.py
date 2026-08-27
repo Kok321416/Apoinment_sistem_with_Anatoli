@@ -2107,6 +2107,16 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
     from app.services.clients_crm import booking_stats_async, serialize_card
     from app.services.diagnostics_service import attempt_to_view, list_attempts_for_card
     from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+    from sqlalchemy.orm import selectinload
+
+    # Reload consultant with category — avoids async lazy-load 500 on feature checks.
+    consultant = (
+        await db.execute(
+            select(Consultant)
+            .options(selectinload(Consultant.category))
+            .where(Consultant.id == consultant.id)
+        )
+    ).scalar_one()
 
     stats = await booking_stats_async(db, consultant.id, [card.id])
     crm_client = serialize_card(card, stats, date_cls.today())
@@ -2117,14 +2127,23 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
         if b.booking_date and b.booking_date >= today and b.status in ("pending", "confirmed")
     ][:5]
 
-    diagnostic_results = []
-    if consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
-        diagnostic_results = [
-            attempt_to_view(a)
-            for a in await list_attempts_for_card(
-                db, consultant_id=consultant.id, client_card_id=card.id
-            )
-        ]
+    diagnostic_results: list = []
+    show_diagnostics = False
+    try:
+        show_diagnostics = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
+        if show_diagnostics:
+            diagnostic_results = [
+                attempt_to_view(a)
+                for a in await list_attempts_for_card(
+                    db, consultant_id=consultant.id, client_card_id=card.id
+                )
+            ]
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception("client card diagnostics block failed card_id=%s", card.id)
+        diagnostic_results = []
+        show_diagnostics = False
 
     return templates.TemplateResponse(
         "client_card_detail.html",
@@ -2142,7 +2161,7 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
             success=success,
             error=error,
             diagnostic_results=diagnostic_results,
-            show_diagnostics=bool(diagnostic_results is not None and consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)),
+            show_diagnostics=show_diagnostics,
         ),
     )
 

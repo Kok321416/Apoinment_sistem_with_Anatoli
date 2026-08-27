@@ -36,14 +36,24 @@ def normalize_specialty_code(raw: str | None) -> str:
 
 
 def specialty_code_for_consultant(consultant) -> str:
-    cat = getattr(consultant, "category", None)
-    if cat is not None:
-        code = normalize_specialty_code(getattr(cat, "code", None) or "")
-        if code != "general":
-            return code
-        name = (getattr(cat, "name_category", None) or "").strip().lower()
-        return CATEGORY_NAME_TO_CODE.get(name, "general")
-    return "general"
+    """Resolve specialty without triggering async-unsafe lazy loads."""
+    cat = None
+    try:
+        from sqlalchemy import inspect as sa_inspect
+
+        insp = sa_inspect(consultant)
+        if insp is not None and "category" not in insp.unloaded:
+            cat = consultant.category
+    except Exception:
+        cat = None
+    if cat is None:
+        # Relationship not loaded (common on AsyncSession) — safe default.
+        return "general"
+    code = normalize_specialty_code(getattr(cat, "code", None) or "")
+    if code != "general":
+        return code
+    name = (getattr(cat, "name_category", None) or "").strip().lower()
+    return CATEGORY_NAME_TO_CODE.get(name, "general")
 
 
 def features_for_specialty(code: str) -> frozenset[str]:
