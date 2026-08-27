@@ -138,14 +138,24 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-lg);
-    position: sticky;
-    top: var(--space-xl);
+    align-self: start;
+    /* Do not sticky the whole column: nav + progress is taller than the
+       viewport and stuck over the editor while scrolling. */
 }
 .profile-sidebar {
     display: flex;
     flex-direction: column;
     gap: var(--space-xs);
     padding: var(--space-md);
+    position: sticky;
+    top: var(--space-xl);
+    z-index: 2;
+    background: var(--surface-100);
+}
+.progress-card {
+    position: relative;
+    z-index: 0;
+    padding: var(--space-xl);
 }
 .profile-save-status.is-error {
     display: none;
@@ -188,9 +198,6 @@
 .profile-sidebar__btn.is-active .profile-sidebar__icon {
     background: var(--accent-primary);
     color: var(--text-on-accent);
-}
-.progress-card {
-    padding: var(--space-xl);
 }
 .progress-card__title {
     margin: 0 0 var(--space-md);
@@ -390,8 +397,10 @@
 .profile-preview {
     position: sticky;
     top: var(--space-xl);
+    z-index: 1;
+    max-height: calc(100dvh - 2 * var(--space-xl));
     padding: var(--space-lg);
-    overflow: hidden;
+    overflow: auto;
     background: var(--surface-100);
     border: 1px solid var(--border-default);
 }
