@@ -108,7 +108,8 @@ jobs:
           TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_BOT_USERNAME=${{ secrets.TELEGRAM_BOT_USERNAME }}
           BOT_API_SECRET=${{ secrets.BOT_API_SECRET }}
-          ADMIN_TELEGRAM_USERNAME=${{ secrets.ADMIN_TELEGRAM_USERNAME }}
+          ADMIN_TELEGRAM_USERNAME=${{ secrets.ADMIN_TELEGRAM_USERNAME || 'andrievskypsy' }}
+          TELEGRAM_ALERT_CHAT_IDS=${{ secrets.TELEGRAM_ALERT_CHAT_IDS }}
           SMTP_HOST=${{ secrets.SMTP_HOST }}
           SMTP_PORT=${{ secrets.SMTP_PORT || '465' }}
           SMTP_USER=${{ secrets.SMTP_USER }}

@@ -268,6 +268,12 @@ def handle_telegram_update(update_data: dict) -> None:
             user_id = message.get("from", {}).get("id")
             first_name = message.get("from", {}).get("first_name", "")
             logger.info("TG bot: message chat_id=%s user_id=%s text=%r", chat_id, user_id, (text or "")[:80])
+            try:
+                from app.services.ops_alerts import maybe_bind_ops_alert_chat
+
+                maybe_bind_ops_alert_chat(chat_id, username)
+            except Exception:
+                logger.warning("ops alert bind failed", exc_info=True)
             cmd, cmd_arg = _parse_bot_command(text)
             if cmd == "/start":
                 arg = cmd_arg
@@ -299,6 +305,17 @@ def handle_telegram_update(update_data: dict) -> None:
                     handle_start_command(chat_id, user_id, username, first_name)
             elif cmd == "/help":
                 handle_help_command(chat_id)
+            elif cmd == "/alerts":
+                from app.services.ops_alerts import is_ops_alert_user, maybe_bind_ops_alert_chat, ops_alert_username
+
+                if is_ops_alert_user(username):
+                    maybe_bind_ops_alert_chat(chat_id, username)
+                    send_telegram_message(
+                        chat_id,
+                        f"Алерты системных ошибок будут приходить сюда (@{ops_alert_username()}).",
+                    )
+                else:
+                    send_telegram_message(chat_id, "Эта команда только для оператора.")
             elif cmd == "/mode":
                 handle_switch_role(chat_id, user_id, first_name)
             elif text in _LEGACY_REPLY_BUTTONS:

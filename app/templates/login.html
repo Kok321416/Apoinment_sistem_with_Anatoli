@@ -8,9 +8,19 @@
 {% endblock %}
 
 {% block auth_content %}
+{% set cq = ('&client=' ~ client_channel) if client_channel and client_channel != 'web' else '' %}
+{% set nq = ('?next=' ~ (next_url | urlencode) ~ cq) if next_url else (('?client=' ~ client_channel) if client_channel and client_channel != 'web' else '') %}
 <div class="auth-card card card--static animate-fade-in-up">
     <h1 class="text-h1 auth-card__title">Вход</h1>
-    <p class="text-body-sm text-muted auth-card__lead">Войдите в кабинет специалиста</p>
+    <p class="text-body-sm text-muted auth-card__lead">
+        {% if next_url and next_url.startswith('/s/') %}
+        Войдите, чтобы продолжить запись. После входа вернём вас к календарю.
+        {% elif next_url and next_url.startswith('/tg/') %}
+        Войдите в мини-приложение — после подтверждения вернём вас сюда.
+        {% else %}
+        Войдите, чтобы открыть кабинет или продолжить работу.
+        {% endif %}
+    </p>
 
     {% if success %}
     <div class="alert alert--success" role="status">{{ success }}</div>
@@ -23,40 +33,34 @@
         <span class="form-field__label">Быстрый вход</span>
         <div class="auth-methods">
             {% if telegram_bot_username %}
-            <a href="/accounts/telegram/login/?next={{ next_url | urlencode }}" class="auth-method auth-method--telegram">
+            <a href="/accounts/telegram/login/{{ nq }}" class="auth-method auth-method--telegram">
                 {{ auth_provider_icon('telegram') }}
                 <span>Телеграм</span>
             </a>
             {% endif %}
             {% if vk_oauth_enabled %}
-            <a href="/accounts/vk/login/?next={{ next_url | urlencode }}" class="auth-method auth-method--vk">
+            <a href="/accounts/vk/login/{{ nq }}" class="auth-method auth-method--vk">
                 {{ auth_provider_icon('vk') }}
                 <span>VK</span>
             </a>
             {% endif %}
-            <a href="/accounts/yandex/login/?next={{ next_url | urlencode }}" class="auth-method auth-method--yandex">
+            <a href="/accounts/yandex/login/{{ nq }}" class="auth-method auth-method--yandex">
                 {{ auth_provider_icon('yandex') }}
                 <span>Яндекс</span>
             </a>
         </div>
         <p class="form-field__hint">
-            {% if telegram_bot_username and vk_oauth_enabled %}
-            Телеграм откроет бота, VK и Яндекс - страницу входа.
-            {% elif telegram_bot_username %}
-            Телеграм откроет бота, Яндекс — страницу входа Яндекс ID.
-            {% elif vk_oauth_enabled %}
-            Откроется страница входа через VK ID или Яндекс ID.
-            {% else %}
-            Откроется страница входа через Яндекс ID.
-            {% endif %}
+            После входа через сервис вернём вас автоматически
+            {% if next_url and next_url.startswith('/s/') %}к записи{% elif client_channel == 'tg' %}в мини-приложение{% elif client_channel == 'native' %}в приложение{% else %}на сайт{% endif %}.
         </p>
     </div>
 
     <hr class="auth-divider">
 
-    <form method="POST" action="/login/{% if next_url %}?next={{ next_url | urlencode }}{% endif %}">
+    <form method="POST" action="/login/{% if next_url %}?next={{ next_url | urlencode }}{{ cq }}{% elif cq %}?client={{ client_channel }}{% endif %}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+        {% if client_channel and client_channel != 'web' %}<input type="hidden" name="client" value="{{ client_channel }}">{% endif %}
 
         <div class="stack">
             <div class="form-field">
@@ -85,7 +89,7 @@
     </div>
 
     <div class="auth-footer-links">
-        <p>Нет аккаунта? <a href="/register/">Зарегистрироваться</a></p>
+        <p>Нет аккаунта? <a href="{{ register_url or '/register/' }}">Зарегистрироваться</a></p>
         <p><a href="/">На главную</a></p>
     </div>
 </div>

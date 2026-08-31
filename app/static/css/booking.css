@@ -666,6 +666,22 @@
 
     .book-cal-panel {
         scroll-margin-top: 4.5rem;
+        display: none;
+    }
+
+    .book-cal-panel.is-step-active {
+        display: block;
+    }
+
+    .book-cal-progress__item {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.25rem;
+    }
+
+    .booking-cal__grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 4px;
     }
 
     .slots-grid .slot-btn {

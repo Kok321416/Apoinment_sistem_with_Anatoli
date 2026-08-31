@@ -158,6 +158,20 @@ async def cmd_start(message: Message, command: CommandObject | None = None) -> N
     await start_for_user(message)
 
 
+@router.message(Command("alerts"))
+async def cmd_alerts(message: Message) -> None:
+    user = message.from_user
+    from app.services.ops_alerts import is_ops_alert_user, maybe_bind_ops_alert_chat, ops_alert_username
+
+    if not user or not is_ops_alert_user(user.username):
+        await message.answer("Эта команда только для оператора.")
+        return
+    maybe_bind_ops_alert_chat(message.chat.id, user.username)
+    await message.answer(
+        f"Алерты системных ошибок будут приходить сюда (@{ops_alert_username()})."
+    )
+
+
 async def prompt_login_page(message: Message) -> None:
     from bot.copy import LOGIN_OPEN_SITE  # noqa: F401 — label unused, keep site button
 

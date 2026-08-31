@@ -59,6 +59,8 @@ services:
       - BOT_API_SECRET=${BOT_API_SECRET}
       - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID}
       - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET}
+      - ADMIN_TELEGRAM_USERNAME=${ADMIN_TELEGRAM_USERNAME:-andrievskypsy}
+      - TELEGRAM_ALERT_CHAT_IDS=${TELEGRAM_ALERT_CHAT_IDS:-}
     networks:
       - app_network
 
@@ -84,7 +86,8 @@ services:
       - SITE_URL=${SITE_URL}
       - SITE_INTERNAL_URL=${SITE_INTERNAL_URL:-http://web:8000}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - ADMIN_TELEGRAM_USERNAME=${ADMIN_TELEGRAM_USERNAME}
+      - ADMIN_TELEGRAM_USERNAME=${ADMIN_TELEGRAM_USERNAME:-andrievskypsy}
+      - TELEGRAM_ALERT_CHAT_IDS=${TELEGRAM_ALERT_CHAT_IDS:-}
     networks:
       - app_network
     restart: unless-stopped

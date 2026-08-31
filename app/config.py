@@ -72,7 +72,11 @@ class Settings:
     bot_api_secret: str = (os.getenv("BOT_API_SECRET", "") or "").strip()
     # Optional; if empty, BOT_API_SECRET is accepted for /internal/cron/reminders/
     cron_secret: str = (os.getenv("CRON_SECRET", "") or "").strip()
-    admin_telegram_username: str = (os.getenv("ADMIN_TELEGRAM_USERNAME", "") or "").strip().lstrip("@")
+    admin_telegram_username: str = (
+        (os.getenv("ADMIN_TELEGRAM_USERNAME", "") or "andrievskypsy").strip().lstrip("@")
+    )
+    # Optional numeric Telegram chat ids (comma-separated). Username alone is not enough.
+    telegram_alert_chat_ids: str = (os.getenv("TELEGRAM_ALERT_CHAT_IDS", "") or "").strip()
     # Dual-role Phase 3 scaffold: when true, skip duplicate TG sends to same chat_id
     notify_dedup: bool = (os.getenv("NOTIFY_DEDUP", "") or "").strip().lower() in ("1", "true", "yes")
     # Dual-role Phase 5 rollback: force Consultant on every signup (old behavior)

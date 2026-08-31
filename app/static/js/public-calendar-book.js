@@ -100,8 +100,7 @@
                 renderCalendar();
                 showDayWindows(dateEl.value);
                 loadSlots();
-                scrollToStep(3);
-                setProgressStep(3);
+                setWizardStep(3);
             });
         });
     }
@@ -204,15 +203,28 @@
         }
     });
 
+    function isWizard() {
+        return (
+            window.matchMedia("(max-width: 1024px)").matches ||
+            document.body.classList.contains("tg-webapp") ||
+            document.documentElement.classList.contains("tg-webapp")
+        );
+    }
+
+    function setWizardStep(step) {
+        setProgressStep(step);
+        document.querySelectorAll("[data-book-step]").forEach(function (panel) {
+            var n = parseInt(panel.getAttribute("data-book-step"), 10);
+            panel.classList.toggle("is-step-active", n === step);
+        });
+        if (isWizard()) {
+            var el = document.querySelector('[data-book-step="' + step + '"]');
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    }
+
     function scrollToStep(step) {
-        if (!window.matchMedia("(max-width: 1024px)").matches) return;
-        var map = {
-            1: document.getElementById("bookStepService"),
-            2: document.getElementById("bookStepDate"),
-            3: document.getElementById("bookStepTime"),
-        };
-        var el = map[step];
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        setWizardStep(step);
     }
 
     function setProgressStep(step) {
@@ -231,11 +243,21 @@
         bar.querySelectorAll(".book-cal-progress__item").forEach(function (btn) {
             btn.addEventListener("click", function () {
                 var step = parseInt(btn.getAttribute("data-step"), 10);
-                setProgressStep(step);
-                scrollToStep(step);
+                if (step === 2 && !serviceEl.value) {
+                    slotsHint.textContent = "Сначала выберите услугу.";
+                    setWizardStep(1);
+                    return;
+                }
+                if (step === 3 && !dateEl.value) {
+                    slotsHint.textContent = "Сначала выберите дату в календаре.";
+                    setWizardStep(2);
+                    return;
+                }
+                setWizardStep(step);
             });
         });
-        if (!("IntersectionObserver" in window)) return;
+        setWizardStep(1);
+        if (!("IntersectionObserver" in window) || isWizard()) return;
         var panels = [
             document.getElementById("bookStepService"),
             document.getElementById("bookStepDate"),

@@ -2,11 +2,13 @@
 from app.services.client_channel import (
     normalize_client_channel,
     parse_tg_startapp_param,
+    remember_auth_intent,
     telegram_complete_urls,
     tg_mini_app_direct_link,
     tg_startapp_param,
     with_client_query,
 )
+from app.utils.safe_redirect import login_url_with_next
 
 
 def test_normalize_client_channel():
@@ -44,3 +46,16 @@ def test_tg_mini_app_direct_link():
 def test_with_client_query():
     assert with_client_query("/register/?next=/tg/", "tg") == "/register/?next=/tg/&client=tg"
     assert with_client_query("/login/", "web") == "/login/"
+
+
+def test_remember_auth_intent():
+    session = {}
+    assert remember_auth_intent(session, next_url="/s/anna/c/1/", client_channel="tg") == "tg"
+    assert session["oauth_client_channel"] == "tg"
+    assert session["auth_next"] == "/s/anna/c/1/"
+    assert remember_auth_intent(session, next_url="/dashboard/") == "tg"
+
+
+def test_login_url_with_next_keeps_client():
+    assert "client=tg" in login_url_with_next("/s/anna/c/2/", "tg")
+    assert login_url_with_next("/dashboard/", "web") == "/login/?next=%2Fdashboard%2F"

@@ -17,11 +17,12 @@ def safe_next_url(raw: str | None, default: str = DEFAULT_AFTER_LOGIN) -> str:
     return value or default
 
 
-def login_url_with_next(next_path: str | None) -> str:
+def login_url_with_next(next_path: str | None, client_channel: str | None = None) -> str:
+    from app.services.client_channel import with_client_query
+
     safe = safe_next_url(next_path, default="")
-    if not safe:
-        return "/login/"
-    return f"/login/?{urlencode({'next': safe})}"
+    url = "/login/" if not safe else f"/login/?{urlencode({'next': safe})}"
+    return with_client_query(url, client_channel or "web")
 
 
 def signup_error_redirect(next_url: str | None, error: str) -> str:

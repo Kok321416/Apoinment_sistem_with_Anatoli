@@ -19,7 +19,9 @@ class BotSettings:
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_bot_username: str = os.getenv("TELEGRAM_BOT_USERNAME", "")
     bot_api_secret: str = (os.getenv("BOT_API_SECRET", "") or "").strip()
-    admin_telegram_username: str = (os.getenv("ADMIN_TELEGRAM_USERNAME", "") or "").strip().lstrip("@")
+    admin_telegram_username: str = (
+        (os.getenv("ADMIN_TELEGRAM_USERNAME", "") or "andrievskypsy").strip().lstrip("@")
+    )
     site_url: str = _site
     site_internal_url: str = _internal
     # If set, FastAPI serves webhook at /telegram/webhook/{secret} (prod).

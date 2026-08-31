@@ -33,7 +33,7 @@
             <button type="button" class="book-cal-progress__item" data-step="3">3. Время</button>
             <button type="button" class="book-cal-progress__item" data-step="4">4. Подтверждение</button>
         </nav>
-        <section class="book-cal-panel book-cal-panel--service" data-book-step="1" id="bookStepService">
+        <section class="book-cal-panel book-cal-panel--service is-step-active" data-book-step="1" id="bookStepService">
             <h2 class="book-cal-step"><span class="book-cal-step__num">1</span> Услуга</h2>
             <div class="form-field">
                 <label class="form-field__label book-cal-service-label" for="service_id">Выберите услугу</label>
@@ -123,5 +123,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/public-calendar-book.js?v=7" defer></script>
+<script src="/static/js/public-calendar-book.js?v=8" defer></script>
 {% endblock %}

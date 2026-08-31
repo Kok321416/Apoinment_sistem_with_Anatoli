@@ -110,7 +110,7 @@ async def open_native_bridge(request: Request):
         return RedirectResponse("/login/", status_code=302)
     if kind == "complete":
         deep = f"allyourclients://auth/complete/{token}"
-        https_fallback = f"/accounts/telegram/complete/{quote(token)}/"
+        https_fallback = f"/accounts/telegram/complete/{quote(token)}/?stay=1"
     else:
         deep = f"allyourclients://auth/handoff/{token}"
         https_fallback = f"/accounts/native-handoff/{quote(token)}/"
@@ -141,24 +141,32 @@ setTimeout(function(){{ window.location.href = {json.dumps(deep)}; }}, 200);
 
 @router.get("/open-tg-app/")
 async def open_tg_app_bridge(request: Request):
-    """HTTPS page for Telegram URL buttons; jumps back into Mini App via startapp."""
+    """HTTPS page for Telegram URL buttons; jumps back into Mini App via startapp.
+
+    If this page is already opened inside the Mini App WebView, do not navigate
+    to t.me (that yields ERR_TIMED_OUT). Finish auth on this origin instead.
+    """
     from app.services.client_channel import tg_mini_app_direct_link, tg_startapp_param
+    from app.services.telegram_webview import is_telegram_webview
 
     kind = (request.query_params.get("kind") or "").strip().lower()
     token = (request.query_params.get("token") or "").strip()
     if not token or kind not in ("complete", "handoff"):
         return RedirectResponse("/tg/", status_code=302)
 
+    if kind == "complete":
+        in_app = f"/accounts/telegram/complete/{quote(token)}/?stay=1"
+    else:
+        in_app = f"/accounts/native-handoff/{quote(token)}/"
+
+    if is_telegram_webview(request):
+        return RedirectResponse(in_app, status_code=302)
+
     bot = (settings.telegram_bot_username or "").lstrip("@").strip()
     start_param = tg_startapp_param(kind=kind, token=token)
     deep = tg_mini_app_direct_link(bot_username=bot, start_param=start_param)
-    if kind == "complete":
-        https_fallback = f"/accounts/telegram/complete/{quote(token)}/"
-    else:
-        https_fallback = f"/accounts/native-handoff/{quote(token)}/"
-
     if not deep:
-        return RedirectResponse(https_fallback, status_code=302)
+        return RedirectResponse(in_app, status_code=302)
 
     html = f"""<!DOCTYPE html>
 <html lang="ru"><head>
@@ -175,7 +183,7 @@ a.sec{{color:#525252}}
 </head><body>
 <p>Возвращаем вас в мини-приложение…</p>
 <p><a class="btn" id="open" href="{deep}">Открыть в Telegram</a></p>
-<p><a class="sec" href="{https_fallback}">Продолжить в браузере</a></p>
+<p><a class="sec" href="{in_app}">Продолжить в браузере</a></p>
 <script>
 setTimeout(function(){{ window.location.href = {json.dumps(deep)}; }}, 200);
 </script>
@@ -203,7 +211,12 @@ async def telegram_login_page(request: Request, db: AsyncSession = Depends(get_a
     next_url = safe_next_url(request.query_params.get("next"))
     from app.services.client_channel import normalize_client_channel
 
-    client_channel = normalize_client_channel(request.query_params.get("client"))
+    client_channel = normalize_client_channel(
+        request.query_params.get("client") or request.session.get("oauth_client_channel")
+    )
+    from app.services.client_channel import remember_auth_intent
+
+    remember_auth_intent(request.session, next_url=next_url, client_channel=client_channel)
 
     if process == "connect":
         if not user:
@@ -269,8 +282,10 @@ async def telegram_login_page(request: Request, db: AsyncSession = Depends(get_a
 
 
 @router.get("/telegram/login/status/{token}/")
-async def telegram_login_status(token: str, db: AsyncSession = Depends(get_async_db)):
+async def telegram_login_status(token: str, request: Request, db: AsyncSession = Depends(get_async_db)):
     from app.models import TelegramLoginRequest
+    from app.services.client_channel import telegram_complete_urls
+    from app.services.telegram_webview import is_telegram_webview
 
     req = (
         await db.execute(select(TelegramLoginRequest).where(TelegramLoginRequest.token == token))
@@ -278,9 +293,19 @@ async def telegram_login_status(token: str, db: AsyncSession = Depends(get_async
     if not req:
         return JSONResponse({"completed": False, "error": "not_found"})
     if req.completed and req.complete_token:
+        # Inside Mini App: finish on this origin. Navigating to t.me causes ERR_TIMED_OUT.
+        if is_telegram_webview(request):
+            redirect = f"/accounts/telegram/complete/{req.complete_token}/?stay=1"
+        else:
+            payload = telegram_complete_urls(
+                site_url=settings.site_url,
+                complete_token=req.complete_token,
+                client_channel=getattr(req, "client_channel", None) or "web",
+            )
+            redirect = payload["complete_url"]
         return JSONResponse({
             "completed": True,
-            "redirect": f"/accounts/telegram/complete/{req.complete_token}/",
+            "redirect": redirect,
         })
     if req.expires_at < datetime.utcnow():
         return JSONResponse({"completed": False, "error": "expired"})
@@ -291,6 +316,7 @@ async def telegram_login_status(token: str, db: AsyncSession = Depends(get_async
 async def telegram_complete_login(
     complete_token: str, request: Request, db: AsyncSession = Depends(get_async_db)
 ):
+
     req = await get_completed_login_async(db, complete_token)
     if not req or not req.user_id:
         return RedirectResponse("/login/?error=telegram_expired", status_code=302)
@@ -330,9 +356,13 @@ async def yandex_login(request: Request, db: AsyncSession = Depends(get_async_db
     request.session["yandex_oauth_state"] = state
     request.session["yandex_oauth_process"] = process
     request.session["yandex_oauth_next"] = next_url
-    from app.services.client_channel import normalize_client_channel
+    from app.services.client_channel import remember_auth_intent
 
-    request.session["oauth_client_channel"] = normalize_client_channel(request.query_params.get("client"))
+    remember_auth_intent(
+        request.session,
+        next_url=next_url,
+        client_channel=request.query_params.get("client"),
+    )
     return RedirectResponse(build_authorize_url(state), status_code=302)
 
 
@@ -432,9 +462,13 @@ async def vk_login(request: Request, db: AsyncSession = Depends(get_async_db)):
     request.session["vk_oauth_process"] = process
     request.session["vk_oauth_next"] = next_url
     request.session["vk_code_verifier"] = code_verifier
-    from app.services.client_channel import normalize_client_channel
+    from app.services.client_channel import remember_auth_intent
 
-    request.session["oauth_client_channel"] = normalize_client_channel(request.query_params.get("client"))
+    remember_auth_intent(
+        request.session,
+        next_url=next_url,
+        client_channel=request.query_params.get("client"),
+    )
     return RedirectResponse(build_vk_authorize_url(state=state, code_challenge=code_challenge), status_code=302)
 
 

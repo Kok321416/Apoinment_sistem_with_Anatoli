@@ -57,15 +57,31 @@ def record_exception(request: Request, exc: BaseException, *, user_id: int | Non
     fwd = request.headers.get("x-forwarded-for")
     if fwd:
         ip = fwd.split(",")[0].strip()
+    tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    message = f"{type(exc).__name__}: {exc}"
     record_platform_error(
         path=str(request.url.path),
         method=request.method,
         status_code=500,
-        message=f"{type(exc).__name__}: {exc}",
-        tb="".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+        message=message,
+        tb=tb,
         user_id=user_id,
         ip=ip,
     )
+    try:
+        from app.services.ops_alerts import notify_ops_alert
+
+        notify_ops_alert(
+            kind="exception",
+            status_code=500,
+            message=message,
+            traceback_text=tb,
+            request=request,
+            user_id=user_id,
+            ip=ip,
+        )
+    except Exception:
+        pass
 
 
 def list_errors(db: Session, *, status: str | None = None, limit: int = 50) -> list[PlatformErrorLog]:

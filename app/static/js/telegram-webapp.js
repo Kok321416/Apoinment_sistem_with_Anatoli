@@ -265,7 +265,7 @@
 
         var url =
             kind === "complete"
-                ? "/accounts/telegram/complete/" + encodeURIComponent(token) + "/"
+                ? "/accounts/telegram/complete/" + encodeURIComponent(token) + "/?stay=1"
                 : "/accounts/native-handoff/" + encodeURIComponent(token) + "/";
         window.location.replace(url);
         return true;
@@ -289,11 +289,14 @@
         // Mark early to avoid auth storms if reload races.
         sessionStorage.setItem("tg_webapp_auth_done", "1");
 
+        var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+        var timer = ctrl ? window.setTimeout(function () { ctrl.abort(); }, 8000) : null;
         fetch("/api/telegram/webapp-auth", {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
             credentials: "same-origin",
             body: JSON.stringify(body),
+            signal: ctrl ? ctrl.signal : undefined,
         })
             .then(function (r) {
                 return r.json().then(function (data) {
@@ -301,6 +304,7 @@
                 });
             })
             .then(function (res) {
+                if (timer) window.clearTimeout(timer);
                 if (res.ok && res.data && res.data.success) {
                     if (res.data.requires_2fa && res.data.redirect) {
                         sessionStorage.removeItem("tg_webapp_auth_done");
@@ -315,6 +319,8 @@
                 }
             })
             .catch(function () {
+                if (timer) window.clearTimeout(timer);
+                sessionStorage.removeItem("tg_webapp_auth_done");
                 if (hint) {
                     hint.hidden = false;
                     hint.textContent = "Не удалось войти автоматически. Используйте кнопки ниже.";

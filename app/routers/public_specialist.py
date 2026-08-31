@@ -1,6 +1,6 @@
 """Public specialist pages: share link → client gate → calendars → services → book."""
 from datetime import date, datetime
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -148,11 +148,18 @@ async def specialist_welcome(request: Request, slug: str, db: AsyncSession = Dep
     """Login gate before public booking (same visual as /login/)."""
     from app.utils.safe_redirect import login_url_with_next, safe_next_url
 
+    from app.services.client_channel import remember_auth_intent, with_client_query
+
     consultant = await _get_consultant_by_slug_async(db, slug)
     next_url = request.query_params.get("next") or f"/s/{slug}/"
     if not next_url.startswith(f"/s/{slug}"):
         next_url = f"/s/{slug}/"
     next_url = safe_next_url(next_url, default=f"/s/{slug}/")
+    client_channel = remember_auth_intent(
+        request.session,
+        next_url=next_url,
+        client_channel=request.query_params.get("client"),
+    )
 
     welcome_errors = {
         "yandex_signup": "Не удалось войти через Яндекс. Попробуйте снова.",
@@ -182,8 +189,13 @@ async def specialist_welcome(request: Request, slug: str, db: AsyncSession = Dep
             next_url=next_url,
             error=error,
             email=(request.query_params.get("email") or "").strip(),
-            login_url=login_url_with_next(next_url),
+            login_url=login_url_with_next(next_url, client_channel),
             bot_username=(settings.telegram_bot_username or "").lstrip("@"),
+            client_channel=client_channel,
+            register_url=with_client_query(
+                f"/register/?as=client&next={quote(next_url, safe='')}",
+                client_channel,
+            ),
         ),
     )
 

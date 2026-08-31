@@ -79,12 +79,19 @@ async def health():
     schema = get_schema_health()
     redis = redis_health()
     status = "degraded" if schema.get("degraded") else "ok"
-    return {
+    payload = {
         "status": status,
         "schema": schema,
         "redis": redis,
         "perf": perf_snapshot(top_n=5),
     }
+    try:
+        from app.services.ops_alerts import notify_health_if_bad
+
+        notify_health_if_bad(payload)
+    except Exception:
+        logger.exception("ops health alert failed")
+    return payload
 
 
 @app.get("/health/mini-app")
@@ -323,13 +330,41 @@ async def security_headers_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def platform_error_capture_middleware(request: Request, call_next):
-    """Admin A2: persist unexpected exceptions (not HTTPException)."""
+    """Persist unexpected exceptions / 5xx and ping ops Telegram."""
     from fastapi import HTTPException
     from starlette.exceptions import HTTPException as StarletteHTTPException
 
+    path = request.url.path
+    skip = path.startswith("/static/") or path.startswith("/media/")
+
     try:
-        return await call_next(request)
-    except (HTTPException, StarletteHTTPException):
+        response = await call_next(request)
+    except (HTTPException, StarletteHTTPException) as http_exc:
+        if not skip and getattr(http_exc, "status_code", 0) >= 500:
+            try:
+                from app.auth.session import get_session_user_id
+                from app.services.ops_alerts import notify_ops_alert
+                from app.services.platform_errors import record_platform_error
+
+                uid = get_session_user_id(request) if "session" in request.scope else None
+                detail = getattr(http_exc, "detail", None)
+                record_platform_error(
+                    path=path,
+                    method=request.method,
+                    status_code=http_exc.status_code,
+                    message=str(detail or http_exc)[:512],
+                    user_id=uid,
+                    ip=request.client.host if request.client else None,
+                )
+                notify_ops_alert(
+                    kind="http_5xx",
+                    status_code=http_exc.status_code,
+                    message=str(detail or http_exc)[:512],
+                    request=request,
+                    user_id=uid,
+                )
+            except Exception:
+                logger.exception("platform_error_capture http 5xx failed")
         raise
     except Exception as exc:
         try:
@@ -343,6 +378,33 @@ async def platform_error_capture_middleware(request: Request, call_next):
         except Exception:
             logger.exception("platform_error_capture failed")
         raise
+
+    if skip or response.status_code < 500:
+        return response
+    try:
+        from app.auth.session import get_session_user_id
+        from app.services.ops_alerts import notify_ops_alert
+        from app.services.platform_errors import record_platform_error
+
+        uid = get_session_user_id(request) if "session" in request.scope else None
+        record_platform_error(
+            path=path,
+            method=request.method,
+            status_code=response.status_code,
+            message=f"HTTP {response.status_code}",
+            user_id=uid,
+            ip=request.client.host if request.client else None,
+        )
+        notify_ops_alert(
+            kind="http_5xx",
+            status_code=response.status_code,
+            message=f"HTTP {response.status_code}",
+            request=request,
+            user_id=uid,
+        )
+    except Exception:
+        logger.exception("platform_error_capture 5xx response failed")
+    return response
 
 
 @app.middleware("http")

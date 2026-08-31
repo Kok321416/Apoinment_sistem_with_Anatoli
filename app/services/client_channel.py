@@ -94,6 +94,22 @@ def native_handoff_https(*, site_url: str, token: str) -> str:
     return f"{site}/accounts/native-handoff/{token}/"
 
 
+def remember_auth_intent(session: dict, *, next_url: str | None = None, client_channel: str | None = None) -> str:
+    """Keep next + channel across OAuth hops when query string is dropped."""
+    channel = normalize_client_channel(
+        client_channel if client_channel else session.get("oauth_client_channel")
+    )
+    session["oauth_client_channel"] = channel
+    if next_url:
+        session["auth_next"] = next_url
+    return channel
+
+
+def resolve_client_channel(*, query_client: str | None = None, session: dict | None = None) -> str:
+    sess = session or {}
+    return normalize_client_channel(query_client or sess.get("oauth_client_channel"))
+
+
 def with_client_query(url: str, client_channel: str) -> str:
     """Append client= to a relative or absolute URL."""
     channel = normalize_client_channel(client_channel)

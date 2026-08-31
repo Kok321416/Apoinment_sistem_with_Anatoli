@@ -366,9 +366,20 @@ body.tg-webapp .text-h1 {
 body.tg-webapp .hub-grid,
 body.tg-webapp .stats-grid,
 body.tg-webapp .features-grid,
-body.tg-webapp [class*="__grid"]:not(.tg-hub__switch) {
+body.tg-webapp [class*="__grid"]:not(.tg-hub__switch):not(.booking-cal__grid) {
     grid-template-columns: 1fr !important;
     gap: var(--tg-gap) !important;
+}
+
+body.tg-webapp .booking-cal__grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+}
+
+body.tg-webapp .booking-cal__day {
+    min-height: 44px;
+    aspect-ratio: 1;
 }
 
 body.tg-webapp .bookings-layout,
@@ -486,9 +497,27 @@ body.tg-webapp .book-cal-layout {
     margin-top: 12px;
 }
 
+body.tg-webapp .book-cal-progress {
+    display: flex !important;
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    gap: 4px;
+    margin: 0 0 12px;
+    padding: 8px;
+    border-radius: var(--tg-radius-sm);
+    background: var(--surface-100);
+    border: 1px solid var(--border-default);
+}
+
 body.tg-webapp .book-cal-panel {
     padding: 14px;
     border-radius: var(--tg-radius-sm);
+    display: none;
+}
+
+body.tg-webapp .book-cal-panel.is-step-active {
+    display: block;
 }
 
 body.tg-webapp .book-cal-step {

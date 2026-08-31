@@ -494,7 +494,7 @@ async def legal_pages(request: Request):
 @router.post("/register/")
 async def register_page(request: Request, db: AsyncSession = Depends(get_async_db)):
     from app.auth.session import get_current_user_async
-    from app.services.client_channel import normalize_client_channel, with_client_query
+    from app.services.client_channel import normalize_client_channel, remember_auth_intent, with_client_query
     from app.services.consultant_onboarding import (
         apply_user_names_from_fio,
         create_consultant_for_user_async,
@@ -506,6 +506,7 @@ async def register_page(request: Request, db: AsyncSession = Depends(get_async_d
 
     user = await get_current_user_async(request, db)
     client_channel = normalize_client_channel(request.query_params.get("client"))
+    remember_auth_intent(request.session, next_url=safe_next_url(request.query_params.get("next"), default=""), client_channel=client_channel)
     if user:
         next_after = safe_next_url(request.query_params.get("next"), default="/dashboard/")
         return RedirectResponse(next_after, status_code=302)
@@ -529,6 +530,7 @@ async def register_page(request: Request, db: AsyncSession = Depends(get_async_d
         accept_privacy = form.get("accept_privacy") == "1"
         auth_method = form.get("auth_method", "email")
         client_channel = normalize_client_channel(form.get("client") or request.query_params.get("client"))
+        remember_auth_intent(request.session, next_url=safe_next_url(form.get("next") or request.query_params.get("next"), default=""), client_channel=client_channel)
         account_role = (form.get("account_role") or "specialist").strip().lower()
         if account_role not in ("client", "specialist"):
             account_role = "specialist"
@@ -720,6 +722,13 @@ async def login_page(request: Request):
     try:
         user = await get_current_user_async(request, db) if db is not None else None
         next_url = safe_next_url(request.query_params.get("next"))
+        from app.services.client_channel import remember_auth_intent, with_client_query
+
+        client_channel = remember_auth_intent(
+            request.session,
+            next_url=next_url,
+            client_channel=request.query_params.get("client"),
+        )
         if user:
             return RedirectResponse(next_url, status_code=302)
         error = success = None
@@ -812,6 +821,11 @@ async def login_page(request: Request):
                 success=success,
                 resend_email=request.query_params.get("email", ""),
                 next_url=next_url,
+                client_channel=client_channel,
+                register_url=with_client_query(
+                    f"/register/?next={quote(next_url, safe='')}" if next_url else "/register/",
+                    client_channel,
+                ),
             ),
         )
     finally:
