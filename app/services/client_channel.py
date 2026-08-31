@@ -67,14 +67,12 @@ def telegram_complete_urls(*, site_url: str, complete_token: str, client_channel
             "success_hint": "Нажмите кнопку ниже, чтобы вернуться в приложение и завершить вход.",
         }
     if channel == "tg":
-        # Bridge opens t.me/?startapp= so session is created inside Mini App WebView.
-        bridge = f"{site}/accounts/open-tg-app/?kind=complete&token={quote(complete_token)}"
         return {
             "client_channel": channel,
-            "complete_url": bridge,
+            "complete_url": https_url,
             "https_url": https_url,
-            "button_label": "Вернуться в приложение",
-            "success_hint": "Нажмите кнопку ниже, чтобы вернуться в мини-приложение и завершить вход.",
+            "button_label": "Открыть сервис",
+            "success_hint": "Нажмите кнопку, чтобы завершить вход.",
         }
     return {
         "client_channel": channel,

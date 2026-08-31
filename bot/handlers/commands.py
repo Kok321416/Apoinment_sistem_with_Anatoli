@@ -111,6 +111,13 @@ async def cmd_start(message: Message, command: CommandObject | None = None) -> N
     arg = (command.args if command else "") or ""
     arg = arg.strip()
     user = message.from_user
+    if user:
+        try:
+            from app.services.ops_alerts import maybe_bind_ops_alert_chat
+
+            maybe_bind_ops_alert_chat(message.chat.id, user.username)
+        except Exception:
+            logger.warning("ops alert bind skipped", exc_info=True)
 
     if arg.startswith("link_"):
         token = arg.replace("link_", "", 1).strip()

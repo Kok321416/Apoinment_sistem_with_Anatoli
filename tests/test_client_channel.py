@@ -26,16 +26,16 @@ def test_tg_startapp_roundtrip():
     assert parse_tg_startapp_param("open") is None
 
 
-def test_telegram_complete_urls_tg_uses_bridge():
+def test_telegram_complete_urls_tg_stays_on_https():
     payload = telegram_complete_urls(
         site_url="https://allyourclients.ru",
         complete_token="tok123",
         client_channel="tg",
     )
     assert payload["client_channel"] == "tg"
-    assert "/accounts/open-tg-app/" in payload["complete_url"]
-    assert "kind=complete" in payload["complete_url"]
-    assert "Вернуться" in payload["button_label"]
+    assert payload["complete_url"] == "https://allyourclients.ru/accounts/telegram/complete/tok123/"
+    assert "t.me" not in payload["complete_url"]
+    assert "open-tg-app" not in payload["complete_url"]
 
 
 def test_tg_mini_app_direct_link():

@@ -211,7 +211,10 @@
                 var href = (a.getAttribute("href") || "").trim();
                 if (!href || href.charAt(0) === "#" || href.charAt(0) === "/") return;
                 if (href.indexOf("mailto:") === 0 || href.indexOf("tel:") === 0) return;
-                if (!/^https?:\/\//i.test(href)) return;
+                try {
+                    var abs = new URL(href, window.location.href);
+                    if (abs.origin === window.location.origin) return;
+                } catch (err0) {}
                 e.preventDefault();
                 try {
                     if (/^https?:\/\/t\.me\//i.test(href) && typeof tg.openTelegramLink === "function") {
@@ -290,7 +293,7 @@
         sessionStorage.setItem("tg_webapp_auth_done", "1");
 
         var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-        var timer = ctrl ? window.setTimeout(function () { ctrl.abort(); }, 8000) : null;
+        var timer = ctrl ? window.setTimeout(function () { ctrl.abort(); }, 25000) : null;
         fetch("/api/telegram/webapp-auth", {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },

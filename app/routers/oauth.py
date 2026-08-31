@@ -82,15 +82,14 @@ async def _oauth_return_async(
         )
         return RedirectResponse(bridge, status_code=302)
 
+    # Mini App WebView cannot open t.me / startapp (ERR_TIMED_OUT). Stay on this origin.
     if channel == "tg":
-        handoff = await create_native_handoff_async(db, user_id=user.id, next_url=next_url or "/tg/")
-        if connect and connect_success_message:
-            request.session["integrations_success"] = connect_success_message
-        bridge = (
-            f"{settings.site_url.rstrip('/')}/accounts/open-tg-app/"
-            f"?kind=handoff&token={quote(handoff.token)}"
-        )
-        return RedirectResponse(bridge, status_code=302)
+        if connect:
+            await login_user_async(request, user, db)
+            if connect_success_message:
+                request.session["integrations_success"] = connect_success_message
+            return RedirectResponse(next_url or "/tg/", status_code=302)
+        return await finish_login_async(request, user, db, next_url or "/tg/")
 
     if connect:
         await login_user_async(request, user, db)
@@ -141,13 +140,7 @@ setTimeout(function(){{ window.location.href = {json.dumps(deep)}; }}, 200);
 
 @router.get("/open-tg-app/")
 async def open_tg_app_bridge(request: Request):
-    """HTTPS page for Telegram URL buttons; jumps back into Mini App via startapp.
-
-    If this page is already opened inside the Mini App WebView, do not navigate
-    to t.me (that yields ERR_TIMED_OUT). Finish auth on this origin instead.
-    """
-    from app.services.client_channel import tg_mini_app_direct_link, tg_startapp_param
-    from app.services.telegram_webview import is_telegram_webview
+    """HTTPS page that used to bounce to t.me; Mini App WebView must stay on this origin."""
 
     kind = (request.query_params.get("kind") or "").strip().lower()
     token = (request.query_params.get("token") or "").strip()
@@ -159,38 +152,8 @@ async def open_tg_app_bridge(request: Request):
     else:
         in_app = f"/accounts/native-handoff/{quote(token)}/"
 
-    if is_telegram_webview(request):
-        return RedirectResponse(in_app, status_code=302)
-
-    bot = (settings.telegram_bot_username or "").lstrip("@").strip()
-    start_param = tg_startapp_param(kind=kind, token=token)
-    deep = tg_mini_app_direct_link(bot_username=bot, start_param=start_param)
-    if not deep:
-        return RedirectResponse(in_app, status_code=302)
-
-    html = f"""<!DOCTYPE html>
-<html lang="ru"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Возврат в приложение</title>
-<style>
-body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#ffffff;color:#0a0a0a;
-font-family:system-ui,sans-serif;padding:1.5rem;text-align:center}}
-a.btn{{display:inline-block;margin:.5rem;padding:.85rem 1.2rem;border-radius:12px;text-decoration:none;
-background:#111111;color:#fafafa;font-weight:600}}
-a.sec{{color:#525252}}
-</style>
-</head><body>
-<p>Возвращаем вас в мини-приложение…</p>
-<p><a class="btn" id="open" href="{deep}">Открыть в Telegram</a></p>
-<p><a class="sec" href="{in_app}">Продолжить в браузере</a></p>
-<script>
-setTimeout(function(){{ window.location.href = {json.dumps(deep)}; }}, 200);
-</script>
-</body></html>"""
-    from fastapi.responses import HTMLResponse
-
-    return HTMLResponse(html)
+    # Never auto-navigate to t.me — inside Mini App that is ERR_TIMED_OUT.
+    return RedirectResponse(in_app, status_code=302)
 
 
 @router.get("/native-handoff/{token}/")
@@ -284,8 +247,6 @@ async def telegram_login_page(request: Request, db: AsyncSession = Depends(get_a
 @router.get("/telegram/login/status/{token}/")
 async def telegram_login_status(token: str, request: Request, db: AsyncSession = Depends(get_async_db)):
     from app.models import TelegramLoginRequest
-    from app.services.client_channel import telegram_complete_urls
-    from app.services.telegram_webview import is_telegram_webview
 
     req = (
         await db.execute(select(TelegramLoginRequest).where(TelegramLoginRequest.token == token))
@@ -293,16 +254,8 @@ async def telegram_login_status(token: str, request: Request, db: AsyncSession =
     if not req:
         return JSONResponse({"completed": False, "error": "not_found"})
     if req.completed and req.complete_token:
-        # Inside Mini App: finish on this origin. Navigating to t.me causes ERR_TIMED_OUT.
-        if is_telegram_webview(request):
-            redirect = f"/accounts/telegram/complete/{req.complete_token}/?stay=1"
-        else:
-            payload = telegram_complete_urls(
-                site_url=settings.site_url,
-                complete_token=req.complete_token,
-                client_channel=getattr(req, "client_channel", None) or "web",
-            )
-            redirect = payload["complete_url"]
+        # Always finish on this origin. t.me / startapp inside Mini App WebView times out.
+        redirect = f"/accounts/telegram/complete/{req.complete_token}/?stay=1"
         return JSONResponse({
             "completed": True,
             "redirect": redirect,

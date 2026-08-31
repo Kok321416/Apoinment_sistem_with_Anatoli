@@ -38,7 +38,7 @@
             var webapp = window.Telegram && window.Telegram.WebApp;
             if (webapp && href.indexOf('https://t.me/') === 0 && typeof webapp.openTelegramLink === 'function') {
                 e.preventDefault();
-                webapp.openTelegramLink(href);
+                try { webapp.openTelegramLink(href); } catch (err) { window.open(href, '_blank'); }
                 return;
             }
             /* Never assign tg:// inside Mini App WebView — Telegram shows ERR_TIMED_OUT. */
