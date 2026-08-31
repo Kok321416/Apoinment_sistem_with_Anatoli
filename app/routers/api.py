@@ -420,6 +420,64 @@ async def api_telegram_webapp_auth(request: Request, db: AsyncSession = Depends(
     return result
 
 
+_WEBAPP_DIAG_KINDS = frozenset({
+    "js_error",
+    "promise",
+    "no_sdk",
+    "no_init_data",
+    "blank_shell",
+    "auth_fail",
+    "watchdog",
+    "boot",
+})
+
+
+@router.post("/telegram/webapp-diag")
+async def api_telegram_webapp_diag(request: Request):
+    """Client Mini App errors (beacon). No secrets. Rate-limited by global middleware."""
+    try:
+        raw = await request.body()
+        data = json.loads(raw.decode("utf-8") or "{}") if raw else {}
+    except Exception:
+        return JSONResponse({"ok": False}, status_code=400)
+    if not isinstance(data, dict):
+        return JSONResponse({"ok": False}, status_code=400)
+    kind = str(data.get("kind") or "watchdog").strip()[:32]
+    if kind not in _WEBAPP_DIAG_KINDS:
+        kind = "watchdog"
+    extra = str(data.get("extra") or "")[:400]
+    path = str(data.get("path") or "/tg/")[:180]
+    platform = str(data.get("platform") or "")[:32]
+    ua = str(data.get("ua") or request.headers.get("user-agent") or "")[:220]
+    message = f"mini_app {kind} {platform} {extra}".strip()[:512]
+    try:
+        from app.services.platform_errors import record_platform_error
+
+        record_platform_error(
+            path=path,
+            method="POST",
+            status_code=0,
+            message=message,
+            ip=request.client.host if request.client else None,
+        )
+    except Exception:
+        logger.exception("webapp-diag persist failed")
+    try:
+        from app.services.ops_alerts import notify_ops_alert
+
+        notify_ops_alert(
+            kind="exception",
+            path=path,
+            method="POST",
+            status_code=0,
+            message=message,
+            request=request,
+        )
+    except Exception:
+        logger.warning("webapp-diag alert failed", exc_info=True)
+    return {"ok": True}
+
+
 def _verify_telegram_widget_hash(payload: dict, received_hash: str) -> bool:
     bot_token = settings.telegram_bot_token
     if not bot_token or not received_hash:

@@ -1,7 +1,58 @@
 <script>
 (function () {
     var SDK = "/static/js/vendor/telegram-web-app.js?v=1";
-    var BOOT = "/static/js/telegram-webapp.js?v=21";
+    var BOOT = "/static/js/telegram-webapp.js?v=22";
+
+    function looksTelegram() {
+        try {
+            var ua = navigator.userAgent || "";
+            var tg = window.Telegram && window.Telegram.WebApp;
+            if (/Telegram/i.test(ua)) return true;
+            if (tg && (tg.initData || tg.platform === "ios" || tg.platform === "android")) return true;
+            if (String(location.hash || "").indexOf("tgWebApp") >= 0) return true;
+        } catch (e) {}
+        return false;
+    }
+
+    window.__AYC_TG_REPORT__ = function (kind, extra) {
+        if (!looksTelegram()) return;
+        var tg = window.Telegram && window.Telegram.WebApp;
+        var payload = JSON.stringify({
+            kind: kind || "watchdog",
+            path: (location.pathname || "/tg/").slice(0, 180),
+            platform: (tg && tg.platform) || "",
+            ua: (navigator.userAgent || "").slice(0, 220),
+            extra: String(extra || "").slice(0, 400),
+        });
+        try {
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon("/api/telegram/webapp-diag", new Blob([payload], { type: "application/json" }));
+                return;
+            }
+        } catch (e) {}
+        try {
+            fetch("/api/telegram/webapp-diag", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: payload,
+                keepalive: true,
+            }).catch(function () {});
+        } catch (e2) {}
+    };
+
+    window.addEventListener("error", function (ev) {
+        window.__AYC_TG_REPORT__("js_error", (ev.message || "") + " " + (ev.filename || "") + ":" + (ev.lineno || ""));
+    });
+    window.addEventListener("unhandledrejection", function (ev) {
+        window.__AYC_TG_REPORT__("promise", String(ev.reason || ""));
+    });
+    setTimeout(function () {
+        if (!looksTelegram()) return;
+        var tg = window.Telegram && window.Telegram.WebApp;
+        if (!tg) window.__AYC_TG_REPORT__("no_sdk", "no WebApp after 4s");
+        var shell = document.getElementById("tg-scroll-root");
+        if (shell && shell.clientHeight < 50) window.__AYC_TG_REPORT__("blank_shell", "h=" + shell.clientHeight);
+    }, 4000);
 
     function loadBoot() {
         if (window.__AYC_TG_BOOT_LOADED__) return;
@@ -21,10 +72,14 @@
         sdk.src = SDK;
         sdk.async = false;
         sdk.onload = loadBoot;
-        sdk.onerror = loadBoot;
+        sdk.onerror = function () {
+            if (window.__AYC_TG_REPORT__) window.__AYC_TG_REPORT__("no_sdk", "sdk onerror");
+            loadBoot();
+        };
         (document.head || document.documentElement).appendChild(sdk);
     }
 
     loadSdk();
 })();
 </script>
+

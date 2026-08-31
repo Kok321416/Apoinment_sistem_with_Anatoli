@@ -321,9 +321,12 @@
                     hint.textContent = "Не удалось войти автоматически. Используйте кнопки ниже.";
                 }
             })
-            .catch(function () {
+            .catch(function (err) {
                 if (timer) window.clearTimeout(timer);
                 sessionStorage.removeItem("tg_webapp_auth_done");
+                if (window.__AYC_TG_REPORT__) {
+                    window.__AYC_TG_REPORT__("auth_fail", String(err && err.name ? err.name : err || "fetch"));
+                }
                 if (hint) {
                     hint.hidden = false;
                     hint.textContent = "Не удалось войти автоматически. Используйте кнопки ниже.";
