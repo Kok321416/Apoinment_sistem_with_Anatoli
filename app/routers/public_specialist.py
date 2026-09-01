@@ -374,6 +374,7 @@ async def specialist_calendar_book(
                 from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
                 from app.services.diagnostics_service import touch_client_specialist_link
 
+                booked_service = booking.service
                 show_diag = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
                 diag_url = f"/s/{slug}/diagnostics/"
                 if auth_user:
@@ -395,7 +396,7 @@ async def specialist_calendar_book(
                         auth_user,
                         booking=booking,
                         calendar=calendar,
-                        service=booking.service,
+                        service=booked_service,
                         consultant=consultant,
                         back_url=f"/s/{slug}/",
                         show_diagnostics_cta=show_diag,

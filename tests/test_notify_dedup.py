@@ -64,6 +64,27 @@ def test_notify_status_dedup_skips_client_same_chat(monkeypatch):
     assert "К вам запись" in sent[0][1]
 
 
+def test_notify_specialist_new_booking_includes_action_buttons(monkeypatch):
+    captured = {}
+
+    def fake_send(chat_id, text, token=None, reply_markup=None, **kwargs):
+        captured["chat_id"] = chat_id
+        captured["reply_markup"] = reply_markup
+        return True
+
+    monkeypatch.setattr(tg, "_send_telegram", fake_send)
+    monkeypatch.setattr(tg.settings, "site_url", "https://example.com")
+
+    booking = _booking(client_tg=200, specialist_chat="100")
+    booking.id = 55
+    assert tg.notify_specialist_new_booking(booking) is True
+    kb = captured["reply_markup"]
+    assert kb["inline_keyboard"][0][0]["text"] == "Подтвердить"
+    assert kb["inline_keyboard"][0][0]["callback_data"] == "spec_book_confirm_55"
+    assert kb["inline_keyboard"][1][0]["text"] == "Изменить время"
+    assert kb["inline_keyboard"][1][0]["url"] == "https://example.com/booking/?reschedule=55"
+
+
 def test_role_labels_in_templates():
     booking = SimpleNamespace(
         client_name="Вася",

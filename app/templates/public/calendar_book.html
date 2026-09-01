@@ -28,10 +28,10 @@
     <form method="POST" action="/s/{{ slug }}/c/{{ calendar.id }}/" class="book-cal-layout" id="publicBookForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <nav class="book-cal-progress" id="bookCalProgress" aria-label="Шаги записи">
-            <button type="button" class="book-cal-progress__item is-active" data-step="1">1. Услуга</button>
-            <button type="button" class="book-cal-progress__item" data-step="2">2. Дата</button>
-            <button type="button" class="book-cal-progress__item" data-step="3">3. Время</button>
-            <button type="button" class="book-cal-progress__item" data-step="4">4. Подтверждение</button>
+            <button type="button" class="book-cal-progress__item is-active" data-step="1" aria-label="Шаг 1: Услуга"><span class="book-cal-progress__num">1</span><span class="book-cal-progress__label">Услуга</span></button>
+            <button type="button" class="book-cal-progress__item" data-step="2" aria-label="Шаг 2: Дата"><span class="book-cal-progress__num">2</span><span class="book-cal-progress__label">Дата</span></button>
+            <button type="button" class="book-cal-progress__item" data-step="3" aria-label="Шаг 3: Время"><span class="book-cal-progress__num">3</span><span class="book-cal-progress__label">Время</span></button>
+            <button type="button" class="book-cal-progress__item" data-step="4" aria-label="Шаг 4: Подтверждение"><span class="book-cal-progress__num">4</span><span class="book-cal-progress__label">Итог</span></button>
         </nav>
         <section class="book-cal-panel book-cal-panel--service is-step-active" data-book-step="1" id="bookStepService">
             <h2 class="book-cal-step"><span class="book-cal-step__num">1</span> Услуга</h2>

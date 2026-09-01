@@ -160,6 +160,31 @@ async def on_booklink(callback: CallbackQuery) -> None:
         await callback.message.answer("❌ Ссылка недействительна или истекла.")
 
 
+@router.callback_query(F.data.startswith("spec_book_confirm_"))
+async def on_spec_book_confirm(callback: CallbackQuery) -> None:
+    booking_id = (callback.data or "").replace("spec_book_confirm_", "", 1)
+    if not callback.message:
+        await callback.answer()
+        return
+    if not booking_id.isdigit():
+        await callback.answer("Некорректный запрос", show_alert=True)
+        return
+    await callback.answer("Подтверждаем...")
+    status, data = await post_site_api(
+        "/api/telegram/specialist-booking-confirm",
+        {
+            "telegram_chat_id": callback.message.chat.id,
+            "booking_id": booking_id,
+        },
+    )
+    if status == 200 and data and data.get("success"):
+        msg = data.get("message") or "Запись подтверждена"
+        await callback.message.answer(f"✅ {msg}")
+        return
+    err = (data or {}).get("error") or "Не удалось подтвердить запись"
+    await callback.message.answer(f"❌ {err}")
+
+
 @router.callback_query(F.data.in_({"my_appointments", "history", "help", "spec_next", "apps_android_soon"}))
 async def on_legacy_cb(callback: CallbackQuery) -> None:
     await callback.answer()

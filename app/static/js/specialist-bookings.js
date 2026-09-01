@@ -508,6 +508,44 @@
         initBookingsHubFilters();
         initNextBookingCountdown();
         initBookingsFab();
+
+        (function openRescheduleFromQuery() {
+            var params = new URLSearchParams(window.location.search);
+            var rid = params.get('reschedule');
+            if (!rid || !/^\d+$/.test(rid)) return;
+            var calId = '';
+            var svcId = '';
+            var found = false;
+            var hubEl = document.getElementById('bookings-hub-data');
+            if (hubEl) {
+                try {
+                    var hub = JSON.parse(hubEl.textContent || '{}');
+                    var groups = (hub.upcoming_groups || []).concat(hub.past_groups || []);
+                    for (var gi = 0; gi < groups.length; gi++) {
+                        var bookings = groups[gi].bookings || [];
+                        for (var bi = 0; bi < bookings.length; bi++) {
+                            if (String(bookings[bi].id) === String(rid)) {
+                                calId = String(bookings[bi].calendar_id || '');
+                                svcId = String(bookings[bi].service_id || '');
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) break;
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            if (!found) {
+                var cardBtn = document.querySelector('.btn-reschedule[data-booking-id="' + escapeAttr(rid) + '"]');
+                if (cardBtn) {
+                    calId = cardBtn.getAttribute('data-calendar-id') || '';
+                    svcId = cardBtn.getAttribute('data-service-id') || '';
+                    found = true;
+                }
+            }
+            if (!found) return;
+            openRescheduleModal(rid, calId, svcId);
+        })();
     }
 
     function initBookingsHubFilters() {

@@ -361,6 +361,60 @@ async def api_telegram_specialist_bookings(request: Request, db: AsyncSession = 
     return {"success": True, "bookings": items[:30], "is_specialist": True}
 
 
+@router.post("/telegram/specialist-booking-confirm")
+async def api_specialist_booking_confirm(request: Request, db: AsyncSession = Depends(get_async_db)):
+    body = await request.body()
+    if not verify_bot_request(request, body):
+        return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
+    data = json.loads(body)
+    raw_chat = data.get("telegram_chat_id")
+    raw_booking_id = data.get("booking_id")
+    if raw_chat is None or raw_booking_id is None:
+        return JSONResponse(
+            {"success": False, "error": "telegram_chat_id and booking_id required"},
+            status_code=400,
+        )
+    try:
+        booking_id = int(raw_booking_id)
+    except (TypeError, ValueError):
+        return JSONResponse({"success": False, "error": "invalid booking_id"}, status_code=400)
+
+    integration = (
+        await db.execute(
+            select(Integration).where(Integration.telegram_chat_id == str(raw_chat).strip())
+        )
+    ).scalar_one_or_none()
+    if not integration:
+        return {"success": False, "error": "specialist not connected"}
+
+    booking = (
+        await db.execute(
+            select(Booking)
+            .join(Calendar, Booking.calendar_id == Calendar.id)
+            .where(
+                Booking.id == booking_id,
+                Calendar.consultant_id == integration.consultant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not booking:
+        return {"success": False, "error": "booking not found"}
+    if booking.status == "cancelled":
+        return {"success": False, "error": "booking cancelled"}
+    if booking.status == "confirmed":
+        return {"success": True, "message": "Запись уже подтверждена", "already": True}
+    if booking.status != "pending":
+        return {"success": False, "error": "booking not confirmable"}
+
+    old_status = booking.status
+    booking.status = "confirmed"
+    await db.commit()
+    from app.services.notify_bridge import schedule_status_changed
+
+    schedule_status_changed(booking.id, old_status)
+    return {"success": True, "message": "Запись подтверждена"}
+
+
 @router.post("/telegram/capabilities")
 async def api_telegram_capabilities(request: Request, db: AsyncSession = Depends(get_async_db)):
     body = await request.body()

@@ -637,7 +637,13 @@
 
     .book-cal-progress__item {
         flex: 1;
+        min-width: 0;
         min-height: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
         border: none;
         border-radius: var(--radius-sm);
         background: transparent;
@@ -645,8 +651,24 @@
         font: inherit;
         font-size: var(--font-size-body-sm);
         font-weight: var(--font-weight-semibold);
+        line-height: 1.1;
+        text-align: center;
         cursor: pointer;
-        padding: var(--space-sm);
+        padding: var(--space-xs) var(--space-2xs);
+    }
+
+    .book-cal-progress__num {
+        font-size: 0.8rem;
+        font-weight: var(--font-weight-bold);
+    }
+
+    .book-cal-progress__label {
+        max-width: 100%;
+        font-size: 0.65rem;
+        font-weight: var(--font-weight-medium);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .book-cal-progress__item.is-active {
@@ -674,8 +696,7 @@
     }
 
     .book-cal-progress__item {
-        font-size: 0.75rem;
-        padding: 0.4rem 0.25rem;
+        padding: 0.35rem 0.15rem;
     }
 
     .booking-cal__grid {

@@ -335,7 +335,7 @@ def handle_telegram_update(update_data: dict) -> None:
             chat_id = callback_query["message"]["chat"]["id"]
             data = callback_query.get("data", "")
             user_id = callback_query.get("from", {}).get("id")
-            if not data.startswith(("booklink_", "spec_confirm_", "login_confirm_")):
+            if not data.startswith(("booklink_", "spec_confirm_", "login_confirm_", "spec_book_confirm_")):
                 answer_callback_query(callback_query_id)
             if data in ("mode_client", "mode_specialist"):
                 mode = "client" if data == "mode_client" else "specialist"
@@ -363,6 +363,10 @@ def handle_telegram_update(update_data: dict) -> None:
             elif data.startswith("spec_confirm_"):
                 handle_specialist_connect_telegram_callback(
                     chat_id, user_id, callback_query_id, data.replace("spec_confirm_", "", 1)
+                )
+            elif data.startswith("spec_book_confirm_"):
+                handle_specialist_booking_confirm_callback(
+                    chat_id, callback_query_id, data.replace("spec_book_confirm_", "", 1)
                 )
             elif data in ("my_appointments", "history", "help", "spec_next", "apps_android_soon"):
                 send_telegram_message(
@@ -510,6 +514,28 @@ def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
             send_telegram_message(chat_id, "❌ Ссылка недействительна или истекла.")
     except Exception as e:
         logger.warning("Booking confirm error: %s", e)
+        answer_callback_query(callback_query_id, "Ошибка.")
+
+
+def handle_specialist_booking_confirm_callback(chat_id, callback_query_id, booking_id_str):
+    if not str(booking_id_str or "").isdigit():
+        answer_callback_query(callback_query_id, "Некорректный запрос", show_alert=True)
+        return
+    answer_callback_query(callback_query_id, "Подтверждаем...")
+    status, data = post_site_api(
+        "/api/telegram/specialist-booking-confirm",
+        {"telegram_chat_id": chat_id, "booking_id": booking_id_str},
+        timeout=8,
+    )
+    try:
+        if status == 200 and data and data.get("success"):
+            msg = data.get("message") or "Запись подтверждена"
+            send_telegram_message(chat_id, f"✅ {msg}")
+        else:
+            err = (data or {}).get("error") or "Не удалось подтвердить запись"
+            send_telegram_message(chat_id, f"❌ {err}")
+    except Exception as e:
+        logger.warning("Specialist booking confirm error: %s", e)
         answer_callback_query(callback_query_id, "Ошибка.")
 
 

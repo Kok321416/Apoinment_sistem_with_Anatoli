@@ -297,6 +297,16 @@ def notify_booking_rescheduled(
         logger.exception("Reschedule notification error: %s", e)
 
 
+def _specialist_new_booking_keyboard(booking_id: int) -> dict:
+    base = settings.site_url.rstrip("/")
+    return {
+        "inline_keyboard": [
+            [{"text": "Подтвердить", "callback_data": f"spec_book_confirm_{booking_id}"}],
+            [{"text": "Изменить время", "url": f"{base}/booking/?reschedule={booking_id}"}],
+        ]
+    }
+
+
 def notify_specialist_new_booking(booking: Booking) -> bool:
     try:
         chat_id, token = _specialist_chat_for_booking(booking)
@@ -307,6 +317,7 @@ def notify_specialist_new_booking(booking: Booking) -> bool:
             chat_id,
             text,
             token,
+            reply_markup=_specialist_new_booking_keyboard(booking.id),
             booking_id=booking.id,
             recipient_type="specialist",
         )
