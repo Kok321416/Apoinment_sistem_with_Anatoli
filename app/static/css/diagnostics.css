@@ -10,6 +10,23 @@
     margin-bottom: 1.5rem;
 }
 
+.diag-instruction {
+    margin-bottom: 1.5rem;
+}
+
+.diag-instruction__title {
+    margin: 0 0 0.75rem;
+    font-size: 1.125rem;
+}
+
+.diag-instruction__meta {
+    margin: 1rem 0 0;
+}
+
+.diag-form {
+    margin-top: 0;
+}
+
 .diag-section {
     margin-top: 2rem;
 }
@@ -210,6 +227,39 @@
     .diag-cta .btn {
         width: 100%;
     }
+}
+
+.diag-submit-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: color-mix(in srgb, var(--bg-900, #fff) 55%, transparent);
+    backdrop-filter: blur(4px);
+}
+
+.diag-submit-overlay[hidden] {
+    display: none;
+}
+
+.diag-submit-overlay__box {
+    max-width: 20rem;
+    width: 100%;
+    padding: 1.5rem 1.25rem;
+    border-radius: var(--radius-lg, 12px);
+    background: var(--bg-900, #fff);
+    border: 1px solid var(--border-default, #e5e5e5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    text-align: center;
+}
+
+.diag-submit-overlay__title {
+    margin: 0 0 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
 }
 
 html.tg-webapp .diag-cta {

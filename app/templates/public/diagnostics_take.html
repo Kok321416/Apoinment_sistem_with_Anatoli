@@ -8,7 +8,7 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/booking.css?v=27">
-<link rel="stylesheet" href="/static/css/diagnostics.css?v=2">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=5">
 {% endblock %}
 
 {% block booking_content %}
@@ -16,11 +16,16 @@
     <p class="mb-lg"><a class="btn btn--ghost btn--sm" href="/s/{{ public_slug }}/diagnostics/">← К списку</a></p>
     <header class="diag-page__head">
         <h1 class="text-h1">{{ test.title }}</h1>
-        <p class="text-body-sm text-muted">Специалист: {{ consultant.first_name }} {{ consultant.last_name }}</p>
-        <p class="text-body-sm text-muted">{{ test.source_citation[:220] }}{% if test.source_citation|length > 220 %}…{% endif %}</p>
+        <p class="text-body text-muted">{{ test.short_description }}</p>
     </header>
 
-    <form method="POST" action="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/submit/" class="diag-form card card--static">
+    {% include "components/diagnostics_test_intro.html" %}
+
+    {% if request.query_params.get('error') == 'incomplete' %}
+    <div class="alert alert--error mb-lg" role="alert">Ответьте на все вопросы, чтобы завершить тест.</div>
+    {% endif %}
+
+    <form method="POST" action="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/submit/" class="diag-form card card--static" id="diagTakeForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="source" value="profile">
         {% if request.session.get('diagnostics_invitation_id') %}
@@ -43,7 +48,15 @@
             {% endfor %}
         </ol>
 
-        <button type="submit" class="btn btn--primary mt-lg">Завершить и посмотреть результат</button>
+        <button type="submit" class="btn btn--primary mt-lg" id="diagSubmitBtn">Завершить</button>
     </form>
+
+    <div class="diag-submit-overlay" id="diagSubmitOverlay" hidden aria-hidden="true" aria-live="polite">
+        <div class="diag-submit-overlay__box" role="status">
+            <p class="diag-submit-overlay__title">Считаем результат…</p>
+            <p class="text-body-sm text-muted">Обычно это занимает пару секунд</p>
+        </div>
+    </div>
 </div>
+<script src="/static/js/diagnostics-take.js?v=1" defer></script>
 {% endblock %}

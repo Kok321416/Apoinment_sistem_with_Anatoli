@@ -210,7 +210,8 @@ def test_diagnostics_hub_and_submit_bhs(diagnostics_client):
 
     take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/", follow_redirects=True)
     assert take.status_code == 200, take.text[:500]
-    assert "Завершить и посмотреть результат" in take.text
+    assert "Инструкция" in take.text
+    assert "Завершить" in take.text
 
     m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
     assert m, "csrf_token missing on take page"

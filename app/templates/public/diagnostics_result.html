@@ -7,12 +7,17 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/booking.css?v=27">
-<link rel="stylesheet" href="/static/css/diagnostics.css?v=2">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=4">
 {% endblock %}
 
 {% block booking_content %}
 <div class="diag-page">
     <p class="mb-lg"><a class="btn btn--ghost btn--sm" href="/s/{{ public_slug }}/diagnostics/">← К диагностике</a></p>
+    {% if result.unsaved %}
+    <div class="alert alert--warning mb-lg" role="alert">
+        Результат рассчитан, но не сохранён в историю. Попробуйте пройти тест ещё раз или обратитесь к специалисту.
+    </div>
+    {% endif %}
     {% set r = result %}
     {% set diag_results_base = '/s/' ~ public_slug ~ '/diagnostics/results' %}
     {% include "components/diagnostics_result_card.html" %}

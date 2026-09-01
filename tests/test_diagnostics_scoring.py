@@ -1,5 +1,24 @@
 """Unit tests for diagnostic scoring plugins (no invented bands)."""
 from app.diagnostics.catalog import BHS, get_test, list_tests, score_bhs
+from app.services.diagnostics_service import missing_answer_ids, parse_diagnostic_answers
+
+
+def test_parse_diagnostic_answers_ignores_meta_fields():
+    items = [
+        ("csrf_token", "abc"),
+        ("source", "profile"),
+        ("i1", "2"),
+        ("i2", "0"),
+        ("booking_id", "5"),
+    ]
+    assert parse_diagnostic_answers(items) == {"i1": "2", "i2": "0"}
+
+
+def test_missing_answer_ids_detects_gaps():
+    test = get_test("bhs")
+    answers = {f"i{i}": "0" for i in range(1, 20)}
+    missing = missing_answer_ids(test, answers)
+    assert missing == ["i20"]
 
 
 def test_catalog_has_requested_codes():
@@ -35,6 +54,14 @@ def test_bhs_max_severe():
     assert result["scores"]["total"] == 20
     assert result["scales"][0]["band_label"] == "выраженная"
     assert "attention_high" in result["flags"]
+
+
+def test_runnable_tests_have_russian_instruction():
+    for code in ("bhs", "bdi", "wcq", "schmischek", "osop"):
+        test = get_test(code)
+        assert test and test.runnable
+        assert test.instruction
+        assert any(ord(c) > 127 for c in test.instruction)
 
 
 def test_runnable_and_pending():

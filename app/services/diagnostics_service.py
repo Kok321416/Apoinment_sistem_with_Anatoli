@@ -33,11 +33,38 @@ def reset_diagnostics_ddl_ready_for_tests() -> None:
     _DIAGNOSTICS_DDL_READY = False
 
 
+async def _probe_diagnostics_tables(db: AsyncSession) -> bool:
+    """Fast check — no DDL, no sync engine inspect."""
+    from sqlalchemy import text
+
+    try:
+        await db.execute(text("SELECT 1 FROM diagnostic_attempts LIMIT 1"))
+        return True
+    except (ProgrammingError, OperationalError, DBAPIError) as exc:
+        if _is_missing_diagnostics_table(exc):
+            await db.rollback()
+            return False
+        raise
+
+
 async def ensure_diagnostics_tables(db: AsyncSession | None = None) -> bool:
     """Create diagnostics tables on first use if deploy patches missed them."""
     global _DIAGNOSTICS_DDL_READY
     if _DIAGNOSTICS_DDL_READY:
         return True
+
+    if db is not None:
+        try:
+            if await _probe_diagnostics_tables(db):
+                _mark_diagnostics_ddl_ready()
+                return True
+            ok = await _ensure_diagnostics_tables_on_session(db)
+            if ok:
+                _mark_diagnostics_ddl_ready()
+                return True
+        except Exception:
+            logger.exception("ensure_diagnostics_tables async ddl failed")
+            return False
 
     from app.db_schema import ensure_diagnostics_schema
 
@@ -49,17 +76,6 @@ async def ensure_diagnostics_tables(db: AsyncSession | None = None) -> bool:
 
     if ok:
         _mark_diagnostics_ddl_ready()
-        return True
-
-    if db is not None:
-        try:
-            ok = await _ensure_diagnostics_tables_on_session(db) or ok
-            if ok:
-                _mark_diagnostics_ddl_ready()
-                return True
-        except Exception:
-            logger.exception("ensure_diagnostics_tables async ddl failed")
-
     return ok
 
 
@@ -103,6 +119,44 @@ def _skip_diagnostics_read_on_missing_table(exc: BaseException) -> bool:
 
 def hash_invite_token(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def parse_diagnostic_answers(form_items) -> dict[str, Any]:
+    answers: dict[str, Any] = {}
+    for key, val in form_items:
+        if key.startswith("i") and key[1:].isdigit():
+            answers[key] = val
+    return answers
+
+
+def missing_answer_ids(test, answers: dict[str, Any]) -> list[str]:
+    if not test or not test.items:
+        return []
+    return [item.id for item in test.items if item.id not in answers]
+
+
+def score_test_answers(test, answers: dict[str, Any]) -> dict[str, Any]:
+    if not test or not test.runnable or not test.score_fn:
+        raise ValueError("Тест недоступен для расчёта")
+    return test.score_fn(answers, test)
+
+
+def build_preview_result(test, scored: dict[str, Any]) -> dict[str, Any]:
+    interpretation = scored.get("interpretation") or {}
+    return {
+        "test_code": test.code,
+        "title": test.title,
+        "summary": scored.get("summary") or "",
+        "scales": scored.get("scales") or [],
+        "interpretation": interpretation,
+        "viz": test.viz,
+        "disclaimer": interpretation.get("disclaimer") or DISCLAIMER_RU,
+        "unsaved": True,
+    }
+
+
+def preview_session_key(slug: str, user_id: int) -> str:
+    return f"diag_preview:{slug}:{user_id}"
 
 
 async def touch_client_specialist_link(

@@ -629,10 +629,15 @@ async def specialist_diagnostics_submit(
     test_code: str,
     db: AsyncSession = Depends(get_async_db),
 ):
+    from app.diagnostics.catalog import get_test
     from app.security.csrf import validate_csrf_token
     from app.services.diagnostics_service import (
+        build_preview_result,
         complete_attempt,
-        ensure_diagnostics_write_ready,
+        missing_answer_ids,
+        parse_diagnostic_answers,
+        preview_session_key,
+        score_test_answers,
         start_attempt,
         touch_client_specialist_link,
     )
@@ -648,14 +653,13 @@ async def specialist_diagnostics_submit(
     form = await request.form()
     if not validate_csrf_token(request, form.get("csrf_token")):
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=csrf", status_code=302)
-    answers = {}
-    for key, val in form.multi_items():
-        if key.startswith("i") and key[1:].isdigit():
-            answers[key] = val
+    test = get_test(test_code)
+    if not test or not test.runnable:
+        return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
+    answers = parse_diagnostic_answers(form.multi_items())
+    if missing_answer_ids(test, answers):
+        return RedirectResponse(f"/s/{slug}/diagnostics/tests/{test_code}/?error=incomplete", status_code=302)
     consultant_id = int(consultant.id)
-    if not await ensure_diagnostics_write_ready(db):
-        logger.error("diagnostics submit blocked: schema not ready slug=%s", slug)
-        return RedirectResponse(f"/s/{slug}/diagnostics/?error=save", status_code=302)
     attempt_id = None
     try:
         attempt = await start_attempt(
@@ -681,7 +685,13 @@ async def specialist_diagnostics_submit(
             test_code,
             auth_user.id,
         )
-        return RedirectResponse(f"/s/{slug}/diagnostics/?error=save", status_code=302)
+        try:
+            scored = score_test_answers(test, answers)
+            request.session[preview_session_key(slug, auth_user.id)] = build_preview_result(test, scored)
+            return RedirectResponse(f"/s/{slug}/diagnostics/results/preview/", status_code=302)
+        except Exception:
+            logger.exception("diagnostics preview fallback failed slug=%s test=%s", slug, test_code)
+            return RedirectResponse(f"/s/{slug}/diagnostics/?error=save", status_code=302)
     try:
         await touch_client_specialist_link(
             db,
@@ -694,6 +704,39 @@ async def specialist_diagnostics_submit(
         await db.rollback()
         logger.exception("touch after diagnostics save failed slug=%s user=%s", slug, auth_user.id)
     return RedirectResponse(f"/s/{slug}/diagnostics/results/{attempt_id}/", status_code=302)
+
+
+@router.get("/s/{slug}/diagnostics/results/preview/")
+async def specialist_diagnostics_result_preview(
+    request: Request,
+    slug: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    from app.services.diagnostics_service import preview_session_key
+    from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+
+    consultant = await _get_consultant_by_slug_async(db, slug)
+    if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
+        raise HTTPException(status_code=404, detail="Диагностика недоступна")
+    next_path = f"/s/{slug}/diagnostics/results/preview/"
+    auth_user, redirect = await _require_logged_in_client(request, consultant, next_path, db)
+    if redirect:
+        return redirect
+    result = request.session.pop(preview_session_key(slug, auth_user.id), None)
+    if not result:
+        return RedirectResponse(f"/s/{slug}/diagnostics/", status_code=302)
+    return templates.TemplateResponse(
+        "public/diagnostics_result.html",
+        await page_context_async(
+            request,
+            db,
+            auth_user,
+            consultant=consultant,
+            public_slug=slug,
+            result=result,
+            attempt=None,
+        ),
+    )
 
 
 @router.get("/s/{slug}/diagnostics/results/{attempt_id}/")

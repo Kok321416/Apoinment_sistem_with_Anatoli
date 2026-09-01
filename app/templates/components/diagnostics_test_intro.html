@@ -1,0 +1,9 @@
+{% if test.instruction %}
+<section class="diag-instruction card card--static" aria-labelledby="diag-instr-title">
+    <h2 class="diag-instruction__title text-h2" id="diag-instr-title">Инструкция</h2>
+    <p class="text-body">{{ test.instruction }}</p>
+    <p class="diag-instruction__meta text-body-sm text-muted">
+        Вопросов: {{ test.items|length }} · примерно {{ test.duration_minutes }} мин
+    </p>
+</section>
+{% endif %}
