@@ -9,7 +9,7 @@
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=38">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=11">
-<link rel="stylesheet" href="/static/css/profile-hub.css?v=10">
+<link rel="stylesheet" href="/static/css/profile-hub.css?v=11">
 {% endblock %}
 
 {% block app_content %}
@@ -46,33 +46,8 @@
         </div>
     </section>
 
-    <section class="profile-dashboard" id="profile-dashboard" aria-label="Статистика профиля">
-        <div class="dashboard-card dashboard-card--accent">
-            <span class="dashboard-card__value" data-dash="services_total">{{ profile_dashboard.services_total }}</span>
-            <span class="dashboard-card__label">Услуг</span>
-            <span class="dashboard-card__sub" data-dash-sub="services_active">Активных: {{ profile_dashboard.services_active }}</span>
-        </div>
-        <div class="dashboard-card dashboard-card--success">
-            <span class="dashboard-card__value" data-dash="calendars_total">{{ profile_dashboard.calendars_total }}</span>
-            <span class="dashboard-card__label">Календаря</span>
-            <span class="dashboard-card__sub" data-dash-sub="calendars_active">Активных: {{ profile_dashboard.calendars_active }}</span>
-        </div>
-        <div class="dashboard-card dashboard-card--info">
-            <span class="dashboard-card__value" data-dash="clients_total">{{ profile_dashboard.clients_total }}</span>
-            <span class="dashboard-card__label">Клиентов</span>
-        </div>
-        <div class="dashboard-card dashboard-card--warning">
-            <span class="dashboard-card__value" data-dash="completeness">{{ profile_completeness.percent }}%</span>
-            <span class="dashboard-card__label">Профиль заполнен</span>
-        </div>
-    </section>
-
     <div class="profile-mode-bar">
         <div class="profile-save-status" id="save-status" aria-live="polite"></div>
-        <div class="profile-mode-toggle" role="group" aria-label="Режим страницы">
-            <button type="button" class="profile-mode-toggle__btn is-active" data-mode="edit">Редактирование</button>
-            <button type="button" class="profile-mode-toggle__btn" data-mode="preview">Предпросмотр</button>
-        </div>
     </div>
 
     {% if show_telegram_welcome or request.query_params.get('telegram_connected') %}
@@ -419,7 +394,7 @@
 <script src="/static/js/profile-preview.js?v=4" defer></script>
 <script src="/static/js/profile-autosave.js?v=2" defer></script>
 <script src="/static/js/profile-tabs.js?v=3" defer></script>
-<script src="/static/js/profile-page.js?v=4" defer></script>
+<script src="/static/js/profile-page.js?v=5" defer></script>
 <script src="/static/js/avatar-crop.js?v=4" defer></script>
 <script type="application/json" id="profile-completion-meta">{{ profile_completion_meta | tojson }}</script>
 <script type="application/json" id="profile-initial-data">{{ profile_initial_data | tojson }}</script>

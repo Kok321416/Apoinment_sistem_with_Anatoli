@@ -1,18 +1,57 @@
 """Client–specialist links and diagnostic attempt persistence."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
+import logging
 import secrets
 from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import DBAPIError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.diagnostics.catalog import DISCLAIMER_RU, get_test
 from app.models import ClientCard, ClientSpecialistLink, Consultant, DiagnosticAttempt, DiagnosticInvitation
 from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+
+logger = logging.getLogger(__name__)
+
+
+async def ensure_diagnostics_tables(db: AsyncSession | None = None) -> bool:
+    """Create diagnostics tables on first use if deploy patches missed them."""
+    from app.db_schema import ensure_diagnostics_schema
+
+    ok = False
+    try:
+        ok = await asyncio.to_thread(ensure_diagnostics_schema)
+    except Exception:
+        logger.exception("ensure_diagnostics_tables sync failed")
+
+    if db is not None:
+        try:
+            conn = await db.connection()
+
+            def _ensure_conn(sync_conn) -> bool:
+                return ensure_diagnostics_schema(bind=sync_conn)
+
+            conn_ok = await conn.run_sync(_ensure_conn)
+            ok = ok or conn_ok
+        except Exception:
+            logger.exception("ensure_diagnostics_tables async conn failed")
+
+    return ok
+
+
+def _is_missing_diagnostics_table(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    if "no such table" not in msg and "doesn't exist" not in msg:
+        return False
+    return any(
+        name in msg for name in ("diagnostic_attempts", "diagnostic_invitations", "client_specialist_links")
+    )
 
 
 def hash_invite_token(raw: str) -> str:
@@ -45,10 +84,7 @@ async def touch_client_specialist_link(
             )
         ).scalar_one_or_none()
     except Exception:
-        # First-deploy race: tables not created yet.
-        from app.db_schema import ensure_all_schema
-
-        ensure_all_schema()
+        await ensure_diagnostics_tables(db)
         row = (
             await db.execute(
                 select(ClientSpecialistLink).where(
@@ -176,6 +212,7 @@ async def start_attempt(
     booking_id: int | None = None,
     client_card_id: int | None = None,
 ) -> DiagnosticAttempt:
+    await ensure_diagnostics_tables(db)
     test = get_test(test_code)
     if not test or not test.runnable:
         raise ValueError("Тест пока недоступен")
@@ -202,13 +239,23 @@ async def start_attempt(
         interpretation_json=json.dumps({"disclaimer": DISCLAIMER_RU}, ensure_ascii=False),
     )
     db.add(attempt)
-    await db.flush()
+    for attempt_no in range(2):
+        try:
+            await db.flush()
+            return attempt
+        except (ProgrammingError, DBAPIError) as exc:
+            if attempt_no == 0 and _is_missing_diagnostics_table(exc):
+                logger.warning("diagnostic_attempts missing on insert, re-ensuring schema")
+                await ensure_diagnostics_tables(db)
+                continue
+            raise
     return attempt
 
 
 async def list_attempts_for_client(
     db: AsyncSession, *, client_user_id: int, consultant_id: int | None = None
 ) -> list[DiagnosticAttempt]:
+    await ensure_diagnostics_tables(db)
     q = select(DiagnosticAttempt).where(
         DiagnosticAttempt.client_user_id == client_user_id,
         DiagnosticAttempt.status == "completed",
@@ -216,7 +263,16 @@ async def list_attempts_for_client(
     if consultant_id:
         q = q.where(DiagnosticAttempt.consultant_id == consultant_id)
     q = q.order_by(DiagnosticAttempt.completed_at.desc())
-    return list((await db.execute(q)).scalars().all())
+    for attempt in range(2):
+        try:
+            return list((await db.execute(q)).scalars().all())
+        except (ProgrammingError, DBAPIError) as exc:
+            if attempt == 0 and _is_missing_diagnostics_table(exc):
+                logger.warning("diagnostic_attempts missing, re-ensuring schema")
+                await ensure_diagnostics_tables(db)
+                continue
+            raise
+    return []
 
 
 async def list_attempts_for_card(

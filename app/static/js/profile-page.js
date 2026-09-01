@@ -146,17 +146,15 @@
         });
 
         document.getElementById('btn-preview-mode') && document.getElementById('btn-preview-mode').addEventListener('click', function () {
-            document.querySelector('.profile-mode-toggle__btn[data-mode="preview"]').click();
-        });
-
-        document.querySelectorAll('.profile-mode-toggle__btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                document.querySelectorAll('.profile-mode-toggle__btn').forEach(function (b) {
-                    b.classList.toggle('is-active', b === btn);
-                });
-                var layout = document.getElementById('profile-layout');
-                if (layout) layout.classList.toggle('is-preview-mode', btn.dataset.mode === 'preview');
-            });
+            var layout = document.getElementById('profile-layout');
+            if (!layout) return;
+            var entering = !layout.classList.contains('is-preview-mode');
+            layout.classList.toggle('is-preview-mode', entering);
+            this.textContent = entering ? 'Редактирование' : 'Предпросмотр';
+            this.setAttribute('aria-pressed', entering ? 'true' : 'false');
+            if (entering) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         });
 
         var drop = document.getElementById('photoDropZone');

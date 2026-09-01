@@ -9,8 +9,8 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=41">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=13">
+<link rel="stylesheet" href="/static/css/app.css?v=45">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=14">
 <link rel="stylesheet" href="/static/css/bookings-hub.css?v=8">
 <link rel="stylesheet" href="/static/css/specialist-bookings.css?v=24">
 <link rel="stylesheet" href="/static/css/specialist-book.css?v=5">
@@ -24,15 +24,14 @@
         <div class="bookings-hero__inner">
             <div class="bookings-hero__main">
                 <span class="hub-hero__glyph" data-icon="bookings" aria-hidden="true"></span>
-            <div>
+                <div>
                     <h1 class="bookings-hero__title">Записи</h1>
                     <p class="bookings-hero__desc">Встречи по дням, неделе и месяцу.</p>
                 </div>
-            
+            </div>
             <div class="bookings-hero__actions">
                 <button type="button" class="btn btn--primary btn--sm" data-specialist-book data-csrf="{{ csrf_token }}">Записать клиента</button>
             </div>
-</div>
         </div>
     </section>
 
@@ -44,14 +43,6 @@
         <div class="bookings-dash-card bookings-dash-card--info">
             <span class="bookings-dash-card__value">{{ hub_dashboard.tomorrow_count }}</span>
             <span class="bookings-dash-card__label">Завтра</span>
-        </div>
-        <div class="bookings-dash-card bookings-dash-card--success">
-            <span class="bookings-dash-card__value">{{ hub_dashboard.week_count }}</span>
-            <span class="bookings-dash-card__label">Неделя</span>
-        </div>
-        <div class="bookings-dash-card bookings-dash-card--warning">
-            <span class="bookings-dash-card__value">{{ hub_dashboard.week_revenue|int }} ₽</span>
-            <span class="bookings-dash-card__label">Доход за неделю</span>
         </div>
     </section>
 

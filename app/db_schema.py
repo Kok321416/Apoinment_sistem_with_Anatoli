@@ -300,14 +300,7 @@ def _apply_app_schema_patches() -> None:
         logger.exception("platform admin tables create_all failed")
 
     try:
-        Base.metadata.create_all(
-            bind=engine,
-            tables=[
-                diagnostics_models.ClientSpecialistLink.__table__,
-                diagnostics_models.DiagnosticInvitation.__table__,
-                diagnostics_models.DiagnosticAttempt.__table__,
-            ],
-        )
+        ensure_diagnostics_schema()
     except Exception:
         logger.exception("diagnostics tables create_all failed")
 
@@ -388,6 +381,37 @@ def ensure_email_auth_schema() -> None:
         logger.exception("email auth schema ensure failed")
 
 
+_DIAGNOSTICS_TABLES = (
+    diagnostics_models.ClientSpecialistLink.__table__,
+    diagnostics_models.DiagnosticInvitation.__table__,
+    diagnostics_models.DiagnosticAttempt.__table__,
+)
+
+
+def ensure_diagnostics_schema(bind=None) -> bool:
+    """Create diagnostics tables if missing. Safe to call repeatedly."""
+    bind = bind or engine
+    try:
+        insp = inspect(bind)
+        missing = [t for t in _DIAGNOSTICS_TABLES if not insp.has_table(t.name)]
+        if not missing:
+            return True
+        for table in _DIAGNOSTICS_TABLES:
+            if table not in missing:
+                continue
+            Base.metadata.create_all(bind=bind, tables=[table])
+        insp = inspect(bind)
+        still_missing = [t.name for t in _DIAGNOSTICS_TABLES if not insp.has_table(t.name)]
+        if still_missing:
+            logger.error("diagnostics tables still missing: %s", still_missing)
+            return False
+        logger.info("Created diagnostics tables: %s", [t.name for t in missing])
+        return True
+    except Exception:
+        logger.exception("ensure_diagnostics_schema failed")
+        return False
+
+
 def ensure_all_schema() -> None:
     """Full schema ensure for deploy scripts and dev server startup. Never raises."""
     global _SCHEMA_FULL_ATTEMPTED, _SCHEMA_PATCHES_ATTEMPTED
@@ -405,6 +429,10 @@ def ensure_all_schema() -> None:
         ensure_email_auth_schema()
     except Exception:
         logger.exception("email auth schema ensure failed")
+    try:
+        ensure_diagnostics_schema()
+    except Exception:
+        logger.exception("diagnostics schema ensure failed")
     # Deploy/migrate runs in a single process — no MySQL lock (avoids self-deadlock).
     ensure_schema_patches(use_lock=False)
     _refresh_schema_health()

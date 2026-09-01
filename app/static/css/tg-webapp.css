@@ -872,6 +872,20 @@ body.tg-webapp.cabinet-shell .cabinet-bottom-nav {
     padding-bottom: calc(6px + var(--tg-safe-bottom, env(safe-area-inset-bottom, 0px)));
 }
 
+body.tg-webapp.cabinet-shell .manage-hub .data-table-wrap {
+    margin-inline: calc(-1 * var(--tg-pad-x, 0px));
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+}
+
+body.tg-webapp.cabinet-shell .manage-hub .cabinet-page-header__title {
+    font-size: clamp(1.15rem, 4.5vw, 1.35rem) !important;
+    line-height: 1.25 !important;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
 body.tg-webapp.cabinet-shell .cabinet-workspace__main {
     padding-left: var(--tg-pad-x, 16px);
     padding-right: var(--tg-pad-x, 16px);
@@ -1017,7 +1031,8 @@ html.tg-webapp .profile-panel,
 html.tg-webapp .diag-card {
     max-width: 100%;
     min-width: 0;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
 }
 
 html.tg-webapp .input,

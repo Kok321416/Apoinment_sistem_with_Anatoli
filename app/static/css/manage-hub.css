@@ -79,12 +79,15 @@
 
 .manage-hub .data-table-wrap {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
     border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
 }
 
 .manage-hub .data-table {
     width: 100%;
+    min-width: 36rem;
     border-collapse: collapse;
     font-size: var(--font-size-body-sm);
 }
@@ -94,6 +97,18 @@
     padding: var(--space-md) var(--space-lg);
     text-align: left;
     border-bottom: 1px solid var(--border-subtle);
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.manage-hub .data-table td:first-child,
+.manage-hub .data-table th:first-child {
+    white-space: normal;
+    word-break: break-word;
+    min-width: 7rem;
+    max-width: 14rem;
 }
 
 .manage-hub .data-table th {
@@ -116,5 +131,28 @@
 @media (max-width: 960px) {
     .manage-hub__grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .manage-hub .cabinet-page-header__title {
+        font-size: clamp(1.2rem, 5vw, 1.75rem);
+        line-height: 1.25;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+
+    .manage-hub__panel {
+        padding: var(--space-lg);
+    }
+
+    .manage-hub__panel-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .manage-hub__panel-head .btn {
+        width: 100%;
+        min-height: 44px;
     }
 }

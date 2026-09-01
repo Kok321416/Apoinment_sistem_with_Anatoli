@@ -42,20 +42,19 @@ iframe {
 
 .break-words,
 .text-break {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
     word-break: break-word;
 }
 
 a,
 p,
 li,
-td,
-th,
 label,
 .card,
 .form-field__hint,
 .alert {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
 }
 
 /* Shared responsive grids */
@@ -117,7 +116,8 @@ label,
 /* Contained scroll for wide tables (no page-wide horizontal scroll) */
 .table-wrap,
 .pa-table-wrap,
-.table-scroll {
+.table-scroll,
+.data-table-wrap {
     width: 100%;
     max-width: 100%;
     overflow-x: auto;
@@ -127,7 +127,8 @@ label,
 
 .table-wrap table,
 .pa-table-wrap table,
-.table-scroll table {
+.table-scroll table,
+.data-table-wrap table {
     min-width: 36rem;
 }
 
@@ -334,8 +335,8 @@ label,
     }
 
     .cabinet-bottom-nav__item {
-        font-size: 0.6rem;
-        padding-inline: 2px;
+        font-size: clamp(0.5rem, 2.4vw, 0.6rem);
+        padding-inline: 1px;
     }
 }
 

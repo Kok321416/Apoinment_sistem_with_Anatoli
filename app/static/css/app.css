@@ -1210,13 +1210,26 @@ html[data-theme="dark"] .brand__mark {
         justify-content: center;
         gap: 2px;
         min-height: 48px;
+        min-width: 0;
         padding: var(--space-xs);
         border-radius: var(--radius-sm);
         color: var(--text-muted);
         text-decoration: none;
-        font-size: 0.65rem;
+        font-size: clamp(0.55rem, 2.6vw, 0.65rem);
         font-weight: var(--font-weight-medium);
-        line-height: 1.1;
+        line-height: 1.15;
+        text-align: center;
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+        letter-spacing: -0.01em;
+    }
+
+    .cabinet-bottom-nav__item span {
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .cabinet-bottom-nav__item .cabinet-nav__glyph {

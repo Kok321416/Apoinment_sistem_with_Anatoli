@@ -160,6 +160,7 @@ async def specialist_welcome(request: Request, slug: str, db: AsyncSession = Dep
     if not next_url.startswith(f"/s/{slug}"):
         next_url = f"/s/{slug}/"
     next_url = safe_next_url(next_url, default=f"/s/{slug}/")
+    welcome_purpose = "diagnostics" if "/diagnostics" in next_url else "booking"
     client_channel = remember_auth_intent(
         request.session,
         next_url=next_url,
@@ -201,6 +202,7 @@ async def specialist_welcome(request: Request, slug: str, db: AsyncSession = Dep
                 f"/register/?as=client&next={quote(next_url, safe='')}",
                 client_channel,
             ),
+            welcome_purpose=welcome_purpose,
         ),
     )
 
@@ -504,6 +506,20 @@ async def _require_profile_auth(request: Request, consultant: Consultant, next_p
     )
 
 
+async def _require_logged_in_client(request: Request, consultant: Consultant, next_path: str, db):
+    """Diagnostics and results require a real user account (not gate-only session)."""
+    auth_user, redirect = await _require_profile_auth(request, consultant, next_path, db)
+    if redirect:
+        return None, redirect
+    if auth_user:
+        return auth_user, None
+    slug = getattr(consultant, "public_slug", None) or f"id-{consultant.id}"
+    return None, RedirectResponse(
+        f"/s/{slug}/welcome/?{urlencode({'next': next_path})}",
+        status_code=302,
+    )
+
+
 @router.get("/s/{slug}/diagnostics/")
 async def specialist_diagnostics_hub(
     request: Request, slug: str, db: AsyncSession = Depends(get_async_db)
@@ -511,6 +527,7 @@ async def specialist_diagnostics_hub(
     from app.diagnostics.catalog import list_tests
     from app.services.diagnostics_service import (
         attempt_to_view,
+        ensure_diagnostics_tables,
         list_attempts_for_client,
         touch_client_specialist_link,
     )
@@ -520,10 +537,11 @@ async def specialist_diagnostics_hub(
     if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
         raise HTTPException(status_code=404, detail="Диагностика недоступна")
     next_path = f"/s/{slug}/diagnostics/"
-    auth_user, redirect = await _require_profile_auth(request, consultant, next_path, db)
+    auth_user, redirect = await _require_logged_in_client(request, consultant, next_path, db)
     if redirect:
         return redirect
-    if auth_user and auth_user.id != consultant.user_id:
+    await ensure_diagnostics_tables(db)
+    if auth_user.id != consultant.user_id:
         try:
             await touch_client_specialist_link(
                 db,
@@ -535,13 +553,16 @@ async def specialist_diagnostics_hub(
         except Exception:
             await db.rollback()
     attempts = []
-    if auth_user:
+    try:
         attempts = [
             attempt_to_view(a)
             for a in await list_attempts_for_client(
                 db, client_user_id=auth_user.id, consultant_id=consultant.id
             )
         ]
+    except Exception:
+        logger.exception("list_attempts_for_client failed slug=%s user=%s", slug, auth_user.id)
+        await db.rollback()
     return templates.TemplateResponse(
         "public/diagnostics_hub.html",
         await page_context_async(
@@ -575,7 +596,7 @@ async def specialist_diagnostics_take(
     if not test or not test.runnable:
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
     next_path = f"/s/{slug}/diagnostics/tests/{test_code}/"
-    auth_user, redirect = await _require_profile_auth(request, consultant, next_path, db)
+    auth_user, redirect = await _require_logged_in_client(request, consultant, next_path, db)
     if redirect:
         return redirect
     consultant = (
@@ -616,12 +637,10 @@ async def specialist_diagnostics_submit(
     consultant = await _get_consultant_by_slug_async(db, slug)
     if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
         raise HTTPException(status_code=404, detail="Диагностика недоступна")
-    auth_user = await get_current_user_async(request, db)
-    if not auth_user:
-        return RedirectResponse(
-            f"/s/{slug}/welcome/?{urlencode({'next': f'/s/{slug}/diagnostics/tests/{test_code}/'})}",
-            status_code=302,
-        )
+    next_path = f"/s/{slug}/diagnostics/tests/{test_code}/"
+    auth_user, redirect = await _require_logged_in_client(request, consultant, next_path, db)
+    if redirect:
+        return redirect
     form = await request.form()
     if not validate_csrf_token(request, form.get("csrf_token")):
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=csrf", status_code=302)
@@ -652,6 +671,12 @@ async def specialist_diagnostics_submit(
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
     except Exception:
         await db.rollback()
+        logger.exception(
+            "diagnostics submit failed slug=%s test=%s user=%s",
+            slug,
+            test_code,
+            auth_user.id,
+        )
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=save", status_code=302)
     return RedirectResponse(f"/s/{slug}/diagnostics/results/{attempt.id}/", status_code=302)
 
@@ -670,12 +695,10 @@ async def specialist_diagnostics_result(
     consultant = await _get_consultant_by_slug_async(db, slug)
     if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
         raise HTTPException(status_code=404, detail="Диагностика недоступна")
-    auth_user = await get_current_user_async(request, db)
-    if not auth_user:
-        return RedirectResponse(
-            f"/s/{slug}/welcome/?{urlencode({'next': f'/s/{slug}/diagnostics/results/{attempt_id}/'})}",
-            status_code=302,
-        )
+    next_path = f"/s/{slug}/diagnostics/results/{attempt_id}/"
+    auth_user, redirect = await _require_logged_in_client(request, consultant, next_path, db)
+    if redirect:
+        return redirect
     attempt = (
         await db.execute(select(DiagnosticAttempt).where(DiagnosticAttempt.id == attempt_id))
     ).scalar_one_or_none()

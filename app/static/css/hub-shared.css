@@ -184,7 +184,8 @@
     font-size: clamp(1.5rem, 3vw, 2.5rem);
     font-weight: var(--font-weight-bold);
     line-height: 1;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+    word-break: normal;
 }
 
 .calendars-dash-card__label,
@@ -548,7 +549,48 @@
     .bookings-hero__inner,
     .clients-hero__inner,
     .profile-hero__inner {
+        flex-direction: column;
+        align-items: stretch;
         padding: var(--space-2xl);
+    }
+
+    .calendars-hero__main,
+    .bookings-hero__main,
+    .clients-hero__main,
+    .profile-hero__main {
+        width: 100%;
+    }
+
+    .calendars-hero__title,
+    .bookings-hero__title,
+    .clients-hero__title,
+    .profile-hero__title {
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+
+    .calendars-hero__desc,
+    .bookings-hero__desc,
+    .clients-hero__desc,
+    .profile-hero__desc {
+        max-width: none;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+
+    .calendars-hero__actions,
+    .bookings-hero__actions,
+    .clients-hero__actions,
+    .profile-hero__actions {
+        width: 100%;
+    }
+
+    .calendars-hero__actions .btn,
+    .bookings-hero__actions .btn,
+    .clients-hero__actions .btn,
+    .profile-hero__actions .btn {
+        width: 100%;
+        min-height: 44px;
     }
 
     .calendars-dash-card:hover,
@@ -595,8 +637,8 @@
     .bookings-dash-card__label,
     .clients-dash-card__label,
     .dashboard-card__label {
-        overflow-wrap: anywhere;
-        hyphens: auto;
+        overflow-wrap: normal;
+        word-break: normal;
         line-height: 1.3;
     }
 }

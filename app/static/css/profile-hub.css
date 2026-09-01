@@ -3,9 +3,12 @@
 /* Cal.com / Stripe settings: tabs | editor | compact preview */
 .profile-layout {
     display: grid;
-    grid-template-columns: minmax(12.5rem, 15rem) minmax(0, 1fr) minmax(17rem, 20rem);
+    grid-template-columns: minmax(12.5rem, 15rem) minmax(0, 1fr);
     gap: var(--space-xl);
     align-items: start;
+}
+.profile-preview-col {
+    display: none;
 }
 .profile-layout > * {
     min-width: 0;
@@ -738,7 +741,7 @@
     .profile-layout {
         grid-template-columns: minmax(11rem, 13.5rem) minmax(0, 1fr);
     }
-    .profile-preview-col {
+    .profile-layout.is-preview-mode .profile-preview-col {
         grid-column: 1 / -1;
         max-width: 24rem;
         justify-self: start;
@@ -838,7 +841,7 @@
         gap: var(--space-sm);
     }
 
-    .profile-preview-col {
+    .profile-layout.is-preview-mode .profile-preview-col {
         max-width: none;
         justify-self: stretch;
     }

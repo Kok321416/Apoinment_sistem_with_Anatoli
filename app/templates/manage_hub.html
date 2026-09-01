@@ -7,9 +7,9 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/app.css?v=41">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=13">
-<link rel="stylesheet" href="/static/css/manage-hub.css?v=2">
+<link rel="stylesheet" href="/static/css/app.css?v=45">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=14">
+<link rel="stylesheet" href="/static/css/manage-hub.css?v=3">
 {% endblock %}
 
 {% block app_content %}
@@ -17,7 +17,6 @@
     <header class="cabinet-page-header">
         <div>
             <h1 class="cabinet-page-header__title">Управление услугами и календарем</h1>
-            <p class="cabinet-page-header__desc">Календари сверху, услуги снизу. Настройки открываются в прежнем формате.</p>
         </div>
     </header>
 
@@ -169,7 +168,6 @@
                     </tbody>
                 </table>
             </div>
-            <p class="manage-hub__hint text-muted">Полное редактирование и порядок услуг: <a href="/services/?legacy=1">откройте каталог услуг</a> (API и формы сохранены). Для удобства список открывается здесь; детальные действия - через API-интерфейс прежней страницы при необходимости.</p>
             {% else %}
             <div class="hub-empty">
                 <h3 class="hub-empty__title">Услуг пока нет</h3>

@@ -28,13 +28,23 @@ def diagnostics_client(tmp_path):
     )
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-    async def _prepare():
+    async def _prepare(*, drop_diag_tables: bool = False):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             try:
                 await conn.execute(text("ALTER TABLE consultants ADD COLUMN public_slug VARCHAR(64)"))
             except Exception:
                 pass
+            if drop_diag_tables:
+                for table in (
+                    "diagnostic_attempts",
+                    "diagnostic_invitations",
+                    "client_specialist_links",
+                ):
+                    try:
+                        await conn.execute(text(f"DROP TABLE IF EXISTS {table}"))
+                    except Exception:
+                        pass
 
         async with session_factory() as db:
             cat = Category(name_category="Общая")
@@ -108,7 +118,7 @@ def diagnostics_client(tmp_path):
 
     client = TestClient(app)
     try:
-        yield client, consultant_id, client_user_id
+        yield client, consultant_id, client_user_id, engine, session_factory, _prepare
     finally:
         app.dependency_overrides.clear()
         database_module._async_engine = None
@@ -129,15 +139,67 @@ def _login_client(client: TestClient, phone: str = "+79991234567", password: str
     )
 
 
+def _submit_bhs(client: TestClient, csrf: str) -> str:
+    test = get_test(BHS.code)
+    assert test and test.runnable
+    data = {"csrf_token": csrf, "source": "profile"}
+    for item in test.items:
+        data[item.id] = str(item.options[0][1])
+    submit = client.post(
+        f"/s/spec/diagnostics/tests/{BHS.code}/submit/",
+        data=data,
+        follow_redirects=False,
+    )
+    assert submit.status_code == 302, submit.text[:500]
+    loc = submit.headers.get("location") or ""
+    assert "/s/spec/diagnostics/results/" in loc, f"unexpected redirect: {loc}"
+    return loc
+
+
 def test_diagnostics_requires_login(diagnostics_client):
-    client, _cid, _uid = diagnostics_client
+    client, _cid, _uid, *_ = diagnostics_client
+    r = client.get("/s/spec/diagnostics/", follow_redirects=False)
+    assert r.status_code == 302
+    assert "/s/spec/welcome/" in (r.headers.get("location") or "")
+
+
+def test_diagnostics_welcome_page_mentions_diagnostics(diagnostics_client):
+    client, _cid, _uid, *_ = diagnostics_client
+    r = client.get(
+        "/s/spec/welcome/?next=/s/spec/diagnostics/",
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    assert "диагностик" in r.text.lower()
+
+
+def test_profile_shows_diagnostics_link(diagnostics_client):
+    client, _cid, _uid, *_ = diagnostics_client
+    r = client.get("/s/spec/", follow_redirects=True)
+    assert r.status_code == 200
+    assert "Перейти к диагностике" in r.text
+    assert "/s/spec/diagnostics/" in r.text
+
+
+def test_logged_out_with_booking_gate_still_requires_account(diagnostics_client):
+    """After logout, booking gate alone must not open diagnostics (needs user account)."""
+    client, _cid, _uid, *_ = diagnostics_client
+    _login_client(client)
+    client.get("/s/spec/", follow_redirects=True)
+    client.get("/s/spec/diagnostics/", follow_redirects=True)
+
+    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/", follow_redirects=True)
+    csrf_m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
+    assert csrf_m, "csrf for logout"
+    client.post("/logout/", data={"csrf_token": csrf_m.group(1)}, follow_redirects=True)
+
     r = client.get("/s/spec/diagnostics/", follow_redirects=False)
     assert r.status_code == 302
     assert "/s/spec/welcome/" in (r.headers.get("location") or "")
 
 
 def test_diagnostics_hub_and_submit_bhs(diagnostics_client):
-    client, _cid, _uid = diagnostics_client
+    client, _cid, _uid, *_ = diagnostics_client
     login_r = _login_client(client)
     assert login_r.status_code == 302, login_r.text[:300]
 
@@ -152,22 +214,7 @@ def test_diagnostics_hub_and_submit_bhs(diagnostics_client):
 
     m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
     assert m, "csrf_token missing on take page"
-    csrf = m.group(1)
-
-    test = get_test(BHS.code)
-    assert test and test.runnable
-    data = {"csrf_token": csrf, "source": "profile"}
-    for item in test.items:
-        data[item.id] = str(item.options[0][1])
-
-    submit = client.post(
-        f"/s/spec/diagnostics/tests/{BHS.code}/submit/",
-        data=data,
-        follow_redirects=False,
-    )
-    assert submit.status_code == 302, submit.text[:500]
-    loc = submit.headers.get("location") or ""
-    assert "/s/spec/diagnostics/results/" in loc, f"unexpected redirect: {loc}"
+    loc = _submit_bhs(client, m.group(1))
 
     result = client.get(loc, follow_redirects=True)
     assert result.status_code == 200, result.text[:500]
@@ -177,3 +224,42 @@ def test_diagnostics_hub_and_submit_bhs(diagnostics_client):
     assert hub2.status_code == 200
     assert "История результатов" in hub2.text
     assert "Полная расшифровка" in hub2.text or BHS.title in hub2.text
+
+
+def test_diagnostics_flow_from_profile_link(diagnostics_client):
+    client, _cid, _uid, *_ = diagnostics_client
+    _login_client(client)
+    profile = client.get("/s/spec/", follow_redirects=True)
+    assert profile.status_code == 200
+    m = re.search(r'href="(/s/spec/diagnostics/)"', profile.text)
+    assert m, "diagnostics link missing on profile"
+    hub = client.get(m.group(1), follow_redirects=True)
+    assert hub.status_code == 200
+    assert BHS.title in hub.text
+
+
+def test_diagnostics_works_when_tables_missing_initially(diagnostics_client):
+    import asyncio
+
+    client, _cid, _uid, engine, session_factory, prepare = diagnostics_client
+    asyncio.run(engine.dispose())
+
+    from app.main import app
+
+    asyncio.run(prepare(drop_diag_tables=True))
+
+    async def override_get_async_db():
+        async with session_factory() as db:
+            yield db
+
+    app.dependency_overrides[get_async_db] = override_get_async_db
+    client = TestClient(app)
+
+    _login_client(client)
+    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/", follow_redirects=True)
+    assert take.status_code == 200, take.text[:400]
+    m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
+    assert m
+    loc = _submit_bhs(client, m.group(1))
+    result = client.get(loc, follow_redirects=True)
+    assert result.status_code == 200, result.text[:400]

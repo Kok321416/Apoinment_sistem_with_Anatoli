@@ -60,34 +60,6 @@
         if (panel) panel.hidden = true;
     }
 
-    function exportCsv(clients) {
-        var rows = [['Имя', 'Телефон', 'Email', 'Telegram', 'Заметки', 'Записей', 'Заполненность']];
-        clients.forEach(function (c) {
-            rows.push([
-                c.name || '',
-                c.phone || '',
-                c.email || '',
-                c.telegram || '',
-                (c.notes || '').replace(/\n/g, ' '),
-                String(c.booking_count || 0),
-                String((c.completeness && c.completeness.percent) || 0) + '%',
-            ]);
-        });
-        var csv = rows.map(function (row) {
-            return row.map(function (cell) {
-                var s = String(cell);
-                if (/[",;\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-                return s;
-            }).join(';');
-        }).join('\n');
-        var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-        var a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'clients-' + new Date().toISOString().slice(0, 10) + '.csv';
-        a.click();
-        URL.revokeObjectURL(a.href);
-    }
-
     function contactUrl(client) {
         if (client.telegram) {
             var t = client.telegram.replace('@', '').trim();
@@ -208,15 +180,6 @@
         document.getElementById('btn-add-client') && document.getElementById('btn-add-client').addEventListener('click', openCreateForm);
         document.getElementById('btn-empty-add') && document.getElementById('btn-empty-add').addEventListener('click', openCreateForm);
         document.getElementById('btn-close-create') && document.getElementById('btn-close-create').addEventListener('click', closeCreateForm);
-
-        document.getElementById('btn-export-clients') && document.getElementById('btn-export-clients').addEventListener('click', function () {
-            exportCsv(data.clients || []);
-            if (global.showToast) global.showToast('Экспорт завершён');
-        });
-
-        document.getElementById('btn-import-clients') && document.getElementById('btn-import-clients').addEventListener('click', function () {
-            if (global.showToast) global.showToast('Импорт будет доступен в следующей версии', 'info');
-        });
 
         var search = document.getElementById('clients-search');
         var filterEl = document.getElementById('clients-filter');

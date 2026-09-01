@@ -19,7 +19,11 @@
     <p class="text-body-sm text-muted auth-card__lead">
         Вы переходите к специалисту
         <strong>{{ consultant.first_name }} {{ consultant.last_name }}</strong>.
+        {% if welcome_purpose == 'diagnostics' %}
+        Войдите или зарегистрируйтесь, чтобы пройти диагностику и сохранить результаты.
+        {% else %}
         После входа откроется календарь записи.
+        {% endif %}
     </p>
 
     {% if error %}
@@ -49,7 +53,13 @@
                 <span>Яндекс</span>
             </a>
         </div>
-        <p class="form-field__hint">После входа вернём вас к выбору даты и времени.</p>
+        <p class="form-field__hint">
+            {% if welcome_purpose == 'diagnostics' %}
+            После входа откроется раздел диагностики.
+            {% else %}
+            После входа вернём вас к выбору даты и времени.
+            {% endif %}
+        </p>
     </div>
 
     <hr class="auth-divider">
@@ -60,8 +70,8 @@
         {% if client_channel and client_channel != 'web' %}<input type="hidden" name="client" value="{{ client_channel }}">{% endif %}
         <div class="stack">
             <div class="form-field">
-                <label class="form-field__label" for="email">Почта</label>
-                <input class="input" type="email" id="email" name="email" required placeholder="name@example.com" value="{{ email or '' }}" autocomplete="username">
+                <label class="form-field__label" for="email">Телефон или почта</label>
+                <input class="input" type="text" id="email" name="email" required placeholder="+7 (___) ___-__-__ или name@example.com" value="{{ email or '' }}" autocomplete="username">
             </div>
             <div class="form-field">
                 <label class="form-field__label" for="password">Пароль</label>
