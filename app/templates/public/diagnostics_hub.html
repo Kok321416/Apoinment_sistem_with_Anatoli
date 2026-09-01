@@ -24,6 +24,14 @@
         </p>
     </header>
 
+    {% if request.query_params.get('error') == 'csrf' %}
+    <div class="alert alert--error mb-lg" role="alert">Ошибка безопасности. Обновите страницу и попробуйте снова.</div>
+    {% elif request.query_params.get('error') == 'test' %}
+    <div class="alert alert--error mb-lg" role="alert">Тест недоступен или данные неполные. Выберите другой тест.</div>
+    {% elif request.query_params.get('error') == 'save' %}
+    <div class="alert alert--error mb-lg" role="alert">Не удалось сохранить результат. Попробуйте ещё раз или обратитесь в поддержку.</div>
+    {% endif %}
+
     <section class="diag-section" aria-labelledby="diag-tests-title">
         <h2 class="text-h2" id="diag-tests-title">Доступные тесты</h2>
         <div class="diag-grid">

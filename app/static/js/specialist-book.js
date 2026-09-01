@@ -654,7 +654,7 @@
         renderBody();
     }
 
-.document.addEventListener("click", function (e) {
+    document.addEventListener("click", function (e) {
         var btn = e.target.closest("[data-specialist-book]");
         if (!btn) return;
         e.preventDefault();

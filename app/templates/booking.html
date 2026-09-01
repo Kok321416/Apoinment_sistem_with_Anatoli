@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="/static/css/app.css?v=41">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=13">
 <link rel="stylesheet" href="/static/css/bookings-hub.css?v=8">
-<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=23">
+<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=24">
 <link rel="stylesheet" href="/static/css/specialist-book.css?v=5">
 {% endblock %}
 
@@ -85,6 +85,7 @@
 
     <div class="bookings-segment" role="tablist" aria-label="Вид отображения">
         <button type="button" class="bookings-segment__btn is-active" data-view="list" role="tab" aria-selected="true">По дням</button>
+        <button type="button" class="bookings-segment__btn" data-view="week" role="tab" aria-selected="false">Неделя</button>
         <button type="button" class="bookings-segment__btn" data-view="calendar" role="tab" aria-selected="false">Месяц</button>
     </div>
 
@@ -147,6 +148,17 @@
                             <p>По вашему запросу записи не найдены. Измените поиск или фильтр.</p>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div id="viewWeek" class="bookings-view" role="tabpanel">
+                <div class="booking-week-wrap card">
+                    <div class="calendar-header">
+                        <button type="button" class="calendar-nav-btn" id="weekPrev" aria-label="Предыдущая неделя">‹</button>
+                        <span class="calendar-title" id="weekTitle">—</span>
+                        <button type="button" class="calendar-nav-btn" id="weekNext" aria-label="Следующая неделя">›</button>
+                    </div>
+                    <div class="week-grid" id="weekGrid" aria-label="Записи на неделю"></div>
                 </div>
             </div>
 
@@ -253,7 +265,7 @@
 
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
-<script src="/static/js/specialist-bookings.js?v=21" defer></script>
-<script src="/static/js/specialist-book.js?v=5" defer></script>
+<script src="/static/js/specialist-bookings.js?v=22" defer></script>
+<script src="/static/js/specialist-book.js?v=6" defer></script>
 <script type="application/json" id="bookings-hub-data">{{ hub_payload | tojson }}</script>
 {% endblock %}

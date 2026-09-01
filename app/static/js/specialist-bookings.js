@@ -2,9 +2,21 @@
     var monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
     var today = new Date();
     var current = { year: today.getFullYear(), month: today.getMonth() + 1 };
+    var weekStart = getMonday(today);
     var eventsByDate = {};
 
-    function loadEvents() {
+    function getMonday(d) {
+        var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        var diff = (x.getDay() + 6) % 7;
+        x.setDate(x.getDate() - diff);
+        return x;
+    }
+
+    function isoDate(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function loadEvents(done) {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', '/api/booking/calendar-events/?year=' + current.year + '&month=' + current.month, true);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
@@ -21,6 +33,8 @@
                 }
             } catch (e) {}
             renderCalendar();
+            renderWeekView();
+            if (typeof done === 'function') done();
         };
         xhr.send();
     }
@@ -68,6 +82,77 @@
             }
         }
         renderMobileList();
+    }
+
+    function renderWeekView() {
+        var grid = document.getElementById('weekGrid');
+        var titleEl = document.getElementById('weekTitle');
+        if (!grid) return;
+        var days = [];
+        for (var i = 0; i < 7; i++) {
+            days.push(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i));
+        }
+        if (titleEl) {
+            titleEl.textContent = formatDayHeading(isoDate(days[0])) + ' — ' + formatDayHeading(isoDate(days[6]));
+        }
+        var todayStr = isoDate(today);
+        var html = [];
+        days.forEach(function (d) {
+            var dateStr = isoDate(d);
+            var events = (eventsByDate[dateStr] || []).slice();
+            events.sort(function (a, b) {
+                return String(a.time || '').localeCompare(String(b.time || ''));
+            });
+            html.push('<div class="week-day-col' + (dateStr === todayStr ? ' is-today' : '') + '">');
+            html.push('<h3 class="week-day-col__title">' + formatDayHeading(dateStr) + '</h3>');
+            if (!events.length) {
+                html.push('<p class="week-day-col__empty text-muted">Нет записей</p>');
+            } else {
+                html.push('<ul class="week-day-col__list">');
+                events.forEach(function (ev) {
+                    var timeStr = ev.time || '';
+                    if (ev.end_time) timeStr += ' - ' + ev.end_time;
+                    html.push('<li><button type="button" ' + eventAttrs(ev) + '>');
+                    html.push('<span class="week-event__time">' + escapeAttr(timeStr) + '</span> ');
+                    html.push('<span class="week-event__name">' + escapeAttr(ev.client_name || '—') + '</span>');
+                    html.push('</button></li>');
+                });
+                html.push('</ul>');
+            }
+            html.push('</div>');
+        });
+        grid.innerHTML = html.join('');
+    }
+
+    function syncMonthToWeek() {
+        current.year = weekStart.getFullYear();
+        current.month = weekStart.getMonth() + 1;
+    }
+
+    function goWeekPrev() {
+        weekStart.setDate(weekStart.getDate() - 7);
+        syncMonthToWeek();
+        loadEvents();
+    }
+
+    function goWeekNext() {
+        weekStart.setDate(weekStart.getDate() + 7);
+        syncMonthToWeek();
+        loadEvents();
+    }
+
+    function setActiveView(view) {
+        var viewList = document.getElementById('viewList');
+        var viewWeek = document.getElementById('viewWeek');
+        var viewCalendar = document.getElementById('viewCalendar');
+        var pageContainer = document.getElementById('bookingPageContainer');
+        if (viewList) viewList.classList.toggle('is-active', view === 'list');
+        if (viewWeek) viewWeek.classList.toggle('is-active', view === 'week');
+        if (viewCalendar) viewCalendar.classList.toggle('is-active', view === 'calendar');
+        if (pageContainer) {
+            pageContainer.classList.toggle('is-calendar-view', view === 'calendar');
+            pageContainer.classList.toggle('is-week-view', view === 'week');
+        }
     }
 
     var statusLabels = {
@@ -230,10 +315,18 @@
     function initUi() {
         var calPrevFull = document.getElementById('calPrevFull');
         var calNextFull = document.getElementById('calNextFull');
+        var weekPrev = document.getElementById('weekPrev');
+        var weekNext = document.getElementById('weekNext');
         if (calPrevFull) calPrevFull.onclick = goPrev;
         if (calNextFull) calNextFull.onclick = goNext;
+        if (weekPrev) weekPrev.onclick = goWeekPrev;
+        if (weekNext) weekNext.onclick = goWeekNext;
 
         function onCalEventClick(e) {
+            var el = e.target.closest('.cal-event');
+            if (el) showPopover(e, el);
+        }
+        function onWeekEventClick(e) {
             var el = e.target.closest('.cal-event');
             if (el) showPopover(e, el);
         }
@@ -241,14 +334,12 @@
         if (calGridFullEl) calGridFullEl.addEventListener('click', onCalEventClick);
         var calMobileListEl = document.getElementById('calMobileList');
         if (calMobileListEl) calMobileListEl.addEventListener('click', onCalEventClick);
+        var weekGridEl = document.getElementById('weekGrid');
+        if (weekGridEl) weekGridEl.addEventListener('click', onWeekEventClick);
 
         document.addEventListener('click', function (e) {
             if (!e.target.closest('.cal-event') && !e.target.closest('#eventPopover')) hidePopover();
         });
-
-        var viewList = document.getElementById('viewList');
-        var viewCalendar = document.getElementById('viewCalendar');
-        var pageContainer = document.getElementById('bookingPageContainer');
 
         document.querySelectorAll('.bookings-segment__btn, .view-switcher-btn').forEach(function (btn) {
             btn.onclick = function () {
@@ -259,15 +350,10 @@
                 });
                 this.classList.add('is-active');
                 this.setAttribute('aria-selected', 'true');
-                if (v === 'calendar') {
-                    if (viewList) viewList.classList.remove('is-active');
-                    if (viewCalendar) viewCalendar.classList.add('is-active');
-                    if (pageContainer) pageContainer.classList.add('is-calendar-view');
+                setActiveView(v);
+                if (v === 'calendar' || v === 'week') {
+                    if (v === 'week') syncMonthToWeek();
                     loadEvents();
-                } else {
-                    if (viewCalendar) viewCalendar.classList.remove('is-active');
-                    if (viewList) viewList.classList.add('is-active');
-                    if (pageContainer) pageContainer.classList.remove('is-calendar-view');
                 }
             };
         });
@@ -383,7 +469,7 @@
                 var slotsEl = document.getElementById('rescheduleSlots');
                 slotsEl.innerHTML = '';
                 if (!dateVal || !rescheduleCalendarId || !rescheduleServiceId) return;
-                var url = '/book/' + rescheduleCalendarId + '/slots/?date=' + encodeURIComponent(dateVal) + '&service_id=' + encodeURIComponent(rescheduleServiceId) + '&exclude_booking_id=' + encodeURIComponent(rescheduleBookingId || '');
+                var url = '/api/specialist/slots/?calendar_id=' + encodeURIComponent(rescheduleCalendarId) + '&service_id=' + encodeURIComponent(rescheduleServiceId) + '&booking_date=' + encodeURIComponent(dateVal) + '&exclude_booking_id=' + encodeURIComponent(rescheduleBookingId || '');
                 var xhr = new XMLHttpRequest();
                 xhr.open('GET', url, true);
                 xhr.onload = function () {

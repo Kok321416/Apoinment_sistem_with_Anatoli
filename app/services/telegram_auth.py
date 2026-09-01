@@ -72,27 +72,40 @@ def _ensure_social_account(
     telegram_id: str,
     username: str,
     first_name: str,
-) -> None:
-    existing = db.query(SocialAccount).filter(
-        SocialAccount.provider == "telegram",
-        SocialAccount.uid == telegram_id,
-    ).first()
+) -> SocialAccount:
+    from sqlalchemy.exc import IntegrityError
+
+    def _find_existing() -> SocialAccount | None:
+        return db.query(SocialAccount).filter(
+            SocialAccount.provider == "telegram",
+            SocialAccount.uid == telegram_id,
+        ).first()
+
+    extra = json.dumps({"username": username, "first_name": first_name})
+    existing = _find_existing()
     if existing:
-        if existing.user_id != user_id:
-            return
-        extra = json.dumps({"username": username, "first_name": first_name})
-        if existing.extra_data != extra:
+        if existing.user_id == user_id and existing.extra_data != extra:
             existing.extra_data = extra
-        return
-    db.add(
-        SocialAccount(
-            provider="telegram",
-            uid=telegram_id,
-            user_id=user_id,
-            extra_data=json.dumps({"username": username, "first_name": first_name}),
-        )
+        return existing
+
+    social = SocialAccount(
+        provider="telegram",
+        uid=telegram_id,
+        user_id=user_id,
+        extra_data=extra,
     )
-    db.flush()
+    db.add(social)
+    try:
+        with db.begin_nested():
+            db.flush()
+        return social
+    except IntegrityError:
+        dup = _find_existing()
+        if dup:
+            if dup.user_id == user_id and dup.extra_data != extra:
+                dup.extra_data = extra
+            return dup
+        raise
 
 
 def _maybe_update_consultant_nickname(db: Session, user: User, username: str) -> None:
@@ -168,13 +181,17 @@ def _find_or_create_user_for_telegram(
             apply_user_names_from_fio(user, register_fio)
         _maybe_update_consultant_nickname(db, user, username)
 
-    _ensure_social_account(
+    social = _ensure_social_account(
         db,
         user_id=user.id,
         telegram_id=telegram_id,
         username=username,
         first_name=first_name,
     )
+    if social.user_id != user.id:
+        linked = db.get(User, social.user_id)
+        if linked:
+            return linked
 
     return user
 
@@ -186,6 +203,8 @@ def confirm_login_via_bot(
     username: str = "",
     first_name: str = "",
 ) -> tuple[bool, str, TelegramLoginRequest | None]:
+    from sqlalchemy.exc import IntegrityError
+
     req = get_active_login_request(db, token)
     if not req:
         return False, "Ссылка недействительна или истекла", None
@@ -193,47 +212,69 @@ def confirm_login_via_bot(
     tg_id = str(int(telegram_id))
     user: User | None = None
 
-    if req.process == "connect" and req.connect_user_id:
-        user = db.get(User, req.connect_user_id)
-        if not user:
-            return False, "Пользователь не найден", None
-        existing = db.query(SocialAccount).filter(
-            SocialAccount.provider == "telegram",
-            SocialAccount.uid == tg_id,
-        ).first()
-        if existing and existing.user_id != user.id:
-            return False, "Этот аккаунт Телеграм уже привязан к другому пользователю", None
-        if not existing:
-            _ensure_social_account(
+    try:
+        if req.process == "connect" and req.connect_user_id:
+            user = db.get(User, req.connect_user_id)
+            if not user:
+                return False, "Пользователь не найден", None
+            existing = db.query(SocialAccount).filter(
+                SocialAccount.provider == "telegram",
+                SocialAccount.uid == tg_id,
+            ).first()
+            if existing and existing.user_id != user.id:
+                return False, "Этот аккаунт Телеграм уже привязан к другому пользователю", None
+            social = _ensure_social_account(
                 db,
                 user_id=user.id,
                 telegram_id=tg_id,
                 username=username,
                 first_name=first_name,
             )
-        # Phase 4: connect = SocialAccount only. Do not touch Integration.telegram_chat_id.
-        if username:
-            consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
-            if consultant:
-                consultant.telegram_nickname = username
-    else:
-        user = _find_or_create_user_for_telegram(
-            db,
-            tg_id,
-            username,
-            first_name,
-            req.register_fio,
-            req.register_phone,
-            process=req.process or "login",
-        )
+            if social.user_id != user.id:
+                return False, "Этот аккаунт Телеграм уже привязан к другому пользователю", None
+            if username:
+                consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
+                if consultant:
+                    consultant.telegram_nickname = username
+        else:
+            user = _find_or_create_user_for_telegram(
+                db,
+                tg_id,
+                username,
+                first_name,
+                req.register_fio,
+                req.register_phone,
+                process=req.process or "login",
+            )
 
-    req.telegram_id = tg_id
-    req.user_id = user.id
-    req.complete_token = uuid.uuid4().hex
-    req.completed = True
-    db.commit()
-    db.refresh(req)
-    return True, "OK", req
+        req.telegram_id = tg_id
+        req.user_id = user.id
+        req.complete_token = uuid.uuid4().hex
+        req.completed = True
+        db.commit()
+        db.refresh(req)
+        return True, "OK", req
+    except IntegrityError:
+        db.rollback()
+        req = get_active_login_request(db, token)
+        if not req:
+            return False, "Ссылка недействительна или истекла", None
+        social = db.query(SocialAccount).filter(
+            SocialAccount.provider == "telegram",
+            SocialAccount.uid == tg_id,
+        ).first()
+        if not social:
+            return False, "Ошибка привязки Telegram, попробуйте снова", None
+        user = db.get(User, social.user_id)
+        if not user:
+            return False, "Пользователь не найден", None
+        req.telegram_id = tg_id
+        req.user_id = user.id
+        req.complete_token = uuid.uuid4().hex
+        req.completed = True
+        db.commit()
+        db.refresh(req)
+        return True, "OK", req
 
 
 def get_completed_login(db: Session, complete_token: str) -> TelegramLoginRequest | None:
@@ -303,33 +344,45 @@ async def _ensure_social_account_async(
     telegram_id: str,
     username: str,
     first_name: str,
-) -> None:
+) -> SocialAccount:
     from sqlalchemy import select
+    from sqlalchemy.exc import IntegrityError
 
-    existing = (
-        await db.execute(
-            select(SocialAccount).where(
-                SocialAccount.provider == "telegram",
-                SocialAccount.uid == telegram_id,
+    async def _find_existing() -> SocialAccount | None:
+        return (
+            await db.execute(
+                select(SocialAccount).where(
+                    SocialAccount.provider == "telegram",
+                    SocialAccount.uid == telegram_id,
+                )
             )
-        )
-    ).scalar_one_or_none()
+        ).scalar_one_or_none()
+
+    extra = json.dumps({"username": username, "first_name": first_name})
+    existing = await _find_existing()
     if existing:
-        if existing.user_id != user_id:
-            return
-        extra = json.dumps({"username": username, "first_name": first_name})
-        if existing.extra_data != extra:
+        if existing.user_id == user_id and existing.extra_data != extra:
             existing.extra_data = extra
-        return
-    db.add(
-        SocialAccount(
-            provider="telegram",
-            uid=telegram_id,
-            user_id=user_id,
-            extra_data=json.dumps({"username": username, "first_name": first_name}),
-        )
+        return existing
+
+    social = SocialAccount(
+        provider="telegram",
+        uid=telegram_id,
+        user_id=user_id,
+        extra_data=extra,
     )
-    await db.flush()
+    db.add(social)
+    try:
+        async with db.begin_nested():
+            await db.flush()
+        return social
+    except IntegrityError:
+        dup = await _find_existing()
+        if dup:
+            if dup.user_id == user_id and dup.extra_data != extra:
+                dup.extra_data = extra
+            return dup
+        raise
 
 
 async def _maybe_update_consultant_nickname_async(db, user: User, username: str) -> None:
@@ -401,13 +454,17 @@ async def _find_or_create_user_for_telegram_async(
             apply_user_names_from_fio(user, register_fio)
         await _maybe_update_consultant_nickname_async(db, user, username)
 
-    await _ensure_social_account_async(
+    social = await _ensure_social_account_async(
         db,
         user_id=user.id,
         telegram_id=telegram_id,
         username=username,
         first_name=first_name,
     )
+    if social.user_id != user.id:
+        linked = await db.get(User, social.user_id)
+        if linked:
+            return linked
 
     return user
 
@@ -444,14 +501,15 @@ async def confirm_login_via_bot_async(
             ).scalar_one_or_none()
             if existing and existing.user_id != user.id:
                 return False, "Этот аккаунт Телеграм уже привязан к другому пользователю", None
-            if not existing:
-                await _ensure_social_account_async(
-                    db,
-                    user_id=user.id,
-                    telegram_id=tg_id,
-                    username=username,
-                    first_name=first_name,
-                )
+            social = await _ensure_social_account_async(
+                db,
+                user_id=user.id,
+                telegram_id=tg_id,
+                username=username,
+                first_name=first_name,
+            )
+            if social.user_id != user.id:
+                return False, "Этот аккаунт Телеграм уже привязан к другому пользователю", None
             if username:
                 consultant = (
                     await db.execute(select(Consultant).where(Consultant.user_id == user.id))

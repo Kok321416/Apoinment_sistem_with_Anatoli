@@ -104,6 +104,7 @@ def test_public_specialist_page_open_without_login(public_client):
     assert "Артем" in r.text
     assert "Календари" in r.text or "календар" in r.text.lower()
     assert "Войти для записи" in r.text or "welcome" in r.text.lower()
+    assert "Почему выбирают" not in r.text
     assert "/s/spec/welcome/" not in (r.headers.get("location") or "")
 
 
@@ -121,7 +122,6 @@ def test_cabinet_routes_redirect_anonymous_to_login():
     client = TestClient(app)
     for path in (
         "/dashboard/",
-        "/my-bookings/",
         "/manage/",
         "/clients/",
         "/booking/",
@@ -129,13 +129,18 @@ def test_cabinet_routes_redirect_anonymous_to_login():
         "/integrations/",
         "/calendars/",
         "/services/",
-        "/diagnostics/",
         "/become-specialist/",
     ):
         r = client.get(path, follow_redirects=False)
         assert r.status_code in (302, 303), path
         loc = (r.headers.get("location") or "").lower()
         assert "login" in loc or "accounts" in loc, f"{path} -> {loc}"
+
+    # Client cabinet removed — legacy routes redirect home.
+    for path in ("/my-bookings/", "/diagnostics/"):
+        r = client.get(path, follow_redirects=False)
+        assert r.status_code in (302, 303)
+        assert (r.headers.get("location") or "").rstrip("/") in ("/", "")
 
 
 def test_public_routes_respond():

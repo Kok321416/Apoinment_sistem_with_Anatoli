@@ -109,6 +109,7 @@ async def specialist_slots(
     calendar_id: int,
     service_id: int,
     booking_date: str,
+    exclude_booking_id: int | None = None,
     db: AsyncSession = Depends(get_async_db),
 ):
     user = await _require_user(request, db)
@@ -137,7 +138,9 @@ async def specialist_slots(
     ).scalar_one_or_none()
     if not calendar or not service:
         return JSONResponse({"error": "Календарь или услуга не найдены"}, status_code=404)
-    return await get_available_slots_async(db, calendar, service, day)
+    return await get_available_slots_async(
+        db, calendar, service, day, exclude_booking_id=exclude_booking_id
+    )
 
 
 @router.post("/bookings/")

@@ -300,6 +300,18 @@ def _apply_app_schema_patches() -> None:
         logger.exception("platform admin tables create_all failed")
 
     try:
+        Base.metadata.create_all(
+            bind=engine,
+            tables=[
+                diagnostics_models.ClientSpecialistLink.__table__,
+                diagnostics_models.DiagnosticInvitation.__table__,
+                diagnostics_models.DiagnosticAttempt.__table__,
+            ],
+        )
+    except Exception:
+        logger.exception("diagnostics tables create_all failed")
+
+    try:
         _apply_hot_path_indexes()
     except Exception:
         logger.exception("hot-path indexes patch failed")

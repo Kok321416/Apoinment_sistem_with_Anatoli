@@ -128,13 +128,19 @@ def find_or_create_user_from_webapp(db: Session, tg_user: dict) -> User | None:
         db.add(user)
         db.flush()
 
-    _ensure_social_account(
+    social = _ensure_social_account(
         db,
         user_id=user.id,
         telegram_id=telegram_id,
         username=username,
         first_name=first_name,
     )
+    if social.user_id != user.id:
+        linked = db.get(User, social.user_id)
+        if linked and linked.is_active:
+            _maybe_update_consultant_nickname(db, linked, username)
+            db.commit()
+            return linked
     _maybe_update_consultant_nickname(db, user, username)
     db.commit()
     db.refresh(user)
@@ -195,13 +201,19 @@ async def find_or_create_user_from_webapp_async(db, tg_user: dict) -> User | Non
         db.add(user)
         await db.flush()
 
-    await _ensure_social_account_async(
+    social = await _ensure_social_account_async(
         db,
         user_id=user.id,
         telegram_id=telegram_id,
         username=username,
         first_name=first_name,
     )
+    if social.user_id != user.id:
+        linked = await db.get(User, social.user_id)
+        if linked and linked.is_active:
+            await _maybe_update_consultant_nickname_async(db, linked, username)
+            await db.commit()
+            return linked
     await _maybe_update_consultant_nickname_async(db, user, username)
     await db.commit()
     await db.refresh(user)
