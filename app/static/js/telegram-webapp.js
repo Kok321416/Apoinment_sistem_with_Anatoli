@@ -274,165 +274,176 @@
         return true;
     }
 
+    function hideHubPanels() {
+        ["tg-hub-guest", "tg-hub-authed", "tg-hub-boot", "tg-hub-error", "tg-hub-client-denied"].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.hidden = true;
+        });
+    }
+
     function showAuthedHub(state) {
-        var guest = document.getElementById("tg-hub-guest");
+        hideHubPanels();
         var authed = document.getElementById("tg-hub-authed");
-        if (!guest || !authed) return;
-        guest.hidden = true;
+        if (!authed) return;
         authed.hidden = false;
         authed.setAttribute("data-tg-authed", "1");
         document.body.classList.remove("auth-page");
         document.body.classList.add("tg-hub-page");
 
-        var hasC = !!(state && state.has_consultant);
+        var hasC = !!(state && (state.has_consultant || state.hub_available || state.role === "specialist"));
         var specActions = document.getElementById("tg-hub-actions-specialist");
         var become = document.getElementById("tg-hub-become-specialist");
-
         if (specActions) specActions.hidden = false;
         if (become) become.hidden = hasC;
     }
 
-    var AUTH_DONE_KEY = "tg_webapp_auth_done";
-    /** @deprecated session-scoped retry caused Android deadlock; kept for cleanup only */
-    var AUTH_RETRY_KEY = "tg_webapp_auth_retry";
-
-    function markAuthConfirmed() {
-        try {
-            sessionStorage.setItem(AUTH_DONE_KEY, "1");
-            sessionStorage.removeItem(AUTH_RETRY_KEY);
-        } catch (e) {}
-    }
-
-    function clearAuthDone() {
-        try {
-            sessionStorage.removeItem(AUTH_DONE_KEY);
-            sessionStorage.removeItem(AUTH_RETRY_KEY);
-        } catch (e) {}
-    }
-
-    function clearStaleAuthFlags() {
-        clearAuthDone();
-    }
-
-    function hydrateTelegramHub(callback) {
-        var url = "/api/telegram/hub-state" + (window.location.search || "");
-        fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } })
-            .then(function (r) {
-                return r.json();
-            })
-            .then(function (state) {
-                if (state && state.authenticated) {
-                    markAuthConfirmed();
-                    showAuthedHub(state);
-                    if (callback) callback(true);
-                } else if (callback) {
-                    callback(false);
-                }
-            })
-            .catch(function () {
-                if (callback) callback(false);
-            });
-    }
-
-    function tryWebappAuth(tg, onComplete) {
-        var authed = document.getElementById("tg-hub-authed");
+    function showGuestHub() {
+        hideHubPanels();
         var guest = document.getElementById("tg-hub-guest");
-        if (!authed && !guest) {
-            if (onComplete) onComplete(false);
+        if (guest) guest.hidden = false;
+        document.body.classList.add("auth-page");
+    }
+
+    function showBoot(text) {
+        hideHubPanels();
+        var boot = document.getElementById("tg-hub-boot");
+        var t = document.getElementById("tg-hub-boot-text");
+        if (t && text) t.textContent = text;
+        if (boot) boot.hidden = false;
+    }
+
+    function showHubError(text) {
+        hideHubPanels();
+        var box = document.getElementById("tg-hub-error");
+        var t = document.getElementById("tg-hub-error-text");
+        if (t) t.textContent = text || "Попробуйте ещё раз.";
+        if (box) box.hidden = false;
+        console.error("[tg-miniapp]", text || "hub error");
+    }
+
+    function showClientDenied() {
+        hideHubPanels();
+        var box = document.getElementById("tg-hub-client-denied");
+        if (box) box.hidden = false;
+    }
+
+    var _accessToken = "";
+
+    function authHeaders(extra) {
+        var h = extra ? Object.assign({}, extra) : {};
+        if (_accessToken) h.Authorization = "Bearer " + _accessToken;
+        return h;
+    }
+
+    function fetchJson(url, options, timeoutMs) {
+        var opts = options || {};
+        var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+        var timer = ctrl ? window.setTimeout(function () { ctrl.abort(); }, timeoutMs || 8000) : null;
+        var headers = authHeaders(opts.headers || {});
+        if (opts.body && !headers["Content-Type"] && !headers["content-type"]) {
+            headers["Content-Type"] = "application/json";
+        }
+        headers.Accept = headers.Accept || "application/json";
+        return fetch(url, {
+            method: opts.method || "GET",
+            credentials: "include",
+            headers: headers,
+            body: opts.body,
+            signal: ctrl ? ctrl.signal : undefined,
+        }).then(function (r) {
+            return r.json().then(function (data) {
+                return { ok: r.ok, status: r.status, data: data };
+            }).catch(function () {
+                return { ok: r.ok, status: r.status, data: {} };
+            });
+        }).finally(function () {
+            if (timer) window.clearTimeout(timer);
+        });
+    }
+
+    function applyHubState(state) {
+        if (state && state.authenticated && state.hub_available) {
+            showAuthedHub(state);
             return;
         }
-        if (authed && !authed.hidden) {
-            if (onComplete) onComplete(true);
+        if (state && state.authenticated && state.reason === "specialist_access_required") {
+            showClientDenied();
             return;
         }
-        var initData = tg.initData || "";
-        if (!initData) {
-            if (window.__AYC_TG_REPORT__) {
-                window.__AYC_TG_REPORT__("no_init_data", "empty initData");
+        showGuestHub();
+    }
+
+    function loadHubState() {
+        var url = "/api/telegram/hub-state" + (window.location.search || "");
+        return fetchJson(url, {}, 8000).then(function (res) {
+            if (!res.ok && res.status >= 500) {
+                throw new Error("hub-state " + res.status);
             }
-            if (onComplete) onComplete(false);
-            return;
+            applyHubState(res.data || {});
+            return res.data || {};
+        });
+    }
+
+    function tryWebappAuth(tg) {
+        var initData = (tg && tg.initData) || "";
+        if (!initData) {
+            showHubError("Откройте приложение через кнопку в Telegram.");
+            return Promise.resolve(false);
         }
-
-        var hint = document.getElementById("tg-auth-hint");
-        if (hint) hint.hidden = false;
-
+        showBoot("Входим через Telegram…");
         var body = { init_data: initData };
         var mode = qsMode();
         if (mode) body.mode = mode;
-
-        var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-        var timer = ctrl ? window.setTimeout(function () { ctrl.abort(); }, 25000) : null;
-        fetch("/api/telegram/webapp-auth", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
-            credentials: "same-origin",
-            body: JSON.stringify(body),
-            signal: ctrl ? ctrl.signal : undefined,
-        })
-            .then(function (r) {
-                return r.json().then(function (data) {
-                    return { ok: r.ok, data: data };
-                });
-            })
-            .then(function (res) {
-                if (timer) window.clearTimeout(timer);
-                if (res.ok && res.data && res.data.success) {
-                    if (res.data.requires_2fa && res.data.redirect) {
-                        clearAuthDone();
-                        window.location.replace(res.data.redirect);
-                        return;
-                    }
-                    hydrateTelegramHub(function (confirmed) {
-                        if (!confirmed) clearAuthDone();
-                        if (onComplete) onComplete(!!confirmed);
-                    });
-                } else {
-                    clearAuthDone();
-                    if (hint) {
-                        hint.hidden = false;
-                        hint.textContent = "Не удалось войти автоматически. Используйте кнопки ниже.";
-                    }
-                    if (onComplete) onComplete(false);
+        return fetchJson(
+            "/api/auth/telegram",
+            { method: "POST", body: JSON.stringify(body) },
+            8000
+        ).then(function (res) {
+            if (res.ok && res.data && res.data.success) {
+                if (res.data.requires_2fa && res.data.redirect) {
+                    window.location.replace(res.data.redirect);
+                    return true;
                 }
-            })
-            .catch(function (err) {
-                if (timer) window.clearTimeout(timer);
-                clearAuthDone();
-                if (window.__AYC_TG_REPORT__) {
-                    window.__AYC_TG_REPORT__("auth_fail", String(err && err.name ? err.name : err || "fetch"));
-                }
-                if (hint) {
-                    hint.hidden = false;
-                    hint.textContent = "Не удалось войти автоматически. Используйте кнопки ниже.";
-                }
-                if (onComplete) onComplete(false);
-            });
-    }
-
-    function runWebappAuthWithRetry(tg, attempt) {
-        if (attempt > 1) return;
-        tryWebappAuth(tg, function (ok) {
-            if (ok) return;
-            hydrateTelegramHub(function (authed) {
-                if (authed || attempt >= 1) return;
-                if (!(tg.initData || "").length) return;
-                runWebappAuthWithRetry(tg, attempt + 1);
-            });
+                if (res.data.access_token) _accessToken = res.data.access_token;
+                return loadHubState().then(function () { return true; });
+            }
+            throw new Error((res.data && res.data.error) || ("auth " + res.status));
         });
     }
 
     function ensureHubAuth(tg) {
-        hydrateTelegramHub(function (authed) {
-            if (authed) return;
-
-            // hub-state is authoritative; stale sessionStorage must not skip webapp-auth.
-            clearStaleAuthFlags();
-
-            if (window.__AYC_TG_WEBAPP_AUTH_STARTED__) return;
-            window.__AYC_TG_WEBAPP_AUTH_STARTED__ = true;
-
-            runWebappAuthWithRetry(tg, 0);
+        var retry = document.getElementById("tg-hub-retry");
+        if (retry && !retry.getAttribute("data-bound")) {
+            retry.setAttribute("data-bound", "1");
+            retry.addEventListener("click", function () {
+                ensureHubAuth(tg);
+            });
+        }
+        showBoot("Открываем приложение…");
+        var initData = (tg && tg.initData) || "";
+        var platform = String((tg && tg.platform) || "").toLowerCase();
+        var inTelegramClient = /^(android|ios|tdesktop|macos|weba|webk)$/.test(platform);
+        var chain;
+        if (initData) {
+            chain = tryWebappAuth(tg);
+        } else {
+            chain = loadHubState().then(function (state) {
+                if (state && state.authenticated) return true;
+                if (inTelegramClient) {
+                    showHubError("Откройте приложение через кнопку в Telegram.");
+                    return false;
+                }
+                showGuestHub();
+                return false;
+            });
+        }
+        return chain.catch(function (err) {
+            console.error("[tg-miniapp] auth", err);
+            showHubError("Не удалось войти. Проверьте сеть и нажмите «Повторить».");
+            if (window.__AYC_TG_REPORT__) {
+                window.__AYC_TG_REPORT__("auth_fail", String((err && err.name) || err || "fetch"));
+            }
+            return false;
         });
     }
 
@@ -563,7 +574,8 @@
                 true
             );
         } catch (e) {
-            // Ignore Mini App bootstrap errors outside Telegram.
+            console.error("[tg-miniapp] boot", e);
+            showHubError("Не удалось запустить приложение. Нажмите «Повторить».");
         }
     }
 

@@ -72,6 +72,12 @@ app.include_router(telegram_webhook.router)
 
 @app.get("/health")
 async def health():
+    """Liveness: no MySQL. Telegram keepalive and load balancers must stay fast."""
+    return {"status": "ok"}
+
+
+@app.get("/health/ready")
+async def health_ready():
     from app.db_schema import get_schema_health
     from app.services.perf_metrics import snapshot as perf_snapshot
     from app.services.redis_client import redis_health
@@ -91,6 +97,10 @@ async def health():
         notify_health_if_bad(payload)
     except Exception:
         logger.exception("ops health alert failed")
+    if schema.get("degraded"):
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(payload, status_code=503)
     return payload
 
 
@@ -125,6 +135,9 @@ async def health_mini_app():
         "endpoints": {
             "hub": "/tg/",
             "webapp_auth": "/api/telegram/webapp-auth",
+            "auth_telegram": "/api/auth/telegram",
+            "hub_state": "/api/telegram/hub-state",
+            "me": "/api/me",
         },
     }
 
@@ -282,6 +295,24 @@ async def perf_timing_middleware(request: Request, call_next):
         logger.exception("perf_timing record failed")
     if getattr(settings, "perf_timing_header", True):
         response.headers["X-Process-Time"] = f"{duration_ms:.1f}ms"
+    _watch = (
+        "/tg/",
+        "/health",
+        "/health/ready",
+        "/api/auth/telegram",
+        "/api/telegram/webapp-auth",
+        "/api/telegram/hub-state",
+    )
+    if path in _watch:
+        rid = getattr(request.state, "request_id", "-")
+        logger.info(
+            "request_id=%s method=%s path=%s status=%s elapsed_ms=%.1f",
+            rid,
+            request.method,
+            path,
+            getattr(response, "status_code", "?"),
+            duration_ms,
+        )
     if slow_ms > 0 and duration_ms >= slow_ms:
         logger.warning(
             "slow_request path=%s status=%s duration_ms=%.1f",

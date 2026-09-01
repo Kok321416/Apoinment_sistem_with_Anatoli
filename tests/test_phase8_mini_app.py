@@ -149,7 +149,7 @@ def test_webapp_auth_api_sets_session_and_hub_state(mini_app_client):
     assert hub0.status_code == 200
     assert hub0.json().get("authenticated") is False
 
-    r = client.post("/api/telegram/webapp-auth", json={"init_data": init_data, "mode": "client"})
+    r = client.post("/api/auth/telegram", json={"init_data": init_data, "mode": "client"})
     assert r.status_code == 200, r.text
     body = r.json()
     assert body.get("success") is True
@@ -161,6 +161,9 @@ def test_webapp_auth_api_sets_session_and_hub_state(mini_app_client):
     assert state.get("authenticated") is True
     assert state.get("has_consultant") is False
     assert state.get("mode") == "client"
+    assert state.get("hub_available") is False
+    assert state.get("reason") == "specialist_access_required"
+    assert state.get("role") == "client"
 
     async def _add_consultant():
         async with session_factory() as db:
@@ -189,6 +192,7 @@ def test_webapp_auth_api_sets_session_and_hub_state(mini_app_client):
     )
     assert r2.status_code == 200, r2.text
     assert r2.json().get("has_consultant") is True
+    assert r2.json().get("access_token")
 
     hub2 = client.get("/api/telegram/hub-state?mode=specialist")
     assert hub2.status_code == 200
@@ -196,6 +200,8 @@ def test_webapp_auth_api_sets_session_and_hub_state(mini_app_client):
     assert state2.get("authenticated") is True
     assert state2.get("has_consultant") is True
     assert state2.get("mode") == "specialist"
+    assert state2.get("hub_available") is True
+    assert state2.get("role") == "specialist"
 
 
 def test_webapp_auth_rejects_invalid_init_data(mini_app_client):
@@ -256,23 +262,65 @@ def test_webapp_auth_without_session_cookie_is_unauthenticated(mini_app_client):
     assert hub.json().get("authenticated") is False
 
 
-def test_tg_hub_serves_webapp_boot_v25(mini_app_client):
+def test_tg_hub_serves_webapp_boot_v26(mini_app_client):
     client, _session_factory, _token = mini_app_client
     r = client.get("/tg/")
     assert r.status_code == 200
-    assert "telegram-webapp.js?v=25" in r.text
+    assert r.status_code != 302
+    loc = r.headers.get("location") or ""
+    assert "t.me" not in loc
+    assert "telegram-webapp.js?v=26" in r.text
     assert 'id="tg-hub-authed"' in r.text
     assert 'id="tg-hub-guest"' in r.text
+    assert 'id="tg-hub-error"' in r.text
+
+
+def test_webapp_auth_idempotent_and_bearer_without_cookie(mini_app_client):
+    client, _session_factory, token = mini_app_client
+    init_data = _signed_init_data(token, tg_id=900010, username="bearer")
+    r1 = client.post("/api/auth/telegram", json={"init_data": init_data})
+    r2 = client.post("/api/auth/telegram", json={"init_data": init_data})
+    assert r1.status_code == 200 and r2.status_code == 200
+    access = r1.json().get("access_token")
+    assert access
+
+    from app.main import app
+
+    client_b = TestClient(app)
+    denied = client_b.get("/api/telegram/hub-state")
+    assert denied.json().get("authenticated") is False
+    hub = client_b.get("/api/telegram/hub-state", headers={"Authorization": f"Bearer {access}"})
+    assert hub.json().get("authenticated") is True
+    me = client_b.get("/api/me", headers={"Authorization": f"Bearer {access}"})
+    assert me.json().get("authenticated") is True
+
+
+def test_tg_hub_does_not_use_async_db(mini_app_client):
+    client, _session_factory, _token = mini_app_client
+    from app.database import get_async_db
+    from app.main import app
+
+    async def _boom():
+        raise AssertionError("GET /tg/ must not open the database")
+        yield
+
+    app.dependency_overrides[get_async_db] = _boom
+    try:
+        r = client.get("/tg/")
+        assert r.status_code == 200
+        assert "<!DOCTYPE html>" in r.text or "<html" in r.text.lower()
+    finally:
+        app.dependency_overrides.pop(get_async_db, None)
 
 
 def test_webapp_diag_accepts_no_init_data_kind(mini_app_client, monkeypatch):
     client, _session_factory, _token = mini_app_client
     recorded = []
 
-    def _record(**kwargs):
-        recorded.append(kwargs.get("message", ""))
-
-    monkeypatch.setattr("app.services.platform_errors.record_platform_error", lambda **k: recorded.append(k.get("message", "")))
+    monkeypatch.setattr(
+        "app.services.platform_errors.record_platform_error",
+        lambda **k: recorded.append(k.get("message", "")),
+    )
     monkeypatch.setattr("app.services.ops_alerts.notify_ops_alert", lambda **k: False)
     r = client.post(
         "/api/telegram/webapp-diag",

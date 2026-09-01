@@ -455,23 +455,44 @@ async def api_telegram_ui_mode(request: Request, db: AsyncSession = Depends(get_
 
 
 @router.post("/telegram/webapp-auth")
+@router.post("/auth/telegram")
 async def api_telegram_webapp_auth(request: Request, db: AsyncSession = Depends(get_async_db)):
-    """Login (or create client user) from Telegram Mini App initData."""
+    """Login from Telegram Mini App initData. Cookie session + short Bearer fallback."""
+    import time as _time
+
+    t0 = _time.perf_counter()
+    rid = getattr(request.state, "request_id", "-")
     try:
         data = await request.json()
     except Exception:
+        logger.info("request_id=%s webapp-auth invalid_json has_init=0", rid)
         return JSONResponse({"success": False, "error": "Invalid JSON"}, status_code=400)
     init_data = (data.get("init_data") or data.get("initData") or "").strip()
     mode = (data.get("mode") or "").strip().lower()
+    has_init = 1 if init_data else 0
     from app.services.active_mode import set_active_mode, user_has_consultant_async
+    from app.services.miniapp_token import mint_miniapp_access_token
     from app.services.telegram_webapp_auth import find_or_create_user_from_webapp_async, validate_webapp_init_data
 
     parsed = validate_webapp_init_data(init_data)
     if not parsed:
+        logger.info(
+            "request_id=%s webapp-auth signature_ok=0 has_init=%s elapsed_ms=%.1f",
+            rid,
+            has_init,
+            (_time.perf_counter() - t0) * 1000,
+        )
         return JSONResponse({"success": False, "error": "Invalid initData"}, status_code=401)
     tg_user = parsed.get("user") or {}
+    tg_id = tg_user.get("id")
     user = await find_or_create_user_from_webapp_async(db, tg_user)
     if not user:
+        logger.info(
+            "request_id=%s webapp-auth signature_ok=1 tg_id=%s user_missing elapsed_ms=%.1f",
+            rid,
+            tg_id,
+            (_time.perf_counter() - t0) * 1000,
+        )
         return JSONResponse({"success": False, "error": "User not found"}, status_code=400)
     has_c = await user_has_consultant_async(db, user.id)
     from app.auth.login_flow import finish_login_json_async
@@ -497,28 +518,71 @@ async def api_telegram_webapp_auth(request: Request, db: AsyncSession = Depends(
         from app.services.active_mode import MODE_SPECIALIST
 
         set_active_mode(request, MODE_SPECIALIST, has_consultant=has_c)
+    result["access_token"] = mint_miniapp_access_token(user.id)
+    result["role"] = "specialist" if has_c else "client"
+    logger.info(
+        "request_id=%s webapp-auth signature_ok=1 tg_id=%s user_id=%s specialist=%s elapsed_ms=%.1f",
+        rid,
+        tg_id,
+        user.id,
+        int(has_c),
+        (_time.perf_counter() - t0) * 1000,
+    )
     return result
+
+
+async def _user_from_request(request: Request, db: AsyncSession):
+    from app.auth.session import get_current_user_async, user_from_model
+    from app.services.miniapp_token import bearer_user_id
+
+    user = await get_current_user_async(request, db)
+    if user:
+        return user
+    uid = bearer_user_id(request.headers.get("authorization"))
+    if not uid:
+        return None
+    return user_from_model(await db.get(User, uid))
+
+
+@router.get("/me")
+async def api_me(request: Request, db: AsyncSession = Depends(get_async_db)):
+    from app.services.active_mode import user_has_consultant_async
+
+    user = await _user_from_request(request, db)
+    if not user or not user.is_active:
+        return {"authenticated": False}
+    has_c = await user_has_consultant_async(db, user.id)
+    return {
+        "authenticated": True,
+        "user_id": user.id,
+        "role": "specialist" if has_c else "client",
+        "has_consultant": has_c,
+        "display_name": user.get_full_name() or user.username or "",
+    }
 
 
 @router.get("/telegram/hub-state")
 async def api_telegram_hub_state(request: Request, db: AsyncSession = Depends(get_async_db)):
-    """Mini App hub: session + mode after HTML shell loaded (keeps GET /tg/ DB-free)."""
-    from app.auth.session import get_current_user_async
+    """Hub UI state for an already authenticated Mini App user (cookie or Bearer)."""
     from app.services.active_mode import MODE_CLIENT, MODE_SPECIALIST, get_active_mode_async, user_has_consultant_async
 
-    user = await get_current_user_async(request, db)
-    if not user:
-        return {"authenticated": False}
+    user = await _user_from_request(request, db)
+    if not user or not user.is_active:
+        return {"authenticated": False, "hub_available": False, "role": None}
     has_c = await user_has_consultant_async(db, user.id)
+    role = "specialist" if has_c else "client"
     mode_q = (request.query_params.get("mode") or "").strip().lower()
-    if mode_q == MODE_SPECIALIST and has_c:
-        mode = MODE_SPECIALIST
+    if has_c:
+        mode = MODE_SPECIALIST if mode_q != MODE_CLIENT else MODE_CLIENT
     else:
-        mode = await get_active_mode_async(request, db, user.id, has_consultant=has_c)
+        mode = await get_active_mode_async(request, db, user.id, has_consultant=False)
         if mode not in (MODE_CLIENT, MODE_SPECIALIST):
             mode = MODE_CLIENT
     return {
         "authenticated": True,
+        "role": role,
+        "hub_available": has_c,
+        "reason": None if has_c else "specialist_access_required",
         "has_consultant": has_c,
         "mode": MODE_SPECIALIST if has_c else MODE_CLIENT,
         "show_mode_switcher": False,

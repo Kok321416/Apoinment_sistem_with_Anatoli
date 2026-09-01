@@ -95,6 +95,17 @@ def test_health_endpoint():
     assert r.status_code == 200
     body = r.json()
     assert body["status"] in ("ok", "degraded")
+    assert "schema" not in body
+
+
+def test_health_ready_endpoint():
+    from app.main import app
+
+    client = TestClient(app)
+    r = client.get("/health/ready")
+    assert r.status_code in (200, 503)
+    body = r.json()
+    assert body["status"] in ("ok", "degraded")
     assert "schema" in body
 
 

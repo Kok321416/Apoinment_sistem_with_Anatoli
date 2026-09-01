@@ -16,8 +16,11 @@
     color: #0a0a0a !important;
     min-height: 100%;
   }
-  #tg-hub-authed[hidden] { display: none !important; }
-  #tg-hub-guest[hidden] { display: none !important; }
+  #tg-hub-authed[hidden],
+  #tg-hub-guest[hidden],
+  #tg-hub-boot[hidden],
+  #tg-hub-error[hidden],
+  #tg-hub-client-denied[hidden] { display: none !important; }
   #tg-hub-actions-specialist[hidden],
   #tg-hub-become-specialist[hidden] { display: none !important; }
 </style>
@@ -64,6 +67,28 @@
         </a>
     </div>
     <p class="text-body-sm text-muted mt-lg">Клиенты записываются по вашей публичной ссылке из профиля специалиста.</p>
+</div>
+
+<div id="tg-hub-boot" class="tg-hub-auth" hidden>
+    <div class="auth-card card card--static">
+        <p class="text-body" id="tg-hub-boot-text">Открываем приложение…</p>
+    </div>
+</div>
+
+<div id="tg-hub-error" class="tg-hub-auth" hidden>
+    <div class="auth-card card card--static">
+        <h1 class="text-h1 auth-card__title">Не удалось открыть</h1>
+        <p class="text-body-sm" id="tg-hub-error-text">Попробуйте ещё раз.</p>
+        <p><button type="button" class="btn btn--primary" id="tg-hub-retry">Повторить</button></p>
+    </div>
+</div>
+
+<div id="tg-hub-client-denied" class="tg-hub-auth" hidden>
+    <div class="auth-card card card--static">
+        <h1 class="text-h1 auth-card__title">Нет доступа к кабинету</h1>
+        <p class="text-body">У этого Telegram-аккаунта нет доступа к кабинету специалиста.</p>
+        <p class="text-body-sm text-muted">Запись к специалисту — по его публичной ссылке, не через этот экран.</p>
+    </div>
 </div>
 
 <div id="tg-hub-guest" class="tg-hub-auth" data-tg-hub="1" data-tg-authed="0">
