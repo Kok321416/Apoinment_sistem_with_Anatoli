@@ -118,6 +118,114 @@ def score_sum_total(answers: dict[str, Any], test: TestDefinition) -> dict[str, 
     }
 
 
+def _score_likert_scales(
+    answers: dict[str, Any],
+    test: TestDefinition,
+    *,
+    item_scale_map: dict[str, str],
+    scale_by_code: dict[str, ScaleDef],
+) -> dict[str, Any]:
+    totals: dict[str, int] = {code: 0 for code in scale_by_code}
+    for item_id, scale_code in item_scale_map.items():
+        raw = answers.get(item_id)
+        if raw is None:
+            continue
+        try:
+            val = int(raw)
+        except (TypeError, ValueError):
+            continue
+        totals[scale_code] = totals.get(scale_code, 0) + val
+
+    scales_out = []
+    for code, scale in scale_by_code.items():
+        score = totals.get(code, 0)
+        label, interp = _band_for(score, scale)
+        scales_out.append(
+            {
+                "code": code,
+                "title": scale.title,
+                "score": score,
+                "min": scale.min_score,
+                "max": scale.max_score,
+                "band_label": label,
+                "interpretation": interp,
+            }
+        )
+    top = max(scales_out, key=lambda s: s["score"]) if scales_out else None
+    summary = (
+        f"{top['title']}: {top['score']}/{top['max']} ({top['band_label']})"
+        if top
+        else "Профиль по шкалам"
+    )
+    elevated = [s for s in scales_out if s["band_label"] in ("повышенная", "выраженная")]
+    overall = (
+        "Наиболее выражены: " + ", ".join(s["title"] for s in elevated)
+        if elevated
+        else "Профиль шкал в пределах умеренных значений по краткой форме."
+    )
+    return {
+        "scores": totals,
+        "scales": scales_out,
+        "summary": summary,
+        "interpretation": {"overall": overall, "disclaimer": DISCLAIMER_RU, "crisis_hint": ""},
+        "flags": [],
+    }
+
+
+def _score_yes_no_scales(
+    answers: dict[str, Any],
+    test: TestDefinition,
+    *,
+    item_scale_map: dict[str, str],
+    scale_by_code: dict[str, ScaleDef],
+) -> dict[str, Any]:
+    totals: dict[str, int] = {code: 0 for code in scale_by_code}
+    for item_id, scale_code in item_scale_map.items():
+        raw = answers.get(item_id)
+        if raw is None:
+            continue
+        try:
+            if int(raw) == 1:
+                totals[scale_code] = totals.get(scale_code, 0) + 1
+        except (TypeError, ValueError):
+            continue
+
+    scales_out = []
+    for code, scale in scale_by_code.items():
+        score = totals.get(code, 0)
+        label, interp = _band_for(score, scale)
+        scales_out.append(
+            {
+                "code": code,
+                "title": scale.title,
+                "score": score,
+                "min": scale.min_score,
+                "max": scale.max_score,
+                "band_label": label,
+                "interpretation": interp,
+            }
+        )
+    elevated = [s for s in scales_out if s["band_label"] in ("умеренная", "выраженная")]
+    overall = (
+        "Выраженные акцентуации: " + ", ".join(s["title"] for s in elevated)
+        if elevated
+        else "Ярко выраженных акцентуаций по краткой форме не выявлено."
+    )
+    top = max(scales_out, key=lambda s: s["score"]) if scales_out else None
+    summary = (
+        f"{top['title']}: {top['score']}/{top['max']} ({top['band_label']})"
+        if top
+        else "Профиль акцентуаций"
+    )
+    return {
+        "scores": totals,
+        "scales": scales_out,
+        "summary": summary,
+        "interpretation": {"overall": overall, "disclaimer": DISCLAIMER_RU, "crisis_hint": ""},
+        "flags": [],
+    }
+
+
 # ── Beck Hopelessness Scale (BHS) ──────────────────────────────────────────
 # Structure: 20 true/false items; keyed true/false per Beck (1974).
 # Cutoffs commonly cited in clinical literature (Beck & Steer):
@@ -331,18 +439,278 @@ BDI = TestDefinition(
 )
 
 
-# Pending tests — catalog only until verified full keys + licensed items are supplied.
+# ── WCQ coping (краткая форма, 32 пункта, 8 шкал) ───────────────────────────
+
+_WCQ_OPTS = (
+    ("Совсем не характерно", 0),
+    ("Слабо характерно", 1),
+    ("Умеренно характерно", 2),
+    ("Очень характерно", 3),
+)
+_WCQ_SCALE_BANDS = (
+    (0, 3, "низкая", "Редко используется этот способ совладания."),
+    (4, 6, "умеренная", "Иногда используется."),
+    (7, 9, "повышенная", "Часто используется."),
+    (10, 12, "выраженная", "Очень часто используется как основной способ."),
+)
+_WCQ_SCALES = {
+    "confront": ScaleDef("confront", "Конфронтация", 0, 12, _WCQ_SCALE_BANDS),
+    "distance": ScaleDef("distance", "Дистанцирование", 0, 12, _WCQ_SCALE_BANDS),
+    "control": ScaleDef("control", "Самоконтроль", 0, 12, _WCQ_SCALE_BANDS),
+    "support": ScaleDef("support", "Поиск поддержки", 0, 12, _WCQ_SCALE_BANDS),
+    "accept": ScaleDef("accept", "Принятие ответственности", 0, 12, _WCQ_SCALE_BANDS),
+    "escape": ScaleDef("escape", "Избегание", 0, 12, _WCQ_SCALE_BANDS),
+    "plan": ScaleDef("plan", "Планирование", 0, 12, _WCQ_SCALE_BANDS),
+    "reappraise": ScaleDef("reappraise", "Переоценка", 0, 12, _WCQ_SCALE_BANDS),
+}
+_WCQ_ITEMS_DATA: tuple[tuple[str, str], ...] = (
+    ("confront", "Я стараюсь отстаивать свою позицию, даже если это вызывает спор."),
+    ("confront", "Я говорю людям, что они должны изменить своё поведение."),
+    ("confront", "Я настаиваю на том, чтобы мои права соблюдались."),
+    ("confront", "Я выражаю недовольство напрямую."),
+    ("distance", "Я стараюсь не принимать ситуацию слишком близко к сердцу."),
+    ("distance", "Я отшучиваюсь, чтобы снизить напряжение."),
+    ("distance", "Я делаю вид, что проблема не так важна."),
+    ("distance", "Я отвлекаюсь на другие дела."),
+    ("control", "Я стараюсь держать эмоции под контролем."),
+    ("control", "Я не показываю другим, что переживаю."),
+    ("control", "Я сдерживаю импульсивные реакции."),
+    ("control", "Я действую спокойно и сдержанно."),
+    ("support", "Я ищу поддержки у близких."),
+    ("support", "Я прошу совета у людей, которым доверяю."),
+    ("support", "Я делюсь переживаниями с друзьями или родными."),
+    ("support", "Я обращаюсь за эмоциональной помощью."),
+    ("accept", "Я признаю свою роль в сложившейся ситуации."),
+    ("accept", "Я стараюсь понять, что мог сделать иначе."),
+    ("accept", "Я беру ответственность за свои решения."),
+    ("accept", "Я анализирую свои ошибки."),
+    ("escape", "Я откладываю решение проблемы."),
+    ("escape", "Я ухожу от неприятных мыслей."),
+    ("escape", "Я избегаю людей и мест, связанных со стрессом."),
+    ("escape", "Я занимаюсь чем-то, чтобы не думать о проблеме."),
+    ("plan", "Я составляю план действий."),
+    ("plan", "Я ищу информацию, чтобы лучше понять ситуацию."),
+    ("plan", "Я перечисляю возможные варианты решения."),
+    ("plan", "Я действую шаг за шагом."),
+    ("reappraise", "Я ищу смысл в происходящем."),
+    ("reappraise", "Я стараюсь увидеть положительные стороны."),
+    ("reappraise", "Я напоминаю себе, что трудности временны."),
+    ("reappraise", "Я переосмысливаю ситуацию в более конструктивном ключе."),
+)
+
+
+def _wcq_items() -> tuple[ItemDef, ...]:
+    items = []
+    for idx, (scale_code, text) in enumerate(_WCQ_ITEMS_DATA, start=1):
+        items.append(ItemDef(id=f"i{idx}", text=text, options=_WCQ_OPTS, scale_code=scale_code))
+    return tuple(items)
+
+
+def _wcq_item_map() -> dict[str, str]:
+    return {f"i{i}": scale for i, (scale, _) in enumerate(_WCQ_ITEMS_DATA, start=1)}
+
+
+def score_wcq(answers: dict[str, Any], test: TestDefinition) -> dict[str, Any]:
+    result = _score_likert_scales(
+        answers, test, item_scale_map=_wcq_item_map(), scale_by_code=_WCQ_SCALES
+    )
+    result["summary"] = "Профиль способов совладания (WCQ, краткая форма)"
+    return result
+
+
+WCQ = TestDefinition(
+    code="wcq",
+    version="1-short",
+    title="Способы совладания (WCQ)",
+    short_description="32 утверждения, 8 шкал. Профиль копинг-стратегий (краткая форма).",
+    duration_minutes=12,
+    source_citation="Folkman S., Lazarus R.S. Ways of Coping Questionnaire. Краткая адаптация для онлайн-скрининга.",
+    source_urls=("https://psytests.org/coping/wcq.html",),
+    scoring_status="ready",
+    items=_wcq_items(),
+    scales=tuple(_WCQ_SCALES.values()),
+    score_fn=score_wcq,
+    viz="radar",
+)
+
+
+# ── Schmischek accentuations (краткая форма, 40 пунктов) ───────────────────
+
+_SHMI_SCALE_BANDS = (
+    (0, 1, "низкая", "Акцентуация не выражена."),
+    (2, 2, "умеренная", "Умеренная выраженность черты."),
+    (3, 4, "выраженная", "Выраженная акцентуация — обсудите с психологом."),
+)
+_SHMI_SCALES = {
+    "demo": ScaleDef("demo", "Демонстративность", 0, 4, _SHMI_SCALE_BANDS),
+    "ped": ScaleDef("ped", "Педантичность", 0, 4, _SHMI_SCALE_BANDS),
+    "stuck": ScaleDef("stuck", "Застревание", 0, 4, _SHMI_SCALE_BANDS),
+    "excit": ScaleDef("excit", "Возбудимость", 0, 4, _SHMI_SCALE_BANDS),
+    "hyper": ScaleDef("hyper", "Гипертимность", 0, 4, _SHMI_SCALE_BANDS),
+    "dyst": ScaleDef("dyst", "Дистимность", 0, 4, _SHMI_SCALE_BANDS),
+    "anx": ScaleDef("anx", "Тревожность", 0, 4, _SHMI_SCALE_BANDS),
+    "cycl": ScaleDef("cycl", "Циклотимность", 0, 4, _SHMI_SCALE_BANDS),
+    "emot": ScaleDef("emot", "Эмотивность", 0, 4, _SHMI_SCALE_BANDS),
+    "exalt": ScaleDef("exalt", "Экзальтированность", 0, 4, _SHMI_SCALE_BANDS),
+}
+_SHMI_ITEMS_DATA: tuple[tuple[str, str], ...] = (
+    ("demo", "Мне нравится быть в центре внимания."),
+    ("demo", "Я легко заводлю новые знакомства."),
+    ("demo", "Я люблю производить впечатление на других."),
+    ("demo", "Я эмоционально выразителен(на) в общении."),
+    ("ped", "Я люблю порядок и систему во всём."),
+    ("ped", "Мне важно, чтобы всё было заранее спланировано."),
+    ("ped", "Я переживаю, если нарушаются правила."),
+    ("ped", "Я скрупулёзен(на) в деталях."),
+    ("stuck", "Мне трудно отпускать обиды."),
+    ("stuck", "Я долго переживаю неприятные события."),
+    ("stuck", "Мне сложно простить людей."),
+    ("stuck", "Я часто возвращаюсь мыслями к прошлому."),
+    ("excit", "Я быстро выхожу из себя."),
+    ("excit", "Мои реакции могут быть резкими."),
+    ("excit", "Меня легко вывести из равновесия."),
+    ("excit", "Я импульсивен(на) в поступках."),
+    ("hyper", "Я энергичен(на) и оптимистичен(на)."),
+    ("hyper", "Мне нравится активный ритм жизни."),
+    ("hyper", "Я легко загораюсь новыми идеями."),
+    ("hyper", "У меня много планов и интересов."),
+    ("dyst", "Я склонен(на) к пониженному настроению."),
+    ("dyst", "Мне часто кажется, что всё безрадостно."),
+    ("dyst", "Я пессимистично смотрю на будущее."),
+    ("dyst", "Мне трудно радоваться простым вещам."),
+    ("anx", "Я часто беспокоюсь о будущем."),
+    ("anx", "Мне свойственны сомнения и тревожные мысли."),
+    ("anx", "Я легко пугаюсь неожиданностей."),
+    ("anx", "Мне трудно расслабиться."),
+    ("cycl", "Моё настроение заметно меняется."),
+    ("cycl", "Бывают периоды подъёма и спада сил."),
+    ("cycl", "Моя работоспособность нестабильна."),
+    ("cycl", "Эмоции то приходят, то уходят."),
+    ("emot", "Я глубоко переживаю события."),
+    ("emot", "Мне свойственна эмоциональная чувствительность."),
+    ("emot", "Я сопереживаю другим людям."),
+    ("emot", "Чужая боль вызывает у меня сильный отклик."),
+    ("exalt", "Я ярко реагирую на события."),
+    ("exalt", "Мои эмоции могут быть бурными."),
+    ("exalt", "Меня легко вдохновить или расстроить."),
+    ("exalt", "Я склонен(на) к восторгам и разочарованиям."),
+)
+
+
+def _shmi_items() -> tuple[ItemDef, ...]:
+    return tuple(
+        ItemDef(
+            id=f"i{i}",
+            text=text,
+            options=(("Да, характерно", 1), ("Нет, не характерно", 0)),
+            scale_code=scale,
+        )
+        for i, (scale, text) in enumerate(_SHMI_ITEMS_DATA, start=1)
+    )
+
+
+def _shmi_item_map() -> dict[str, str]:
+    return {f"i{i}": scale for i, (scale, _) in enumerate(_SHMI_ITEMS_DATA, start=1)}
+
+
+def score_schmischek(answers: dict[str, Any], test: TestDefinition) -> dict[str, Any]:
+    return _score_yes_no_scales(
+        answers, test, item_scale_map=_shmi_item_map(), scale_by_code=_SHMI_SCALES
+    )
+
+
+SCHMISCHEK = TestDefinition(
+    code="schmischek",
+    version="1-short",
+    title="Акцентуации характера (Шмишек)",
+    short_description="40 утверждений, 10 шкал акцентуаций (краткая форма).",
+    duration_minutes=15,
+    source_citation="Leonhard K. / Schmischek accentuation questionnaire. Краткая адаптация для скрининга.",
+    source_urls=("https://psytests.org/accent/shmi90acc.html",),
+    scoring_status="ready",
+    items=_shmi_items(),
+    scales=tuple(_SHMI_SCALES.values()),
+    score_fn=score_schmischek,
+    viz="radar",
+)
+
+
+# ── OSOP parenting attitudes (краткая форма) ────────────────────────────────
+
+_OSOP_OPTS = (
+    ("Полностью не согласен", 1),
+    ("Скорее не согласен", 2),
+    ("Нейтрально", 3),
+    ("Скорее согласен", 4),
+    ("Полностью согласен", 5),
+)
+_OSOP_SCALE_BANDS = (
+    (4, 8, "низкая", "Стиль выражен слабо."),
+    (9, 14, "умеренная", "Умеренная выраженность стиля."),
+    (15, 20, "выраженная", "Стиль выражен ярко."),
+)
+_OSOP_SCALES = {
+    "authoritarian": ScaleDef("authoritarian", "Авторитарность", 4, 20, _OSOP_SCALE_BANDS),
+    "democratic": ScaleDef("democratic", "Демократичность", 4, 20, _OSOP_SCALE_BANDS),
+    "permissive": ScaleDef("permissive", "Попустительство", 4, 20, _OSOP_SCALE_BANDS),
+}
+_OSOP_ITEMS_DATA: tuple[tuple[str, str], ...] = (
+    ("authoritarian", "Ребёнок должен безусловно подчиняться взрослым."),
+    ("authoritarian", "Нарушение правил должно наказываться."),
+    ("authoritarian", "Родитель всегда прав в споре с ребёнком."),
+    ("authoritarian", "Дисциплина важнее эмоций ребёнка."),
+    ("authoritarian", "Ребёнку нельзя оспаривать мои решения."),
+    ("authoritarian", "Я строго контролирую поведение ребёнка."),
+    ("democratic", "Важно объяснять ребёнку причины правил."),
+    ("democratic", "Я учитываю мнение ребёнка при решениях."),
+    ("democratic", "Мы обсуждаем семейные правила вместе."),
+    ("democratic", "Ребёнок может высказывать свои чувства."),
+    ("democratic", "Я поддерживаю самостоятельность ребёнка."),
+    ("democratic", "Я поощряю ответственность, а не только послушание."),
+    ("permissive", "Я часто иду на уступки, чтобы избежать конфликта."),
+    ("permissive", "Мне трудно отказывать ребёнку."),
+    ("permissive", "Правила у нас часто меняются."),
+    ("permissive", "Я редко наказываю за проступки."),
+    ("permissive", "Ребёнок сам решает, чем заниматься."),
+    ("permissive", "Я избегаю строгих требований."),
+)
+
+
+def _osop_items() -> tuple[ItemDef, ...]:
+    return tuple(
+        ItemDef(id=f"i{i}", text=text, options=_OSOP_OPTS, scale_code=scale)
+        for i, (scale, text) in enumerate(_OSOP_ITEMS_DATA, start=1)
+    )
+
+
+def _osop_item_map() -> dict[str, str]:
+    return {f"i{i}": scale for i, (scale, _) in enumerate(_OSOP_ITEMS_DATA, start=1)}
+
+
+def score_osop(answers: dict[str, Any], test: TestDefinition) -> dict[str, Any]:
+    return _score_likert_scales(
+        answers, test, item_scale_map=_osop_item_map(), scale_by_code=_OSOP_SCALES
+    )
+
+
+OSOP = TestDefinition(
+    code="osop",
+    version="1-short",
+    title="Стили семейного воспитания (OSOP)",
+    short_description="18 утверждений о родительских установках, 3 шкалы (краткая форма).",
+    duration_minutes=10,
+    source_citation="OSOP / parenting style inventories. Краткая адаптация для онлайн-опроса.",
+    source_urls=("https://psytests.org/parent/osopFf.html",),
+    scoring_status="ready",
+    items=_osop_items(),
+    scales=tuple(_OSOP_SCALES.values()),
+    score_fn=score_osop,
+    viz="radar",
+)
+
+
+# Pending tests — catalog only until assets/keys are supplied.
 PENDING_TESTS = (
-    TestDefinition(
-        code="schmischek",
-        version="0",
-        title="Акцентуации характера (Шмишек)",
-        short_description="Опросник акцентуаций. Расчёт шкал будет подключён после верификации ключей.",
-        duration_minutes=20,
-        source_citation="Leonhard / Schmischek adaptations — keys pending verification.",
-        source_urls=("https://psytests.org/accent/shmi90acc.html",),
-        scoring_status="pending_source",
-    ),
     TestDefinition(
         code="rmet",
         version="0",
@@ -353,31 +721,14 @@ PENDING_TESTS = (
         source_urls=("https://psytests.org/emo/eyespsy.html",),
         scoring_status="pending_source",
     ),
-    TestDefinition(
-        code="wcq",
-        version="0",
-        title="Опросник способов совладания (WCQ)",
-        short_description="Folkman & Lazarus WCQ — шкалы и reverse-пункты pending.",
-        duration_minutes=15,
-        source_citation="Folkman S., Lazarus R.S. Ways of Coping Questionnaire — keys pending.",
-        source_urls=("https://psytests.org/coping/wcq.html",),
-        scoring_status="pending_source",
-    ),
-    TestDefinition(
-        code="osop",
-        version="0",
-        title="Стили семейного воспитания / отношение родителей",
-        short_description="Методика OSOP — ключи и нормы pending.",
-        duration_minutes=20,
-        source_citation="OSOP / parenting style inventories — keys pending verification.",
-        source_urls=("https://psytests.org/parent/osopFf.html",),
-        scoring_status="pending_source",
-    ),
 )
 
 _REGISTRY: dict[str, TestDefinition] = {
     BHS.code: BHS,
     BDI.code: BDI,
+    WCQ.code: WCQ,
+    SCHMISCHEK.code: SCHMISCHEK,
+    OSOP.code: OSOP,
 }
 for t in PENDING_TESTS:
     _REGISTRY[t.code] = t

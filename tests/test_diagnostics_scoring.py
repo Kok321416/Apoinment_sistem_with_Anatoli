@@ -37,7 +37,20 @@ def test_bhs_max_severe():
     assert "attention_high" in result["flags"]
 
 
-def test_pending_not_runnable():
+def test_runnable_and_pending():
     assert get_test("wcq") is not None
-    assert get_test("wcq").runnable is False
+    assert get_test("wcq").runnable is True
+    assert get_test("schmischek").runnable is True
+    assert get_test("osop").runnable is True
     assert get_test("bhs").runnable is True
+    assert get_test("bdi").runnable is True
+    assert get_test("rmet").runnable is False
+
+
+def test_wcq_scoring_returns_eight_scales():
+    from app.diagnostics.catalog import WCQ, score_wcq
+
+    answers = {f"i{i}": 2 for i in range(1, 33)}
+    result = score_wcq(answers, WCQ)
+    assert len(result["scales"]) == 8
+    assert "Профиль" in result["summary"]

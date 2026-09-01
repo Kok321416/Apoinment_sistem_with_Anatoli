@@ -632,6 +632,7 @@ async def specialist_diagnostics_submit(
     from app.security.csrf import validate_csrf_token
     from app.services.diagnostics_service import (
         complete_attempt,
+        ensure_diagnostics_write_ready,
         start_attempt,
         touch_client_specialist_link,
     )
@@ -652,6 +653,10 @@ async def specialist_diagnostics_submit(
         if key.startswith("i") and key[1:].isdigit():
             answers[key] = val
     consultant_id = int(consultant.id)
+    if not await ensure_diagnostics_write_ready(db):
+        logger.error("diagnostics submit blocked: schema not ready slug=%s", slug)
+        return RedirectResponse(f"/s/{slug}/diagnostics/?error=save", status_code=302)
+    attempt_id = None
     try:
         attempt = await start_attempt(
             db,
@@ -663,13 +668,8 @@ async def specialist_diagnostics_submit(
             booking_id=int(form["booking_id"]) if form.get("booking_id") else None,
         )
         await complete_attempt(db, attempt=attempt, answers=answers)
-        await touch_client_specialist_link(
-            db,
-            client_user_id=auth_user.id,
-            consultant_id=consultant_id,
-            source="diagnostics",
-        )
         await db.commit()
+        attempt_id = attempt.id
     except ValueError:
         await db.rollback()
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
@@ -682,7 +682,18 @@ async def specialist_diagnostics_submit(
             auth_user.id,
         )
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=save", status_code=302)
-    return RedirectResponse(f"/s/{slug}/diagnostics/results/{attempt.id}/", status_code=302)
+    try:
+        await touch_client_specialist_link(
+            db,
+            client_user_id=auth_user.id,
+            consultant_id=consultant_id,
+            source="diagnostics",
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        logger.exception("touch after diagnostics save failed slug=%s user=%s", slug, auth_user.id)
+    return RedirectResponse(f"/s/{slug}/diagnostics/results/{attempt_id}/", status_code=302)
 
 
 @router.get("/s/{slug}/diagnostics/results/{attempt_id}/")

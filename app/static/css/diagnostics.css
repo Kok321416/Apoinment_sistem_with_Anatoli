@@ -43,8 +43,16 @@
 .diag-card__meta {
     font-size: 0.85rem;
     color: var(--text-muted, #525252);
-    margin: 0.75rem 0 1rem;
+    margin: 0.75rem 0 0.35rem;
     overflow-wrap: anywhere;
+}
+
+.diag-card__source {
+    margin: 0 0 0.75rem;
+}
+
+.diag-card__source a {
+    color: var(--accent-primary, #111);
 }
 
 .diag-select {

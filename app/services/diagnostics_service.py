@@ -56,10 +56,16 @@ async def ensure_diagnostics_tables(db: AsyncSession | None = None) -> bool:
             ok = await _ensure_diagnostics_tables_on_session(db) or ok
             if ok:
                 _mark_diagnostics_ddl_ready()
+                return True
         except Exception:
             logger.exception("ensure_diagnostics_tables async ddl failed")
 
     return ok
+
+
+async def ensure_diagnostics_write_ready(db: AsyncSession) -> bool:
+    """Ensure diagnostics tables exist before saving an attempt."""
+    return await ensure_diagnostics_tables(db)
 
 
 async def _ensure_diagnostics_tables_on_session(db: AsyncSession) -> bool:
@@ -261,7 +267,8 @@ async def start_attempt(
             )
         ).scalar_one_or_none()
         client_card_id = card.id if card else None
-    attempt = DiagnosticAttempt(
+
+    base_kwargs = dict(
         client_user_id=client_user_id,
         consultant_id=consultant_id,
         client_card_id=client_card_id,
@@ -273,8 +280,10 @@ async def start_attempt(
         source=source,
         interpretation_json=json.dumps({"disclaimer": DISCLAIMER_RU}, ensure_ascii=False),
     )
-    db.add(attempt)
+
     for attempt_no in range(2):
+        attempt = DiagnosticAttempt(**base_kwargs)
+        db.add(attempt)
         try:
             await db.flush()
             return attempt
@@ -282,11 +291,11 @@ async def start_attempt(
             if attempt_no == 0 and _is_missing_diagnostics_table(exc):
                 logger.warning("diagnostic_attempts missing on insert, re-ensuring schema")
                 await db.rollback()
-                await ensure_diagnostics_tables(db)
-                db.add(attempt)
+                if not await ensure_diagnostics_write_ready(db):
+                    raise RuntimeError("diagnostics schema not available") from exc
                 continue
             raise
-    return attempt
+    raise RuntimeError("diagnostic_attempts insert failed after schema ensure")
 
 
 async def list_attempts_for_client(

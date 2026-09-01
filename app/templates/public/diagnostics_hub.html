@@ -8,7 +8,7 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/booking.css?v=27">
-<link rel="stylesheet" href="/static/css/diagnostics.css?v=2">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=3">
 {% endblock %}
 
 {% block booking_content %}
@@ -29,7 +29,7 @@
     {% elif request.query_params.get('error') == 'test' %}
     <div class="alert alert--error mb-lg" role="alert">Тест недоступен или данные неполные. Выберите другой тест.</div>
     {% elif request.query_params.get('error') == 'save' %}
-    <div class="alert alert--error mb-lg" role="alert">Не удалось сохранить результат. Попробуйте ещё раз или обратитесь в поддержку.</div>
+    <div class="alert alert--error mb-lg" role="alert">Не удалось сохранить результат. Попробуйте ещё раз. Если ошибка повторяется — обновите страницу или войдите заново.</div>
     {% endif %}
 
     <section class="diag-section" aria-labelledby="diag-tests-title">
@@ -40,8 +40,13 @@
                 <h3 class="diag-card__title">{{ t.title }}</h3>
                 <p class="text-body-sm text-muted">{{ t.short_description }}</p>
                 <p class="diag-card__meta">~{{ t.duration_minutes }} мин
-                    {% if not t.runnable %} · скоро{% endif %}
+                    {% if not t.runnable %} · скоро{% elif t.viz == 'radar' %} · профиль шкал{% endif %}
                 </p>
+                {% if t.source_urls %}
+                <p class="diag-card__source text-body-sm text-muted">
+                    <a href="{{ t.source_urls[0] }}" target="_blank" rel="noopener noreferrer">Методика на psytests.org</a>
+                </p>
+                {% endif %}
                 {% if t.runnable %}
                 <a class="btn btn--primary btn--sm" href="/s/{{ public_slug }}/diagnostics/tests/{{ t.code }}/">Пройти</a>
                 {% else %}
