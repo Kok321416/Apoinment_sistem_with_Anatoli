@@ -101,7 +101,7 @@ def serialize_calendar_settings(calendar: Calendar) -> dict:
         "color": calendar.color,
         "break_between_services_minutes": calendar.break_between_services_minutes or 0,
         "max_services_per_day": calendar.max_services_per_day or 0,
-        "book_ahead_hours": calendar.book_ahead_hours or 24,
+        "book_ahead_hours": 24 if calendar.book_ahead_hours is None else int(calendar.book_ahead_hours),
         "reminder_hours_first": calendar.reminder_hours_first or 0,
         "reminder_hours_second": calendar.reminder_hours_second or 0,
         "disabled_weekdays": sorted(disabled),

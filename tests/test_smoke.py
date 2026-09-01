@@ -480,13 +480,36 @@ def test_services_schema_patch_legacy_table():
 
 
 def test_services_page_renders_without_db_catalog_query(monkeypatch):
+    import asyncio
+
     from fastapi.testclient import TestClient
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import StaticPool
 
     from app.auth.session import AuthUser
+    from app.database import Base, get_async_db
     from app.main import app
     from app.routers import pages as pages_router
 
-    client = TestClient(app)
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async def _prepare():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    asyncio.run(_prepare())
+
+    async def override_get_async_db():
+        async with session_factory() as db:
+            yield db
+
+    app.dependency_overrides[get_async_db] = override_get_async_db
+
     user = AuthUser(
         id=1,
         username="u@test.com",
@@ -498,60 +521,81 @@ def test_services_page_renders_without_db_catalog_query(monkeypatch):
     )
     consultant = SimpleNamespace(id=10)
 
-    monkeypatch.setattr(pages_router, "_require_user", lambda request, db: user)
-    monkeypatch.setattr(pages_router, "get_consultant", lambda db, u: consultant)
+    async def _fake_user(_request, _db):
+        return user
 
-    response = client.get("/services/")
-    assert response.status_code == 200
-    assert "services-page" in response.text
+    async def _fake_specialist(_request, _db, _user):
+        return consultant
+
+    monkeypatch.setattr(pages_router, "_require_user_async", _fake_user)
+    monkeypatch.setattr(pages_router, "require_specialist_mode_async", _fake_specialist)
+
+    client = TestClient(app)
+    try:
+        response = client.get("/services/?legacy=1")
+        assert response.status_code == 200
+        assert "services-page" in response.text
+    finally:
+        app.dependency_overrides.clear()
+        asyncio.run(engine.dispose())
 
 
 def test_booking_page_renders_with_empty_calendars(monkeypatch):
-    from fastapi.testclient import TestClient
+    import asyncio
 
+    from fastapi.testclient import TestClient
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import StaticPool
+
+    from app.auth.passwords import hash_password
     from app.auth.session import AuthUser
-    from app.database import Base, get_db
+    from app.database import Base, get_async_db
     from app.main import app
     from app.models import Category, Consultant, User
-    from app.auth.passwords import hash_password
     from app.routers import pages as pages_router
 
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    Base.metadata.create_all(engine)
-    TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-    def override_get_db():
-        db = TestingSession()
-        try:
+    async def _prepare():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        async with session_factory() as db:
+            cat = Category(name_category="T")
+            db.add(cat)
+            await db.flush()
+            user_model = User(
+                username="u@test.com",
+                email="u@test.com",
+                password=hash_password("pass"),
+                is_active=True,
+            )
+            db.add(user_model)
+            await db.flush()
+            consultant = Consultant(
+                first_name="A",
+                last_name="B",
+                email="u@test.com",
+                phone="+7",
+                category_of_specialist_id=cat.id,
+                user_id=user_model.id,
+            )
+            db.add(consultant)
+            await db.commit()
+            return user_model.id, consultant.id
+
+    user_id, consultant_id = asyncio.run(_prepare())
+
+    async def override_get_async_db():
+        async with session_factory() as db:
             yield db
-        finally:
-            db.close()
 
-    db = TestingSession()
-    cat = Category(name_category="T")
-    db.add(cat)
-    db.flush()
-    user_model = User(
-        username="u@test.com",
-        email="u@test.com",
-        password=hash_password("pass"),
-        is_active=True,
-    )
-    db.add(user_model)
-    db.flush()
-    consultant = Consultant(
-        first_name="A",
-        last_name="B",
-        email="u@test.com",
-        phone="+7",
-        category_of_specialist_id=cat.id,
-        user_id=user_model.id,
-    )
-    db.add(consultant)
-    db.commit()
-    consultant_id = consultant.id
-    user_id = user_model.id
-    db.close()
+    app.dependency_overrides[get_async_db] = override_get_async_db
 
     auth_user = AuthUser(
         id=user_id,
@@ -562,14 +606,17 @@ def test_booking_page_renders_with_empty_calendars(monkeypatch):
         is_active=True,
         password_hash="hash",
     )
-    monkeypatch.setattr(pages_router, "_require_user", lambda request, db: auth_user)
-    monkeypatch.setattr(
-        pages_router,
-        "get_consultant",
-        lambda db, u: SimpleNamespace(id=consultant_id),
-    )
 
-    app.dependency_overrides[get_db] = override_get_db
+    async def _fake_user(_request, _db):
+        return auth_user
+
+    async def _fake_specialist(_request, _db, _user):
+        async with session_factory() as db:
+            return (await db.execute(select(Consultant).where(Consultant.id == consultant_id))).scalar_one()
+
+    monkeypatch.setattr("app.auth.session.get_current_user_async", _fake_user)
+    monkeypatch.setattr("app.deps.require_specialist_mode_async", _fake_specialist)
+
     client = TestClient(app)
     try:
         response = client.get("/booking/")
@@ -577,3 +624,4 @@ def test_booking_page_renders_with_empty_calendars(monkeypatch):
         assert "bookingPageContainer" in response.text
     finally:
         app.dependency_overrides.clear()
+        asyncio.run(engine.dispose())

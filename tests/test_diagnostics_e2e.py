@@ -263,3 +263,53 @@ def test_diagnostics_works_when_tables_missing_initially(diagnostics_client):
     loc = _submit_bhs(client, m.group(1))
     result = client.get(loc, follow_redirects=True)
     assert result.status_code == 200, result.text[:400]
+
+
+def test_diagnostics_result_idor_redirects_other_client(diagnostics_client):
+    """Client B must not read client A diagnostic attempt."""
+    client, _cid, client_a_id, engine, session_factory, _prepare = diagnostics_client
+    _login_client(client)
+    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/", follow_redirects=True)
+    assert take.status_code == 200
+    m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
+    assert m
+    loc = _submit_bhs(client, m.group(1))
+    attempt_id = int(re.search(r"/results/(\d+)/", loc).group(1))
+
+    import asyncio
+    from datetime import datetime
+
+    from sqlalchemy import select
+
+    from app.auth.passwords import hash_password
+    from app.models import User
+
+    async def _add_client_b():
+        async with session_factory() as db:
+            user_b = User(
+                username="+79997654321",
+                email="",
+                password=hash_password("clientpass2"),
+                is_active=True,
+                date_joined=datetime.utcnow(),
+            )
+            db.add(user_b)
+            await db.commit()
+            return user_b.id
+
+    client_b_id = asyncio.run(_add_client_b())
+    assert client_b_id != client_a_id
+
+    client_b = TestClient(client.app)
+    login_page = client_b.get("/login/", follow_redirects=True)
+    csrf_m = re.search(r'name="csrf_token"\s+value="([^"]+)"', login_page.text)
+    assert csrf_m
+    client_b.post(
+        "/login/",
+        data={"login": "+79997654321", "password": "clientpass2", "csrf_token": csrf_m.group(1)},
+        follow_redirects=False,
+    )
+
+    denied = client_b.get(f"/s/spec/diagnostics/results/{attempt_id}/", follow_redirects=False)
+    assert denied.status_code == 302
+    assert "/s/spec/diagnostics/" in (denied.headers.get("location") or "")

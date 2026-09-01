@@ -22,7 +22,7 @@
     {% if not psychologists %}
     <div class="card card--static">
         <p class="text-body">Пока нет сохранённых психологов. Откройте профиль специалиста по ссылке или запишитесь на консультацию — он появится здесь.</p>
-        <a class="btn btn--primary mt-lg" href="/book/">Записаться</a>
+        <a class="btn btn--primary mt-lg" href="/tg/?mode=client">Записаться</a>
     </div>
     {% else %}
     <form method="POST" action="/diagnostics/select/" class="diag-select card card--static">

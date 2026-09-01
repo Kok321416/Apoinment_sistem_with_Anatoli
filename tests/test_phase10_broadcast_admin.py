@@ -155,35 +155,42 @@ def test_create_job_and_process_with_mock_send():
 
 
 def test_platform_admin_gate(monkeypatch):
+    import asyncio
+
     from fastapi import HTTPException
     from fastapi.testclient import TestClient
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import StaticPool
 
     from app.auth.session import AuthUser
     from app.config import get_settings
+    from app.database import Base, get_async_db
     from app.main import app
 
     settings = get_settings()
     monkeypatch.setattr(settings, "platform_admin_enabled", True)
 
-    engine = create_engine(
-        "sqlite:///:memory:",
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-    def _override():
-        s = Session()
-        try:
-            yield s
-        finally:
-            s.close()
+    async def _prepare():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
-    app.dependency_overrides[get_db] = _override
+    asyncio.run(_prepare())
+
+    async def override_get_async_db():
+        async with session_factory() as db:
+            yield db
+
+    app.dependency_overrides[get_async_db] = override_get_async_db
     client = TestClient(app)
     try:
-        with patch("app.routers.platform_admin.require_platform_admin") as mock_req:
+        with patch("app.routers.platform_admin.require_platform_admin_async") as mock_req:
             mock_req.side_effect = HTTPException(status_code=403, detail="Forbidden")
             r403 = client.get("/platform-admin/")
             assert r403.status_code == 403
@@ -198,7 +205,7 @@ def test_platform_admin_gate(monkeypatch):
             password_hash="x",
             is_staff=True,
         )
-        with patch("app.routers.platform_admin.require_platform_admin", return_value=staff_auth):
+        with patch("app.routers.platform_admin.require_platform_admin_async", return_value=staff_auth):
             r_ok = client.get("/platform-admin/")
             assert r_ok.status_code == 200
             assert "Admin" in r_ok.text
@@ -207,26 +214,24 @@ def test_platform_admin_gate(monkeypatch):
             assert "Telegram" in r_tg.text
 
         monkeypatch.setattr(settings, "platform_admin_enabled", False)
-        # When flag off, require_platform_admin raises 404 - call real gate via unpatch
-        from app.deps import require_platform_admin
-        from starlette.requests import Request
-
-        scope = {"type": "http", "method": "GET", "path": "/", "headers": [], "query_string": b""}
-        # simpler unit check:
+        from app.deps import require_platform_admin_async
         from unittest.mock import MagicMock
 
         req = MagicMock()
-        db = Session()
+
+        async def _expect_404():
+            async with session_factory() as db:
+                await require_platform_admin_async(req, db)
+
         try:
-            require_platform_admin(req, db)
+            asyncio.run(_expect_404())
             assert False, "expected 404"
         except HTTPException as e:
             assert e.status_code == 404
-        finally:
-            db.close()
     finally:
         app.dependency_overrides.clear()
         monkeypatch.setattr(settings, "platform_admin_enabled", False)
+        asyncio.run(engine.dispose())
 
 
 def test_dry_run_count_matches_resolve():

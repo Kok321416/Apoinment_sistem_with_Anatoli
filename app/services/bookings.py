@@ -295,7 +295,8 @@ def create_public_booking(
     from app.config import get_settings
 
     tz = ZoneInfo(get_settings().timezone)
-    book_ahead_hours = calendar.book_ahead_hours or 24
+    ahead = calendar.book_ahead_hours
+    book_ahead_hours = 24 if ahead is None else int(ahead)
     min_start = datetime.now(tz) + timedelta(hours=book_ahead_hours)
     start_aware = datetime.combine(booking_date, start_time_obj, tzinfo=tz)
     if start_aware < min_start:
@@ -460,7 +461,8 @@ async def create_public_booking_async(
     from app.config import get_settings
 
     tz = ZoneInfo(get_settings().timezone)
-    book_ahead_hours = calendar.book_ahead_hours or 24
+    ahead = calendar.book_ahead_hours
+    book_ahead_hours = 24 if ahead is None else int(ahead)
     min_start = datetime.now(tz) + timedelta(hours=book_ahead_hours)
     start_aware = datetime.combine(booking_date, start_time_obj, tzinfo=tz)
     if start_aware < min_start:

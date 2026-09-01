@@ -45,21 +45,25 @@ def test_notify_bridge_and_reminders_async_import():
 
 
 def test_alembic_phase_e_revision_chain():
-    import importlib.util
+    import re
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1] / "alembic" / "versions"
 
-    def _load(name: str):
-        path = root / name
-        spec = importlib.util.spec_from_file_location(name, path)
-        mod = importlib.util.module_from_spec(spec)
-        assert spec and spec.loader
-        spec.loader.exec_module(mod)
-        return mod
+    def _read_meta(name: str) -> tuple[str, str | None]:
+        text = (root / name).read_text(encoding="utf-8")
+        rev_m = re.search(r'^revision\s*=\s*["\']([^"\']+)', text, re.M)
+        down_m = re.search(r'^down_revision\s*=\s*(?:None|["\']([^"\']+))', text, re.M)
+        assert rev_m, f"revision missing in {name}"
+        down = down_m.group(1) if down_m and down_m.lastindex else None
+        return rev_m.group(1), down
 
-    m1 = _load("001_async_phase_ab_indexes.py")
-    m2 = _load("002_async_phase_e_indexes.py")
-    assert m1.revision == "001_async_phase_ab"
-    assert m2.down_revision == m1.revision
-    assert m2.revision == "002_async_phase_e"
+    rev1, down1 = _read_meta("001_async_phase_ab_indexes.py")
+    rev2, down2 = _read_meta("002_async_phase_e_indexes.py")
+    rev3, down3 = _read_meta("003_booking_source.py")
+    assert down1 is None
+    assert rev1 == "001_async_phase_ab"
+    assert down2 == rev1
+    assert rev2 == "002_async_phase_e"
+    assert down3 == rev2
+    assert rev3 == "003_booking_source"

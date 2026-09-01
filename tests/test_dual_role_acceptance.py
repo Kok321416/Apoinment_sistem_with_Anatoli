@@ -134,8 +134,9 @@ def test_active_mode_session_helpers():
     assert request.session.get("active_mode") == "specialist"
 
 
-def test_default_active_mode_is_client_even_with_consultant():
-    from app.services.active_mode import get_active_mode
+def test_default_active_mode_is_specialist_when_has_consultant():
+    """Consultant-only product: default mode is specialist when profile exists."""
+    from app.services.active_mode import MODE_SPECIALIST, get_active_mode
     from starlette.requests import Request
 
     db = _session()
@@ -172,5 +173,5 @@ def test_default_active_mode_is_client_even_with_consultant():
         "session": {"has_consultant": True},
     }
     request = Request(scope)
-    assert get_active_mode(request, db, user.id) == "client"
+    assert get_active_mode(request, db, user.id) == MODE_SPECIALIST
     db.close()

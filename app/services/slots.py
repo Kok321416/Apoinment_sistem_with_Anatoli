@@ -36,7 +36,8 @@ def _compute_available_slots(
 
     tz = ZoneInfo(get_settings().timezone)
     now = datetime.now(tz)
-    book_ahead_hours = calendar.book_ahead_hours or 24
+    ahead = calendar.book_ahead_hours
+    book_ahead_hours = 24 if ahead is None else int(ahead)
     min_start = now + timedelta(hours=book_ahead_hours)
     step_minutes = 15
 

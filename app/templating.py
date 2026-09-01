@@ -1,7 +1,8 @@
 from datetime import date, datetime, time
 from urllib.parse import quote
 
-from fastapi.templating import Jinja2Templates
+from starlette.requests import Request
+from starlette.templating import Jinja2Templates
 
 from app.branding import auth_provider_label, booking_status_label
 from app.config import get_settings
@@ -150,7 +151,32 @@ def url_for(name: str, *args, **kwargs) -> str:
     return URL_MAP.get(name, "/")
 
 
-templates = Jinja2Templates(directory=str(settings.templates_dir))
+class CompatJinja2Templates(Jinja2Templates):
+    """Accept legacy ``TemplateResponse(name, context)`` where *context* includes ``request``."""
+
+    def TemplateResponse(self, *args, **kwargs):  # noqa: N802 — Starlette API name
+        if args and not isinstance(args[0], Request):
+            name = args[0]
+            context = args[1] if len(args) > 1 else kwargs.pop("context", {})
+            if not isinstance(context, dict):
+                raise TypeError("Template context must be a dict")
+            request = context.get("request")
+            if request is None:
+                raise ValueError("Template context must include 'request'")
+            status_code = args[2] if len(args) > 2 else kwargs.pop("status_code", 200)
+            return super().TemplateResponse(
+                request,
+                name,
+                context,
+                status_code=status_code,
+                headers=kwargs.pop("headers", None),
+                media_type=kwargs.pop("media_type", None),
+                background=kwargs.pop("background", None),
+            )
+        return super().TemplateResponse(*args, **kwargs)
+
+
+templates = CompatJinja2Templates(directory=str(settings.templates_dir))
 templates.env.filters["cut"] = cut_filter
 templates.env.filters["blank_field"] = blank_field
 templates.env.filters["media_url"] = media_url

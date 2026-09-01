@@ -50,3 +50,39 @@ async def test_ensure_diagnostics_tables_async_path_never_inspects_async_bind():
         assert "diagnostic_attempts" in names
 
     await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_ensure_diagnostics_tables_concurrent_calls_are_idempotent():
+    """Parallel ensure_diagnostics_tables must not race on CREATE or exhaust the pool."""
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        for table in ("diagnostic_attempts", "diagnostic_invitations", "client_specialist_links"):
+            try:
+                await conn.execute(__import__("sqlalchemy").text(f"DROP TABLE IF EXISTS {table}"))
+            except Exception:
+                pass
+
+    async def _ensure_once():
+        async with session_factory() as db:
+            return await ensure_diagnostics_tables(db)
+
+    results = await asyncio.gather(*[_ensure_once() for _ in range(8)])
+    assert all(results)
+
+    async with session_factory() as db:
+        from sqlalchemy import text
+
+        row = await db.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
+        names = {r[0] for r in row.fetchall()}
+        assert "diagnostic_attempts" in names
+        assert "diagnostic_invitations" in names
+        assert "client_specialist_links" in names
+
+    await engine.dispose()

@@ -292,6 +292,22 @@
         if (become) become.hidden = hasC;
     }
 
+    var AUTH_DONE_KEY = "tg_webapp_auth_done";
+    var AUTH_RETRY_KEY = "tg_webapp_auth_retry";
+
+    function markAuthConfirmed() {
+        try {
+            sessionStorage.setItem(AUTH_DONE_KEY, "1");
+            sessionStorage.removeItem(AUTH_RETRY_KEY);
+        } catch (e) {}
+    }
+
+    function clearAuthDone() {
+        try {
+            sessionStorage.removeItem(AUTH_DONE_KEY);
+        } catch (e) {}
+    }
+
     function hydrateTelegramHub(callback) {
         var url = "/api/telegram/hub-state" + (window.location.search || "");
         fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } })
@@ -300,6 +316,7 @@
             })
             .then(function (state) {
                 if (state && state.authenticated) {
+                    markAuthConfirmed();
                     showAuthedHub(state);
                     if (callback) callback(true);
                 } else if (callback) {
@@ -311,14 +328,22 @@
             });
     }
 
-    function tryWebappAuth(tg) {
+    function tryWebappAuth(tg, onComplete) {
         var authed = document.getElementById("tg-hub-authed");
         var guest = document.getElementById("tg-hub-guest");
-        if (!authed && !guest) return;
-        if (authed && !authed.hidden) return;
+        if (!authed && !guest) {
+            if (onComplete) onComplete(false);
+            return;
+        }
+        if (authed && !authed.hidden) {
+            if (onComplete) onComplete(true);
+            return;
+        }
         var initData = tg.initData || "";
-        if (!initData) return;
-        if (sessionStorage.getItem("tg_webapp_auth_done") === "1") return;
+        if (!initData) {
+            if (onComplete) onComplete(false);
+            return;
+        }
 
         var hint = document.getElementById("tg-auth-hint");
         if (hint) hint.hidden = false;
@@ -326,9 +351,6 @@
         var body = { init_data: initData };
         var mode = qsMode();
         if (mode) body.mode = mode;
-
-        // Mark early to avoid auth storms if reload races.
-        sessionStorage.setItem("tg_webapp_auth_done", "1");
 
         var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
         var timer = ctrl ? window.setTimeout(function () { ctrl.abort(); }, 25000) : null;
@@ -348,19 +370,26 @@
                 if (timer) window.clearTimeout(timer);
                 if (res.ok && res.data && res.data.success) {
                     if (res.data.requires_2fa && res.data.redirect) {
-                        sessionStorage.removeItem("tg_webapp_auth_done");
+                        clearAuthDone();
                         window.location.replace(res.data.redirect);
                         return;
                     }
-                    hydrateTelegramHub(function () {});
-                } else if (hint) {
-                    hint.hidden = false;
-                    hint.textContent = "Не удалось войти автоматически. Используйте кнопки ниже.";
+                    hydrateTelegramHub(function (confirmed) {
+                        if (!confirmed) clearAuthDone();
+                        if (onComplete) onComplete(!!confirmed);
+                    });
+                } else {
+                    clearAuthDone();
+                    if (hint) {
+                        hint.hidden = false;
+                        hint.textContent = "Не удалось войти автоматически. Используйте кнопки ниже.";
+                    }
+                    if (onComplete) onComplete(false);
                 }
             })
             .catch(function (err) {
                 if (timer) window.clearTimeout(timer);
-                sessionStorage.removeItem("tg_webapp_auth_done");
+                clearAuthDone();
                 if (window.__AYC_TG_REPORT__) {
                     window.__AYC_TG_REPORT__("auth_fail", String(err && err.name ? err.name : err || "fetch"));
                 }
@@ -368,7 +397,43 @@
                     hint.hidden = false;
                     hint.textContent = "Не удалось войти автоматически. Используйте кнопки ниже.";
                 }
+                if (onComplete) onComplete(false);
             });
+    }
+
+    function ensureHubAuth(tg) {
+        hydrateTelegramHub(function (authed) {
+            if (authed) return;
+
+            var authDone = false;
+            try {
+                authDone = sessionStorage.getItem(AUTH_DONE_KEY) === "1";
+            } catch (e) {}
+
+            if (authDone) {
+                var retried = false;
+                try {
+                    retried = sessionStorage.getItem(AUTH_RETRY_KEY) === "1";
+                } catch (e2) {}
+                if (!retried) {
+                    clearAuthDone();
+                    try {
+                        sessionStorage.setItem(AUTH_RETRY_KEY, "1");
+                    } catch (e3) {}
+                    tryWebappAuth(tg, function (ok) {
+                        if (!ok) {
+                            try {
+                                sessionStorage.removeItem(AUTH_RETRY_KEY);
+                            } catch (e4) {}
+                        }
+                    });
+                    return;
+                }
+                return;
+            }
+
+            tryWebappAuth(tg);
+        });
     }
 
     function bootShellOnly() {
@@ -465,9 +530,7 @@
             if (consumeStartParamAuth(tg)) {
                 return;
             }
-            hydrateTelegramHub(function (authed) {
-                if (!authed) tryWebappAuth(tg);
-            });
+            ensureHubAuth(tg);
             // Site/native links point to t.me — inside Mini App stay on the hub.
             try {
                 document.querySelectorAll("a[data-tg-internal]").forEach(function (a) {

@@ -4,7 +4,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "003_booking_source"
-down_revision = "002_async_phase_e_indexes"
+down_revision = "002_async_phase_e"
 branch_labels = None
 depends_on = None
 

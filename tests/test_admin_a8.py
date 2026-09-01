@@ -98,9 +98,5 @@ def test_admin_home_url_for_developer():
 def test_kpi_stream_route_registered():
     from app.main import app
 
-    paths = []
-    for route in app.routes:
-        path = getattr(route, "path", None)
-        if path:
-            paths.append(path)
+    paths = app.openapi().get("paths", {})
     assert "/platform-admin/api/kpi/stream/" in paths

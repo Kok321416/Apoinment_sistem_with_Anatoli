@@ -1,16 +1,22 @@
-"""Phase 8 Mini App hub: initData auth + /tg/?mode=."""
+"""Phase 8 Mini App hub: initData auth + hub-state session flow."""
+from __future__ import annotations
+
+import asyncio
 import hashlib
 import hmac
 import json
 import time
 from urllib.parse import urlencode
 
-from sqlalchemy import create_engine
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import app.models  # noqa: F401
-from app.database import Base, get_db
+from app.database import Base, get_async_db
 from app.models import Category, Consultant, SocialAccount, User
 from app.services.telegram_webapp_auth import find_or_create_user_from_webapp, validate_webapp_init_data
 
@@ -40,6 +46,17 @@ def test_validate_webapp_init_data_ok_and_bad():
     assert validate_webapp_init_data(bad, bot_token=token) is None
 
 
+def test_validate_webapp_init_data_expired():
+    token = "123456:ABC-DEF"
+    user = {"id": 1, "first_name": "Old"}
+    fields = {
+        "auth_date": str(int(time.time()) - 86400 * 2),
+        "user": json.dumps(user, separators=(",", ":")),
+    }
+    init_data = _sign_init_data(token, fields)
+    assert validate_webapp_init_data(init_data, bot_token=token) is None
+
+
 def test_find_or_create_user_from_webapp_creates_client_only():
     engine = create_engine(
         "sqlite:///:memory:",
@@ -67,10 +84,9 @@ def test_find_or_create_user_from_webapp_creates_client_only():
     db.close()
 
 
-def test_webapp_auth_api_sets_session_and_mode(monkeypatch):
+@pytest.fixture()
+def mini_app_client(monkeypatch):
     from types import SimpleNamespace
-
-    from fastapi.testclient import TestClient
 
     from app.main import app
 
@@ -80,69 +96,161 @@ def test_webapp_auth_api_sets_session_and_mode(monkeypatch):
         lambda: SimpleNamespace(telegram_bot_token=token),
     )
 
-    engine = create_engine(
-        "sqlite:///:memory:",
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-    def _override():
-        s = Session()
-        try:
-            yield s
-        finally:
-            s.close()
+    async def _prepare():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
-    app.dependency_overrides[get_db] = _override
+    asyncio.run(_prepare())
+
+    async def override_get_async_db():
+        async with session_factory() as db:
+            yield db
+
+    app.dependency_overrides[get_async_db] = override_get_async_db
+
+    import app.database as database_module
+
+    database_module._async_engine = engine
+    database_module._AsyncSessionLocal = session_factory
+
     client = TestClient(app)
     try:
-        fields = {
-            "auth_date": str(int(time.time())),
-            "user": json.dumps(
-                {"id": 424242, "first_name": "Cara", "username": "cara"},
-                separators=(",", ":"),
-            ),
-        }
-        init_data = _sign_init_data(token, fields)
-        r = client.post(
-            "/api/telegram/webapp-auth",
-            json={"init_data": init_data, "mode": "client"},
-        )
-        assert r.status_code == 200, r.text
-        body = r.json()
-        assert body.get("success") is True
-        assert body.get("has_consultant") is False
-
-        db = Session()
-        cat = Category(name_category="Общая")
-        db.add(cat)
-        db.flush()
-        user = db.query(User).filter(User.username == "telegram_424242").one()
-        db.add(
-            Consultant(
-                first_name="C",
-                last_name="A",
-                email=user.email,
-                phone="+7000",
-                category_of_specialist_id=cat.id,
-                user_id=user.id,
-            )
-        )
-        db.commit()
-        db.close()
-
-        r2 = client.post(
-            "/api/telegram/webapp-auth",
-            json={"init_data": init_data, "mode": "specialist"},
-        )
-        assert r2.status_code == 200
-        assert r2.json().get("has_consultant") is True
-
-        hub = client.get("/tg/")
-        assert hub.status_code == 200
-        assert "Режим: специалист" in hub.text
-        assert "Кабинет специалиста" in hub.text
+        yield client, session_factory, token
     finally:
         app.dependency_overrides.clear()
+        database_module._async_engine = None
+        database_module._AsyncSessionLocal = None
+        asyncio.run(engine.dispose())
+
+
+def _signed_init_data(token: str, tg_id: int = 424242, username: str = "cara") -> str:
+    fields = {
+        "auth_date": str(int(time.time())),
+        "user": json.dumps(
+            {"id": tg_id, "first_name": "Cara", "username": username},
+            separators=(",", ":"),
+        ),
+    }
+    return _sign_init_data(token, fields)
+
+
+def test_webapp_auth_api_sets_session_and_hub_state(mini_app_client):
+    client, session_factory, token = mini_app_client
+    init_data = _signed_init_data(token)
+
+    hub0 = client.get("/api/telegram/hub-state")
+    assert hub0.status_code == 200
+    assert hub0.json().get("authenticated") is False
+
+    r = client.post("/api/telegram/webapp-auth", json={"init_data": init_data, "mode": "client"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("success") is True
+    assert body.get("has_consultant") is False
+
+    hub1 = client.get("/api/telegram/hub-state")
+    assert hub1.status_code == 200
+    state = hub1.json()
+    assert state.get("authenticated") is True
+    assert state.get("has_consultant") is False
+    assert state.get("mode") == "client"
+
+    async def _add_consultant():
+        async with session_factory() as db:
+            cat = Category(name_category="Общая")
+            db.add(cat)
+            await db.flush()
+            result = await db.execute(select(User).where(User.username == "telegram_424242"))
+            user = result.scalar_one()
+            db.add(
+                Consultant(
+                    first_name="C",
+                    last_name="A",
+                    email=user.email,
+                    phone="+7000",
+                    category_of_specialist_id=cat.id,
+                    user_id=user.id,
+                )
+            )
+            await db.commit()
+
+    asyncio.run(_add_consultant())
+
+    r2 = client.post(
+        "/api/telegram/webapp-auth",
+        json={"init_data": init_data, "mode": "specialist"},
+    )
+    assert r2.status_code == 200, r2.text
+    assert r2.json().get("has_consultant") is True
+
+    hub2 = client.get("/api/telegram/hub-state?mode=specialist")
+    assert hub2.status_code == 200
+    state2 = hub2.json()
+    assert state2.get("authenticated") is True
+    assert state2.get("has_consultant") is True
+    assert state2.get("mode") == "specialist"
+
+
+def test_webapp_auth_rejects_invalid_init_data(mini_app_client):
+    client, _session_factory, token = mini_app_client
+    init_data = _signed_init_data(token)[:-4] + "dead"
+    r = client.post("/api/telegram/webapp-auth", json={"init_data": init_data})
+    assert r.status_code == 401
+    assert r.json().get("success") is False
+
+    hub = client.get("/api/telegram/hub-state")
+    assert hub.json().get("authenticated") is False
+
+
+def test_webapp_auth_rejects_missing_init_data(mini_app_client):
+    client, _session_factory, _token = mini_app_client
+    r = client.post("/api/telegram/webapp-auth", json={"init_data": ""})
+    assert r.status_code == 401
+    assert r.json().get("success") is False
+
+
+def test_webapp_auth_creates_new_telegram_user(mini_app_client):
+    client, session_factory, token = mini_app_client
+    init_data = _signed_init_data(token, tg_id=900001, username="newtg")
+    r = client.post("/api/telegram/webapp-auth", json={"init_data": init_data})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("success") is True
+    assert body.get("has_consultant") is False
+
+    hub = client.get("/api/telegram/hub-state")
+    assert hub.json().get("authenticated") is True
+    assert hub.json().get("mode") == "client"
+
+    async def _check_user():
+        from sqlalchemy import select
+
+        async with session_factory() as db:
+            user = (await db.execute(select(User).where(User.username == "telegram_900001"))).scalar_one_or_none()
+            assert user is not None
+            consultant = (
+                await db.execute(select(Consultant).where(Consultant.user_id == user.id))
+            ).scalar_one_or_none()
+            assert consultant is None
+
+    asyncio.run(_check_user())
+
+
+def test_webapp_auth_without_session_cookie_is_unauthenticated(mini_app_client):
+    """Simulates lost cookie: new TestClient has no session after auth on another client."""
+    client_a, _session_factory, token = mini_app_client
+    init_data = _signed_init_data(token, tg_id=900002, username="lostcookie")
+    assert client_a.post("/api/telegram/webapp-auth", json={"init_data": init_data}).status_code == 200
+
+    from app.main import app
+
+    client_b = TestClient(app)
+    hub = client_b.get("/api/telegram/hub-state")
+    assert hub.json().get("authenticated") is False
