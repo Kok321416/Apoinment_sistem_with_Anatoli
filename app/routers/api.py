@@ -188,7 +188,14 @@ async def confirm_booking_telegram(request: Request, db: AsyncSession = Depends(
     if not link_token or telegram_id is None:
         return JSONResponse({"success": False, "error": "link_token and telegram_id required"}, status_code=400)
     booking = (
-        await db.execute(select(Booking).where(Booking.link_token == link_token))
+        await db.execute(
+            select(Booking)
+            .options(
+                selectinload(Booking.service),
+                selectinload(Booking.calendar).selectinload(Calendar.consultant),
+            )
+            .where(Booking.link_token == link_token)
+        )
     ).scalar_one_or_none()
     if not booking:
         return JSONResponse({"success": False, "error": "Invalid or expired link"}, status_code=404)
@@ -197,6 +204,7 @@ async def confirm_booking_telegram(request: Request, db: AsyncSession = Depends(
         await db.commit()
         return JSONResponse({"success": False, "error": "Ссылка истекла"}, status_code=400)
     tid = int(telegram_id)
+    had_telegram_id = booking.telegram_id is not None
     if booking.telegram_id and int(booking.telegram_id) == tid:
         if booking.client_user_id is None:
             booking.client_user_id = await resolve_client_user_id_for_telegram_async(db, tid)
@@ -208,11 +216,21 @@ async def confirm_booking_telegram(request: Request, db: AsyncSession = Depends(
         booking.client_user_id = await resolve_client_user_id_for_telegram_async(db, tid)
     booking.link_token = None
     await db.commit()
-    await db.refresh(booking)
-    try:
-        send_telegram_to_client(booking.telegram_id, format_client_booked_message(booking))
-    except Exception:
-        logger.exception("confirm-telegram client notify failed")
+    if not had_telegram_id:
+        booking = (
+            await db.execute(
+                select(Booking)
+                .options(
+                    selectinload(Booking.service),
+                    selectinload(Booking.calendar).selectinload(Calendar.consultant),
+                )
+                .where(Booking.id == booking.id)
+            )
+        ).scalar_one()
+        try:
+            send_telegram_to_client(booking.telegram_id, format_client_booked_message(booking), booking_id=booking.id)
+        except Exception:
+            logger.exception("confirm-telegram client notify failed")
     return {"success": True, "message": "Телеграм привязан к записи"}
 
 
@@ -531,7 +549,14 @@ async def confirm_booking_telegram_browser_api(request: Request, db: AsyncSessio
     if not _verify_telegram_widget_hash(payload, received_hash):
         return JSONResponse({"success": False, "error": "Invalid signature"}, status_code=400)
     booking = (
-        await db.execute(select(Booking).where(Booking.link_token == link_token))
+        await db.execute(
+            select(Booking)
+            .options(
+                selectinload(Booking.service),
+                selectinload(Booking.calendar).selectinload(Calendar.consultant),
+            )
+            .where(Booking.link_token == link_token)
+        )
     ).scalar_one_or_none()
     if not booking:
         return JSONResponse({"success": False, "error": "Invalid or expired link"}, status_code=404)
@@ -540,12 +565,13 @@ async def confirm_booking_telegram_browser_api(request: Request, db: AsyncSessio
         await db.commit()
         return JSONResponse({"success": False, "error": "Ссылка истекла"}, status_code=400)
     tid = int(telegram_id)
+    had_telegram_id = booking.telegram_id is not None
     if booking.telegram_id and int(booking.telegram_id) == tid:
         if booking.client_user_id is None:
             booking.client_user_id = await resolve_client_user_id_for_telegram_async(db, tid)
         booking.link_token = None
         await db.commit()
-        return {"success": True, "message": "Телеграм уже привязан, сообщение отправлено"}
+        return {"success": True, "message": "Телеграм уже привязан к записи"}
     booking.telegram_id = tid
     if booking.client_user_id is None:
         booking.client_user_id = await resolve_client_user_id_for_telegram_async(db, tid)
@@ -555,8 +581,19 @@ async def confirm_booking_telegram_browser_api(request: Request, db: AsyncSessio
         username = "@" + username
     booking.client_telegram = username
     await db.commit()
-    try:
-        send_telegram_to_client(booking.telegram_id, format_client_booked_message(booking))
-    except Exception:
-        logger.exception("confirm-telegram-browser notify failed")
+    if not had_telegram_id:
+        booking = (
+            await db.execute(
+                select(Booking)
+                .options(
+                    selectinload(Booking.service),
+                    selectinload(Booking.calendar).selectinload(Calendar.consultant),
+                )
+                .where(Booking.id == booking.id)
+            )
+        ).scalar_one()
+        try:
+            send_telegram_to_client(booking.telegram_id, format_client_booked_message(booking), booking_id=booking.id)
+        except Exception:
+            logger.exception("confirm-telegram-browser notify failed")
     return {"success": True, "message": "Телеграм привязан, сообщение отправлено"}

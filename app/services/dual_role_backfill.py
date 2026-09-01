@@ -102,6 +102,45 @@ def backfill_booking_client_user_ids(
     }
 
 
+def resolve_telegram_id_for_user(db: Session, user_id: int | None) -> int | None:
+    """Return Telegram user id from SocialAccount for the given User.id, else None."""
+    if not user_id:
+        return None
+    sa = (
+        db.query(SocialAccount)
+        .filter(SocialAccount.provider == "telegram", SocialAccount.user_id == user_id)
+        .first()
+    )
+    if not sa or not sa.uid:
+        return None
+    try:
+        return int(sa.uid)
+    except (TypeError, ValueError):
+        return None
+
+
+async def resolve_telegram_id_for_user_async(db, user_id: int | None) -> int | None:
+    """Return Telegram user id from SocialAccount for the given User.id, else None."""
+    if not user_id:
+        return None
+    from sqlalchemy import select
+
+    sa = (
+        await db.execute(
+            select(SocialAccount).where(
+                SocialAccount.provider == "telegram",
+                SocialAccount.user_id == user_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not sa or not sa.uid:
+        return None
+    try:
+        return int(sa.uid)
+    except (TypeError, ValueError):
+        return None
+
+
 def resolve_client_user_id_for_telegram(db: Session, telegram_id: Any) -> int | None:
     """Return User.id if telegram_id maps to exactly one SocialAccount user, else None."""
     key = _norm_uid(telegram_id)

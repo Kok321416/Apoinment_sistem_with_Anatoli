@@ -54,26 +54,81 @@ def _specialist_chat_for_booking(booking: Booking) -> tuple[str | None, str | No
     return chat_id, _integration_bot_token(integration)
 
 
-def _send_telegram(chat_id, text: str, bot_token: str | None = None) -> bool:
+def _log_telegram_notification(
+    *,
+    booking_id: int | None,
+    recipient_type: str,
+    status: str,
+    error_type: str | None = None,
+) -> None:
+    msg = (
+        f"telegram_notification booking_id={booking_id if booking_id is not None else '-'}"
+        f" recipient_type={recipient_type} status={status}"
+    )
+    if error_type:
+        msg += f" error_type={error_type}"
+    if status == "failed":
+        logger.warning(msg)
+    else:
+        logger.info(msg)
+
+
+def _send_telegram(
+    chat_id,
+    text: str,
+    bot_token: str | None = None,
+    *,
+    reply_markup: dict | None = None,
+    booking_id: int | None = None,
+    recipient_type: str | None = None,
+) -> bool:
     token = (bot_token or "").strip() or settings.telegram_bot_token
     if not token:
         logger.warning("TELEGRAM_BOT_TOKEN not set")
+        if recipient_type:
+            _log_telegram_notification(
+                booking_id=booking_id,
+                recipient_type=recipient_type,
+                status="failed",
+                error_type="MissingToken",
+            )
         return False
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     data = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    if reply_markup:
+        data["reply_markup"] = reply_markup
     try:
         import httpx
 
         with httpx.Client(timeout=10.0) as client:
             r = client.post(url, json=data)
             r.raise_for_status()
+        if recipient_type:
+            _log_telegram_notification(
+                booking_id=booking_id,
+                recipient_type=recipient_type,
+                status="success",
+            )
         return True
     except Exception as e:
         logger.exception("Telegram send error: %s", e)
+        if recipient_type:
+            _log_telegram_notification(
+                booking_id=booking_id,
+                recipient_type=recipient_type,
+                status="failed",
+                error_type=type(e).__name__,
+            )
         return False
 
 
-async def send_telegram_await(chat_id, text: str, bot_token: str | None = None) -> bool:
+async def send_telegram_await(
+    chat_id,
+    text: str,
+    bot_token: str | None = None,
+    *,
+    reply_markup: dict | None = None,
+) -> bool:
     """Non-blocking Telegram send for async FastAPI handlers."""
     token = (bot_token or "").strip() or settings.telegram_bot_token
     if not token:
@@ -81,6 +136,8 @@ async def send_telegram_await(chat_id, text: str, bot_token: str | None = None) 
         return False
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     data = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    if reply_markup:
+        data["reply_markup"] = reply_markup
     try:
         import httpx
 
@@ -93,9 +150,25 @@ async def send_telegram_await(chat_id, text: str, bot_token: str | None = None) 
         return False
 
 
-def send_telegram_async(chat_id, text: str, bot_token: str | None = None) -> None:
+def send_telegram_async(
+    chat_id,
+    text: str,
+    bot_token: str | None = None,
+    *,
+    reply_markup: dict | None = None,
+    booking_id: int | None = None,
+    recipient_type: str | None = None,
+) -> None:
     """Fire-and-forget send so FastAPI event loop is not blocked."""
-    _tg_executor.submit(_send_telegram, chat_id, text, bot_token)
+    _tg_executor.submit(
+        _send_telegram,
+        chat_id,
+        text,
+        bot_token,
+        reply_markup=reply_markup,
+        booking_id=booking_id,
+        recipient_type=recipient_type,
+    )
 
 
 def _integration_bot_token(integration: Integration | None) -> str | None:
@@ -115,8 +188,13 @@ def _integration_notifications_on(integration: Integration | None) -> bool:
     return bool((integration.telegram_chat_id or "").strip())
 
 
-def send_telegram_to_client(telegram_id: int, text: str) -> bool:
-    return _send_telegram(telegram_id, text)
+def send_telegram_to_client(telegram_id: int, text: str, *, booking_id: int | None = None) -> bool:
+    return _send_telegram(
+        telegram_id,
+        text,
+        booking_id=booking_id,
+        recipient_type="client",
+    )
 
 
 def _notify_client_fallback(
@@ -225,7 +303,13 @@ def notify_specialist_new_booking(booking: Booking) -> bool:
         if not chat_id:
             return False
         text = format_new_booking_message_for_specialist(booking)
-        return _send_telegram(chat_id, text, token)
+        return _send_telegram(
+            chat_id,
+            text,
+            token,
+            booking_id=booking.id,
+            recipient_type="specialist",
+        )
     except Exception as e:
         logger.exception("New booking notification error: %s", e)
         return False
@@ -244,8 +328,18 @@ def on_booking_created(db: Session, booking: Booking) -> None:
 
                 record_notify_dedup_hit(db)
             else:
-                send_telegram_async(booking.telegram_id, format_client_booked_message(booking))
+                send_telegram_async(
+                    booking.telegram_id,
+                    format_client_booked_message(booking),
+                    booking_id=getattr(booking, "id", None),
+                    recipient_type="client",
+                )
         else:
+            _log_telegram_notification(
+                booking_id=getattr(booking, "id", None),
+                recipient_type="client",
+                status="skipped",
+            )
             from app.services.booking_email import notify_client_via_email_if_no_telegram
             from app.services.vk_messages import notify_client_booked_vk
 
