@@ -7,6 +7,7 @@ from datetime import date, time
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -14,6 +15,7 @@ import app.models  # noqa: F401
 from app.database import Base, get_async_db
 from app.main import app
 from app.models import Booking, Calendar, Category, Consultant, Integration, Service
+from app.services import telegram as tg
 
 
 def _async_test_client():
@@ -165,5 +167,89 @@ def test_specialist_booking_confirm_rejects_completed():
         body = r.json()
         assert body["success"] is False
         assert body["error"] == "booking not confirmable"
+    finally:
+        _close_async_test_client(engine)
+
+
+def test_specialist_booking_reschedule_url(monkeypatch):
+    monkeypatch.setattr(tg.settings, "site_url", "https://allyourclients.ru/")
+    assert tg.specialist_booking_reschedule_url(42) == "https://allyourclients.ru/booking/?reschedule=42"
+
+
+def test_specialist_new_booking_keyboard_buttons(monkeypatch):
+    monkeypatch.setattr(tg.settings, "site_url", "https://example.com")
+    kb = tg.specialist_new_booking_inline_keyboard(7)
+    assert kb["inline_keyboard"][0][0] == {
+        "text": "✅ Подтвердить",
+        "callback_data": "spec_book_confirm_7",
+    }
+    assert kb["inline_keyboard"][1][0] == {
+        "text": "📅 Перенести",
+        "url": "https://example.com/booking/?reschedule=7",
+    }
+
+
+def test_specialist_keyboard_after_confirm_removes_confirm_callback(monkeypatch):
+    monkeypatch.setattr(tg.settings, "site_url", "https://example.com")
+    kb = tg.specialist_new_booking_keyboard_after_confirm(9)
+    assert len(kb["inline_keyboard"]) == 1
+    assert "callback_data" not in kb["inline_keyboard"][0][0]
+    assert kb["inline_keyboard"][0][0]["url"] == "https://example.com/booking/?reschedule=9"
+
+
+def test_specialist_booking_confirm_repeat_press_already():
+    engine, sf, client = _async_test_client()
+    try:
+        booking_id, _ = asyncio.run(_seed(sf, specialist_chat="900111", booking_status="confirmed"))
+        with patch("app.routers.api.verify_bot_request", return_value=True):
+            r = client.post(
+                "/api/telegram/specialist-booking-confirm",
+                content=json.dumps({"telegram_chat_id": "900111", "booking_id": booking_id}),
+                headers={"Content-Type": "application/json"},
+            )
+        body = r.json()
+        assert body["success"] is True
+        assert body.get("already") is True
+        assert body["booking_id"] == booking_id
+
+        async def _status_unchanged():
+            async with sf() as db:
+                booking = (await db.execute(select(Booking).where(Booking.id == booking_id))).scalar_one()
+                assert booking.status == "confirmed"
+
+        asyncio.run(_status_unchanged())
+    finally:
+        _close_async_test_client(engine)
+
+
+def test_specialist_booking_confirm_unauthorized_telegram_user():
+    engine, sf, client = _async_test_client()
+    try:
+        booking_id, _ = asyncio.run(_seed(sf, specialist_chat="900111"))
+        with patch("app.routers.api.verify_bot_request", return_value=True):
+            r = client.post(
+                "/api/telegram/specialist-booking-confirm",
+                content=json.dumps({"telegram_chat_id": "999999", "booking_id": booking_id}),
+                headers={"Content-Type": "application/json"},
+            )
+        body = r.json()
+        assert body["success"] is False
+        assert body["error"] == "specialist not connected"
+    finally:
+        _close_async_test_client(engine)
+
+
+def test_specialist_booking_confirm_forbidden_without_bot_auth():
+    engine, sf, client = _async_test_client()
+    try:
+        booking_id, _ = asyncio.run(_seed(sf, specialist_chat="900111"))
+        with patch("app.routers.api.verify_bot_request", return_value=False):
+            r = client.post(
+                "/api/telegram/specialist-booking-confirm",
+                content=json.dumps({"telegram_chat_id": "900111", "booking_id": booking_id}),
+                headers={"Content-Type": "application/json"},
+            )
+        assert r.status_code == 403
+        assert r.json()["error"] == "Forbidden"
     finally:
         _close_async_test_client(engine)

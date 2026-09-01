@@ -402,7 +402,12 @@ async def api_specialist_booking_confirm(request: Request, db: AsyncSession = De
     if booking.status == "cancelled":
         return {"success": False, "error": "booking cancelled"}
     if booking.status == "confirmed":
-        return {"success": True, "message": "Запись уже подтверждена", "already": True}
+        return {
+            "success": True,
+            "message": "Запись уже подтверждена",
+            "already": True,
+            "booking_id": booking.id,
+        }
     if booking.status != "pending":
         return {"success": False, "error": "booking not confirmable"}
 
@@ -412,7 +417,7 @@ async def api_specialist_booking_confirm(request: Request, db: AsyncSession = De
     from app.services.notify_bridge import schedule_status_changed
 
     schedule_status_changed(booking.id, old_status)
-    return {"success": True, "message": "Запись подтверждена"}
+    return {"success": True, "message": "Запись подтверждена", "booking_id": booking.id}
 
 
 @router.post("/telegram/capabilities")

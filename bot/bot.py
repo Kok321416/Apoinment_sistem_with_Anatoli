@@ -116,6 +116,23 @@ def answer_callback_query(callback_query_id, text=None, *, show_alert: bool = Fa
         return False
 
 
+def edit_message_reply_markup(chat_id, message_id, reply_markup) -> bool:
+    if not settings.telegram_bot_token:
+        return False
+    payload = {"chat_id": chat_id, "message_id": message_id, "reply_markup": reply_markup}
+    try:
+        r = _tg_session.post(
+            f"{TELEGRAM_API_URL}/editMessageReplyMarkup",
+            json=payload,
+            timeout=(3, 5),
+        )
+        r.raise_for_status()
+        return True
+    except Exception as e:
+        logger.warning("editMessageReplyMarkup error: %s", e)
+        return False
+
+
 def _remove_reply_keyboard():
     """Drop legacy bottom keyboards from older bot versions."""
     return {"remove_keyboard": True}
@@ -366,7 +383,10 @@ def handle_telegram_update(update_data: dict) -> None:
                 )
             elif data.startswith("spec_book_confirm_"):
                 handle_specialist_booking_confirm_callback(
-                    chat_id, callback_query_id, data.replace("spec_book_confirm_", "", 1)
+                    chat_id,
+                    callback_query_id,
+                    data.replace("spec_book_confirm_", "", 1),
+                    callback_query.get("message", {}).get("message_id"),
                 )
             elif data in ("my_appointments", "history", "help", "spec_next", "apps_android_soon"):
                 send_telegram_message(
@@ -517,11 +537,10 @@ def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
         answer_callback_query(callback_query_id, "Ошибка.")
 
 
-def handle_specialist_booking_confirm_callback(chat_id, callback_query_id, booking_id_str):
+def handle_specialist_booking_confirm_callback(chat_id, callback_query_id, booking_id_str, message_id=None):
     if not str(booking_id_str or "").isdigit():
         answer_callback_query(callback_query_id, "Некорректный запрос", show_alert=True)
         return
-    answer_callback_query(callback_query_id, "Подтверждаем...")
     status, data = post_site_api(
         "/api/telegram/specialist-booking-confirm",
         {"telegram_chat_id": chat_id, "booking_id": booking_id_str},
@@ -530,10 +549,18 @@ def handle_specialist_booking_confirm_callback(chat_id, callback_query_id, booki
     try:
         if status == 200 and data and data.get("success"):
             msg = data.get("message") or "Запись подтверждена"
-            send_telegram_message(chat_id, f"✅ {msg}")
-        else:
-            err = (data or {}).get("error") or "Не удалось подтвердить запись"
-            send_telegram_message(chat_id, f"❌ {err}")
+            answer_callback_query(callback_query_id, f"✅ {msg}")
+            if message_id is not None:
+                try:
+                    from app.services.telegram import specialist_new_booking_keyboard_after_confirm
+
+                    markup = specialist_new_booking_keyboard_after_confirm(int(booking_id_str))
+                    edit_message_reply_markup(chat_id, message_id, markup)
+                except Exception as e:
+                    logger.warning("Specialist booking confirm markup update error: %s", e)
+            return
+        err = (data or {}).get("error") or "Не удалось подтвердить запись"
+        answer_callback_query(callback_query_id, f"❌ {err}", show_alert=True)
     except Exception as e:
         logger.warning("Specialist booking confirm error: %s", e)
         answer_callback_query(callback_query_id, "Ошибка.")

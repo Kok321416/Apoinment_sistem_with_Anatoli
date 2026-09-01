@@ -297,14 +297,55 @@ def notify_booking_rescheduled(
         logger.exception("Reschedule notification error: %s", e)
 
 
-def _specialist_new_booking_keyboard(booking_id: int) -> dict:
+def specialist_booking_reschedule_url(booking_id: int) -> str:
+    """Server-built specialist cabinet deep-link for rescheduling one booking."""
     base = settings.site_url.rstrip("/")
+    return f"{base}/booking/?reschedule={int(booking_id)}"
+
+
+def specialist_new_booking_inline_keyboard(booking_id: int) -> dict:
     return {
         "inline_keyboard": [
-            [{"text": "Подтвердить", "callback_data": f"spec_book_confirm_{booking_id}"}],
-            [{"text": "Изменить время", "url": f"{base}/booking/?reschedule={booking_id}"}],
+            [{"text": "✅ Подтвердить", "callback_data": f"spec_book_confirm_{booking_id}"}],
+            [{"text": "📅 Перенести", "url": specialist_booking_reschedule_url(booking_id)}],
         ]
     }
+
+
+def specialist_new_booking_keyboard_after_confirm(booking_id: int) -> dict:
+    """Inline keyboard after confirm: reschedule URL only (no repeat confirm callback)."""
+    return {
+        "inline_keyboard": [
+            [{"text": "📅 Перенести", "url": specialist_booking_reschedule_url(booking_id)}],
+        ]
+    }
+
+
+def _specialist_new_booking_keyboard(booking_id: int) -> dict:
+    return specialist_new_booking_inline_keyboard(booking_id)
+
+
+def edit_telegram_message_reply_markup(
+    chat_id,
+    message_id,
+    reply_markup: dict,
+    bot_token: str | None = None,
+) -> bool:
+    token = (bot_token or "").strip() or settings.telegram_bot_token
+    if not token:
+        return False
+    url = f"https://api.telegram.org/bot{token}/editMessageReplyMarkup"
+    data = {"chat_id": chat_id, "message_id": message_id, "reply_markup": reply_markup}
+    try:
+        import httpx
+
+        with httpx.Client(timeout=10.0) as client:
+            r = client.post(url, json=data)
+            r.raise_for_status()
+        return True
+    except Exception as e:
+        logger.exception("Telegram edit markup error: %s", e)
+        return False
 
 
 def notify_specialist_new_booking(booking: Booking) -> bool:

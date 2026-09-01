@@ -15,6 +15,19 @@ logger = logging.getLogger(__name__)
 router = Router(name="callbacks")
 
 
+def _inline_kb_from_dict(kb: dict) -> InlineKeyboardMarkup:
+    rows = []
+    for row in kb.get("inline_keyboard", []):
+        buttons = []
+        for btn in row:
+            if btn.get("url"):
+                buttons.append(InlineKeyboardButton(text=btn["text"], url=btn["url"]))
+            else:
+                buttons.append(InlineKeyboardButton(text=btn["text"], callback_data=btn["callback_data"]))
+        rows.append(buttons)
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 async def prompt_login_confirm(message: Message, token: str) -> None:
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -169,7 +182,6 @@ async def on_spec_book_confirm(callback: CallbackQuery) -> None:
     if not booking_id.isdigit():
         await callback.answer("Некорректный запрос", show_alert=True)
         return
-    await callback.answer("Подтверждаем...")
     status, data = await post_site_api(
         "/api/telegram/specialist-booking-confirm",
         {
@@ -179,10 +191,14 @@ async def on_spec_book_confirm(callback: CallbackQuery) -> None:
     )
     if status == 200 and data and data.get("success"):
         msg = data.get("message") or "Запись подтверждена"
-        await callback.message.answer(f"✅ {msg}")
+        await callback.answer(f"✅ {msg}")
+        from app.services.telegram import specialist_new_booking_keyboard_after_confirm
+
+        after = specialist_new_booking_keyboard_after_confirm(int(booking_id))
+        await callback.message.edit_reply_markup(reply_markup=_inline_kb_from_dict(after))
         return
     err = (data or {}).get("error") or "Не удалось подтвердить запись"
-    await callback.message.answer(f"❌ {err}")
+    await callback.answer(f"❌ {err}", show_alert=True)
 
 
 @router.callback_query(F.data.in_({"my_appointments", "history", "help", "spec_next", "apps_android_soon"}))

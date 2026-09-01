@@ -79,9 +79,9 @@ def test_notify_specialist_new_booking_includes_action_buttons(monkeypatch):
     booking.id = 55
     assert tg.notify_specialist_new_booking(booking) is True
     kb = captured["reply_markup"]
-    assert kb["inline_keyboard"][0][0]["text"] == "Подтвердить"
+    assert kb["inline_keyboard"][0][0]["text"] == "✅ Подтвердить"
     assert kb["inline_keyboard"][0][0]["callback_data"] == "spec_book_confirm_55"
-    assert kb["inline_keyboard"][1][0]["text"] == "Изменить время"
+    assert kb["inline_keyboard"][1][0]["text"] == "📅 Перенести"
     assert kb["inline_keyboard"][1][0]["url"] == "https://example.com/booking/?reschedule=55"
 
 
