@@ -43,7 +43,7 @@ def mode_picker_keyboard() -> InlineKeyboardMarkup:
 def client_start_keyboard(*, dual: bool) -> InlineKeyboardMarkup:
     rows = [
         [web_app_button("Открыть Mini App", mini_app_url("/tg/", mode="client"))],
-        [web_app_button("Записаться", mini_app_url("/book/"))],
+        [web_app_button("Записаться", mini_app_url("/tg/", mode="client"))],
     ]
     if dual:
         rows.append([InlineKeyboardButton(text="Сменить роль", callback_data="pick_mode")])

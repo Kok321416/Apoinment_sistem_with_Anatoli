@@ -159,7 +159,7 @@ def _set_ui_mode(chat_id, mode: str) -> bool:
 def _client_start_keyboard(*, dual: bool):
     rows = [
         [_web_app_button("Открыть Mini App", _mini_app_url("/tg/", mode="client"))],
-        [_web_app_button("Записаться", _mini_app_url("/book/"))],
+        [_web_app_button("Записаться", _mini_app_url("/tg/", mode="client"))],
     ]
     if dual:
         rows.append([{"text": "Сменить роль", "callback_data": "pick_mode"}])
@@ -227,7 +227,7 @@ def handle_open_mini_app(chat_id):
     keyboard = {
         "inline_keyboard": [[
             _web_app_button("Открыть Mini App", _mini_app_url("/tg/")),
-            _web_app_button("Записаться", _mini_app_url("/book/")),
+            _web_app_button("Записаться", _mini_app_url("/tg/", mode="client")),
         ]]
     }
     send_telegram_message(
@@ -559,7 +559,7 @@ def handle_help_command(chat_id):
     keyboard = {
         "inline_keyboard": [
             [_web_app_button("Открыть Mini App", _mini_app_url("/tg/"))],
-            [_web_app_button("Записаться", _mini_app_url("/book/"))],
+            [_web_app_button("Записаться", _mini_app_url("/tg/", mode="client"))],
         ]
     }
     send_telegram_message(chat_id, HELP_TEXT.format(site_url=site), keyboard)

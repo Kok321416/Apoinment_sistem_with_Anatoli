@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.exc import DBAPIError, ProgrammingError
+from sqlalchemy.exc import DBAPIError, OperationalError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.diagnostics.catalog import DISCLAIMER_RU, get_test
@@ -32,17 +32,24 @@ async def ensure_diagnostics_tables(db: AsyncSession | None = None) -> bool:
 
     if db is not None:
         try:
-            conn = await db.connection()
-
-            def _ensure_conn(sync_conn) -> bool:
-                return ensure_diagnostics_schema(bind=sync_conn)
-
-            conn_ok = await conn.run_sync(_ensure_conn)
-            ok = ok or conn_ok
+            ok = await _ensure_diagnostics_tables_on_session(db) or ok
         except Exception:
-            logger.exception("ensure_diagnostics_tables async conn failed")
+            logger.exception("ensure_diagnostics_tables async ddl failed")
 
     return ok
+
+
+async def _ensure_diagnostics_tables_on_session(db: AsyncSession) -> bool:
+    """Create diagnostics tables on the async session bind (no inspect — avoids MissingGreenlet)."""
+    from app.database import Base
+    from app.db_schema import _DIAGNOSTICS_TABLES
+
+    def _create(sync_conn) -> None:
+        Base.metadata.create_all(bind=sync_conn, tables=list(_DIAGNOSTICS_TABLES))
+
+    conn = await db.connection()
+    await conn.run_sync(_create)
+    return True
 
 
 def _is_missing_diagnostics_table(exc: BaseException) -> bool:
@@ -243,9 +250,10 @@ async def start_attempt(
         try:
             await db.flush()
             return attempt
-        except (ProgrammingError, DBAPIError) as exc:
+        except (ProgrammingError, OperationalError, DBAPIError) as exc:
             if attempt_no == 0 and _is_missing_diagnostics_table(exc):
                 logger.warning("diagnostic_attempts missing on insert, re-ensuring schema")
+                await db.rollback()
                 await ensure_diagnostics_tables(db)
                 continue
             raise
@@ -266,9 +274,10 @@ async def list_attempts_for_client(
     for attempt in range(2):
         try:
             return list((await db.execute(q)).scalars().all())
-        except (ProgrammingError, DBAPIError) as exc:
+        except (ProgrammingError, OperationalError, DBAPIError) as exc:
             if attempt == 0 and _is_missing_diagnostics_table(exc):
                 logger.warning("diagnostic_attempts missing, re-ensuring schema")
+                await db.rollback()
                 await ensure_diagnostics_tables(db)
                 continue
             raise

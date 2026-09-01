@@ -13,6 +13,12 @@ from app.models import core as core_models  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
+_DIAGNOSTICS_TABLES = (
+    diagnostics_models.ClientSpecialistLink.__table__,
+    diagnostics_models.DiagnosticInvitation.__table__,
+    diagnostics_models.DiagnosticAttempt.__table__,
+)
+
 _TELEGRAM_LOGIN_COLUMNS = {
     "telegram_id": "VARCHAR(32) NULL",
     "created_at": "DATETIME NULL",
@@ -379,13 +385,6 @@ def ensure_email_auth_schema() -> None:
         )
     except Exception:
         logger.exception("email auth schema ensure failed")
-
-
-_DIAGNOSTICS_TABLES = (
-    diagnostics_models.ClientSpecialistLink.__table__,
-    diagnostics_models.DiagnosticInvitation.__table__,
-    diagnostics_models.DiagnosticAttempt.__table__,
-)
 
 
 def ensure_diagnostics_schema(bind=None) -> bool:

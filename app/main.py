@@ -248,6 +248,17 @@ bootstrap_on_import()
 
 
 @app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    import uuid
+
+    rid = (request.headers.get("x-request-id") or "").strip() or uuid.uuid4().hex[:16]
+    request.state.request_id = rid
+    response = await call_next(request)
+    response.headers["X-Request-Id"] = rid
+    return response
+
+
+@app.middleware("http")
 async def perf_timing_middleware(request: Request, call_next):
     import time
 

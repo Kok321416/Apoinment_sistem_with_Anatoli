@@ -155,7 +155,7 @@ async def cmd_start(message: Message, command: CommandObject | None = None) -> N
             inline_keyboard=[
                 [
                     web_app_button("Открыть Mini App", mini_app_url("/tg/")),
-                    web_app_button("Записаться", mini_app_url("/book/")),
+                    web_app_button("Записаться", mini_app_url("/tg/", mode="client")),
                 ]
             ]
         )
@@ -206,7 +206,7 @@ async def cmd_help(message: Message) -> None:
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [web_app_button("Открыть Mini App", mini_app_url("/tg/"))],
-            [web_app_button("Записаться", mini_app_url("/book/"))],
+            [web_app_button("Записаться", mini_app_url("/tg/", mode="client"))],
         ]
     )
     await message.answer(HELP_TEXT.format(site_url=site_url()), reply_markup=kb)

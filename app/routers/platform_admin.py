@@ -150,7 +150,7 @@ async def admin_telegram(request: Request, db: AsyncSession = Depends(get_async_
                 db_user = await db.get(User, user.id)
                 if db_user:
                     db_user.notify_broadcast = True
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=user.id,
                         action="broadcast_opt_in_self",
@@ -168,7 +168,7 @@ async def admin_telegram(request: Request, db: AsyncSession = Depends(get_async_
                     from app.services.broadcast_gate import record_dry_run
 
                     record_dry_run(request, audience, dry_run_result)
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=user.id,
                         action="broadcast_dry_run",
@@ -198,7 +198,7 @@ async def admin_telegram(request: Request, db: AsyncSession = Depends(get_async_
                         if err:
                             error = err
                         else:
-                            write_admin_audit_async(
+                            await write_admin_audit_async(
                                 db,
                                 actor_user_id=user.id,
                                 action="broadcast_enqueue",
@@ -289,7 +289,7 @@ async def admin_telegram_job(request: Request, job_id: int, db: AsyncSession = D
                 if err:
                     error = err
                 else:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=user.id,
                         action="broadcast_job_stop",
@@ -354,7 +354,7 @@ async def admin_stop_impersonate(request: Request, db: AsyncSession = Depends(ge
     if not admin_id:
         return RedirectResponse("/dashboard/", status_code=302)
     stop_impersonation(request)
-    write_admin_audit_async(
+    await write_admin_audit_async(
         db,
         actor_user_id=admin_id,
         action="impersonate_stop",
@@ -394,7 +394,7 @@ async def admin_user_detail(request: Request, user_id: int, db: AsyncSession = D
                     error = "Нельзя заблокировать себя."
                 else:
                     target.is_active = False
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=admin.id,
                         action="user_block",
@@ -406,7 +406,7 @@ async def admin_user_detail(request: Request, user_id: int, db: AsyncSession = D
                     success = "Пользователь заблокирован."
             elif action == "unblock":
                 target.is_active = True
-                write_admin_audit_async(
+                await write_admin_audit_async(
                     db,
                     actor_user_id=admin.id,
                     action="user_unblock",
@@ -418,7 +418,7 @@ async def admin_user_detail(request: Request, user_id: int, db: AsyncSession = D
                 success = "Пользователь разблокирован."
             elif action == "broadcast_on":
                 target.notify_broadcast = True
-                write_admin_audit_async(
+                await write_admin_audit_async(
                     db,
                     actor_user_id=admin.id,
                     action="user_broadcast_on",
@@ -430,7 +430,7 @@ async def admin_user_detail(request: Request, user_id: int, db: AsyncSession = D
                 success = "notify_broadcast включён."
             elif action == "broadcast_off":
                 target.notify_broadcast = False
-                write_admin_audit_async(
+                await write_admin_audit_async(
                     db,
                     actor_user_id=admin.id,
                     action="user_broadcast_off",
@@ -450,7 +450,7 @@ async def admin_user_detail(request: Request, user_id: int, db: AsyncSession = D
                 finally:
                     sdb.close()
                 if ok:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=admin.id,
                         action="user_password_reset_email",
@@ -468,7 +468,7 @@ async def admin_user_detail(request: Request, user_id: int, db: AsyncSession = D
                 if err:
                     error = err
                 else:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=admin.id,
                         action="user_sessions_invalidate",
@@ -486,7 +486,7 @@ async def admin_user_detail(request: Request, user_id: int, db: AsyncSession = D
                 elif target.id == admin.id:
                     error = "Уже вы."
                 else:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=admin.id,
                         action="impersonate_start",
@@ -505,7 +505,7 @@ async def admin_user_detail(request: Request, user_id: int, db: AsyncSession = D
                     role = (form.get("role") or "").strip()
                     ok, msg = await assign_role_async(db, user_id=target.id, role=role, granted_by=admin.id)
                     if ok:
-                        write_admin_audit_async(
+                        await write_admin_audit_async(
                             db,
                             actor_user_id=admin.id,
                             action="admin_role_assign",
@@ -524,7 +524,7 @@ async def admin_user_detail(request: Request, user_id: int, db: AsyncSession = D
                     role = (form.get("role") or "").strip()
                     ok, msg = await revoke_role_async(db, user_id=target.id, role=role)
                     if ok:
-                        write_admin_audit_async(
+                        await write_admin_audit_async(
                             db,
                             actor_user_id=admin.id,
                             action="admin_role_revoke",
@@ -589,7 +589,7 @@ async def admin_errors(request: Request, db: AsyncSession = Depends(get_async_db
             new_status = (form.get("status") or "").strip()
             row = await set_error_status_async(db, eid, new_status) if eid else None
             if row:
-                write_admin_audit_async(
+                await write_admin_audit_async(
                     db,
                     actor_user_id=user.id,
                     action="error_status",
@@ -670,7 +670,7 @@ async def admin_client_user_detail(request: Request, user_id: int, db: AsyncSess
     user = await _admin(request, db, PERM_USERS_READ)
     from app.services.platform_admin_domain import platform_client_detail_async
 
-    detail = platform_client_detail_async(db, user_id=user_id)
+    detail = await platform_client_detail_async(db, user_id=user_id)
     if not detail:
         return RedirectResponse("/platform-admin/clients/", status_code=302)
     return templates.TemplateResponse(
@@ -684,7 +684,7 @@ async def admin_client_card_detail(request: Request, card_id: int, db: AsyncSess
     user = await _admin(request, db, PERM_USERS_READ)
     from app.services.platform_admin_domain import platform_client_detail_async
 
-    detail = platform_client_detail_async(db, card_id=card_id)
+    detail = await platform_client_detail_async(db, card_id=card_id)
     if not detail:
         return RedirectResponse("/platform-admin/clients/", status_code=302)
     return templates.TemplateResponse(
@@ -734,7 +734,7 @@ async def admin_bookings_calendar(request: Request, db: AsyncSession = Depends(g
             if err:
                 error = err
             elif booking:
-                write_admin_audit_async(
+                await write_admin_audit_async(
                     db,
                     actor_user_id=user.id,
                     action="booking_reschedule",
@@ -851,7 +851,7 @@ async def admin_booking_detail(request: Request, booking_id: int, db: AsyncSessi
                     if err:
                         error = err
                     elif booking:
-                        write_admin_audit_async(
+                        await write_admin_audit_async(
                             db,
                             actor_user_id=user.id,
                             action="booking_status",
@@ -872,7 +872,7 @@ async def admin_booking_detail(request: Request, booking_id: int, db: AsyncSessi
                     if err:
                         error = err
                     elif booking:
-                        write_admin_audit_async(
+                        await write_admin_audit_async(
                             db,
                             actor_user_id=user.id,
                             action="booking_reschedule",
@@ -945,7 +945,7 @@ async def admin_bookings(request: Request, db: AsyncSession = Depends(get_async_
                 if err:
                     error = err
                 elif booking:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=user.id,
                         action="booking_status",
@@ -1013,7 +1013,7 @@ async def admin_calendars(request: Request, db: AsyncSession = Depends(get_async
             if action in ("enable", "disable") and calendar_id:
                 cal = await set_calendar_active_async(db, calendar_id, is_active=(action == "enable"))
                 if cal:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=user.id,
                         action="calendar_enable" if action == "enable" else "calendar_disable",
@@ -1085,7 +1085,7 @@ async def admin_security(request: Request, db: AsyncSession = Depends(get_async_
             if action == "enable_2fa":
                 ok, msg = await enable_admin_2fa_async(db, db_user, code)
                 if ok:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=user.id,
                         action="admin_2fa_enable",
@@ -1107,7 +1107,7 @@ async def admin_security(request: Request, db: AsyncSession = Depends(get_async_
                         error = "Неверный код"
                     else:
                         await disable_admin_2fa_async(db, user.id)
-                        write_admin_audit_async(
+                        await write_admin_audit_async(
                             db,
                             actor_user_id=user.id,
                             action="admin_2fa_disable",
@@ -1180,7 +1180,7 @@ async def admin_email(request: Request, db: AsyncSession = Depends(get_async_db)
                     if err:
                         error = err
                     else:
-                        write_admin_audit_async(
+                        await write_admin_audit_async(
                             db,
                             actor_user_id=user.id,
                             action="email_resend",
@@ -1286,7 +1286,7 @@ async def admin_ops(request: Request, db: AsyncSession = Depends(get_async_db)):
                 if err:
                     error = err
                 else:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=user.id,
                         action="platform_backup",
@@ -1360,7 +1360,7 @@ async def admin_support_detail(request: Request, ticket_id: int, db: AsyncSessio
                 if err:
                     error = err
                 else:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=user.id,
                         action="support_reply",
@@ -1375,7 +1375,7 @@ async def admin_support_detail(request: Request, ticket_id: int, db: AsyncSessio
                 if err:
                     error = err
                 else:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=user.id,
                         action="support_status",
@@ -1445,7 +1445,7 @@ async def admin_billing(request: Request, db: AsyncSession = Depends(get_async_d
                 if err:
                     error = err
                 else:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=user.id,
                         action="billing_plan_create",
@@ -1464,7 +1464,7 @@ async def admin_billing(request: Request, db: AsyncSession = Depends(get_async_d
                 if err:
                     error = err
                 else:
-                    write_admin_audit_async(
+                    await write_admin_audit_async(
                         db,
                         actor_user_id=user.id,
                         action="billing_plan_toggle",

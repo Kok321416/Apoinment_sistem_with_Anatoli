@@ -88,7 +88,11 @@ def _price_value(price: Decimal | None) -> float | None:
     return float(price)
 
 
-def serialize_service(service: Service, booking_count: int = 0) -> dict:
+def serialize_service(
+    service: Service, booking_count: int = 0, *, calendar_name: str | None = None
+) -> dict:
+    if calendar_name is None and service.calendar is not None:
+        calendar_name = service.calendar.name
     return {
         "id": service.id,
         "name": service.name,
@@ -97,7 +101,7 @@ def serialize_service(service: Service, booking_count: int = 0) -> dict:
         "price": _price_value(service.price),
         "price_display": f"{_price_value(service.price):.0f} ₽" if service.price else "—",
         "calendar_id": service.calendar_id,
-        "calendar_name": service.calendar.name if service.calendar else None,
+        "calendar_name": calendar_name,
         "color": service.color or "#7d5cff",
         "icon": service.icon or "default",
         "icon_display": service_icon(service),
@@ -345,8 +349,12 @@ def build_catalog_payload(db: Session, consultant_id: int, *, use_cache: bool = 
             .all()
         )
         counts = booking_counts(db, [s.id for s in services])
+        cal_names = {c.id: c.name for c in calendars}
         return {
-            "services": [serialize_service(s, counts.get(s.id, 0)) for s in services],
+            "services": [
+                serialize_service(s, counts.get(s.id, 0), calendar_name=cal_names.get(s.calendar_id))
+                for s in services
+            ],
             "calendars": [serialize_calendar_option(c) for c in calendars],
             "dashboard": dashboard_stats(services, calendars),
             "analytics": analytics_panel(db, services, consultant_id),
@@ -393,8 +401,12 @@ async def build_catalog_payload_async(db, consultant_id: int, *, use_cache: bool
         .all()
     )
     counts = await booking_counts_async(db, [s.id for s in services])
+    cal_names = {c.id: c.name for c in calendars}
     payload = {
-        "services": [serialize_service(s, counts.get(s.id, 0)) for s in services],
+        "services": [
+            serialize_service(s, counts.get(s.id, 0), calendar_name=cal_names.get(s.calendar_id))
+            for s in services
+        ],
         "calendars": [serialize_calendar_option(c) for c in calendars],
         "dashboard": dashboard_stats(services, calendars),
         "analytics": await analytics_panel_async(db, services, consultant_id),
