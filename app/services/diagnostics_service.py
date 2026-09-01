@@ -84,6 +84,17 @@ def _is_missing_diagnostics_table(exc: BaseException) -> bool:
     )
 
 
+def _skip_diagnostics_read_on_missing_table(exc: BaseException) -> bool:
+    """Never run DDL during GET/hub reads — avoids MySQL metadata locks and 500/timeouts."""
+    if not _is_missing_diagnostics_table(exc):
+        return False
+    if _DIAGNOSTICS_DDL_READY:
+        logger.error("diagnostics tables missing on read despite startup schema init")
+    else:
+        logger.warning("diagnostics tables missing on read; startup schema not ready")
+    return True
+
+
 def hash_invite_token(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -113,36 +124,29 @@ async def touch_client_specialist_link(
                 )
             )
         ).scalar_one_or_none()
-    except (ProgrammingError, OperationalError, DBAPIError) as exc:
-        if not _is_missing_diagnostics_table(exc):
-            raise
-        await ensure_diagnostics_tables(db)
-        row = (
-            await db.execute(
-                select(ClientSpecialistLink).where(
-                    ClientSpecialistLink.client_user_id == client_user_id,
-                    ClientSpecialistLink.consultant_id == consultant_id,
-                )
-            )
-        ).scalar_one_or_none()
-    now = datetime.utcnow()
-    if row:
-        row.last_opened_at = now
-        row.is_active = True
-        if source and row.source == "visit" and source != "visit":
-            row.source = source
+        now = datetime.utcnow()
+        if row:
+            row.last_opened_at = now
+            row.is_active = True
+            if source and row.source == "visit" and source != "visit":
+                row.source = source
+            await db.flush()
+            return row
+        row = ClientSpecialistLink(
+            client_user_id=client_user_id,
+            consultant_id=consultant_id,
+            source=source,
+            is_active=True,
+            last_opened_at=now,
+        )
+        db.add(row)
         await db.flush()
         return row
-    row = ClientSpecialistLink(
-        client_user_id=client_user_id,
-        consultant_id=consultant_id,
-        source=source,
-        is_active=True,
-        last_opened_at=now,
-    )
-    db.add(row)
-    await db.flush()
-    return row
+    except (ProgrammingError, OperationalError, DBAPIError) as exc:
+        if _skip_diagnostics_read_on_missing_table(exc):
+            await db.rollback()
+            return None
+        raise
 
 
 async def list_client_psychologists(db: AsyncSession, client_user_id: int) -> list[Consultant]:
@@ -295,17 +299,12 @@ async def list_attempts_for_client(
     if consultant_id:
         q = q.where(DiagnosticAttempt.consultant_id == consultant_id)
     q = q.order_by(DiagnosticAttempt.completed_at.desc())
-    for attempt in range(2):
-        try:
-            return list((await db.execute(q)).scalars().all())
-        except (ProgrammingError, OperationalError, DBAPIError) as exc:
-            if attempt == 0 and _is_missing_diagnostics_table(exc):
-                logger.warning("diagnostic_attempts missing, re-ensuring schema")
-                await db.rollback()
-                await ensure_diagnostics_tables(db)
-                continue
-            raise
-    return []
+    try:
+        return list((await db.execute(q)).scalars().all())
+    except (ProgrammingError, OperationalError, DBAPIError) as exc:
+        if _skip_diagnostics_read_on_missing_table(exc):
+            return []
+        raise
 
 
 async def list_attempts_for_card(

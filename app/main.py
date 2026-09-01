@@ -240,6 +240,12 @@ async def startup():
 
         if ensure_diagnostics_schema():
             _mark_diagnostics_ddl_ready()
+            logger.info("Diagnostics tables ready")
+        else:
+            logger.error(
+                "Diagnostics tables are missing — run ensure_diagnostics_schema on deploy; "
+                "hub will open but saves may fail until tables exist"
+            )
     except Exception:
         logger.exception("diagnostics ddl ready flag init failed")
     if not settings.debug:

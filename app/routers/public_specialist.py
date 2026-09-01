@@ -542,14 +542,18 @@ async def specialist_diagnostics_hub(
         return redirect
     if auth_user.id != consultant.user_id:
         try:
-            await touch_client_specialist_link(
+            link = await touch_client_specialist_link(
                 db,
                 client_user_id=auth_user.id,
                 consultant_id=consultant.id,
                 source="diagnostics",
             )
-            await db.commit()
+            if link is not None:
+                await db.commit()
         except Exception:
+            logger.exception(
+                "touch_client_specialist_link failed slug=%s user=%s", slug, auth_user.id
+            )
             await db.rollback()
     attempts = []
     try:
