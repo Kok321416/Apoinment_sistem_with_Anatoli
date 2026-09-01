@@ -26,6 +26,7 @@ from app.services.diagnostics_service import (
     start_attempt,
     touch_client_specialist_link,
 )
+from app.services.public_client import ensure_public_slug_async
 from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
 from app.templating import page_context_async, templates
 from app.utils.safe_redirect import login_url_with_next, safe_next_url
@@ -44,170 +45,83 @@ def _login_redirect(request: Request) -> RedirectResponse:
     return RedirectResponse(login_url_with_next(str(request.url.path) + (("?" + request.url.query) if request.url.query else "")), status_code=302)
 
 
+async def _redirect_diagnostics_to_profile(db, consultant_id: int, suffix: str = "") -> RedirectResponse | None:
+    consultant = (
+        await db.execute(select(Consultant).where(Consultant.id == consultant_id))
+    ).scalar_one_or_none()
+    if not consultant:
+        return RedirectResponse("/", status_code=302)
+    slug = await ensure_public_slug_async(db, consultant)
+    return RedirectResponse(f"/s/{slug}/diagnostics/{suffix}", status_code=302)
+
+
 @router.get("/diagnostics/")
 async def diagnostics_hub(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user(request, db)
-    if not user:
-        return _login_redirect(request)
-
-    try:
-        psychologists = await list_client_psychologists(db, user.id)
-    except Exception:
-        # Table may be missing on first boot before create_all; do not 500 the cabinet.
-        from app.db_schema import ensure_all_schema
-
-        ensure_all_schema()
-        try:
-            psychologists = await list_client_psychologists(db, user.id)
-        except Exception:
-            psychologists = []
-
+    """Legacy client cabinet hub — redirect to specialist profile diagnostics."""
     selected_id = request.query_params.get("consultant_id")
-    selected = None
     if selected_id:
         try:
-            sid = int(selected_id)
+            cid = int(selected_id)
         except ValueError:
-            sid = None
-        if sid:
-            selected = next((c for c in psychologists if c.id == sid), None)
-    if not selected and psychologists:
-        selected = psychologists[0]
-
-    attempts = []
-    if selected:
-        request.session["diagnostics_consultant_id"] = selected.id
-        try:
-            attempts = [
-                attempt_to_view(a)
-                for a in await list_attempts_for_client(
-                    db, client_user_id=user.id, consultant_id=selected.id
-                )
-            ]
-        except Exception:
-            attempts = []
-
-    tests = list_tests(only_runnable=False)
-    return templates.TemplateResponse(
-        "app/diagnostics_hub.html",
-        await page_context_async(
-            request,
-            db,
-            user,
-            cabinet_nav_active="diagnostics",
-            psychologists=psychologists,
-            selected_consultant=selected,
-            tests=tests,
-            attempts=attempts,
-        ),
-    )
+            cid = None
+        if cid:
+            redirect = await _redirect_diagnostics_to_profile(db, cid)
+            if redirect:
+                return redirect
+    user = await _require_user(request, db)
+    if user:
+        psychologists = await list_client_psychologists(db, user.id)
+        if psychologists:
+            redirect = await _redirect_diagnostics_to_profile(db, psychologists[0].id)
+            if redirect:
+                return redirect
+    return RedirectResponse("/", status_code=302)
 
 
 @router.post("/diagnostics/select/")
 async def diagnostics_select(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user(request, db)
-    if not user:
-        return _login_redirect(request)
     form = await request.form()
-    if not validate_csrf_token(request, form.get("csrf_token")):
-        return RedirectResponse("/diagnostics/?error=csrf", status_code=302)
     try:
         cid = int(form.get("consultant_id") or 0)
     except ValueError:
         cid = 0
     if cid:
-        await touch_client_specialist_link(db, client_user_id=user.id, consultant_id=cid, source="manual")
-        await db.commit()
-        request.session["diagnostics_consultant_id"] = cid
-    return RedirectResponse(f"/diagnostics/?consultant_id={cid}", status_code=302)
+        redirect = await _redirect_diagnostics_to_profile(db, cid)
+        if redirect:
+            return redirect
+    return RedirectResponse("/", status_code=302)
 
 
 @router.get("/diagnostics/tests/{test_code}/")
 async def diagnostics_take_test(
     test_code: str, request: Request, db: AsyncSession = Depends(get_async_db)
 ):
-    user = await _require_user(request, db)
-    if not user:
-        return _login_redirect(request)
-    test = get_test(test_code)
-    if not test or not test.runnable:
-        return RedirectResponse("/diagnostics/?error=test", status_code=302)
-
     cid = request.session.get("diagnostics_consultant_id")
     try:
         consultant_id = int(request.query_params.get("consultant_id") or cid or 0)
     except ValueError:
         consultant_id = 0
-    consultant = None
     if consultant_id:
-        consultant = (
-            await db.execute(
-                select(Consultant)
-                .options(selectinload(Consultant.category))
-                .where(Consultant.id == consultant_id)
-            )
-        ).scalar_one_or_none()
-    if not consultant or not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
-        return RedirectResponse("/diagnostics/?error=specialist", status_code=302)
-
-    return templates.TemplateResponse(
-        "app/diagnostics_take.html",
-        await page_context_async(
-            request,
-            db,
-            user,
-            cabinet_nav_active="diagnostics",
-            test=test,
-            consultant=consultant,
-        ),
-    )
+        redirect = await _redirect_diagnostics_to_profile(db, consultant_id, f"tests/{test_code}/")
+        if redirect:
+            return redirect
+    return RedirectResponse("/", status_code=302)
 
 
 @router.post("/diagnostics/tests/{test_code}/submit/")
 async def diagnostics_submit(
     test_code: str, request: Request, db: AsyncSession = Depends(get_async_db)
 ):
-    user = await _require_user(request, db)
-    if not user:
-        return _login_redirect(request)
     form = await request.form()
-    if not validate_csrf_token(request, form.get("csrf_token")):
-        return RedirectResponse("/diagnostics/?error=csrf", status_code=302)
     try:
         consultant_id = int(form.get("consultant_id") or 0)
     except ValueError:
         consultant_id = 0
-    if not consultant_id:
-        return RedirectResponse("/diagnostics/?error=specialist", status_code=302)
-
-    answers = {}
-    for key, val in form.multi_items():
-        if key.startswith("i") and key[1:].isdigit():
-            answers[key] = val
-
-    try:
-        attempt = await start_attempt(
-            db,
-            client_user_id=user.id,
-            consultant_id=consultant_id,
-            test_code=test_code,
-            source=(form.get("source") or "cabinet").strip() or "cabinet",
-            invitation_id=int(form["invitation_id"]) if form.get("invitation_id") else None,
-            booking_id=int(form["booking_id"]) if form.get("booking_id") else None,
-        )
-        await complete_attempt(db, attempt=attempt, answers=answers)
-        await touch_client_specialist_link(
-            db, client_user_id=user.id, consultant_id=consultant_id, source="manual"
-        )
-        await db.commit()
-    except ValueError:
-        await db.rollback()
-        return RedirectResponse("/diagnostics/?error=test", status_code=302)
-    except Exception:
-        await db.rollback()
-        return RedirectResponse("/diagnostics/?error=save", status_code=302)
-
-    return RedirectResponse(f"/diagnostics/results/{attempt.id}/", status_code=302)
+    if consultant_id:
+        redirect = await _redirect_diagnostics_to_profile(db, consultant_id, f"tests/{test_code}/")
+        if redirect:
+            return redirect
+    return RedirectResponse("/", status_code=302)
 
 
 @router.get("/diagnostics/results/{attempt_id}/")
@@ -221,9 +135,8 @@ async def diagnostics_result(
         await db.execute(select(DiagnosticAttempt).where(DiagnosticAttempt.id == attempt_id))
     ).scalar_one_or_none()
     if not attempt or attempt.status != "completed":
-        return RedirectResponse("/diagnostics/", status_code=302)
+        return RedirectResponse("/", status_code=302)
 
-    # Client owns attempt OR the consultant linked to the attempt
     allowed = attempt.client_user_id == user.id
     if not allowed:
         cons = (
@@ -232,7 +145,14 @@ async def diagnostics_result(
         if cons and cons.id == attempt.consultant_id:
             allowed = True
     if not allowed:
-        return RedirectResponse("/diagnostics/", status_code=302)
+        return RedirectResponse("/", status_code=302)
+
+    if attempt.client_user_id == user.id:
+        redirect = await _redirect_diagnostics_to_profile(
+            db, attempt.consultant_id, f"results/{attempt_id}/"
+        )
+        if redirect:
+            return redirect
 
     view = attempt_to_view(attempt)
     show_answers = False
@@ -290,9 +210,9 @@ async def diagnostics_invite_start(
         return RedirectResponse(login_url_with_next(f"/d/{token}/start/"), status_code=302)
     inv = await resolve_invitation(db, token)
     if not inv:
-        return RedirectResponse("/diagnostics/?error=invite", status_code=302)
+        return RedirectResponse("/", status_code=302)
     if inv.client_user_id and inv.client_user_id != user.id:
-        return RedirectResponse("/diagnostics/?error=invite_user", status_code=302)
+        return RedirectResponse("/", status_code=302)
 
     await touch_client_specialist_link(
         db, client_user_id=user.id, consultant_id=inv.consultant_id, source="invite"
@@ -301,20 +221,20 @@ async def diagnostics_invite_start(
     if not inv.client_user_id:
         inv.client_user_id = user.id
     await db.commit()
-    request.session["diagnostics_consultant_id"] = inv.consultant_id
     request.session["diagnostics_invitation_id"] = inv.id
 
+    slug = await ensure_public_slug_async(
+        db,
+        (await db.execute(select(Consultant).where(Consultant.id == inv.consultant_id))).scalar_one(),
+    )
     codes = []
     try:
         codes = json.loads(inv.test_codes_json or "[]")
     except json.JSONDecodeError:
         codes = []
     if codes:
-        return RedirectResponse(
-            f"/diagnostics/tests/{codes[0]}/?consultant_id={inv.consultant_id}",
-            status_code=302,
-        )
-    return RedirectResponse(f"/diagnostics/?consultant_id={inv.consultant_id}", status_code=302)
+        return RedirectResponse(f"/s/{slug}/diagnostics/tests/{codes[0]}/", status_code=302)
+    return RedirectResponse(f"/s/{slug}/diagnostics/", status_code=302)
 
 
 @router.post("/api/specialist/diagnostics/invite/")

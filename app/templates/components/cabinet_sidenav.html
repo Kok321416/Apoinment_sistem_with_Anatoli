@@ -1,4 +1,4 @@
-{# Left cabinet sidenav — Linear/Notion shell, mask icons (theme-adaptive) #}
+{# Left cabinet sidenav — specialist only #}
 {% macro nav_item(key, href, label, icon) -%}
 <a
     href="{{ href }}"
@@ -10,72 +10,22 @@
 </a>
 {%- endmacro %}
 
-<aside class="cabinet-sidenav" id="cabinet-sidenav" aria-label="Кабинет">
+<aside class="cabinet-sidenav" id="cabinet-sidenav" aria-label="Кабинет специалиста">
     <div class="cabinet-sidenav__brand">
         {% set href = '/dashboard/' %}
         {% include "components/logo.html" %}
     </div>
 
-    {% if show_mode_switcher %}
-    <div class="cabinet-sidenav__mode" role="group" aria-label="Режим кабинета">
-        <form method="POST" action="/account/mode/" class="cabinet-mode__form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="mode" value="specialist">
-            <input type="hidden" name="next" value="/dashboard/">
-            <button
-                type="submit"
-                class="cabinet-mode__btn{% if active_mode == 'specialist' %} is-active{% endif %}"
-                {% if active_mode == 'specialist' %}disabled aria-current="true"{% endif %}
-            >Специалист</button>
-        </form>
-        <form method="POST" action="/account/mode/" class="cabinet-mode__form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="mode" value="client">
-            <input type="hidden" name="next" value="/dashboard/">
-            <button
-                type="submit"
-                class="cabinet-mode__btn{% if active_mode == 'client' %} is-active{% endif %}"
-                {% if active_mode == 'client' %}disabled aria-current="true"{% endif %}
-            >Клиент</button>
-        </form>
-    </div>
-    {% endif %}
-
     <nav class="cabinet-nav" aria-label="Разделы кабинета">
         {{ nav_item('home', '/dashboard/', 'Главная', 'overview') }}
-        {% if active_mode == 'specialist' and has_consultant %}
+        {% if has_consultant %}
             {{ nav_item('manage', '/manage/', 'Управление услугами и календарем', 'calendars') }}
             {{ nav_item('bookings', '/booking/', 'Записи', 'bookings') }}
             {{ nav_item('clients', '/clients/', 'Клиенты', 'clients') }}
             {{ nav_item('profile', '/profile/', 'Профиль', 'profile') }}
             {{ nav_item('integrations', '/integrations/', 'Интеграции', 'integrations') }}
         {% else %}
-            {{ nav_item('book', '/book/', 'Записаться', 'book') }}
-            {{ nav_item('my_bookings', '/my-bookings/', 'Мои записи', 'my-bookings') }}
-            {{ nav_item('diagnostics', '/diagnostics/', 'Диагностика', 'clients') }}
-            <a
-                href="{{ telegram_mini_app_launch_url }}"
-                class="cabinet-nav__item"
-                target="_blank"
-                rel="noopener"
-                data-tg-internal="/tg/"
-            >
-                <span class="cabinet-nav__glyph" data-icon="telegram" aria-hidden="true"></span>
-                <span class="cabinet-nav__label">Telegram</span>
-            </a>
-            {% if has_consultant %}
-            <form method="POST" action="/account/mode/" class="cabinet-sidenav__switch-specialist">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="mode" value="specialist">
-                <input type="hidden" name="next" value="/dashboard/">
-                <button type="submit" class="cabinet-nav__item">
-                    <span class="cabinet-nav__glyph" data-icon="overview" aria-hidden="true"></span>
-                    <span class="cabinet-nav__label">Кабинет специалиста</span>
-                </button>
-            </form>
-            {% else %}
             {{ nav_item('become', '/become-specialist/', 'Стать специалистом', 'profile') }}
-            {% endif %}
         {% endif %}
     </nav>
 
@@ -99,9 +49,8 @@
 </aside>
 <div class="cabinet-sidenav__backdrop" id="cabinet-sidenav-backdrop" hidden></div>
 
-{# Mobile bottom nav — Material/Linear thumb zone #}
 <nav class="cabinet-bottom-nav" aria-label="Быстрое меню">
-    {% if active_mode == 'specialist' and has_consultant %}
+    {% if has_consultant %}
     <a href="/dashboard/" class="cabinet-bottom-nav__item{% if cabinet_nav_active == 'home' %} is-active{% endif %}">
         <span class="cabinet-nav__glyph" data-icon="overview" aria-hidden="true"></span>
         <span>Главная</span>
@@ -123,21 +72,9 @@
         <span>Профиль</span>
     </a>
     {% else %}
-    <a href="/dashboard/" class="cabinet-bottom-nav__item{% if cabinet_nav_active == 'home' %} is-active{% endif %}">
-        <span class="cabinet-nav__glyph" data-icon="overview" aria-hidden="true"></span>
-        <span>Главная</span>
+    <a href="/become-specialist/" class="cabinet-bottom-nav__item{% if cabinet_nav_active == 'become' %} is-active{% endif %}">
+        <span class="cabinet-nav__glyph" data-icon="profile" aria-hidden="true"></span>
+        <span>Стать специалистом</span>
     </a>
-    <a href="/book/" class="cabinet-bottom-nav__item{% if cabinet_nav_active == 'book' %} is-active{% endif %}">
-        <span class="cabinet-nav__glyph" data-icon="book" aria-hidden="true"></span>
-        <span>Запись</span>
-    </a>
-    <a href="/my-bookings/" class="cabinet-bottom-nav__item{% if cabinet_nav_active == 'my_bookings' %} is-active{% endif %}">
-        <span class="cabinet-nav__glyph" data-icon="my-bookings" aria-hidden="true"></span>
-        <span>Мои</span>
-    </a>
-    <a href="/diagnostics/" class="cabinet-bottom-nav__item{% if cabinet_nav_active == 'diagnostics' %} is-active{% endif %}">
-        <span class="cabinet-nav__glyph" data-icon="clients" aria-hidden="true"></span>
-        <span>Диагн.</span>
-    </a>
-    {% endif %}
+  {% endif %}
 </nav>

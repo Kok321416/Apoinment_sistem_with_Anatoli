@@ -1,0 +1,61 @@
+{% extends "layouts/booking.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Диагностика — " ~ consultant.first_name ~ " " ~ consultant.last_name %}
+{% set meta_description = "Психологические опросники и история результатов" %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/booking.css?v=27">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=2">
+{% endblock %}
+
+{% block booking_content %}
+<div class="diag-page">
+    <p class="mb-lg">
+        <a class="btn btn--ghost btn--sm" href="/s/{{ public_slug }}/">← Профиль специалиста</a>
+    </p>
+    <header class="diag-page__head">
+        <h1 class="text-h1">Диагностика</h1>
+        <p class="text-body-sm text-muted">
+            Опросники у {{ consultant.first_name }} {{ consultant.last_name }}.
+            Результаты сохраняются в историю и доступны специалисту.
+        </p>
+    </header>
+
+    <section class="diag-section" aria-labelledby="diag-tests-title">
+        <h2 class="text-h2" id="diag-tests-title">Доступные тесты</h2>
+        <div class="diag-grid">
+            {% for t in tests %}
+            <article class="diag-card card card--static">
+                <h3 class="diag-card__title">{{ t.title }}</h3>
+                <p class="text-body-sm text-muted">{{ t.short_description }}</p>
+                <p class="diag-card__meta">~{{ t.duration_minutes }} мин
+                    {% if not t.runnable %} · скоро{% endif %}
+                </p>
+                {% if t.runnable %}
+                <a class="btn btn--primary btn--sm" href="/s/{{ public_slug }}/diagnostics/tests/{{ t.code }}/">Пройти</a>
+                {% else %}
+                <span class="btn btn--ghost btn--sm" aria-disabled="true">Пока недоступен</span>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="diag-section" aria-labelledby="diag-history-title">
+        <h2 class="text-h2" id="diag-history-title">История результатов</h2>
+        {% if attempts %}
+        <div class="diag-history">
+            {% for r in attempts %}
+            {% set diag_results_base = '/s/' ~ public_slug ~ '/diagnostics/results' %}
+            {% include "components/diagnostics_result_card.html" %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-body-sm text-muted">Пока нет прохождений. Выберите тест выше — можно проходить повторно.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

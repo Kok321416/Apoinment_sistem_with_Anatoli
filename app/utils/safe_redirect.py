@@ -2,7 +2,18 @@
 
 from urllib.parse import urlencode, urlparse
 
-DEFAULT_AFTER_LOGIN = "/dashboard/"
+DEFAULT_AFTER_LOGIN = "/"
+
+
+async def resolve_post_login_url_async(db, user, next_url: str | None) -> str:
+    from app.services.active_mode import user_has_consultant_async
+
+    safe = safe_next_url(next_url, default="")
+    if safe and safe != "/dashboard/":
+        return safe
+    if await user_has_consultant_async(db, user.id):
+        return "/dashboard/"
+    return safe or "/"
 
 
 def safe_next_url(raw: str | None, default: str = DEFAULT_AFTER_LOGIN) -> str:

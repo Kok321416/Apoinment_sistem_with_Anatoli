@@ -284,26 +284,11 @@
         document.body.classList.remove("auth-page");
         document.body.classList.add("tg-hub-page");
 
-        var mode = (state && state.mode) || "client";
         var hasC = !!(state && state.has_consultant);
-        var clientActions = document.getElementById("tg-hub-actions-client");
         var specActions = document.getElementById("tg-hub-actions-specialist");
-        var modeSwitch = document.getElementById("tg-hub-mode-switch");
         var become = document.getElementById("tg-hub-become-specialist");
 
-        if (mode === "specialist" && hasC) {
-            if (clientActions) clientActions.hidden = true;
-            if (specActions) specActions.hidden = false;
-        } else {
-            if (clientActions) clientActions.hidden = false;
-            if (specActions) specActions.hidden = true;
-        }
-        if (modeSwitch) {
-            modeSwitch.hidden = !hasC;
-            modeSwitch.querySelectorAll("a[data-tg-mode]").forEach(function (a) {
-                a.classList.toggle("is-active", a.getAttribute("data-tg-mode") === mode);
-            });
-        }
+        if (specActions) specActions.hidden = false;
         if (become) become.hidden = hasC;
     }
 

@@ -515,8 +515,15 @@
         var fab = document.getElementById('bookings-fab');
         if (!fab) return;
         fab.addEventListener('click', function () {
+            if (window.AYCSpecialistBook && typeof window.AYCSpecialistBook.open === 'function') {
+                var csrfEl = document.getElementById('csrfToken');
+                var page = document.getElementById('bookingPageContainer');
+                var csrf = csrfEl ? csrfEl.value : (page ? page.getAttribute('data-csrf') : '');
+                window.AYCSpecialistBook.open({ csrf: csrf || '' });
+                return;
+            }
             if (typeof window.showToast === 'function') {
-                window.showToast('Ручное создание записи скоро будет доступно', 'success');
+                window.showToast('Не удалось открыть форму записи. Обновите страницу.', 'error');
             }
         });
     }

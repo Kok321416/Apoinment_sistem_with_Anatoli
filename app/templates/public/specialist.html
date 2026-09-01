@@ -187,6 +187,14 @@
 </section>
 {% endif %}
 
+{% if show_diagnostics %}
+<section class="ps-diagnostics" aria-labelledby="psDiagTitle">
+    <h2 class="ps-section-title" id="psDiagTitle">Диагностика</h2>
+    <p class="ps-section-sub">Пройдите опросники и сохраните результаты. Можно проходить повторно — история сохраняется.</p>
+    <a class="btn btn--secondary" href="{{ diagnostics_url }}">Перейти к диагностике</a>
+</section>
+{% endif %}
+
 <section class="ps-calendars" id="psCalendars" aria-labelledby="psCalTitle">
     <div class="ps-calendars__head">
         <div>

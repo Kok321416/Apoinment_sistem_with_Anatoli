@@ -2,8 +2,8 @@
 {% from "components/icon.html" import auth_provider_icon %}
 
 {% block meta_tags %}
-{% set page_title = "Открыть в Telegram — " ~ site_brand_name %}
-{% set meta_description = "Мини-приложение записи в Telegram" %}
+{% set page_title = "Кабинет специалиста — " ~ site_brand_name %}
+{% set meta_description = "Мини-приложение для специалистов" %}
 {% include "components/meta.html" %}
 {% endblock %}
 
@@ -19,7 +19,6 @@
   #tg-hub-authed[hidden] { display: none !important; }
   #tg-hub-guest[hidden] { display: none !important; }
   #tg-hub-actions-specialist[hidden],
-  #tg-hub-mode-switch[hidden],
   #tg-hub-become-specialist[hidden] { display: none !important; }
 </style>
 {% endblock %}
@@ -35,25 +34,25 @@
         <h1 class="tg-hub__title">{{ site_brand_name }}</h1>
     </div>
 
-    <div id="tg-hub-mode-switch" class="tg-hub__switch" role="group" aria-label="Режим" hidden>
-        <a href="/tg/?mode=client" data-tg-mode="client">Клиент</a>
-        <a href="/tg/?mode=specialist" data-tg-mode="specialist">Специалист</a>
-    </div>
+    <p class="tg-hub__text">Кабинет специалиста:</p>
 
-    <p class="tg-hub__text">Выберите действие:</p>
-
-    <div id="tg-hub-actions-client" class="tg-hub__actions">
-        <a class="tg-hub__card-link tg-hub__card-link--primary" href="/book/">
-            <span class="tg-hub__card-icon" data-icon="book" aria-hidden="true"></span>
-            <span class="tg-hub__card-title">Записаться</span>
-            <span class="tg-hub__card-desc">Выбрать специалиста и время</span>
+    <div id="tg-hub-actions-specialist" class="tg-hub__actions">
+        <a class="tg-hub__card-link tg-hub__card-link--primary" href="/dashboard/">
+            <span class="tg-hub__card-icon" data-icon="overview" aria-hidden="true"></span>
+            <span class="tg-hub__card-title">Главная</span>
+            <span class="tg-hub__card-desc">Записи, клиенты и инструменты</span>
         </a>
-        <a class="tg-hub__card-link" href="/my-bookings/">
-            <span class="tg-hub__card-icon" data-icon="my-bookings" aria-hidden="true"></span>
-            <span class="tg-hub__card-title">Мои записи</span>
-            <span class="tg-hub__card-desc">Ближайшие и история</span>
+        <a class="tg-hub__card-link" href="/booking/">
+            <span class="tg-hub__card-icon" data-icon="bookings" aria-hidden="true"></span>
+            <span class="tg-hub__card-title">Записи</span>
+            <span class="tg-hub__card-desc">Календарь и ручная запись</span>
         </a>
-        <a id="tg-hub-become-specialist" class="tg-hub__card-link" href="/become-specialist/">
+        <a class="tg-hub__card-link" href="/manage/">
+            <span class="tg-hub__card-icon" data-icon="calendars" aria-hidden="true"></span>
+            <span class="tg-hub__card-title">Управление</span>
+            <span class="tg-hub__card-desc">Календари и услуги</span>
+        </a>
+        <a id="tg-hub-become-specialist" class="tg-hub__card-link" href="/become-specialist/" hidden>
             <span class="tg-hub__card-icon" data-icon="profile" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Стать специалистом</span>
             <span class="tg-hub__card-desc">Включить приём клиентов</span>
@@ -61,38 +60,16 @@
         <a class="tg-hub__card-link" href="/tg/apps/">
             <span class="tg-hub__card-icon" data-icon="external" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Приложение на телефон</span>
-            <span class="tg-hub__card-desc">Android (скоро) и iPhone: Mini App или ярлык</span>
+            <span class="tg-hub__card-desc">Android (скоро) и iPhone</span>
         </a>
     </div>
-
-    <div id="tg-hub-actions-specialist" class="tg-hub__actions" hidden>
-        <a class="tg-hub__card-link tg-hub__card-link--primary" href="/dashboard/">
-            <span class="tg-hub__card-icon" data-icon="overview" aria-hidden="true"></span>
-            <span class="tg-hub__card-title">Кабинет специалиста</span>
-            <span class="tg-hub__card-desc">Профиль, записи и инструменты</span>
-        </a>
-        <a class="tg-hub__card-link" href="/calendars/">
-            <span class="tg-hub__card-icon" data-icon="calendars" aria-hidden="true"></span>
-            <span class="tg-hub__card-title">Календари</span>
-            <span class="tg-hub__card-desc">Окна приёма и расписание</span>
-        </a>
-        <a class="tg-hub__card-link" href="/my-bookings/">
-            <span class="tg-hub__card-icon" data-icon="my-bookings" aria-hidden="true"></span>
-            <span class="tg-hub__card-title">Мои записи</span>
-            <span class="tg-hub__card-desc">Как клиент</span>
-        </a>
-        <a class="tg-hub__card-link" href="/tg/apps/">
-            <span class="tg-hub__card-icon" data-icon="external" aria-hidden="true"></span>
-            <span class="tg-hub__card-title">Приложение на телефон</span>
-            <span class="tg-hub__card-desc">Android (скоро) и iPhone: Mini App или ярлык</span>
-        </a>
-    </div>
+    <p class="text-body-sm text-muted mt-lg">Клиенты записываются по вашей публичной ссылке из профиля специалиста.</p>
 </div>
 
 <div id="tg-hub-guest" class="tg-hub-auth" data-tg-hub="1" data-tg-authed="0">
     <div class="auth-card card card--static">
-        <h1 class="text-h1 auth-card__title">Вход</h1>
-        <p class="text-body-sm text-muted auth-card__lead">Войдите, чтобы открыть кабинет и «Мои записи» в Telegram</p>
+        <h1 class="text-h1 auth-card__title">Вход для специалиста</h1>
+        <p class="text-body-sm text-muted auth-card__lead">Войдите, чтобы открыть кабинет специалиста в Telegram</p>
         <p class="form-field__hint" id="tg-auth-hint" hidden>Входим через Telegram…</p>
 
         <div class="form-field">
@@ -115,9 +92,6 @@
                     <span>Яндекс</span>
                 </a>
             </div>
-            <p class="form-field__hint">
-                В Telegram удобнее войти через кнопку «Телеграм». VK и Яндекс откроются во внешнем браузере.
-            </p>
         </div>
 
         <hr class="auth-divider">
@@ -127,8 +101,8 @@
             <input type="hidden" name="next" value="/tg/">
             <div class="stack">
                 <div class="form-field">
-                    <label class="form-field__label" for="tg_email">Почта</label>
-                    <input class="input" type="email" id="tg_email" name="email" required placeholder="name@example.com" autocomplete="username">
+                    <label class="form-field__label" for="tg_email">Телефон или почта</label>
+                    <input class="input" type="text" id="tg_email" name="email" required placeholder="+7 (___) ___-__-__ или name@example.com" autocomplete="username">
                 </div>
                 <div class="form-field">
                     <label class="form-field__label" for="tg_password">Пароль</label>
@@ -139,8 +113,7 @@
         </form>
 
         <div class="auth-footer-links">
-            <p>Нет аккаунта? <a href="/register/?next={{ '/tg/'|urlencode }}&amp;client=tg">Зарегистрироваться</a></p>
-            <p><a href="/book/">Записаться без входа</a></p>
+            <p>Нет аккаунта специалиста? <a href="/register/?next={{ '/tg/'|urlencode }}&amp;client=tg">Зарегистрироваться</a></p>
             <p><a href="/tg/diag/">Не открывается? Диагностика</a></p>
             <p><a href="/tg/apps/">Как установить на телефон</a></p>
         </div>

@@ -336,121 +336,71 @@ async def dashboard_page(request: Request, db: AsyncSession = Depends(get_async_
     user = await _require_user_async(request, db)
     if not user:
         return _login_redirect(request)
-    from app.services.active_mode import MODE_SPECIALIST, get_active_mode_async, user_has_consultant_async
+    from app.services.active_mode import MODE_SPECIALIST, set_active_mode, user_has_consultant_async
 
     has_c = await user_has_consultant_async(db, user.id)
-    mode = await get_active_mode_async(request, db, user.id)
-    need_mode = request.query_params.get("need_mode") == "specialist"
-    ctx = await page_context_async(
-        request,
-        db,
-        user,
-        need_mode_specialist=need_mode,
-    )
-    if has_c and mode == MODE_SPECIALIST:
-        from app.services.clients_crm import build_crm_payload_async
+    if not has_c:
+        return RedirectResponse("/become-specialist/", status_code=302)
+    set_active_mode(request, MODE_SPECIALIST, has_consultant=True)
+    from app.services.clients_crm import build_crm_payload_async
 
-        consultant = (
-            await db.execute(select(Consultant).where(Consultant.user_id == user.id))
-        ).scalar_one_or_none()
-        if consultant:
-            cards = list(
-                (
-                    await db.execute(
-                        select(ClientCard)
-                        .where(ClientCard.consultant_id == consultant.id)
-                        .order_by(ClientCard.updated_at.desc(), ClientCard.id.desc())
-                    )
+    consultant = (
+        await db.execute(select(Consultant).where(Consultant.user_id == user.id))
+    ).scalar_one_or_none()
+    ctx = await page_context_async(request, db, user)
+    if consultant:
+        cards = list(
+            (
+                await db.execute(
+                    select(ClientCard)
+                    .where(ClientCard.consultant_id == consultant.id)
+                    .order_by(ClientCard.updated_at.desc(), ClientCard.id.desc())
                 )
-                .scalars()
-                .all()
             )
-            crm = await build_crm_payload_async(db, consultant.id, cards)
-            ctx.update(
-                {
-                    "dash_kpi": crm["dashboard"],
-                    "dash_recent_clients": crm["clients"][:8],
-                    "dash_activity": crm["activity"],
-                }
-            )
-        else:
-            ctx.update(
-                {
-                    "dash_kpi": {
-                        "total": 0,
-                        "new_count": 0,
-                        "today_bookings": 0,
-                        "upcoming": 0,
-                    },
-                    "dash_recent_clients": [],
-                    "dash_activity": [],
-                }
-            )
-        return templates.TemplateResponse("app/dashboard.html", ctx)
-    return templates.TemplateResponse("app/dashboard_client.html", ctx)
+            .scalars()
+            .all()
+        )
+        crm = await build_crm_payload_async(db, consultant.id, cards)
+        ctx.update(
+            {
+                "dash_kpi": crm["dashboard"],
+                "dash_recent_clients": crm["clients"][:8],
+                "dash_activity": crm["activity"],
+            }
+        )
+    else:
+        ctx.update(
+            {
+                "dash_kpi": {
+                    "total": 0,
+                    "new_count": 0,
+                    "today_bookings": 0,
+                    "upcoming": 0,
+                },
+                "dash_recent_clients": [],
+                "dash_activity": [],
+            }
+        )
+    return templates.TemplateResponse("app/dashboard.html", ctx)
 
 
 @router.post("/account/mode/")
 async def set_account_mode(request: Request, db: AsyncSession = Depends(get_async_db)):
+    """Legacy dual-role switch — client cabinet removed; always specialist dashboard."""
     user = await _require_user_async(request, db)
     if not user:
         return _login_redirect(request)
-    from app.services.active_mode import set_active_mode, user_has_consultant_async
+    from app.services.active_mode import user_has_consultant_async
 
-    form = await request.form()
-    if not _form_csrf_ok(request, form):
+    if await user_has_consultant_async(db, user.id):
         return RedirectResponse("/dashboard/", status_code=302)
-    mode = (form.get("mode") or "").strip()
-    set_active_mode(
-        request,
-        mode,
-        has_consultant=await user_has_consultant_async(db, user.id),
-    )
-    next_url = safe_next_url(form.get("next") or request.query_params.get("next") or "/dashboard/")
-    return RedirectResponse(next_url, status_code=302)
+    return RedirectResponse("/become-specialist/", status_code=302)
 
 
 @router.get("/my-bookings/")
-async def my_bookings_page(request: Request, db: AsyncSession = Depends(get_async_db)):
-    from sqlalchemy.orm import selectinload
-
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
-    from app.services.active_mode import (
-        MODE_CLIENT,
-        list_client_bookings_async,
-        set_active_mode,
-        user_has_consultant_async,
-    )
-
-    set_active_mode(
-        request,
-        MODE_CLIENT,
-        has_consultant=await user_has_consultant_async(db, user.id),
-    )
-    bookings = await list_client_bookings_async(db, user.id)
-    if bookings:
-        bookings = list(
-            (
-                await db.execute(
-                    select(Booking)
-                    .options(
-                        selectinload(Booking.service),
-                        selectinload(Booking.calendar).selectinload(Calendar.consultant),
-                    )
-                    .where(Booking.id.in_([b.id for b in bookings]))
-                    .order_by(Booking.booking_date.desc(), Booking.booking_time.desc())
-                )
-            )
-            .scalars()
-            .unique()
-            .all()
-        )
-    return templates.TemplateResponse(
-        "app/my_bookings.html",
-        await page_context_async(request, db, user, bookings=bookings),
-    )
+async def my_bookings_page(request: Request):
+    """Client cabinet removed — bookings are on specialist public profiles."""
+    return RedirectResponse("/", status_code=302)
 
 
 @router.get("/home/")
@@ -518,12 +468,21 @@ async def register_page(request: Request, db: AsyncSession = Depends(get_async_d
     client_channel = normalize_client_channel(request.query_params.get("client"))
     remember_auth_intent(request.session, next_url=safe_next_url(request.query_params.get("next"), default=""), client_channel=client_channel)
     if user:
-        next_after = safe_next_url(request.query_params.get("next"), default="/dashboard/")
+        from app.services.active_mode import user_has_consultant_async
+        from app.utils.safe_redirect import resolve_post_login_url_async
+
+        next_after = await resolve_post_login_url_async(
+            db,
+            user,
+            request.query_params.get("next"),
+        )
         return RedirectResponse(next_after, status_code=302)
-    error = fio = phone = email = None
+    error = fio = phone = email = telegram = None
     accept_privacy = False
     account_role = (request.query_params.get("as") or "specialist").strip().lower()
     if account_role not in ("client", "specialist"):
+        account_role = "specialist"
+    if account_role == "client" and not (request.query_params.get("next") or "").startswith("/s/"):
         account_role = "specialist"
     register_errors = {
         "yandex_signup": "Сначала укажите ФИО и телефон, затем выберите Яндекс.",
@@ -535,8 +494,11 @@ async def register_page(request: Request, db: AsyncSession = Depends(get_async_d
         error = register_errors[request.query_params.get("error")]
     if request.method == "POST":
         form = await request.form()
+        from app.services.bookings import normalize_optional_telegram
+
         fio = (form.get("fio") or "").strip()
         phone = normalize_phone(form.get("phone"))
+        telegram = normalize_optional_telegram(form.get("telegram") or "") or ""
         accept_privacy = form.get("accept_privacy") == "1"
         auth_method = form.get("auth_method", "email")
         client_channel = normalize_client_channel(form.get("client") or request.query_params.get("client"))
@@ -551,7 +513,9 @@ async def register_page(request: Request, db: AsyncSession = Depends(get_async_d
         ya_process = "signup" if as_specialist else "signup_client"
         vk_process = "signup" if as_specialist else "signup_client"
         next_after = safe_next_url(form.get("next") or request.query_params.get("next"), default="/dashboard/")
-        if not _form_csrf_ok(request, form):
+        if account_role == "client" and not next_after.startswith("/s/"):
+            error = "Регистрация клиента доступна только по ссылке специалиста."
+        elif not _form_csrf_ok(request, form):
             error = "Ошибка безопасности (CSRF). Обновите страницу и попробуйте снова."
         elif form.get("accept_privacy") != "1":
             error = "Нужно принять политику конфиденциальности и условия использования."
@@ -599,59 +563,95 @@ async def register_page(request: Request, db: AsyncSession = Depends(get_async_d
                 status_code=302,
             )
         else:
-            email = (form.get("email") or "").strip().lower()
+            from app.auth.login_flow import finish_login_async
+
             password = form.get("password", "")
             password_confirm = form.get("password_confirm", "")
-            if not email or not password:
-                error = "Укажите почту и пароль"
-            elif password != password_confirm:
-                error = "Пароли не совпадают"
-            elif (await db.execute(select(User).where(User.username == email))).scalar_one_or_none():
-                error = "Пользователь с такой почтой уже зарегистрирован"
-            elif as_specialist and (
-                await db.execute(select(Consultant).where(Consultant.email == email))
-            ).scalar_one_or_none():
-                error = "Эта почта уже используется другим специалистом"
+            client_telegram = telegram
+
+            if not as_specialist:
+                if not password:
+                    error = "Укажите пароль"
+                elif password != password_confirm:
+                    error = "Пароли не совпадают"
+                elif (await db.execute(select(User).where(User.username == phone))).scalar_one_or_none():
+                    error = "Пользователь с таким номером уже зарегистрирован"
+                else:
+                    try:
+                        first_name, last_name, _middle = parse_fio(fio)
+                        new_user = User(
+                            username=phone,
+                            email="",
+                            password=hash_password(password),
+                            first_name=first_name or "",
+                            last_name=last_name or "",
+                            is_active=True,
+                            date_joined=datetime.utcnow(),
+                        )
+                        db.add(new_user)
+                        await db.flush()
+                        apply_user_names_from_fio(new_user, fio)
+                        request.session["register_phone"] = phone
+                        if client_telegram:
+                            request.session["pc_telegram"] = client_telegram
+                        await db.commit()
+                        return await finish_login_async(request, new_user, db, next_after)
+                    except IntegrityError:
+                        await db.rollback()
+                        error = "Пользователь с таким номером уже зарегистрирован"
+                    except Exception:
+                        logger.exception("Client phone registration failed for %s", phone)
+                        await db.rollback()
+                        error = "Не удалось завершить регистрацию. Попробуйте позже."
             else:
-                try:
-                    first_name, last_name, _middle = parse_fio(fio)
-                    new_user = User(
-                        username=email,
-                        email=email,
-                        password=hash_password(password),
-                        first_name=first_name or "",
-                        last_name=last_name or "",
-                        is_active=False,
-                        date_joined=datetime.utcnow(),
-                    )
-                    db.add(new_user)
-                    await db.flush()
-                    if as_specialist:
+                email = (form.get("email") or "").strip().lower()
+                if not email or not password:
+                    error = "Укажите почту и пароль"
+                elif password != password_confirm:
+                    error = "Пароли не совпадают"
+                elif (await db.execute(select(User).where(User.username == email))).scalar_one_or_none():
+                    error = "Пользователь с такой почтой уже зарегистрирован"
+                elif (
+                    await db.execute(select(Consultant).where(Consultant.email == email))
+                ).scalar_one_or_none():
+                    error = "Эта почта уже используется другим специалистом"
+                else:
+                    try:
+                        first_name, last_name, _middle = parse_fio(fio)
+                        new_user = User(
+                            username=email,
+                            email=email,
+                            password=hash_password(password),
+                            first_name=first_name or "",
+                            last_name=last_name or "",
+                            is_active=False,
+                            date_joined=datetime.utcnow(),
+                        )
+                        db.add(new_user)
+                        await db.flush()
                         await create_consultant_for_user_async(
                             db, new_user, fio=fio, phone=phone, email=email
                         )
-                    else:
-                        apply_user_names_from_fio(new_user, fio)
-                    await ensure_email_address_async(db, new_user, email, verified=False)
-                    request.session["register_phone"] = phone
-                    if not await send_user_verification_email_async(db, new_user):
+                        await ensure_email_address_async(db, new_user, email, verified=False)
+                        request.session["register_phone"] = phone
+                        if not await send_user_verification_email_async(db, new_user):
+                            await db.rollback()
+                            error = "Не удалось отправить письмо. Проверьте почту или обратитесь к администратору."
+                        else:
+                            verify_q = {"email": email}
+                            if next_after and next_after != "/dashboard/":
+                                verify_q["next"] = next_after
+                            return RedirectResponse(
+                                f"/accounts/verify-email/?{urlencode(verify_q)}",
+                                status_code=302,
+                            )
+                    except IntegrityError:
                         await db.rollback()
-                        error = "Не удалось отправить письмо. Проверьте почту или обратитесь к администратору."
-                    else:
-                        verify_q = {"email": email}
-                        if next_after and next_after != "/dashboard/":
-                            verify_q["next"] = next_after
-                        return RedirectResponse(
-                            f"/accounts/verify-email/?{urlencode(verify_q)}",
-                            status_code=302,
-                        )
-                except IntegrityError:
-                    await db.rollback()
-                    error = "Пользователь с такой почтой уже зарегистрирован"
-                except Exception:
-                    logger.exception("Email registration failed for %s", email)
-                    await db.rollback()
-                    error = "Не удалось завершить регистрацию. Попробуйте позже или выберите другой способ входа."
+                        error = "Пользователь с такой почтой уже зарегистрирован"
+                    except Exception:
+                        logger.exception("Email registration failed for %s", email)
+                        await db.rollback()
+                        error = "Не удалось завершить регистрацию. Попробуйте позже или выберите другой способ входа."
     return templates.TemplateResponse(
         "register.html",
         await page_context_async(
@@ -662,6 +662,7 @@ async def register_page(request: Request, db: AsyncSession = Depends(get_async_d
             fio=fio or "",
             phone=phone or "",
             email=email or "",
+            telegram=telegram or "",
             account_role=account_role,
             accept_privacy=accept_privacy,
             next_url=safe_next_url(request.query_params.get("next"), default=""),
@@ -731,7 +732,7 @@ async def login_page(request: Request):
     db = _ensure_async_engine()() if needs_db else None
     try:
         user = await get_current_user_async(request, db) if db is not None else None
-        next_url = safe_next_url(request.query_params.get("next"))
+        next_url = safe_next_url(request.query_params.get("next"), default="")
         from app.services.client_channel import remember_auth_intent, with_client_query
 
         client_channel = remember_auth_intent(
@@ -740,7 +741,12 @@ async def login_page(request: Request):
             client_channel=request.query_params.get("client"),
         )
         if user:
-            return RedirectResponse(next_url, status_code=302)
+            from app.utils.safe_redirect import resolve_post_login_url_async
+
+            dest = await resolve_post_login_url_async(
+                db, user, request.query_params.get("next")
+            )
+            return RedirectResponse(dest, status_code=302)
         error = success = None
         if request.query_params.get("verified") == "1":
             success = "Почта подтверждена. Теперь можно войти."
@@ -781,9 +787,11 @@ async def login_page(request: Request):
                 else:
                     error = msg
             else:
-                email = form.get("email")
+                from app.services.client_auth import find_user_by_login_async, login_identifier_to_username
+
+                login_raw = form.get("email") or form.get("login") or ""
                 password = form.get("password")
-                if not email or not password:
+                if not login_raw or not password:
                     error = "Заполните все поля"
                 else:
                     from app.security.request_guards import client_ip
@@ -793,11 +801,15 @@ async def login_page(request: Request):
                     if not check_rate_limit(f"login:{ip}", max_calls=15, window_sec=300):
                         error = "Слишком много попыток входа. Подождите несколько минут."
                     else:
-                        db_user = (
-                            await db.execute(select(User).where(User.username == email))
-                        ).scalar_one_or_none()
+                        db_user = await find_user_by_login_async(db, login_raw)
+                        login_key = login_identifier_to_username(login_raw)
+                        is_phone_login = login_key.startswith("+")
                         if not db_user or not verify_password(password, db_user.password):
-                            error = "Неверная почта или пароль"
+                            error = (
+                                "Неверный телефон или пароль"
+                                if is_phone_login
+                                else "Неверная почта или пароль"
+                            )
                             try:
                                 from app.services.admin_audit import write_admin_audit
 
@@ -807,7 +819,7 @@ async def login_page(request: Request):
                                     action="login_failed",
                                     entity="user",
                                     entity_id=str(db_user.id) if db_user else None,
-                                    payload={"email": (email or "")[:120]},
+                                    payload={"login": login_key[:120]},
                                     request=request,
                                 )
                                 await db.commit()
@@ -817,7 +829,11 @@ async def login_page(request: Request):
                                 except Exception:
                                     pass
                         elif not db_user.is_active:
-                            error = "Подтвердите почту. Проверьте письмо или отправьте его повторно ниже."
+                            error = (
+                                "Аккаунт не активирован. Обратитесь в поддержку."
+                                if is_phone_login
+                                else "Подтвердите почту. Проверьте письмо или отправьте его повторно ниже."
+                            )
                         else:
                             post_next = safe_next_url(form.get("next") or request.query_params.get("next"))
                             return await finish_login_async(request, db_user, db, post_next)
@@ -1393,23 +1409,9 @@ async def services_page(request: Request, db: AsyncSession = Depends(get_async_d
 
 
 @router.get("/book/")
-async def book_redirect(db: AsyncSession = Depends(get_async_db)):
-    calendar = (
-        await db.execute(
-            select(Calendar).where(Calendar.is_active.is_(True)).order_by(Calendar.id)
-        )
-    ).scalars().first()
-    if not calendar:
-        raise HTTPException(status_code=404, detail="Нет доступных календарей")
-    consultant = (
-        await db.execute(select(Consultant).where(Consultant.id == calendar.consultant_id))
-    ).scalar_one_or_none()
-    if not consultant:
-        raise HTTPException(status_code=404, detail="Специалист не найден")
-    from app.services.public_client import ensure_public_slug_async
-
-    slug = await ensure_public_slug_async(db, consultant)
-    return RedirectResponse(f"/s/{slug}/", status_code=302)
+async def book_redirect():
+    """Generic booking browse removed — clients use specialist profile links (/s/{slug}/)."""
+    return RedirectResponse("/", status_code=302)
 
 
 @router.get("/book/{calendar_id}/")
@@ -1500,6 +1502,8 @@ async def specialist_bookings(request: Request, db: AsyncSession = Depends(get_a
         await mark_past_bookings_completed_async(db, calendars)
     status_filter = request.query_params.get("status", "all")
     success = error = None
+    if request.method == "GET" and request.query_params.get("success"):
+        success = request.query_params.get("success")
 
     if request.method == "POST":
         form = await request.form()
@@ -1706,6 +1710,8 @@ async def calendar_events(request: Request, db: AsyncSession = Depends(get_async
             "client_telegram": b.client_telegram or "",
             "status": b.status,
             "service": b.service.name if b.service else "",
+            "calendar_id": b.calendar_id,
+            "service_id": b.service_id,
         }
         for b in bookings
     ]

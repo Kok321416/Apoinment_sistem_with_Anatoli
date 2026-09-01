@@ -39,23 +39,19 @@ async def get_consultant_async(db, user: AuthUser) -> Consultant:
 
 
 def require_specialist_mode(request: Request, db: Session, user: AuthUser) -> Consultant:
-    """Specialist cabinet routes: need Consultant + active_mode=specialist."""
-    from app.services.active_mode import MODE_SPECIALIST, get_active_mode
+    """Specialist cabinet routes: need Consultant profile."""
+    from app.services.active_mode import MODE_SPECIALIST, set_active_mode
 
     consultant = get_consultant(db, user)
-    mode = get_active_mode(request, db, user.id)
-    if mode != MODE_SPECIALIST:
-        raise HTTPException(status_code=302, headers={"Location": "/dashboard/?need_mode=specialist"})
+    set_active_mode(request, MODE_SPECIALIST, has_consultant=True)
     return consultant
 
 
 async def require_specialist_mode_async(request: Request, db, user: AuthUser) -> Consultant:
-    from app.services.active_mode import MODE_SPECIALIST, get_active_mode_async
+    from app.services.active_mode import MODE_SPECIALIST, set_active_mode
 
     consultant = await get_consultant_async(db, user)
-    mode = await get_active_mode_async(request, db, user.id, has_consultant=True)
-    if mode != MODE_SPECIALIST:
-        raise HTTPException(status_code=302, headers={"Location": "/dashboard/?need_mode=specialist"})
+    set_active_mode(request, MODE_SPECIALIST, has_consultant=True)
     return consultant
 
 

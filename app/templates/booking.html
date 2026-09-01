@@ -219,7 +219,7 @@
     </div>
 </div>
 
-<button type="button" class="bookings-fab" id="bookings-fab" title="Создать запись вручную — скоро" aria-label="Создать запись">＋</button>
+<button type="button" class="bookings-fab" id="bookings-fab" title="Записать клиента" aria-label="Записать клиента">＋</button>
 
 <div id="rescheduleOverlay" class="reschedule-overlay" hidden>
     <div class="reschedule-modal" role="dialog" aria-modal="true" aria-labelledby="rescheduleTitle">
@@ -253,7 +253,7 @@
 
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
-<script src="/static/js/specialist-bookings.js?v=20" defer></script>
+<script src="/static/js/specialist-bookings.js?v=21" defer></script>
 <script src="/static/js/specialist-book.js?v=5" defer></script>
 <script type="application/json" id="bookings-hub-data">{{ hub_payload | tojson }}</script>
 {% endblock %}

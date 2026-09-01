@@ -84,7 +84,7 @@ def _seed_calendar(db, *, user_id=None):
     return c, cal, svc
 
 
-def test_self_booking_blocked():
+def test_self_booking_allowed():
     from app.services.bookings import create_public_booking
 
     db = _session()
@@ -120,8 +120,9 @@ def test_self_booking_blocked():
         "",
         client_user_id=user.id,
     )
-    assert booking is None
-    assert err and "самому себе" in err
+    assert err is None
+    assert booking is not None
+    assert booking.client_user_id == user.id
     db.close()
 
 

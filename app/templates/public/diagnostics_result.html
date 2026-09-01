@@ -1,0 +1,35 @@
+{% extends "layouts/booking.html" %}
+
+{% block meta_tags %}
+{% set page_title = result.title ~ " — результат" %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/booking.css?v=27">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=2">
+{% endblock %}
+
+{% block booking_content %}
+<div class="diag-page">
+    <p class="mb-lg"><a class="btn btn--ghost btn--sm" href="/s/{{ public_slug }}/diagnostics/">← К диагностике</a></p>
+    {% set r = result %}
+    {% set diag_results_base = '/s/' ~ public_slug ~ '/diagnostics/results' %}
+    {% include "components/diagnostics_result_card.html" %}
+
+    {% if result.interpretation and result.interpretation.overall %}
+    <section class="card card--static mt-3xl">
+        <h2 class="text-h2">Интерпретация</h2>
+        <p class="text-body">{{ result.interpretation.overall }}</p>
+        {% if result.interpretation.crisis_hint %}
+        <div class="alert alert--warning mt-lg" role="status">{{ result.interpretation.crisis_hint }}</div>
+        {% endif %}
+        <p class="text-body-sm text-muted mt-lg">{{ result.disclaimer }}</p>
+    </section>
+    {% endif %}
+
+    <p class="mt-lg">
+        <a class="btn btn--primary" href="/s/{{ public_slug }}/diagnostics/">Пройти ещё раз или другой тест</a>
+    </p>
+</div>
+{% endblock %}

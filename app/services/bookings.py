@@ -222,8 +222,6 @@ def create_public_booking(
     client_user_id: int | None = None,
 ) -> tuple[Booking | None, str | None]:
     consultant = calendar.consultant
-    if client_user_id is not None and consultant and consultant.user_id == client_user_id:
-        return None, "Нельзя записаться к самому себе. Выберите другого специалиста или выйдите из аккаунта."
 
     service = (
         db.query(Service)
@@ -377,9 +375,6 @@ async def create_public_booking_async(
         ).scalar_one_or_none()
     if not consultant:
         return None, "Календарь не найден"
-
-    if client_user_id is not None and consultant.user_id == client_user_id:
-        return None, "Нельзя записаться к самому себе. Выберите другого специалиста или выйдите из аккаунта."
 
     service = (
         await db.execute(
@@ -790,6 +785,10 @@ async def create_specialist_booking_async(
     if not phone:
         return None, "Укажите номер телефона", None
 
+    from app.services.client_auth import resolve_client_user_id_by_phone_async
+
+    client_user_id = await resolve_client_user_id_by_phone_async(db, phone)
+
     if card is None:
         if force_new_client:
             card = ClientCard(
@@ -798,6 +797,7 @@ async def create_specialist_booking_async(
                 phone=phone or None,
                 email=email,
                 telegram=telegram,
+                client_user_id=client_user_id,
             )
             db.add(card)
             await db.flush()
@@ -809,7 +809,7 @@ async def create_specialist_booking_async(
                 phone,
                 email or "",
                 telegram or "",
-                client_user_id=None,
+                client_user_id=client_user_id,
             )
     elif phone and card.phone != phone:
         card.phone = phone

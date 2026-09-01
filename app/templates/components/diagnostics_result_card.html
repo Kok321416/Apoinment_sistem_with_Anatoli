@@ -32,6 +32,6 @@
     {% endif %}
     <p class="text-body-sm text-muted mt-md">{{ r.disclaimer }}</p>
     {% if r.id %}
-    <a class="btn btn--secondary btn--sm mt-lg" href="/diagnostics/results/{{ r.id }}/">Полная расшифровка</a>
+    <a class="btn btn--secondary btn--sm mt-lg" href="{{ (diag_results_base | default('/diagnostics/results')) }}/{{ r.id }}/">Полная расшифровка</a>
     {% endif %}
 </article>

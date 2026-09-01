@@ -33,7 +33,7 @@
                         <input type="radio" name="account_role" value="specialist"{% if account_role != 'client' %} checked{% endif %}>
                         <span>Специалист</span>
                     </label>
-                    <label class="auth-role{% if account_role == 'client' %} is-selected{% endif %}" data-role="client">
+                    <label class="auth-role{% if account_role == 'client' %} is-selected{% endif %}" data-role="client"{% if account_role != 'client' %} hidden{% endif %}>
                         <input type="radio" name="account_role" value="client"{% if account_role == 'client' %} checked{% endif %}>
                         <span>Клиент</span>
                     </label>
@@ -72,6 +72,19 @@
                 >
             </div>
 
+            <div class="form-field" id="client-telegram-block" hidden>
+                <label class="form-field__label" for="telegram">Ник в Telegram <span class="text-muted">(необязательно)</span></label>
+                <input
+                    class="input"
+                    type="text"
+                    id="telegram"
+                    name="telegram"
+                    autocomplete="off"
+                    placeholder="@username"
+                    value="{{ telegram or '' }}"
+                >
+            </div>
+
             <div class="form-field">
                 <span class="form-field__label" id="authMethodLabel">Способ входа</span>
                 <div class="auth-methods auth-methods--grid" role="radiogroup" aria-labelledby="authMethodLabel">
@@ -94,14 +107,14 @@
                     {% endif %}
                     <label class="auth-method is-selected" data-method="email">
                         <input type="radio" name="auth_radio" value="email" checked>
-                        <span>Почта и пароль</span>
+                        <span id="email-method-label">Почта и пароль</span>
                     </label>
                 </div>
             </div>
 
             <div class="auth-email-block is-visible" id="email-block">
                 <div class="stack">
-                    <div class="form-field">
+                    <div class="form-field" id="email-field-wrap">
                         <label class="form-field__label" for="email">Почта</label>
                         <input class="input" type="email" id="email" name="email" placeholder="name@example.com" value="{{ email or '' }}" autocomplete="email">
                     </div>
@@ -151,6 +164,26 @@
     var passwordConfirm = document.getElementById('password_confirm');
     var phoneEl = document.getElementById('phone');
     var fioEl = document.getElementById('fio');
+    var clientTelegramBlock = document.getElementById('client-telegram-block');
+    var emailFieldWrap = document.getElementById('email-field-wrap');
+    var emailMethodLabel = document.getElementById('email-method-label');
+
+    function isClientRole() {
+        var checked = document.querySelector('input[name="account_role"]:checked');
+        return checked && checked.value === 'client';
+    }
+
+    function updateRoleUi() {
+        var client = isClientRole();
+        if (clientTelegramBlock) clientTelegramBlock.hidden = !client;
+        if (emailFieldWrap) emailFieldWrap.hidden = client;
+        if (emailMethodLabel) emailMethodLabel.textContent = client ? 'Телефон и пароль' : 'Почта и пароль';
+        if (authMethod.value === 'email') {
+            emailInput.required = !client;
+            passwordInput.required = true;
+            passwordConfirm.required = true;
+        }
+    }
     function normalizeSpaces(s) {
     return (s || '').replace(/\s+/g, ' ').trim();
 }
@@ -185,6 +218,7 @@ if (fioEl) {
             });
             var radio = label.querySelector('input[type="radio"]');
             if (radio) radio.checked = true;
+            updateRoleUi();
         });
     });
 
@@ -195,7 +229,8 @@ if (fioEl) {
         });
         var isEmail = method === 'email';
         emailBlock.classList.toggle('is-visible', isEmail);
-        emailInput.required = isEmail;
+        var client = isClientRole();
+        emailInput.required = isEmail && !client;
         passwordInput.required = isEmail;
         passwordConfirm.required = isEmail;
         form.toggleAttribute('novalidate', method !== 'email');
@@ -245,12 +280,12 @@ if (fioEl) {
         if (authMethod.value === 'yandex') return;
         if (authMethod.value === 'vk') return;
 
-        if (!isValidEmail(emailInput.value)) {
+        if (!isClientRole() && !isValidEmail(emailInput.value)) {
             e.preventDefault();
             alert('Укажите корректную почту, например name@example.com');
             return;
         }
-        emailInput.value = emailInput.value.trim().toLowerCase();
+        if (!isClientRole()) emailInput.value = emailInput.value.trim().toLowerCase();
 
         if (passwordInput.value !== passwordConfirm.value) {
             e.preventDefault();
@@ -259,6 +294,8 @@ if (fioEl) {
             return;
         }
     });
+
+    updateRoleUi();
 })();
 </script>
 {% endblock %}

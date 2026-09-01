@@ -85,7 +85,9 @@ async def finish_login_async(
     *,
     skip_2fa: bool = False,
 ) -> RedirectResponse:
-    safe = safe_next_url(next_url)
+    from app.utils.safe_redirect import resolve_post_login_url_async
+
+    safe = await resolve_post_login_url_async(db, user, next_url)
     if not skip_2fa and await needs_login_2fa_async(db, user):
         return start_2fa_challenge(request, user, safe)
     await login_user_async(request, user, db)

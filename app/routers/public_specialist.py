@@ -125,6 +125,9 @@ async def specialist_public_home(request: Request, slug: str, db: AsyncSession =
         calendars_data.append({"calendar": cal, "services_count": svc_count})
 
     gated = client_gate_ok(request.session, consultant.id)
+    from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+
+    show_diagnostics = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
     return templates.TemplateResponse(
         "public/specialist.html",
         await page_context_async(
@@ -138,6 +141,8 @@ async def specialist_public_home(request: Request, slug: str, db: AsyncSession =
             client_telegram=request.session.get("pc_telegram", "") if gated else "",
             client_gated=gated,
             welcome_url=f"/s/{slug}/welcome/?next=/s/{slug}/",
+            show_diagnostics=show_diagnostics,
+            diagnostics_url=f"/s/{slug}/diagnostics/",
         ),
     )
 
@@ -368,7 +373,7 @@ async def specialist_calendar_book(
                 from app.services.diagnostics_service import touch_client_specialist_link
 
                 show_diag = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
-                diag_url = f"/diagnostics/?consultant_id={consultant.id}"
+                diag_url = f"/s/{slug}/diagnostics/"
                 if auth_user:
                     try:
                         await touch_client_specialist_link(
@@ -380,9 +385,6 @@ async def specialist_calendar_book(
                         await db.commit()
                     except Exception:
                         await db.rollback()
-                    request.session["diagnostics_consultant_id"] = consultant.id
-                else:
-                    diag_url = f"/login/?next={diag_url}"
                 return templates.TemplateResponse(
                     "booking_success.html",
                     await page_context_async(
@@ -476,3 +478,223 @@ async def specialist_calendar_slots(
     if not service:
         return {"available_slots": [], "available_windows": []}
     return await get_available_slots_async(db, calendar, service, booking_date)
+
+
+# --- Diagnostics on specialist public profile (no client cabinet) ---
+
+
+async def _require_profile_auth(request: Request, consultant: Consultant, next_path: str, db):
+    """Logged-in client gate for profile sub-pages (booking, diagnostics)."""
+    auth_user = await get_current_user_async(request, db)
+    if auth_user:
+        await apply_client_gate_from_user_async(
+            db,
+            request.session,
+            consultant_id=consultant.id,
+            user=auth_user,
+        )
+        _sync_booking_session(request)
+        return auth_user, None
+    if client_gate_ok(request.session, consultant.id):
+        return auth_user, None
+    slug = getattr(consultant, "public_slug", None) or f"id-{consultant.id}"
+    return None, RedirectResponse(
+        f"/s/{slug}/welcome/?{urlencode({'next': next_path})}",
+        status_code=302,
+    )
+
+
+@router.get("/s/{slug}/diagnostics/")
+async def specialist_diagnostics_hub(
+    request: Request, slug: str, db: AsyncSession = Depends(get_async_db)
+):
+    from app.diagnostics.catalog import list_tests
+    from app.services.diagnostics_service import (
+        attempt_to_view,
+        list_attempts_for_client,
+        touch_client_specialist_link,
+    )
+    from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+
+    consultant = await _get_consultant_by_slug_async(db, slug)
+    if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
+        raise HTTPException(status_code=404, detail="Диагностика недоступна")
+    next_path = f"/s/{slug}/diagnostics/"
+    auth_user, redirect = await _require_profile_auth(request, consultant, next_path, db)
+    if redirect:
+        return redirect
+    if auth_user and auth_user.id != consultant.user_id:
+        try:
+            await touch_client_specialist_link(
+                db,
+                client_user_id=auth_user.id,
+                consultant_id=consultant.id,
+                source="diagnostics",
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+    attempts = []
+    if auth_user:
+        attempts = [
+            attempt_to_view(a)
+            for a in await list_attempts_for_client(
+                db, client_user_id=auth_user.id, consultant_id=consultant.id
+            )
+        ]
+    return templates.TemplateResponse(
+        "public/diagnostics_hub.html",
+        await page_context_async(
+            request,
+            db,
+            auth_user,
+            consultant=consultant,
+            public_slug=slug,
+            tests=list_tests(only_runnable=False),
+            attempts=attempts,
+        ),
+    )
+
+
+@router.get("/s/{slug}/diagnostics/tests/{test_code}/")
+async def specialist_diagnostics_take(
+    request: Request,
+    slug: str,
+    test_code: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    from sqlalchemy.orm import selectinload
+
+    from app.diagnostics.catalog import get_test
+    from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+
+    consultant = await _get_consultant_by_slug_async(db, slug)
+    if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
+        raise HTTPException(status_code=404, detail="Диагностика недоступна")
+    test = get_test(test_code)
+    if not test or not test.runnable:
+        return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
+    next_path = f"/s/{slug}/diagnostics/tests/{test_code}/"
+    auth_user, redirect = await _require_profile_auth(request, consultant, next_path, db)
+    if redirect:
+        return redirect
+    consultant = (
+        await db.execute(
+            select(Consultant)
+            .options(selectinload(Consultant.category))
+            .where(Consultant.id == consultant.id)
+        )
+    ).scalar_one()
+    return templates.TemplateResponse(
+        "public/diagnostics_take.html",
+        await page_context_async(
+            request,
+            db,
+            auth_user,
+            consultant=consultant,
+            public_slug=slug,
+            test=test,
+        ),
+    )
+
+
+@router.post("/s/{slug}/diagnostics/tests/{test_code}/submit/")
+async def specialist_diagnostics_submit(
+    request: Request,
+    slug: str,
+    test_code: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    from app.security.csrf import validate_csrf_token
+    from app.services.diagnostics_service import (
+        complete_attempt,
+        start_attempt,
+        touch_client_specialist_link,
+    )
+    from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+
+    consultant = await _get_consultant_by_slug_async(db, slug)
+    if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
+        raise HTTPException(status_code=404, detail="Диагностика недоступна")
+    auth_user = await get_current_user_async(request, db)
+    if not auth_user:
+        return RedirectResponse(
+            f"/s/{slug}/welcome/?{urlencode({'next': f'/s/{slug}/diagnostics/tests/{test_code}/'})}",
+            status_code=302,
+        )
+    form = await request.form()
+    if not validate_csrf_token(request, form.get("csrf_token")):
+        return RedirectResponse(f"/s/{slug}/diagnostics/?error=csrf", status_code=302)
+    answers = {}
+    for key, val in form.multi_items():
+        if key.startswith("i") and key[1:].isdigit():
+            answers[key] = val
+    try:
+        attempt = await start_attempt(
+            db,
+            client_user_id=auth_user.id,
+            consultant_id=consultant.id,
+            test_code=test_code,
+            source=(form.get("source") or "profile").strip() or "profile",
+            invitation_id=int(form["invitation_id"]) if form.get("invitation_id") else None,
+            booking_id=int(form["booking_id"]) if form.get("booking_id") else None,
+        )
+        await complete_attempt(db, attempt=attempt, answers=answers)
+        await touch_client_specialist_link(
+            db,
+            client_user_id=auth_user.id,
+            consultant_id=consultant.id,
+            source="diagnostics",
+        )
+        await db.commit()
+    except ValueError:
+        await db.rollback()
+        return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
+    except Exception:
+        await db.rollback()
+        return RedirectResponse(f"/s/{slug}/diagnostics/?error=save", status_code=302)
+    return RedirectResponse(f"/s/{slug}/diagnostics/results/{attempt.id}/", status_code=302)
+
+
+@router.get("/s/{slug}/diagnostics/results/{attempt_id}/")
+async def specialist_diagnostics_result(
+    request: Request,
+    slug: str,
+    attempt_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    from app.models import DiagnosticAttempt
+    from app.services.diagnostics_service import attempt_to_view
+    from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+
+    consultant = await _get_consultant_by_slug_async(db, slug)
+    if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
+        raise HTTPException(status_code=404, detail="Диагностика недоступна")
+    auth_user = await get_current_user_async(request, db)
+    if not auth_user:
+        return RedirectResponse(
+            f"/s/{slug}/welcome/?{urlencode({'next': f'/s/{slug}/diagnostics/results/{attempt_id}/'})}",
+            status_code=302,
+        )
+    attempt = (
+        await db.execute(select(DiagnosticAttempt).where(DiagnosticAttempt.id == attempt_id))
+    ).scalar_one_or_none()
+    if (
+        not attempt
+        or attempt.status != "completed"
+        or attempt.consultant_id != consultant.id
+        or attempt.client_user_id != auth_user.id
+    ):
+        return RedirectResponse(f"/s/{slug}/diagnostics/", status_code=302)
+    return templates.TemplateResponse(
+        "public/diagnostics_result.html",
+        await page_context_async(
+            request,
+            db,
+            auth_user,
+            consultant=consultant,
+            public_slug=slug,
+            result=attempt_to_view(attempt),
+            attempt=attempt,
+        ),
+    )

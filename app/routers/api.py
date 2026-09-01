@@ -99,30 +99,32 @@ async def api_register(request: Request, db: AsyncSession = Depends(get_async_db
 @router.post("/auth/login")
 async def api_login(request: Request, db: AsyncSession = Depends(get_async_db)):
     from app.security.request_guards import client_ip
+    from app.services.client_auth import find_user_by_login_async, login_identifier_to_username
     from app.services.rate_limit import check_rate_limit
 
     ip = client_ip(request)
     if not check_rate_limit(f"api-login:{ip}", max_calls=15, window_sec=300):
         return JSONResponse({"error": "Слишком много попыток входа. Подождите."}, status_code=429)
     data = await request.json()
-    email = data.get("email")
+    login_raw = data.get("email") or data.get("login") or data.get("phone")
     password = data.get("password")
-    if not email or not password or not isinstance(email, str) or not isinstance(password, str):
+    if not login_raw or not password or not isinstance(login_raw, str) or not isinstance(password, str):
         return JSONResponse({"error": "Неверный логин/пароль"}, status_code=401)
-    user = (
-        await db.execute(select(User).where(User.username == email.strip().lower()))
-    ).scalar_one_or_none()
+    user = await find_user_by_login_async(db, login_raw)
     if not user or not verify_password(password, user.password):
         return JSONResponse({"error": "Неверный логин/пароль"}, status_code=401)
     if not user.is_active:
-        return JSONResponse({"error": "Подтвердите почту. Проверьте письмо."}, status_code=403)
+        is_phone = login_identifier_to_username(login_raw).startswith("+")
+        msg = "Аккаунт не активирован." if is_phone else "Подтвердите почту. Проверьте письмо."
+        return JSONResponse({"error": msg}, status_code=403)
     from app.auth.login_flow import finish_login_json_async
+    from app.utils.safe_redirect import resolve_post_login_url_async
 
     result = await finish_login_json_async(
         request,
         user,
         db,
-        "/dashboard/",
+        await resolve_post_login_url_async(db, user, data.get("next")),
         extra={"email": user.email},
     )
     if result.get("requires_2fa"):
@@ -396,8 +398,9 @@ async def api_telegram_webapp_auth(request: Request, db: AsyncSession = Depends(
         return JSONResponse({"success": False, "error": "User not found"}, status_code=400)
     has_c = await user_has_consultant_async(db, user.id)
     from app.auth.login_flow import finish_login_json_async
+    from app.utils.safe_redirect import resolve_post_login_url_async
 
-    next_url = (data.get("next") or "/tg/").strip() or "/tg/"
+    next_url = await resolve_post_login_url_async(db, user, data.get("next") or "/tg/")
     result = await finish_login_json_async(
         request,
         user,
@@ -413,10 +416,10 @@ async def api_telegram_webapp_auth(request: Request, db: AsyncSession = Depends(
         return JSONResponse(result)
     if mode == "specialist" and has_c:
         set_active_mode(request, mode, has_consultant=has_c)
-    else:
-        from app.services.active_mode import MODE_CLIENT
+    elif has_c:
+        from app.services.active_mode import MODE_SPECIALIST
 
-        set_active_mode(request, MODE_CLIENT, has_consultant=has_c)
+        set_active_mode(request, MODE_SPECIALIST, has_consultant=has_c)
     return result
 
 
@@ -440,8 +443,8 @@ async def api_telegram_hub_state(request: Request, db: AsyncSession = Depends(ge
     return {
         "authenticated": True,
         "has_consultant": has_c,
-        "mode": mode,
-        "show_mode_switcher": bool(has_c),
+        "mode": MODE_SPECIALIST if has_c else MODE_CLIENT,
+        "show_mode_switcher": False,
         "display_name": user.get_full_name() or user.username or "",
     }
 
