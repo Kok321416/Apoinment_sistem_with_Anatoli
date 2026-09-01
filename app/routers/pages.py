@@ -195,66 +195,24 @@ async def landing_page(request: Request):
 async def telegram_mini_app_entry(request: Request):
     """Landing for Telegram Mini App (Menu Button / web_app buttons).
 
-    Anonymous hits skip MySQL: Telegram WebView aborts (~10s) if Passenger+DB are cold.
+    Never touches MySQL on GET: Telegram WebView aborts (~10s) on cold Passenger+DB.
+    Auth state and hub menu are hydrated client-side via /api/telegram/hub-state and webapp-auth.
     """
-    from app.auth.session import get_current_user_async, get_session_user_id
-    from app.services.active_mode import (
-        MODE_CLIENT,
-        MODE_SPECIALIST,
-        set_active_mode,
-        user_has_consultant_async,
-    )
-    from app.templating import _page_context_base, page_context_async
+    from app.services.active_mode import MODE_CLIENT, MODE_SPECIALIST
+    from app.templating import _page_context_base
 
-    uid = get_session_user_id(request) if "session" in request.scope else None
-    extra = dict(
+    ctx = _page_context_base(
+        request,
+        None,
+        has_consultant=False,
+        active_mode=MODE_CLIENT,
+        header={"header_consultant_name": "", "header_account_display": ""},
         tg_hub=True,
         load_telegram_webapp=True,
         tg_mode_client=MODE_CLIENT,
         tg_mode_specialist=MODE_SPECIALIST,
     )
-    if not uid:
-        extra.update(
-            tg_mode=MODE_CLIENT,
-            tg_has_consultant=False,
-            tg_show_mode_switcher=False,
-        )
-        ctx = _page_context_base(
-            request,
-            None,
-            has_consultant=False,
-            active_mode=MODE_CLIENT,
-            header={"header_consultant_name": "", "header_account_display": ""},
-            **extra,
-        )
-        return templates.TemplateResponse("public/tg_mini_app.html", ctx)
-
-    from app.database import _ensure_async_engine
-
-    factory = _ensure_async_engine()
-    async with factory() as db:
-        user = await get_current_user_async(request, db)
-        mode_q = (request.query_params.get("mode") or "").strip().lower()
-        has_c = bool(user and await user_has_consultant_async(db, user.id))
-        if user:
-            if mode_q == MODE_SPECIALIST and has_c:
-                set_active_mode(request, MODE_SPECIALIST, has_consultant=has_c)
-                active = MODE_SPECIALIST
-            else:
-                set_active_mode(request, MODE_CLIENT, has_consultant=has_c)
-                active = MODE_CLIENT
-        else:
-            active = MODE_CLIENT
-            has_c = False
-        extra.update(
-            tg_mode=active,
-            tg_has_consultant=has_c,
-            tg_show_mode_switcher=bool(has_c and active == MODE_SPECIALIST),
-        )
-        return templates.TemplateResponse(
-            "public/tg_mini_app.html",
-            await page_context_async(request, db, user, **extra),
-        )
+    return templates.TemplateResponse("public/tg_mini_app.html", ctx)
 
 
 @router.get("/tg/diag/")

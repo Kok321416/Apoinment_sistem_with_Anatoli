@@ -8,6 +8,7 @@ _SKIP_PREFIXES = (
     "/static/",
     "/media/",
     "/health",
+    "/tg/",
     "/sw.js",
     "/internal/",
     "/telegram/webhook/",

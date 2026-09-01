@@ -71,6 +71,9 @@ def test_signup_creates_integration_stub_without_chat():
     assert ok, msg
     user = db.get(User, out.user_id)
     assert user is not None
+    socials = db.query(SocialAccount).filter(SocialAccount.uid == "555001").all()
+    assert len(socials) == 1
+    assert socials[0].user_id == user.id
     consultant = db.query(Consultant).filter(Consultant.user_id == user.id).first()
     assert consultant is not None
     integ = db.query(Integration).filter(Integration.consultant_id == consultant.id).first()

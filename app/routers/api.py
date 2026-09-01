@@ -420,6 +420,32 @@ async def api_telegram_webapp_auth(request: Request, db: AsyncSession = Depends(
     return result
 
 
+@router.get("/telegram/hub-state")
+async def api_telegram_hub_state(request: Request, db: AsyncSession = Depends(get_async_db)):
+    """Mini App hub: session + mode after HTML shell loaded (keeps GET /tg/ DB-free)."""
+    from app.auth.session import get_current_user_async
+    from app.services.active_mode import MODE_CLIENT, MODE_SPECIALIST, get_active_mode_async, user_has_consultant_async
+
+    user = await get_current_user_async(request, db)
+    if not user:
+        return {"authenticated": False}
+    has_c = await user_has_consultant_async(db, user.id)
+    mode_q = (request.query_params.get("mode") or "").strip().lower()
+    if mode_q == MODE_SPECIALIST and has_c:
+        mode = MODE_SPECIALIST
+    else:
+        mode = await get_active_mode_async(request, db, user.id, has_consultant=has_c)
+        if mode not in (MODE_CLIENT, MODE_SPECIALIST):
+            mode = MODE_CLIENT
+    return {
+        "authenticated": True,
+        "has_consultant": has_c,
+        "mode": mode,
+        "show_mode_switcher": bool(has_c),
+        "display_name": user.get_full_name() or user.username or "",
+    }
+
+
 _WEBAPP_DIAG_KINDS = frozenset({
     "js_error",
     "promise",

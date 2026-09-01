@@ -233,8 +233,8 @@
     }
 
     function consumeStartParamAuth(tg) {
-        var hub = document.querySelector("[data-tg-hub]");
-        if (hub && hub.getAttribute("data-tg-authed") === "1") return false;
+        var authed = document.getElementById("tg-hub-authed");
+        if (authed && !authed.hidden) return false;
 
         var start = "";
         try {
@@ -274,10 +274,63 @@
         return true;
     }
 
+    function showAuthedHub(state) {
+        var guest = document.getElementById("tg-hub-guest");
+        var authed = document.getElementById("tg-hub-authed");
+        if (!guest || !authed) return;
+        guest.hidden = true;
+        authed.hidden = false;
+        authed.setAttribute("data-tg-authed", "1");
+        document.body.classList.remove("auth-page");
+        document.body.classList.add("tg-hub-page");
+
+        var mode = (state && state.mode) || "client";
+        var hasC = !!(state && state.has_consultant);
+        var clientActions = document.getElementById("tg-hub-actions-client");
+        var specActions = document.getElementById("tg-hub-actions-specialist");
+        var modeSwitch = document.getElementById("tg-hub-mode-switch");
+        var become = document.getElementById("tg-hub-become-specialist");
+
+        if (mode === "specialist" && hasC) {
+            if (clientActions) clientActions.hidden = true;
+            if (specActions) specActions.hidden = false;
+        } else {
+            if (clientActions) clientActions.hidden = false;
+            if (specActions) specActions.hidden = true;
+        }
+        if (modeSwitch) {
+            modeSwitch.hidden = !hasC;
+            modeSwitch.querySelectorAll("a[data-tg-mode]").forEach(function (a) {
+                a.classList.toggle("is-active", a.getAttribute("data-tg-mode") === mode);
+            });
+        }
+        if (become) become.hidden = hasC;
+    }
+
+    function hydrateTelegramHub(callback) {
+        var url = "/api/telegram/hub-state" + (window.location.search || "");
+        fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } })
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (state) {
+                if (state && state.authenticated) {
+                    showAuthedHub(state);
+                    if (callback) callback(true);
+                } else if (callback) {
+                    callback(false);
+                }
+            })
+            .catch(function () {
+                if (callback) callback(false);
+            });
+    }
+
     function tryWebappAuth(tg) {
-        var hub = document.querySelector("[data-tg-hub]");
-        if (!hub) return;
-        if (hub.getAttribute("data-tg-authed") === "1") return;
+        var authed = document.getElementById("tg-hub-authed");
+        var guest = document.getElementById("tg-hub-guest");
+        if (!authed && !guest) return;
+        if (authed && !authed.hidden) return;
         var initData = tg.initData || "";
         if (!initData) return;
         if (sessionStorage.getItem("tg_webapp_auth_done") === "1") return;
@@ -314,8 +367,7 @@
                         window.location.replace(res.data.redirect);
                         return;
                     }
-                    var url = window.location.pathname + window.location.search;
-                    window.location.replace(url);
+                    hydrateTelegramHub(function () {});
                 } else if (hint) {
                     hint.hidden = false;
                     hint.textContent = "Не удалось войти автоматически. Используйте кнопки ниже.";
@@ -428,7 +480,9 @@
             if (consumeStartParamAuth(tg)) {
                 return;
             }
-            tryWebappAuth(tg);
+            hydrateTelegramHub(function (authed) {
+                if (!authed) tryWebappAuth(tg);
+            });
             // Site/native links point to t.me — inside Mini App stay on the hub.
             try {
                 document.querySelectorAll("a[data-tg-internal]").forEach(function (a) {

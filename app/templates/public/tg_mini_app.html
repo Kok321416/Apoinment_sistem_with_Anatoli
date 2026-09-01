@@ -16,31 +16,56 @@
     color: #0a0a0a !important;
     min-height: 100%;
   }
+  #tg-hub-authed[hidden] { display: none !important; }
+  #tg-hub-guest[hidden] { display: none !important; }
+  #tg-hub-actions-specialist[hidden],
+  #tg-hub-mode-switch[hidden],
+  #tg-hub-become-specialist[hidden] { display: none !important; }
 </style>
 {% endblock %}
 
-{% block body_class %}{% if user and user.is_authenticated %}tg-hub-page{% else %}auth-page tg-hub-page{% endif %}{% endblock %}
+{% block body_class %}auth-page tg-hub-page{% endblock %}
 
 {% block body %}
 <div id="tg-scroll-root" class="tg-scroll-root" data-tg-shell="1">
-{% if user and user.is_authenticated %}
-<div class="tg-hub" data-tg-hub="1" data-tg-authed="1">
+
+<div id="tg-hub-authed" class="tg-hub" data-tg-hub="1" data-tg-authed="1" hidden>
     <div class="tg-hub__brand">
         <img class="tg-hub__logo" src="/static/img/brand/logo-mark-160.png?v=4" alt="" width="40" height="40" decoding="async">
         <h1 class="tg-hub__title">{{ site_brand_name }}</h1>
     </div>
 
-    {% if tg_show_mode_switcher %}
-    <div class="tg-hub__switch" role="group" aria-label="Режим">
-        <a href="/tg/?mode=client" class="{% if tg_mode == tg_mode_client %}is-active{% endif %}">Клиент</a>
-        <a href="/tg/?mode=specialist" class="{% if tg_mode == tg_mode_specialist %}is-active{% endif %}">Специалист</a>
+    <div id="tg-hub-mode-switch" class="tg-hub__switch" role="group" aria-label="Режим" hidden>
+        <a href="/tg/?mode=client" data-tg-mode="client">Клиент</a>
+        <a href="/tg/?mode=specialist" data-tg-mode="specialist">Специалист</a>
     </div>
-    {% endif %}
 
     <p class="tg-hub__text">Выберите действие:</p>
 
-    <div class="tg-hub__actions">
-        {% if tg_mode == tg_mode_specialist and tg_has_consultant %}
+    <div id="tg-hub-actions-client" class="tg-hub__actions">
+        <a class="tg-hub__card-link tg-hub__card-link--primary" href="/book/">
+            <span class="tg-hub__card-icon" data-icon="book" aria-hidden="true"></span>
+            <span class="tg-hub__card-title">Записаться</span>
+            <span class="tg-hub__card-desc">Выбрать специалиста и время</span>
+        </a>
+        <a class="tg-hub__card-link" href="/my-bookings/">
+            <span class="tg-hub__card-icon" data-icon="my-bookings" aria-hidden="true"></span>
+            <span class="tg-hub__card-title">Мои записи</span>
+            <span class="tg-hub__card-desc">Ближайшие и история</span>
+        </a>
+        <a id="tg-hub-become-specialist" class="tg-hub__card-link" href="/become-specialist/">
+            <span class="tg-hub__card-icon" data-icon="profile" aria-hidden="true"></span>
+            <span class="tg-hub__card-title">Стать специалистом</span>
+            <span class="tg-hub__card-desc">Включить приём клиентов</span>
+        </a>
+        <a class="tg-hub__card-link" href="/tg/apps/">
+            <span class="tg-hub__card-icon" data-icon="external" aria-hidden="true"></span>
+            <span class="tg-hub__card-title">Приложение на телефон</span>
+            <span class="tg-hub__card-desc">Android (скоро) и iPhone: Mini App или ярлык</span>
+        </a>
+    </div>
+
+    <div id="tg-hub-actions-specialist" class="tg-hub__actions" hidden>
         <a class="tg-hub__card-link tg-hub__card-link--primary" href="/dashboard/">
             <span class="tg-hub__card-icon" data-icon="overview" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Кабинет специалиста</span>
@@ -56,25 +81,6 @@
             <span class="tg-hub__card-title">Мои записи</span>
             <span class="tg-hub__card-desc">Как клиент</span>
         </a>
-        {% else %}
-        <a class="tg-hub__card-link tg-hub__card-link--primary" href="/book/">
-            <span class="tg-hub__card-icon" data-icon="book" aria-hidden="true"></span>
-            <span class="tg-hub__card-title">Записаться</span>
-            <span class="tg-hub__card-desc">Выбрать специалиста и время</span>
-        </a>
-        <a class="tg-hub__card-link" href="/my-bookings/">
-            <span class="tg-hub__card-icon" data-icon="my-bookings" aria-hidden="true"></span>
-            <span class="tg-hub__card-title">Мои записи</span>
-            <span class="tg-hub__card-desc">Ближайшие и история</span>
-        </a>
-        {% if not tg_has_consultant %}
-        <a class="tg-hub__card-link" href="/become-specialist/">
-            <span class="tg-hub__card-icon" data-icon="profile" aria-hidden="true"></span>
-            <span class="tg-hub__card-title">Стать специалистом</span>
-            <span class="tg-hub__card-desc">Включить приём клиентов</span>
-        </a>
-        {% endif %}
-        {% endif %}
         <a class="tg-hub__card-link" href="/tg/apps/">
             <span class="tg-hub__card-icon" data-icon="external" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Приложение на телефон</span>
@@ -82,8 +88,8 @@
         </a>
     </div>
 </div>
-{% else %}
-<div class="tg-hub-auth" data-tg-hub="1" data-tg-authed="0">
+
+<div id="tg-hub-guest" class="tg-hub-auth" data-tg-hub="1" data-tg-authed="0">
     <div class="auth-card card card--static">
         <h1 class="text-h1 auth-card__title">Вход</h1>
         <p class="text-body-sm text-muted auth-card__lead">Войдите, чтобы открыть кабинет и «Мои записи» в Telegram</p>
@@ -140,6 +146,6 @@
         </div>
     </div>
 </div>
-{% endif %}
+
 </div>
 {% endblock %}

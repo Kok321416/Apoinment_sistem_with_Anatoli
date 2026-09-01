@@ -78,6 +78,11 @@ def _ensure_social_account(
         SocialAccount.uid == telegram_id,
     ).first()
     if existing:
+        if existing.user_id != user_id:
+            return
+        extra = json.dumps({"username": username, "first_name": first_name})
+        if existing.extra_data != extra:
+            existing.extra_data = extra
         return
     db.add(
         SocialAccount(
@@ -87,6 +92,7 @@ def _ensure_social_account(
             extra_data=json.dumps({"username": username, "first_name": first_name}),
         )
     )
+    db.flush()
 
 
 def _maybe_update_consultant_nickname(db: Session, user: User, username: str) -> None:
@@ -152,13 +158,6 @@ def _find_or_create_user_for_telegram(
         )
         db.add(user)
         db.flush()
-        _ensure_social_account(
-            db,
-            user_id=user.id,
-            telegram_id=telegram_id,
-            username=username,
-            first_name=first_name,
-        )
 
     if _wants_specialist_profile(process, register_fio, register_phone):
         create_consultant_for_user(
@@ -205,13 +204,12 @@ def confirm_login_via_bot(
         if existing and existing.user_id != user.id:
             return False, "Этот аккаунт Телеграм уже привязан к другому пользователю", None
         if not existing:
-            db.add(
-                SocialAccount(
-                    provider="telegram",
-                    uid=tg_id,
-                    user_id=user.id,
-                    extra_data=json.dumps({"username": username, "first_name": first_name}),
-                )
+            _ensure_social_account(
+                db,
+                user_id=user.id,
+                telegram_id=tg_id,
+                username=username,
+                first_name=first_name,
             )
         # Phase 4: connect = SocialAccount only. Do not touch Integration.telegram_chat_id.
         if username:
@@ -317,6 +315,11 @@ async def _ensure_social_account_async(
         )
     ).scalar_one_or_none()
     if existing:
+        if existing.user_id != user_id:
+            return
+        extra = json.dumps({"username": username, "first_name": first_name})
+        if existing.extra_data != extra:
+            existing.extra_data = extra
         return
     db.add(
         SocialAccount(
@@ -326,6 +329,7 @@ async def _ensure_social_account_async(
             extra_data=json.dumps({"username": username, "first_name": first_name}),
         )
     )
+    await db.flush()
 
 
 async def _maybe_update_consultant_nickname_async(db, user: User, username: str) -> None:
@@ -387,13 +391,6 @@ async def _find_or_create_user_for_telegram_async(
         )
         db.add(user)
         await db.flush()
-        await _ensure_social_account_async(
-            db,
-            user_id=user.id,
-            telegram_id=telegram_id,
-            username=username,
-            first_name=first_name,
-        )
 
     if _wants_specialist_profile(process, register_fio, register_phone):
         await create_consultant_for_user_async(
@@ -423,6 +420,7 @@ async def confirm_login_via_bot_async(
     first_name: str = "",
 ) -> tuple[bool, str, TelegramLoginRequest | None]:
     from sqlalchemy import select
+    from sqlalchemy.exc import IntegrityError
 
     req = await get_active_login_request_async(db, token)
     if not req:
@@ -431,11 +429,59 @@ async def confirm_login_via_bot_async(
     tg_id = str(int(telegram_id))
     user: User | None = None
 
-    if req.process == "connect" and req.connect_user_id:
-        user = await db.get(User, req.connect_user_id)
-        if not user:
-            return False, "Пользователь не найден", None
-        existing = (
+    try:
+        if req.process == "connect" and req.connect_user_id:
+            user = await db.get(User, req.connect_user_id)
+            if not user:
+                return False, "Пользователь не найден", None
+            existing = (
+                await db.execute(
+                    select(SocialAccount).where(
+                        SocialAccount.provider == "telegram",
+                        SocialAccount.uid == tg_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if existing and existing.user_id != user.id:
+                return False, "Этот аккаунт Телеграм уже привязан к другому пользователю", None
+            if not existing:
+                await _ensure_social_account_async(
+                    db,
+                    user_id=user.id,
+                    telegram_id=tg_id,
+                    username=username,
+                    first_name=first_name,
+                )
+            if username:
+                consultant = (
+                    await db.execute(select(Consultant).where(Consultant.user_id == user.id))
+                ).scalar_one_or_none()
+                if consultant:
+                    consultant.telegram_nickname = username
+        else:
+            user = await _find_or_create_user_for_telegram_async(
+                db,
+                tg_id,
+                username,
+                first_name,
+                req.register_fio,
+                req.register_phone,
+                process=req.process or "login",
+            )
+
+        req.telegram_id = tg_id
+        req.user_id = user.id
+        req.complete_token = uuid.uuid4().hex
+        req.completed = True
+        await db.commit()
+        await db.refresh(req)
+        return True, "OK", req
+    except IntegrityError:
+        await db.rollback()
+        req = await get_active_login_request_async(db, token)
+        if not req:
+            return False, "Ссылка недействительна или истекла", None
+        social = (
             await db.execute(
                 select(SocialAccount).where(
                     SocialAccount.provider == "telegram",
@@ -443,41 +489,18 @@ async def confirm_login_via_bot_async(
                 )
             )
         ).scalar_one_or_none()
-        if existing and existing.user_id != user.id:
-            return False, "Этот аккаунт Телеграм уже привязан к другому пользователю", None
-        if not existing:
-            db.add(
-                SocialAccount(
-                    provider="telegram",
-                    uid=tg_id,
-                    user_id=user.id,
-                    extra_data=json.dumps({"username": username, "first_name": first_name}),
-                )
-            )
-        if username:
-            consultant = (
-                await db.execute(select(Consultant).where(Consultant.user_id == user.id))
-            ).scalar_one_or_none()
-            if consultant:
-                consultant.telegram_nickname = username
-    else:
-        user = await _find_or_create_user_for_telegram_async(
-            db,
-            tg_id,
-            username,
-            first_name,
-            req.register_fio,
-            req.register_phone,
-            process=req.process or "login",
-        )
-
-    req.telegram_id = tg_id
-    req.user_id = user.id
-    req.complete_token = uuid.uuid4().hex
-    req.completed = True
-    await db.commit()
-    await db.refresh(req)
-    return True, "OK", req
+        if not social:
+            return False, "Ошибка привязки Telegram, попробуйте снова", None
+        user = await db.get(User, social.user_id)
+        if not user:
+            return False, "Пользователь не найден", None
+        req.telegram_id = tg_id
+        req.user_id = user.id
+        req.complete_token = uuid.uuid4().hex
+        req.completed = True
+        await db.commit()
+        await db.refresh(req)
+        return True, "OK", req
 
 
 async def get_completed_login_async(db, complete_token: str) -> TelegramLoginRequest | None:
