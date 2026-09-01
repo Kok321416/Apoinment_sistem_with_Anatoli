@@ -963,7 +963,7 @@ async def support_page(request: Request, db: AsyncSession = Depends(get_async_db
                 form_subject = form_body = ""
     return templates.TemplateResponse(
         "support.html",
-        await page_context_async(
+        await landing_context_async(
             request,
             db,
             user,
