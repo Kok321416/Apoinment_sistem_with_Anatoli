@@ -254,3 +254,29 @@ def test_webapp_auth_without_session_cookie_is_unauthenticated(mini_app_client):
     client_b = TestClient(app)
     hub = client_b.get("/api/telegram/hub-state")
     assert hub.json().get("authenticated") is False
+
+
+def test_tg_hub_serves_webapp_boot_v25(mini_app_client):
+    client, _session_factory, _token = mini_app_client
+    r = client.get("/tg/")
+    assert r.status_code == 200
+    assert "telegram-webapp.js?v=25" in r.text
+    assert 'id="tg-hub-authed"' in r.text
+    assert 'id="tg-hub-guest"' in r.text
+
+
+def test_webapp_diag_accepts_no_init_data_kind(mini_app_client, monkeypatch):
+    client, _session_factory, _token = mini_app_client
+    recorded = []
+
+    def _record(**kwargs):
+        recorded.append(kwargs.get("message", ""))
+
+    monkeypatch.setattr("app.services.platform_errors.record_platform_error", lambda **k: recorded.append(k.get("message", "")))
+    monkeypatch.setattr("app.services.ops_alerts.notify_ops_alert", lambda **k: False)
+    r = client.post(
+        "/api/telegram/webapp-diag",
+        json={"kind": "no_init_data", "path": "/tg/", "platform": "android", "extra": "empty initData"},
+    )
+    assert r.status_code == 200
+    assert any("no_init_data" in msg for msg in recorded)

@@ -293,6 +293,7 @@
     }
 
     var AUTH_DONE_KEY = "tg_webapp_auth_done";
+    /** @deprecated session-scoped retry caused Android deadlock; kept for cleanup only */
     var AUTH_RETRY_KEY = "tg_webapp_auth_retry";
 
     function markAuthConfirmed() {
@@ -305,7 +306,12 @@
     function clearAuthDone() {
         try {
             sessionStorage.removeItem(AUTH_DONE_KEY);
+            sessionStorage.removeItem(AUTH_RETRY_KEY);
         } catch (e) {}
+    }
+
+    function clearStaleAuthFlags() {
+        clearAuthDone();
     }
 
     function hydrateTelegramHub(callback) {
@@ -341,6 +347,9 @@
         }
         var initData = tg.initData || "";
         if (!initData) {
+            if (window.__AYC_TG_REPORT__) {
+                window.__AYC_TG_REPORT__("no_init_data", "empty initData");
+            }
             if (onComplete) onComplete(false);
             return;
         }
@@ -401,38 +410,29 @@
             });
     }
 
+    function runWebappAuthWithRetry(tg, attempt) {
+        if (attempt > 1) return;
+        tryWebappAuth(tg, function (ok) {
+            if (ok) return;
+            hydrateTelegramHub(function (authed) {
+                if (authed || attempt >= 1) return;
+                if (!(tg.initData || "").length) return;
+                runWebappAuthWithRetry(tg, attempt + 1);
+            });
+        });
+    }
+
     function ensureHubAuth(tg) {
         hydrateTelegramHub(function (authed) {
             if (authed) return;
 
-            var authDone = false;
-            try {
-                authDone = sessionStorage.getItem(AUTH_DONE_KEY) === "1";
-            } catch (e) {}
+            // hub-state is authoritative; stale sessionStorage must not skip webapp-auth.
+            clearStaleAuthFlags();
 
-            if (authDone) {
-                var retried = false;
-                try {
-                    retried = sessionStorage.getItem(AUTH_RETRY_KEY) === "1";
-                } catch (e2) {}
-                if (!retried) {
-                    clearAuthDone();
-                    try {
-                        sessionStorage.setItem(AUTH_RETRY_KEY, "1");
-                    } catch (e3) {}
-                    tryWebappAuth(tg, function (ok) {
-                        if (!ok) {
-                            try {
-                                sessionStorage.removeItem(AUTH_RETRY_KEY);
-                            } catch (e4) {}
-                        }
-                    });
-                    return;
-                }
-                return;
-            }
+            if (window.__AYC_TG_WEBAPP_AUTH_STARTED__) return;
+            window.__AYC_TG_WEBAPP_AUTH_STARTED__ = true;
 
-            tryWebappAuth(tg);
+            runWebappAuthWithRetry(tg, 0);
         });
     }
 
