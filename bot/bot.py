@@ -341,18 +341,35 @@ def handle_telegram_update(update_data: dict) -> None:
                 else:
                     _redirect_legacy_reply(chat_id)
             else:
-                send_telegram_message(
-                    chat_id,
-                    "Бот отвечает на /start, /help и /mode. Запись и кабинет - в Mini App "
-                    "(кнопка «Открыть» у поля ввода).",
-                )
+                from bot.pending_cancel import get_pending_cancel
+
+                if get_pending_cancel(chat_id):
+                    from app.services.bookings_cancel import normalize_cancel_reason
+                    from bot.booking_cancel_flow import submit_cancel_reason_sync
+
+                    reason, err = normalize_cancel_reason(text)
+                    if err:
+                        send_telegram_message(chat_id, f"❌ {err}")
+                    else:
+                        submit_cancel_reason_sync(
+                            chat_id,
+                            reason,
+                            send_message=send_telegram_message,
+                            edit_markup=edit_message_reply_markup,
+                        )
+                else:
+                    send_telegram_message(
+                        chat_id,
+                        "Бот отвечает на /start, /help и /mode. Запись и кабинет - в Mini App "
+                        "(кнопка «Открыть» у поля ввода).",
+                    )
         elif "callback_query" in update_data:
             callback_query = update_data["callback_query"]
             callback_query_id = callback_query["id"]
             chat_id = callback_query["message"]["chat"]["id"]
             data = callback_query.get("data", "")
             user_id = callback_query.get("from", {}).get("id")
-            if not data.startswith(("booklink_", "spec_confirm_", "login_confirm_", "spec_book_confirm_")):
+            if not data.startswith(("booklink_", "spec_confirm_", "login_confirm_", "spec_book_confirm_", "spec_book_cancel_")):
                 answer_callback_query(callback_query_id)
             if data in ("mode_client", "mode_specialist"):
                 mode = "client" if data == "mode_client" else "specialist"
@@ -386,6 +403,19 @@ def handle_telegram_update(update_data: dict) -> None:
                     chat_id,
                     callback_query_id,
                     data.replace("spec_book_confirm_", "", 1),
+                    callback_query.get("message", {}).get("message_id"),
+                )
+            elif data.startswith("spec_book_cancel_abort"):
+                from bot.pending_cancel import clear_pending_cancel
+
+                clear_pending_cancel(chat_id)
+                answer_callback_query(callback_query_id, "Отмена отменена")
+                send_telegram_message(chat_id, "Ок, запись не отменена.")
+            elif data.startswith("spec_book_cancel_"):
+                handle_specialist_booking_cancel_callback(
+                    chat_id,
+                    callback_query_id,
+                    data.replace("spec_book_cancel_", "", 1),
                     callback_query.get("message", {}).get("message_id"),
                 )
             elif data in ("my_appointments", "history", "help", "spec_next", "apps_android_soon"):
@@ -564,6 +594,25 @@ def handle_specialist_booking_confirm_callback(chat_id, callback_query_id, booki
     except Exception as e:
         logger.warning("Specialist booking confirm error: %s", e)
         answer_callback_query(callback_query_id, "Ошибка.")
+
+
+def handle_specialist_booking_cancel_callback(chat_id, callback_query_id, booking_id_str, message_id=None):
+    if not str(booking_id_str or "").isdigit():
+        answer_callback_query(callback_query_id, "Некорректный запрос", show_alert=True)
+        return
+    answer_callback_query(callback_query_id)
+    try:
+        from bot.booking_cancel_flow import prompt_cancel_reason_sync
+
+        prompt_cancel_reason_sync(
+            chat_id,
+            int(booking_id_str),
+            message_id=message_id,
+            send_message=send_telegram_message,
+        )
+    except Exception as e:
+        logger.warning("Specialist booking cancel prompt error: %s", e)
+        send_telegram_message(chat_id, "❌ Не удалось начать отмену. Попробуйте в кабинете на сайте.")
 
 
 def handle_start_command(chat_id, user_id, username, first_name):

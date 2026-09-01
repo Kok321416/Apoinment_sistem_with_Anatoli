@@ -12,8 +12,8 @@
 <link rel="stylesheet" href="/static/css/app.css?v=45">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=14">
 <link rel="stylesheet" href="/static/css/bookings-hub.css?v=8">
-<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=24">
-<link rel="stylesheet" href="/static/css/specialist-book.css?v=5">
+<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=25">
+<link rel="stylesheet" href="/static/css/specialist-book.css?v=6">
 {% endblock %}
 
 {% block app_content %}
@@ -249,6 +249,26 @@
             </div>
         </div>
 
+<div id="cancelOverlay" class="reschedule-overlay" hidden>
+    <div class="reschedule-modal" role="dialog" aria-modal="true" aria-labelledby="cancelTitle">
+        <h3 id="cancelTitle">Отменить консультацию</h3>
+        <form method="POST" id="cancelForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="cancel">
+            <input type="hidden" name="booking_id" id="cancelBookingId" value="">
+            <div class="form-field">
+                <label class="form-field__label" for="cancelReason">Причина отмены</label>
+                <textarea class="input" id="cancelReason" name="cancel_reason" rows="4" required minlength="3" maxlength="500" placeholder="Напишите клиенту, почему консультация отменяется"></textarea>
+                <p class="form-field__hint">Сообщение уйдёт клиенту в Telegram или на почту.</p>
+            </div>
+            <div class="reschedule-modal__actions">
+                <button type="submit" class="btn btn--danger" id="cancelSubmit">Отменить запись</button>
+                <button type="button" class="btn btn--ghost" id="cancelDismiss">Закрыть</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="eventPopover" class="event-popover" role="dialog" aria-live="polite" hidden></div>
         <input type="hidden" id="csrfToken" value="{{ csrf_token }}">
 <input type="hidden" id="bookingsTodayIso" value="{{ today.isoformat() }}">
@@ -256,7 +276,7 @@
 
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
-<script src="/static/js/specialist-bookings.js?v=23" defer></script>
-<script src="/static/js/specialist-book.js?v=6" defer></script>
+<script src="/static/js/specialist-bookings.js?v=25" defer></script>
+<script src="/static/js/specialist-book.js?v=7" defer></script>
 <script type="application/json" id="bookings-hub-data">{{ hub_payload | tojson }}</script>
 {% endblock %}

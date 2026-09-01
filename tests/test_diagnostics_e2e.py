@@ -241,6 +241,9 @@ def test_diagnostics_flow_from_profile_link(diagnostics_client):
 def test_diagnostics_works_when_tables_missing_initially(diagnostics_client):
     import asyncio
 
+    from app.services.diagnostics_service import reset_diagnostics_ddl_ready_for_tests
+
+    reset_diagnostics_ddl_ready_for_tests()
     client, _cid, _uid, engine, session_factory, prepare = diagnostics_client
     asyncio.run(engine.dispose())
 
@@ -253,16 +256,20 @@ def test_diagnostics_works_when_tables_missing_initially(diagnostics_client):
             yield db
 
     app.dependency_overrides[get_async_db] = override_get_async_db
-    client = TestClient(app)
 
-    _login_client(client)
-    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/", follow_redirects=True)
-    assert take.status_code == 200, take.text[:400]
-    m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
-    assert m
-    loc = _submit_bhs(client, m.group(1))
-    result = client.get(loc, follow_redirects=True)
-    assert result.status_code == 200, result.text[:400]
+    from unittest.mock import patch
+
+    with patch("app.db_schema.ensure_diagnostics_schema", return_value=False):
+        reset_diagnostics_ddl_ready_for_tests()
+        client = TestClient(app)
+        _login_client(client)
+        take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/", follow_redirects=True)
+        assert take.status_code == 200, take.text[:400]
+        m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
+        assert m
+        loc = _submit_bhs(client, m.group(1))
+        result = client.get(loc, follow_redirects=True)
+        assert result.status_code == 200, result.text[:400]
 
 
 def test_diagnostics_result_idor_redirects_other_client(diagnostics_client):

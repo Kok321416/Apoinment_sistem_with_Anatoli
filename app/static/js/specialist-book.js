@@ -65,6 +65,7 @@
             calendars: [],
             services: [],
             slots: [],
+            slots_fetched: false,
             calendar_id: null,
             service_id: null,
             booking_date: "",
@@ -335,7 +336,9 @@
                                   );
                               })
                               .join("")
-                        : '<p class="text-muted" id="sb-slots-empty">Выберите дату, чтобы загрузить слоты.</p>') +
+                        : state.slots_fetched && state.booking_date
+                          ? '<p class="slots-empty-message" role="alert">Нет свободных слотов на эту дату</p>'
+                          : '<p class="text-muted" id="sb-slots-empty">Выберите дату, чтобы загрузить слоты.</p>') +
                     "</div>";
             } else {
                 body.innerHTML =
@@ -411,6 +414,7 @@
 
         async function loadSlots() {
             if (!state.booking_date || !state.calendar_id || !state.service_id) return;
+            state.slots_fetched = false;
             setStatus("Загрузка слотов…", false);
             var url =
                 "/api/specialist/slots/?calendar_id=" +
@@ -429,7 +433,8 @@
                     end: s.end_time || s.end || s.booking_end_time || "",
                 };
             });
-            setStatus(state.slots.length ? "" : "Нет свободных слотов на эту дату", !state.slots.length);
+            state.slots_fetched = true;
+            setStatus("", false);
             renderBody();
         }
 

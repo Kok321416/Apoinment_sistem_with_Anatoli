@@ -243,6 +243,18 @@ async def fallback_text(message: Message) -> None:
     text = (message.text or "").strip()
     if text.startswith("/"):
         return
+    from bot.pending_cancel import get_pending_cancel
+
+    if get_pending_cancel(message.chat.id):
+        from app.services.bookings_cancel import normalize_cancel_reason
+        from bot.booking_cancel_flow import submit_cancel_reason_aiogram
+
+        reason, err = normalize_cancel_reason(text)
+        if err:
+            await message.answer(f"❌ {err}")
+            return
+        await submit_cancel_reason_aiogram(message, reason)
+        return
     await message.answer(
         "Бот отвечает на /start, /help и /mode. Запись и кабинет - в Mini App "
         "(кнопка «Открыть» у поля ввода)."

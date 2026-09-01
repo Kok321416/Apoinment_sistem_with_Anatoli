@@ -180,6 +180,7 @@ class Booking(Base):
     booking_time: Mapped[time] = mapped_column(Time)
     booking_end_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")
+    cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

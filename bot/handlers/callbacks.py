@@ -201,6 +201,31 @@ async def on_spec_book_confirm(callback: CallbackQuery) -> None:
     await callback.answer(f"❌ {err}", show_alert=True)
 
 
+@router.callback_query(F.data.startswith("spec_book_cancel_abort"))
+async def on_spec_book_cancel_abort(callback: CallbackQuery) -> None:
+    from bot.pending_cancel import clear_pending_cancel
+
+    await callback.answer("Отмена отменена")
+    if callback.message:
+        clear_pending_cancel(callback.message.chat.id)
+        await callback.message.answer("Ок, запись не отменена.")
+
+
+@router.callback_query(F.data.startswith("spec_book_cancel_"))
+async def on_spec_book_cancel(callback: CallbackQuery) -> None:
+    booking_id = (callback.data or "").replace("spec_book_cancel_", "", 1)
+    if not callback.message:
+        await callback.answer()
+        return
+    if not booking_id.isdigit():
+        await callback.answer("Некорректный запрос", show_alert=True)
+        return
+    await callback.answer()
+    from bot.booking_cancel_flow import prompt_cancel_reason_aiogram
+
+    await prompt_cancel_reason_aiogram(callback.message, int(booking_id))
+
+
 @router.callback_query(F.data.in_({"my_appointments", "history", "help", "spec_next", "apps_android_soon"}))
 async def on_legacy_cb(callback: CallbackQuery) -> None:
     await callback.answer()

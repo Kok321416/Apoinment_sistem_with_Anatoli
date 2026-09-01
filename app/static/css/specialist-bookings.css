@@ -420,6 +420,19 @@
     margin-top: var(--space-md);
 }
 
+#rescheduleSlots .slots-empty-message {
+    flex: 1 1 100%;
+    width: 100%;
+    margin: var(--space-md) 0;
+    padding: var(--space-xl) var(--space-lg);
+    text-align: center;
+    font-family: var(--font-family-display);
+    font-size: clamp(1.125rem, 4vw, 1.5rem);
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-primary);
+}
+
 #rescheduleSlots .slot-btn {
     padding: var(--space-sm) var(--space-lg);
     border-radius: var(--radius-md);

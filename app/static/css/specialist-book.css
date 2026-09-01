@@ -110,6 +110,10 @@
     margin-top: var(--space-md);
 }
 
+.sb-slots .slots-empty-message {
+    flex: 1 1 100%;
+}
+
 .sb-slot {
     padding: 8px 12px;
     border: 1px solid var(--border-default);

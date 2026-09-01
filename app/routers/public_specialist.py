@@ -528,7 +528,6 @@ async def specialist_diagnostics_hub(
     from app.diagnostics.catalog import list_tests
     from app.services.diagnostics_service import (
         attempt_to_view,
-        ensure_diagnostics_tables,
         list_attempts_for_client,
         touch_client_specialist_link,
     )
@@ -541,7 +540,6 @@ async def specialist_diagnostics_hub(
     auth_user, redirect = await _require_logged_in_client(request, consultant, next_path, db)
     if redirect:
         return redirect
-    await ensure_diagnostics_tables(db)
     if auth_user.id != consultant.user_id:
         try:
             await touch_client_specialist_link(
@@ -649,11 +647,12 @@ async def specialist_diagnostics_submit(
     for key, val in form.multi_items():
         if key.startswith("i") and key[1:].isdigit():
             answers[key] = val
+    consultant_id = int(consultant.id)
     try:
         attempt = await start_attempt(
             db,
             client_user_id=auth_user.id,
-            consultant_id=consultant.id,
+            consultant_id=consultant_id,
             test_code=test_code,
             source=(form.get("source") or "profile").strip() or "profile",
             invitation_id=int(form["invitation_id"]) if form.get("invitation_id") else None,
@@ -663,7 +662,7 @@ async def specialist_diagnostics_submit(
         await touch_client_specialist_link(
             db,
             client_user_id=auth_user.id,
-            consultant_id=consultant.id,
+            consultant_id=consultant_id,
             source="diagnostics",
         )
         await db.commit()

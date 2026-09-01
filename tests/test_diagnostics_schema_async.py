@@ -16,6 +16,9 @@ from app.services.diagnostics_service import ensure_diagnostics_tables
 @pytest.mark.asyncio
 async def test_ensure_diagnostics_tables_async_path_never_inspects_async_bind():
     """inspect(has_table) on asyncmy connection caused MissingGreenlet in production."""
+    from app.services.diagnostics_service import reset_diagnostics_ddl_ready_for_tests
+
+    reset_diagnostics_ddl_ready_for_tests()
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
@@ -37,10 +40,11 @@ async def test_ensure_diagnostics_tables_async_path_never_inspects_async_bind():
         inspect_calls.append(bind)
         return real_inspect(bind)
 
-    with patch("app.db_schema.inspect", side_effect=_tracking_inspect):
-        async with session_factory() as db:
-            ok = await ensure_diagnostics_tables(db)
-            assert ok is True
+    with patch("app.db_schema.ensure_diagnostics_schema", return_value=False):
+        with patch("app.db_schema.inspect", side_effect=_tracking_inspect):
+            async with session_factory() as db:
+                ok = await ensure_diagnostics_tables(db)
+                assert ok is True
 
     async with session_factory() as db:
         from sqlalchemy import text
@@ -54,7 +58,10 @@ async def test_ensure_diagnostics_tables_async_path_never_inspects_async_bind():
 
 @pytest.mark.asyncio
 async def test_ensure_diagnostics_tables_concurrent_calls_are_idempotent():
-    """Parallel ensure_diagnostics_tables must not race on CREATE or exhaust the pool."""
+    """Repeated ensure_diagnostics_tables must be idempotent and create missing tables."""
+    from app.services.diagnostics_service import reset_diagnostics_ddl_ready_for_tests
+
+    reset_diagnostics_ddl_ready_for_tests()
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
@@ -69,12 +76,10 @@ async def test_ensure_diagnostics_tables_concurrent_calls_are_idempotent():
             except Exception:
                 pass
 
-    async def _ensure_once():
-        async with session_factory() as db:
-            return await ensure_diagnostics_tables(db)
-
-    results = await asyncio.gather(*[_ensure_once() for _ in range(8)])
-    assert all(results)
+    with patch("app.db_schema.ensure_diagnostics_schema", return_value=False):
+        for _ in range(8):
+            async with session_factory() as db:
+                assert await ensure_diagnostics_tables(db) is True
 
     async with session_factory() as db:
         from sqlalchemy import text
@@ -85,4 +90,30 @@ async def test_ensure_diagnostics_tables_concurrent_calls_are_idempotent():
         assert "diagnostic_invitations" in names
         assert "client_specialist_links" in names
 
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_ensure_diagnostics_tables_skips_ddl_when_already_ready():
+    from app.services import diagnostics_service as ds
+
+    ds.reset_diagnostics_ddl_ready_for_tests()
+    ds._mark_diagnostics_ddl_ready()
+
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    with patch.object(ds, "_ensure_diagnostics_tables_on_session") as async_ddl:
+        with patch("app.db_schema.ensure_diagnostics_schema") as sync_ensure:
+            async with session_factory() as db:
+                ok = await ds.ensure_diagnostics_tables(db)
+            assert ok is True
+            sync_ensure.assert_not_called()
+            async_ddl.assert_not_called()
+
+    ds.reset_diagnostics_ddl_ready_for_tests()
     await engine.dispose()

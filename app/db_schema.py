@@ -271,6 +271,10 @@ def _apply_app_schema_patches() -> None:
     except Exception:
         logger.exception("bookings.source patch failed")
     try:
+        _add_column("bookings", "cancel_reason", "TEXT NULL")
+    except Exception:
+        logger.exception("bookings.cancel_reason patch failed")
+    try:
         with engine.begin() as conn:
             conn.execute(
                 text(

@@ -35,7 +35,7 @@ def test_handle_specialist_booking_confirm_updates_markup(monkeypatch):
     assert chat_id == "900111"
     assert msg_id == 42
     assert markup["inline_keyboard"][0][0]["text"] == "📅 Перенести"
-    assert "callback_data" not in markup["inline_keyboard"][0][0]
+    assert markup["inline_keyboard"][1][0]["callback_data"] == "spec_book_cancel_5"
 
 
 def test_handle_specialist_booking_confirm_repeat_still_updates_markup(monkeypatch):
@@ -60,7 +60,7 @@ def test_handle_specialist_booking_confirm_repeat_still_updates_markup(monkeypat
     bot.handle_specialist_booking_confirm_callback("900111", "cq1", "5", 42)
 
     assert len(calls["edit"]) == 1
-    assert "callback_data" not in calls["edit"][0]["inline_keyboard"][0][0]
+    assert calls["edit"][0]["inline_keyboard"][1][0]["callback_data"] == "spec_book_cancel_5"
 
 
 def test_handle_specialist_booking_confirm_unauthorized_alert(monkeypatch):

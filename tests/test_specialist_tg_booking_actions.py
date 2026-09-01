@@ -187,14 +187,19 @@ def test_specialist_new_booking_keyboard_buttons(monkeypatch):
         "text": "📅 Перенести",
         "url": "https://example.com/booking/?reschedule=7",
     }
+    assert kb["inline_keyboard"][2][0] == {
+        "text": "❌ Отменить",
+        "callback_data": "spec_book_cancel_7",
+    }
 
 
 def test_specialist_keyboard_after_confirm_removes_confirm_callback(monkeypatch):
     monkeypatch.setattr(tg.settings, "site_url", "https://example.com")
     kb = tg.specialist_new_booking_keyboard_after_confirm(9)
-    assert len(kb["inline_keyboard"]) == 1
+    assert len(kb["inline_keyboard"]) == 2
     assert "callback_data" not in kb["inline_keyboard"][0][0]
     assert kb["inline_keyboard"][0][0]["url"] == "https://example.com/booking/?reschedule=9"
+    assert kb["inline_keyboard"][1][0]["callback_data"] == "spec_book_cancel_9"
 
 
 def test_specialist_booking_confirm_repeat_press_already():

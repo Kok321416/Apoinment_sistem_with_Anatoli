@@ -194,9 +194,31 @@ def _client_celebration_intro(booking: Booking, consultant_name: str) -> str:
     return f"Ура! {who}! {consultant_name} одобрил время и будет вас ждать"
 
 
+def format_booking_cancelled_client(
+    booking: Booking, old_status: str | None, reason: str
+) -> str:
+    info = booking_base_info(booking)
+    old_label = STATUS_LABELS.get(old_status or "", old_status or "-")
+    contact_str = _client_contact_line(booking)
+    reason_esc = tg_escape((reason or "").strip())
+    return (
+        f'Упс, консультация отменена по причине "{reason_esc}" 😢\n\n'
+        f"👤 Клиент: {info['client_name']}\n"
+        f"Статус: <b>{tg_escape(old_label)}</b> -> <b>Отменена</b>\n\n"
+        f"📌 Услуга: {info['service_name']}{info['duration']}\n"
+        f"📅 Дата: {info['date_str']}\n"
+        f"🕐 Время: {info['slot']}\n"
+        f"📞 Контакт: {contact_str}"
+    )
+
+
 def format_booking_status_changed_client(
     booking: Booking, new_status: str, old_status: str | None = None
 ) -> str:
+    if new_status == "cancelled":
+        reason = (getattr(booking, "cancel_reason", None) or "").strip()
+        if reason:
+            return format_booking_cancelled_client(booking, old_status, reason)
     info = booking_base_info(booking)
     if new_status == "confirmed":
         contact_str = _client_contact_line(booking)

@@ -44,12 +44,8 @@
     </form>
     {% endif %}
     {% if booking.status != 'cancelled' and booking.status != 'completed' %}
-    <form method="POST" class="bkg-card__form" onsubmit="return confirm('Отменить запись?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="cancel">
-        <input type="hidden" name="booking_id" value="{{ booking.id }}">
-        <button type="submit" class="btn btn--danger btn--sm">Отменить</button>
-    </form>
+    <button type="button" class="btn btn--danger btn--sm btn-cancel-booking"
+            data-booking-id="{{ booking.id }}">Отменить</button>
     {% endif %}
 </div>
 {% endmacro %}

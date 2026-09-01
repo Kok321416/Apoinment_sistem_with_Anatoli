@@ -19,9 +19,26 @@ from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has
 
 logger = logging.getLogger(__name__)
 
+_DIAGNOSTICS_DDL_READY = False
+
+
+def _mark_diagnostics_ddl_ready() -> None:
+    global _DIAGNOSTICS_DDL_READY
+    _DIAGNOSTICS_DDL_READY = True
+
+
+def reset_diagnostics_ddl_ready_for_tests() -> None:
+    """Test helper: allow schema ensure to run again."""
+    global _DIAGNOSTICS_DDL_READY
+    _DIAGNOSTICS_DDL_READY = False
+
 
 async def ensure_diagnostics_tables(db: AsyncSession | None = None) -> bool:
     """Create diagnostics tables on first use if deploy patches missed them."""
+    global _DIAGNOSTICS_DDL_READY
+    if _DIAGNOSTICS_DDL_READY:
+        return True
+
     from app.db_schema import ensure_diagnostics_schema
 
     ok = False
@@ -30,9 +47,15 @@ async def ensure_diagnostics_tables(db: AsyncSession | None = None) -> bool:
     except Exception:
         logger.exception("ensure_diagnostics_tables sync failed")
 
+    if ok:
+        _mark_diagnostics_ddl_ready()
+        return True
+
     if db is not None:
         try:
             ok = await _ensure_diagnostics_tables_on_session(db) or ok
+            if ok:
+                _mark_diagnostics_ddl_ready()
         except Exception:
             logger.exception("ensure_diagnostics_tables async ddl failed")
 
@@ -90,7 +113,9 @@ async def touch_client_specialist_link(
                 )
             )
         ).scalar_one_or_none()
-    except Exception:
+    except (ProgrammingError, OperationalError, DBAPIError) as exc:
+        if not _is_missing_diagnostics_table(exc):
+            raise
         await ensure_diagnostics_tables(db)
         row = (
             await db.execute(
@@ -219,7 +244,6 @@ async def start_attempt(
     booking_id: int | None = None,
     client_card_id: int | None = None,
 ) -> DiagnosticAttempt:
-    await ensure_diagnostics_tables(db)
     test = get_test(test_code)
     if not test or not test.runnable:
         raise ValueError("Тест пока недоступен")
@@ -255,6 +279,7 @@ async def start_attempt(
                 logger.warning("diagnostic_attempts missing on insert, re-ensuring schema")
                 await db.rollback()
                 await ensure_diagnostics_tables(db)
+                db.add(attempt)
                 continue
             raise
     return attempt
@@ -263,7 +288,6 @@ async def start_attempt(
 async def list_attempts_for_client(
     db: AsyncSession, *, client_user_id: int, consultant_id: int | None = None
 ) -> list[DiagnosticAttempt]:
-    await ensure_diagnostics_tables(db)
     q = select(DiagnosticAttempt).where(
         DiagnosticAttempt.client_user_id == client_user_id,
         DiagnosticAttempt.status == "completed",

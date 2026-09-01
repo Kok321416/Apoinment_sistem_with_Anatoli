@@ -313,17 +313,23 @@ def specialist_new_booking_inline_keyboard(booking_id: int) -> dict:
         "inline_keyboard": [
             [{"text": "✅ Подтвердить", "callback_data": f"spec_book_confirm_{booking_id}"}],
             [{"text": "📅 Перенести", "url": specialist_booking_reschedule_url(booking_id)}],
+            [{"text": "❌ Отменить", "callback_data": f"spec_book_cancel_{booking_id}"}],
         ]
     }
 
 
 def specialist_new_booking_keyboard_after_confirm(booking_id: int) -> dict:
-    """Inline keyboard after confirm: reschedule URL only (no repeat confirm callback)."""
+    """Inline keyboard after confirm: reschedule + cancel (no repeat confirm callback)."""
     return {
         "inline_keyboard": [
             [{"text": "📅 Перенести", "url": specialist_booking_reschedule_url(booking_id)}],
+            [{"text": "❌ Отменить", "callback_data": f"spec_book_cancel_{booking_id}"}],
         ]
     }
+
+
+def specialist_booking_keyboard_after_cancel() -> dict:
+    return {"inline_keyboard": []}
 
 
 def _specialist_new_booking_keyboard(booking_id: int) -> dict:

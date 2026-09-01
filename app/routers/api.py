@@ -420,6 +420,48 @@ async def api_specialist_booking_confirm(request: Request, db: AsyncSession = De
     return {"success": True, "message": "Запись подтверждена", "booking_id": booking.id}
 
 
+@router.post("/telegram/specialist-booking-cancel")
+async def api_specialist_booking_cancel(request: Request, db: AsyncSession = Depends(get_async_db)):
+    body = await request.body()
+    if not verify_bot_request(request, body):
+        return JSONResponse({"success": False, "error": "Forbidden"}, status_code=403)
+    data = json.loads(body)
+    raw_chat = data.get("telegram_chat_id")
+    raw_booking_id = data.get("booking_id")
+    reason = data.get("reason") or data.get("cancel_reason") or ""
+    if raw_chat is None or raw_booking_id is None:
+        return JSONResponse(
+            {"success": False, "error": "telegram_chat_id and booking_id required"},
+            status_code=400,
+        )
+    try:
+        booking_id = int(raw_booking_id)
+    except (TypeError, ValueError):
+        return JSONResponse({"success": False, "error": "invalid booking_id"}, status_code=400)
+
+    from app.services.bookings_cancel import resolve_consultant_id_by_telegram_chat, specialist_cancel_booking_async
+
+    consultant_id = await resolve_consultant_id_by_telegram_chat(db, raw_chat)
+    if consultant_id is None:
+        return {"success": False, "error": "specialist not connected"}
+
+    ok, message, booking = await specialist_cancel_booking_async(
+        db,
+        consultant_id=consultant_id,
+        booking_id=booking_id,
+        reason=str(reason),
+    )
+    if not ok:
+        return {"success": False, "error": message}
+    already = booking is not None and booking.status == "cancelled" and message == "Запись уже отменена"
+    return {
+        "success": True,
+        "message": message,
+        "booking_id": booking.id if booking else booking_id,
+        "already": already,
+    }
+
+
 @router.post("/telegram/capabilities")
 async def api_telegram_capabilities(request: Request, db: AsyncSession = Depends(get_async_db)):
     body = await request.body()

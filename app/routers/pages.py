@@ -1530,11 +1530,21 @@ async def specialist_bookings(request: Request, db: AsyncSession = Depends(get_a
 
                     schedule_status_changed(booking.id, old_status)
                 elif action == "cancel":
-                    booking.status = "cancelled"
-                    await db.commit()
-                    from app.services.notify_bridge import schedule_status_changed
+                    from app.services.bookings_cancel import normalize_cancel_reason
 
-                    schedule_status_changed(booking.id, old_status)
+                    reason, reason_err = normalize_cancel_reason(form.get("cancel_reason"))
+                    if reason_err:
+                        error = reason_err
+                    elif booking.status in ("cancelled", "completed"):
+                        error = "Запись нельзя отменить"
+                    else:
+                        booking.status = "cancelled"
+                        booking.cancel_reason = reason
+                        await db.commit()
+                        from app.services.notify_bridge import schedule_status_changed
+
+                        schedule_status_changed(booking.id, old_status)
+                        success = "Запись отменена"
                 elif action == "complete":
                     booking.status = "completed"
                     await db.commit()

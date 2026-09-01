@@ -272,7 +272,7 @@
                 actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '"><input type="hidden" name="csrf_token" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="confirm"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn btn--success btn--sm">Подтвердить</button></form>');
             }
             if (status !== 'cancelled' && status !== 'completed') {
-                actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '" onsubmit="return confirm(\'Отменить запись?\');"><input type="hidden" name="csrf_token" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="cancel"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn btn--danger btn--sm">Отменить</button></form>');
+                actionsHtml.push('<button type="button" class="btn btn--danger btn--sm btn-cancel-booking" data-booking-id="' + escapeAttr(bookingId) + '">Отменить</button>');
             }
             if (status === 'confirmed') {
                 actionsHtml.push('<form method="POST" action="' + escapeAttr(actionUrl) + '"><input type="hidden" name="csrf_token" value="' + escapeAttr(csrf) + '"><input type="hidden" name="action" value="complete"><input type="hidden" name="booking_id" value="' + escapeAttr(bookingId) + '"><button type="submit" class="btn btn--secondary btn--sm">Завершить</button></form>');
@@ -364,9 +364,13 @@
         var rescheduleCalendarId = null;
         var rescheduleServiceId = null;
         var overlay = document.getElementById('rescheduleOverlay');
-        var modal = document.querySelector('.reschedule-modal');
+        var modal = overlay ? overlay.querySelector('.reschedule-modal') : null;
+        var cancelOverlay = document.getElementById('cancelOverlay');
+        var cancelModal = cancelOverlay ? cancelOverlay.querySelector('.reschedule-modal') : null;
         var lastFocus = null;
         var focusTrapHandler = null;
+        var cancelLastFocus = null;
+        var cancelFocusTrapHandler = null;
 
         function getFocusable(container) {
             if (!container) return [];
@@ -436,9 +440,65 @@
             lastFocus = null;
         }
 
+        function openCancelModal(bookingId) {
+            var idEl = document.getElementById('cancelBookingId');
+            var reasonEl = document.getElementById('cancelReason');
+            if (idEl) idEl.value = bookingId;
+            if (reasonEl) reasonEl.value = '';
+            cancelLastFocus = document.activeElement;
+            hidePopover();
+            if (cancelOverlay) {
+                cancelOverlay.hidden = false;
+                requestAnimationFrame(function () {
+                    cancelOverlay.classList.add('is-open');
+                });
+            }
+            if (cancelFocusTrapHandler) {
+                document.removeEventListener('keydown', cancelFocusTrapHandler);
+            }
+            cancelFocusTrapHandler = function (e) {
+                if (e.key !== 'Tab' || !cancelOverlay || !cancelOverlay.classList.contains('is-open')) return;
+                var focusable = getFocusable(cancelModal);
+                if (!focusable.length) return;
+                var first = focusable[0];
+                var last = focusable[focusable.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            };
+            document.addEventListener('keydown', cancelFocusTrapHandler);
+            if (reasonEl) reasonEl.focus();
+        }
+
+        function closeCancelModal() {
+            if (cancelOverlay) {
+                cancelOverlay.classList.remove('is-open');
+                window.setTimeout(function () {
+                    if (cancelOverlay && !cancelOverlay.classList.contains('is-open')) {
+                        cancelOverlay.hidden = true;
+                    }
+                }, 220);
+            }
+            if (cancelFocusTrapHandler) {
+                document.removeEventListener('keydown', cancelFocusTrapHandler);
+                cancelFocusTrapHandler = null;
+            }
+            if (cancelLastFocus && typeof cancelLastFocus.focus === 'function') {
+                cancelLastFocus.focus();
+            }
+            cancelLastFocus = null;
+        }
+
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && overlay && overlay.classList.contains('is-open')) {
                 closeRescheduleModal();
+            }
+            if (e.key === 'Escape' && cancelOverlay && cancelOverlay.classList.contains('is-open')) {
+                closeCancelModal();
             }
             if (e.key === 'Escape') hidePopover();
         });
@@ -449,7 +509,21 @@
                 e.preventDefault();
                 openRescheduleModal(btn.dataset.bookingId, btn.dataset.calendarId || '', btn.dataset.serviceId || '');
             }
+            var cancelOpen = e.target.closest('.btn-cancel-booking');
+            if (cancelOpen && cancelOpen.dataset.bookingId) {
+                e.preventDefault();
+                openCancelModal(cancelOpen.dataset.bookingId);
+            }
         });
+
+        var cancelDismissBtn = document.getElementById('cancelDismiss');
+        if (cancelDismissBtn) cancelDismissBtn.onclick = closeCancelModal;
+        if (cancelOverlay) {
+            cancelOverlay.onclick = function (e) {
+                if (e.target === cancelOverlay) closeCancelModal();
+            };
+        }
+        if (cancelModal) cancelModal.onclick = function (e) { e.stopPropagation(); };
 
         var cancelBtn = document.getElementById('rescheduleCancel');
         if (cancelBtn) cancelBtn.onclick = closeRescheduleModal;
@@ -491,7 +565,10 @@
                             };
                             slotsEl.appendChild(slotBtn);
                         });
-                        if (slots.length === 0) slotsEl.innerHTML = '<span class="text-muted">Нет доступных слотов на эту дату</span>';
+                        if (slots.length === 0) {
+                            slotsEl.innerHTML =
+                                '<p class="slots-empty-message" role="alert">Нет свободных слотов на эту дату</p>';
+                        }
                     } catch (err) {}
                 };
                 xhr.send();

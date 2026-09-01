@@ -130,6 +130,12 @@
         });
     }
 
+    function showSlotsEmptyMessage() {
+        slotsGrid.innerHTML =
+            '<p class="slots-empty-message" role="alert">Нет свободных слотов на эту дату</p>';
+        slotsHint.textContent = "";
+    }
+
     function loadSlots() {
         timeEl.value = "";
         endEl.value = "";
@@ -161,7 +167,7 @@
                 }
                 var slots = data.available_slots || [];
                 if (!slots.length) {
-                    slotsHint.textContent = "Нет свободных слотов на эту дату.";
+                    showSlotsEmptyMessage();
                     return;
                 }
                 slotsHint.textContent = "Выберите время:";

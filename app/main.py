@@ -234,6 +234,14 @@ async def startup():
         ensure_all_schema()
     except Exception:
         logger.exception("ensure_all_schema failed on startup")
+    try:
+        from app.db_schema import ensure_diagnostics_schema
+        from app.services.diagnostics_service import _mark_diagnostics_ddl_ready
+
+        if ensure_diagnostics_schema():
+            _mark_diagnostics_ddl_ready()
+    except Exception:
+        logger.exception("diagnostics ddl ready flag init failed")
     if not settings.debug:
         if settings.secret_key in ("", "change-me-in-production"):
             logger.critical("SECRET_KEY is weak or default — set a long random value in production")
@@ -464,6 +472,7 @@ async def password_required_middleware(request: Request, call_next):
         "/media/",
         "/api/",
         "/book/",
+        "/s/",
         "/tg/",
         "/my-bookings/",
         "/platform-admin/",
