@@ -173,10 +173,41 @@ def format_client_booked_message(booking: Booking, *, channel: str = "telegram")
     )
 
 
+def _client_contact_line(booking: Booking) -> str:
+    contact = []
+    if booking.client_phone:
+        contact.append(tg_escape(booking.client_phone))
+    if booking.client_telegram:
+        contact.append(tg_escape(booking.client_telegram))
+    return ", ".join(contact) if contact else "-"
+
+
+def _client_celebration_intro(booking: Booking, consultant_name: str) -> str:
+    name = (booking.client_name or "").strip()
+    tg_raw = (booking.client_telegram or "").strip().lstrip("@")
+    parts = []
+    if name:
+        parts.append(tg_escape(name))
+    if tg_raw:
+        parts.append("@" + tg_escape(tg_raw))
+    who = ", ".join(parts) if parts else "друг"
+    return f"Ура! {who}! {consultant_name} одобрил время и будет вас ждать"
+
+
 def format_booking_status_changed_client(
     booking: Booking, new_status: str, old_status: str | None = None
 ) -> str:
     info = booking_base_info(booking)
+    if new_status == "confirmed":
+        contact_str = _client_contact_line(booking)
+        return (
+            f"✅ <b>Ваша запись Подтверждена</b>\n\n"
+            f"{_client_celebration_intro(booking, info['consultant_name'])}\n\n"
+            f"📅 Дата: {info['date_str']}\n"
+            f"🕐 Время: {info['slot']}\n"
+            f"📌 Услуга: {info['service_name']}{info['duration']}\n"
+            f"📞 Контакт: {contact_str}"
+        )
     new_label = STATUS_LABELS.get(new_status, new_status)
     if old_status:
         old_label = STATUS_LABELS.get(old_status, old_status)

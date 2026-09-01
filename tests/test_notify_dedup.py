@@ -44,14 +44,13 @@ def test_notify_status_sends_both_when_dedup_off(monkeypatch):
 
     booking = _booking(client_tg=200, specialist_chat="100")
     tg.notify_booking_status_changed(MagicMock(), booking, old_status="pending")
-    assert len(sent) == 2
+    assert len(sent) == 1
     assert sent[0][0] == "200"
-    assert "Ваша запись" in sent[0][1]
-    assert sent[1][0] == "100"
-    assert "К вам запись" in sent[1][1]
+    assert "Ваша запись Подтверждена" in sent[0][1]
+    assert "Ура!" in sent[0][1]
 
 
-def test_notify_status_dedup_skips_client_same_chat(monkeypatch):
+def test_notify_status_dedup_sends_celebration_same_chat(monkeypatch):
     sent = []
 
     monkeypatch.setattr(tg, "notify_dedup_enabled", lambda: True)
@@ -61,7 +60,22 @@ def test_notify_status_dedup_skips_client_same_chat(monkeypatch):
     tg.notify_booking_status_changed(MagicMock(), booking, old_status="pending")
     assert len(sent) == 1
     assert sent[0][0] == "100"
-    assert "К вам запись" in sent[0][1]
+    assert "Ваша запись Подтверждена" in sent[0][1]
+    assert "К вам запись" not in sent[0][1]
+
+
+def test_notify_status_cancelled_still_notifies_specialist(monkeypatch):
+    sent = []
+
+    monkeypatch.setattr(tg, "notify_dedup_enabled", lambda: False)
+    monkeypatch.setattr(tg, "send_telegram_async", lambda chat, text, token=None: sent.append((str(chat), text)))
+
+    booking = _booking(client_tg=200, specialist_chat="100")
+    booking.status = "cancelled"
+    tg.notify_booking_status_changed(MagicMock(), booking, old_status="pending")
+    assert len(sent) == 2
+    assert "Ваша запись: изменение статуса" in sent[0][1]
+    assert "К вам запись: статус обновлён" in sent[1][1]
 
 
 def test_notify_specialist_new_booking_includes_action_buttons(monkeypatch):
@@ -102,5 +116,10 @@ def test_role_labels_in_templates():
     )
     assert "Вы записались" in tg.format_client_booked_message(booking)
     assert "К вам новая запись" in tg.format_new_booking_message_for_specialist(booking)
+    confirmed = tg.format_booking_status_changed_client(booking, "confirmed", "pending")
+    assert "Ваша запись Подтверждена" in confirmed
+    assert "Ура! Вася" in confirmed
+    assert "одобрил время" in confirmed
+    assert "Статус:" not in confirmed
     assert "Ваша запись: напоминание" in tg.format_reminder_message(booking, 6)
     assert "К вам запись: напоминание" in tg.format_specialist_reminder_message(booking, 6)
