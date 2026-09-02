@@ -301,6 +301,75 @@ async def complete_attempt(
     return attempt
 
 
+async def ensure_client_card_for_diagnostics_async(
+    db: AsyncSession,
+    *,
+    consultant_id: int,
+    client_user_id: int,
+) -> int | None:
+    """Ensure CRM card exists and is linked to the user — results stay visible to specialist."""
+    from sqlalchemy import select
+
+    from app.deps import normalize_phone
+    from app.models import Consultant, SocialAccount, User
+    from app.services.bookings import find_or_create_client_card_async
+    from app.services.public_client import client_display_name
+
+    consultant = (
+        await db.execute(select(Consultant).where(Consultant.id == consultant_id))
+    ).scalar_one_or_none()
+    if not consultant:
+        return None
+    user = await db.get(User, client_user_id)
+    if not user:
+        return None
+
+    name = client_display_name(user)
+    phone = normalize_phone(getattr(user, "username", "") or "") or ""
+    email = (getattr(user, "email", "") or "").strip()
+    if email.endswith("@telegram.user"):
+        email = ""
+    telegram = ""
+    sa = (
+        await db.execute(
+            select(SocialAccount).where(
+                SocialAccount.user_id == client_user_id,
+                SocialAccount.provider == "telegram",
+            )
+        )
+    ).scalar_one_or_none()
+    if sa:
+        try:
+            extra = json.loads(sa.extra_data or "{}")
+            username = (extra.get("username") or "").strip().lstrip("@")
+            if username:
+                telegram = username
+        except json.JSONDecodeError:
+            pass
+
+    card = await find_or_create_client_card_async(
+        db,
+        consultant,
+        name,
+        phone,
+        email,
+        telegram,
+        client_user_id=client_user_id,
+    )
+    return card.id
+
+
+async def link_attempt_to_client_card(
+    db: AsyncSession,
+    attempt: DiagnosticAttempt,
+    *,
+    client_card_id: int | None,
+) -> None:
+    if client_card_id and not attempt.client_card_id:
+        attempt.client_card_id = client_card_id
+        await db.flush()
+
+
 async def start_attempt(
     db: AsyncSession,
     *,
@@ -316,15 +385,11 @@ async def start_attempt(
     if not test or not test.runnable:
         raise ValueError("Тест пока недоступен")
     if client_card_id is None:
-        card = (
-            await db.execute(
-                select(ClientCard).where(
-                    ClientCard.consultant_id == consultant_id,
-                    ClientCard.client_user_id == client_user_id,
-                )
-            )
-        ).scalar_one_or_none()
-        client_card_id = card.id if card else None
+        client_card_id = await ensure_client_card_for_diagnostics_async(
+            db,
+            consultant_id=consultant_id,
+            client_user_id=client_user_id,
+        )
 
     base_kwargs = dict(
         client_user_id=client_user_id,
@@ -377,16 +442,32 @@ async def list_attempts_for_client(
 async def list_attempts_for_card(
     db: AsyncSession, *, consultant_id: int, client_card_id: int
 ) -> list[DiagnosticAttempt]:
+    from sqlalchemy import or_
+
+    card = await db.get(ClientCard, client_card_id)
+    if not card or card.consultant_id != consultant_id:
+        return []
+
+    match = [DiagnosticAttempt.client_card_id == client_card_id]
+    if card.client_user_id:
+        match.append(DiagnosticAttempt.client_user_id == card.client_user_id)
+
     q = (
         select(DiagnosticAttempt)
         .where(
             DiagnosticAttempt.consultant_id == consultant_id,
-            DiagnosticAttempt.client_card_id == client_card_id,
             DiagnosticAttempt.status == "completed",
+            or_(*match),
         )
         .order_by(DiagnosticAttempt.completed_at.desc())
     )
-    return list((await db.execute(q)).scalars().all())
+    try:
+        return list((await db.execute(q)).scalars().all())
+    except (ProgrammingError, OperationalError, DBAPIError) as exc:
+        if _skip_diagnostics_read_on_missing_table(exc):
+            await db.rollback()
+            return []
+        raise
 
 
 def attempt_to_view(attempt: DiagnosticAttempt) -> dict[str, Any]:

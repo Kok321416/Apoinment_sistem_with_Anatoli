@@ -320,3 +320,55 @@ def test_diagnostics_result_idor_redirects_other_client(diagnostics_client):
     denied = client_b.get(f"/s/spec/diagnostics/results/{attempt_id}/", follow_redirects=False)
     assert denied.status_code == 302
     assert "/s/spec/diagnostics/" in (denied.headers.get("location") or "")
+
+
+def test_diagnostics_creates_client_card_and_specialist_sees_results(diagnostics_client):
+    import asyncio
+
+    from sqlalchemy import select
+
+    from app.models import ClientCard, DiagnosticAttempt
+
+    client, consultant_id, client_user_id, _engine, session_factory, _prepare = diagnostics_client
+    _login_client(client)
+    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/run/", follow_redirects=True)
+    m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
+    assert m
+    loc = _submit_bhs(client, m.group(1))
+    assert "/results/preview/" not in loc
+
+    async def _fetch_card_and_attempt():
+        async with session_factory() as db:
+            card = (
+                await db.execute(
+                    select(ClientCard).where(
+                        ClientCard.consultant_id == consultant_id,
+                        ClientCard.client_user_id == client_user_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            attempt = (
+                await db.execute(
+                    select(DiagnosticAttempt).where(DiagnosticAttempt.client_user_id == client_user_id)
+                )
+            ).scalar_one_or_none()
+            return card, attempt
+
+    card, attempt = asyncio.run(_fetch_card_and_attempt())
+    assert card is not None
+    assert attempt is not None
+    assert attempt.status == "completed"
+    assert attempt.client_card_id == card.id
+
+    async def _list_for_card():
+        from app.services.diagnostics_service import attempt_to_view, list_attempts_for_card
+
+        async with session_factory() as db:
+            rows = await list_attempts_for_card(
+                db, consultant_id=consultant_id, client_card_id=card.id
+            )
+            return [attempt_to_view(r) for r in rows]
+
+    views = asyncio.run(_list_for_card())
+    assert views
+    assert views[0]["test_code"] == BHS.code

@@ -738,6 +738,8 @@ async def specialist_diagnostics_submit(
     from app.services.diagnostics_service import (
         build_preview_result,
         complete_attempt,
+        ensure_diagnostics_write_ready,
+        link_attempt_to_client_card,
         missing_answer_ids,
         parse_diagnostic_answers,
         preview_session_key,
@@ -766,6 +768,8 @@ async def specialist_diagnostics_submit(
     consultant_id = int(consultant.id)
     attempt_id = None
     try:
+        if not await ensure_diagnostics_write_ready(db):
+            raise RuntimeError("diagnostics schema not available")
         attempt = await start_attempt(
             db,
             client_user_id=auth_user.id,
@@ -776,7 +780,9 @@ async def specialist_diagnostics_submit(
             booking_id=int(form["booking_id"]) if form.get("booking_id") else None,
         )
         await complete_attempt(db, attempt=attempt, answers=answers)
+        await link_attempt_to_client_card(db, attempt, client_card_id=attempt.client_card_id)
         await db.commit()
+        await db.refresh(attempt)
         attempt_id = attempt.id
     except ValueError:
         await db.rollback()
