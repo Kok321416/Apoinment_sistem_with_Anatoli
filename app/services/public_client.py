@@ -349,3 +349,40 @@ async def apply_client_gate_from_user_async(db, session: dict, *, consultant_id:
         telegram=telegram,
         verified=True,
     )
+
+
+def specialist_slug_from_public_path(path: str | None) -> str | None:
+    if not path:
+        return None
+    parts = [part for part in path.split("/") if part]
+    if len(parts) >= 2 and parts[0] == "s":
+        return parts[1]
+    return None
+
+
+def sync_booking_session_from_gate(session: dict) -> None:
+    """Mirror client gate into booking_* keys used by create flow."""
+    session["booking_contact_done"] = True
+    session["booking_client_name"] = session.get("pc_name", "")
+    session["booking_client_phone"] = session.get("pc_phone", "")
+    session["booking_client_telegram"] = session.get("pc_telegram", "")
+    session["booking_client_email"] = session.get("pc_email", "")
+
+
+async def try_apply_client_gate_for_public_path_async(
+    db: AsyncSession,
+    session: dict,
+    *,
+    user,
+    path: str | None,
+) -> bool:
+    """Open booking gate after OAuth when redirect target is a public specialist page."""
+    slug = specialist_slug_from_public_path(path)
+    if not slug:
+        return False
+    consultant = await resolve_consultant_by_slug_async(db, slug)
+    if not consultant:
+        return False
+    await apply_client_gate_from_user_async(db, session, consultant_id=consultant.id, user=user)
+    sync_booking_session_from_gate(session)
+    return True

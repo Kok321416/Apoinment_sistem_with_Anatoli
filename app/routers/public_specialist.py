@@ -21,6 +21,7 @@ from app.services.public_client import (
     make_email_code,
     resolve_consultant_by_slug_async,
     set_client_gate,
+    sync_booking_session_from_gate,
 )
 from app.services.slots import get_available_slots_async
 from app.templating import page_context_async, templates
@@ -39,12 +40,7 @@ async def _get_consultant_by_slug_async(db, slug: str) -> Consultant:
 
 
 def _sync_booking_session(request: Request) -> None:
-    """Mirror client gate into booking_* keys used by create flow."""
-    request.session["booking_contact_done"] = True
-    request.session["booking_client_name"] = request.session.get("pc_name", "")
-    request.session["booking_client_phone"] = request.session.get("pc_phone", "")
-    request.session["booking_client_telegram"] = request.session.get("pc_telegram", "")
-    request.session["booking_client_email"] = request.session.get("pc_email", "")
+    sync_booking_session_from_gate(request.session)
 
 
 async def _require_gate(request: Request, consultant: Consultant, next_path: str, db):

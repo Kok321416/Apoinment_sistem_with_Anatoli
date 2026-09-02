@@ -2,14 +2,14 @@ import json
 import logging
 import secrets
 from datetime import datetime
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.login_flow import finish_login_async
+from app.auth.login_flow import finish_login_async, needs_login_2fa_async
 from app.auth.session import get_current_user_async, login_user_async
 from app.config import get_settings
 from app.database import get_async_db
@@ -45,6 +45,10 @@ from app.services.vk_auth import (
     vk_oauth_configured,
 )
 from app.templating import page_context_async, templates
+from app.services.public_client import (
+    specialist_slug_from_public_path,
+    try_apply_client_gate_for_public_path_async,
+)
 from app.utils.safe_redirect import safe_next_url, signup_error_redirect
 
 router = APIRouter(prefix="/accounts", tags=["oauth"])
@@ -229,6 +233,13 @@ async def telegram_login_page(request: Request, db: AsyncSession = Depends(get_a
 
     bot_url = f"https://t.me/{bot_username}?start=login_{req.token}"
     tg_app_url = f"tg://resolve?domain={bot_username}&start=login_{req.token}"
+    booking_slug = specialist_slug_from_public_path(next_url)
+    is_booking_flow = bool(booking_slug)
+    booking_back_url = (
+        f"/s/{booking_slug}/welcome/?{urlencode({'next': next_url})}"
+        if booking_slug
+        else None
+    )
     return templates.TemplateResponse(
         "telegram_login.html",
         await page_context_async(
@@ -240,6 +251,8 @@ async def telegram_login_page(request: Request, db: AsyncSession = Depends(get_a
             tg_app_url=tg_app_url,
             next_url=next_url,
             error=None,
+            is_booking_flow=is_booking_flow,
+            booking_back_url=booking_back_url,
         ),
     )
 
@@ -280,7 +293,21 @@ async def telegram_complete_login(
     await consume_completed_login_async(db, req)
     next_url = safe_next_url(req.next_url)
     request.session["show_telegram_welcome"] = True
-    return await finish_login_async(request, user, db, next_url)
+    await login_user_async(request, user, db)
+    try:
+        await try_apply_client_gate_for_public_path_async(
+            db,
+            request.session,
+            user=user,
+            path=next_url,
+        )
+    except Exception:
+        logger.exception("client gate apply failed after telegram login next=%s", next_url)
+    if await needs_login_2fa_async(db, user):
+        from app.auth.login_flow import start_2fa_challenge
+
+        return start_2fa_challenge(request, user, next_url)
+    return RedirectResponse(next_url, status_code=302)
 
 
 @router.get("/yandex/login/")

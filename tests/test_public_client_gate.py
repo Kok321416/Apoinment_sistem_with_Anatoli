@@ -5,6 +5,8 @@ from app.services.public_client import (
     apply_client_gate_from_user,
     client_gate_ok,
     set_client_gate,
+    specialist_slug_from_public_path,
+    sync_booking_session_from_gate,
 )
 
 
@@ -36,3 +38,22 @@ def test_set_client_gate_requires_contact():
     assert client_gate_ok(session, 1)
     set_client_gate(session, consultant_id=1, name="A", email="a@b.c", verified=True)
     assert client_gate_ok(session, 1)
+
+
+def test_specialist_slug_from_public_path():
+    assert specialist_slug_from_public_path("/s/anna-ivanova/") == "anna-ivanova"
+    assert specialist_slug_from_public_path("/s/id-3/c/1/book/") == "id-3"
+    assert specialist_slug_from_public_path("/login/") is None
+
+
+def test_sync_booking_session_from_gate():
+    session = {
+        "pc_name": "Иван",
+        "pc_phone": "+79991234567",
+        "pc_telegram": "@ivan",
+        "pc_email": "i@e.ru",
+    }
+    sync_booking_session_from_gate(session)
+    assert session["booking_contact_done"] is True
+    assert session["booking_client_name"] == "Иван"
+    assert session["booking_client_phone"] == "+79991234567"
