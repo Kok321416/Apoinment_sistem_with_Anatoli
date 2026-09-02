@@ -275,6 +275,7 @@ def serialize_card(card: ClientCard, stats: dict, today: date | None = None) -> 
         "status_label": status_label,
         "completeness": comp,
         "detail_url": f"/clients/{card.id}/",
+        "diagnostics_url": f"/clients/{card.id}/#diagnostics",
     }
 
 

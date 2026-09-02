@@ -2021,6 +2021,17 @@ async def client_cards_list(request: Request, db: AsyncSession = Depends(get_asy
         .all()
     )
     from app.services.clients_crm import build_crm_payload_async
+    from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+    from sqlalchemy.orm import selectinload
+
+    consultant = (
+        await db.execute(
+            select(Consultant)
+            .options(selectinload(Consultant.category))
+            .where(Consultant.id == consultant.id)
+        )
+    ).scalar_one()
+    show_diagnostics = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
 
     crm_payload = await build_crm_payload_async(db, consultant.id, cards)
     return templates.TemplateResponse(
@@ -2037,6 +2048,7 @@ async def client_cards_list(request: Request, db: AsyncSession = Depends(get_asy
             crm_clients=crm_payload["clients"],
             crm_activity=crm_payload["activity"],
             crm_payload=crm_payload,
+            show_diagnostics=show_diagnostics,
         ),
     )
 

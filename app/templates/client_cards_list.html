@@ -9,7 +9,7 @@
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=44">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=13">
-<link rel="stylesheet" href="/static/css/clients-crm.css?v=8">
+<link rel="stylesheet" href="/static/css/clients-crm.css?v=9">
 {% endblock %}
 
 {% block app_content %}
@@ -182,7 +182,12 @@
                                 <span class="client-card__meta-value">{{ client.booking_count }}</span>
                             </div>
                         </div>
-                        <a href="{{ client.detail_url }}" class="client-card__more">Подробнее</a>
+                        <div class="client-card__cta-row{% if not show_diagnostics %} client-card__cta-row--solo{% endif %}">
+                            <a href="{{ client.detail_url }}" class="btn btn--primary btn--sm client-card__cta">Подробнее</a>
+                            {% if show_diagnostics %}
+                            <a href="{{ client.diagnostics_url }}" class="btn btn--secondary btn--sm client-card__cta client-card__cta--diag">Диагностика</a>
+                            {% endif %}
+                        </div>
                     </article>
                     {% endfor %}
                 </div>

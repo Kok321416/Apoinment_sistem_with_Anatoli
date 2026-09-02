@@ -246,6 +246,34 @@
     font-size: 0.8125rem;
     color: var(--text-secondary);
 }
+.client-card__cta-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-sm);
+    margin-top: auto;
+    padding-top: var(--space-sm);
+}
+.client-card__cta-row--solo {
+    grid-template-columns: 1fr;
+}
+.client-card__cta-row:has(.client-card__cta--solo) {
+    grid-template-columns: 1fr;
+}
+.client-card__cta {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+}
+.client-card__cta--diag {
+    border-color: color-mix(in srgb, var(--accent-secondary) 35%, var(--border-default));
+    color: var(--accent-secondary);
+    background: color-mix(in srgb, var(--accent-secondary) 8%, var(--surface-200));
+}
+.client-card__cta--diag:hover,
+.client-card__cta--diag:focus-visible {
+    color: var(--accent-secondary);
+    background: color-mix(in srgb, var(--accent-secondary) 14%, var(--surface-200));
+}
 .client-card__more {
     margin-top: auto;
     display: inline-flex;
@@ -416,6 +444,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-sm);
+    align-items: center;
+}
+.client-detail__diag-cta {
+    flex: 1 1 auto;
+    min-width: min(100%, 12rem);
 }
 .crm-tabs {
     display: flex;

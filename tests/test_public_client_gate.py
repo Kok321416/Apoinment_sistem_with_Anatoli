@@ -57,3 +57,22 @@ def test_sync_booking_session_from_gate():
     assert session["booking_contact_done"] is True
     assert session["booking_client_name"] == "Иван"
     assert session["booking_client_phone"] == "+79991234567"
+
+
+def test_serialize_card_includes_diagnostics_url():
+    from datetime import date
+
+    from app.services.clients_crm import serialize_card
+
+    card = SimpleNamespace(
+        id=12,
+        name="Test",
+        email="",
+        phone="+79991234567",
+        telegram="",
+        notes="",
+        created_at=None,
+        updated_at=None,
+    )
+    data = serialize_card(card, {}, date.today())
+    assert data["diagnostics_url"] == "/clients/12/#diagnostics"

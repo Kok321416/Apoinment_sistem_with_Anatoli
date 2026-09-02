@@ -10,7 +10,7 @@
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=44">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=13">
-<link rel="stylesheet" href="/static/css/clients-crm.css?v=8">
+<link rel="stylesheet" href="/static/css/clients-crm.css?v=9">
 <link rel="stylesheet" href="/static/css/specialist-book.css?v=6">
 {% if show_diagnostics %}
 <link rel="stylesheet" href="/static/css/diagnostics.css?v=2">
@@ -62,6 +62,9 @@
                 data-client-email="{{ card.email or '' }}"
                 data-client-telegram="{{ card.telegram or '' }}"
             >Записать на приём</button>
+            {% if show_diagnostics %}
+            <a href="#diagnostics" class="btn btn--secondary client-detail__diag-cta" data-goto-tab="diagnostics">Диагностика</a>
+            {% endif %}
             {% if card.phone %}
             <a href="tel:{{ card.phone }}" class="btn btn--secondary">Позвонить</a>
             {% endif %}
