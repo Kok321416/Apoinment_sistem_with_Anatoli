@@ -38,6 +38,17 @@
     border-top: 1px solid var(--border-subtle);
 }
 
+.auth-divider__label {
+    margin: calc(-1 * var(--space-xl)) auto var(--space-xl);
+    max-width: 12rem;
+    background: var(--bg-900, #fff);
+    padding: 0 var(--space-md);
+}
+
+.auth-method--solo {
+    width: 100%;
+}
+
 .auth-methods {
     display: grid;
     grid-template-columns: 1fr;

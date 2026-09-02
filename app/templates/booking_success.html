@@ -8,13 +8,32 @@
 
 {% block booking_content %}
 <div class="booking-hero text-center">
-    <h1 class="booking-hero__title">Запись успешна</h1>
-    <p class="booking-hero__meta">Ожидайте подтверждения специалиста</p>
+    <h1 class="text-h1 booking-hero__title">Вы записались!</h1>
+    <p class="booking-hero__meta text-body">
+        {% if consultant %}
+        На <strong>{{ service.name }}</strong>
+        {% if booking.booking_end_time %}
+        с {{ booking.booking_time|time('H:i') }} до {{ booking.booking_end_time|time('H:i') }}
+        {% else %}
+        в {{ booking.booking_time|time('H:i') }}
+        {% endif %}
+        {{ booking.booking_date|date('d.m.Y') }}
+        к специалисту <strong>{{ consultant.first_name }} {{ consultant.last_name }}</strong>.
+        {% else %}
+        Запись на <strong>{{ service.name }}</strong>
+        {{ booking.booking_date|date('d.m.Y') }}
+        {% if booking.booking_end_time %}
+        с {{ booking.booking_time|time('H:i') }} до {{ booking.booking_end_time|time('H:i') }}.
+        {% else %}
+        в {{ booking.booking_time|time('H:i') }}.
+        {% endif %}
+        {% endif %}
+    </p>
 </div>
 
 <section class="booking-panel booking-panel--narrow">
     <div class="alert alert--success" role="status">
-        <strong>Итог:</strong> запись принята
+        Ожидайте подтверждения от специалиста. Детали записи — ниже.
     </div>
 
     <table class="booking-summary mt-3xl">

@@ -147,10 +147,39 @@ async def specialist_public_home(request: Request, slug: str, db: AsyncSession =
     )
 
 
+@router.get("/s/{slug}/welcome/lookup/")
+async def specialist_welcome_lookup(
+    request: Request,
+    slug: str,
+    db: AsyncSession = Depends(get_async_db),
+    phone: str = "",
+    telegram: str = "",
+):
+    from app.services.client_auth import lookup_returning_client_async
+
+    consultant = await _get_consultant_by_slug_async(db, slug)
+    phone = (phone or request.query_params.get("phone") or "").strip()
+    telegram = (telegram or request.query_params.get("telegram") or "").strip()
+    if not phone and not telegram:
+        return JSONResponse({"found": False})
+    result = await lookup_returning_client_async(
+        db,
+        phone=phone,
+        telegram=telegram,
+        consultant_id=consultant.id,
+    )
+    if not result:
+        return JSONResponse({"found": False})
+    return JSONResponse(result)
+
+
 @router.get("/s/{slug}/welcome/")
 @router.post("/s/{slug}/welcome/")
 async def specialist_welcome(request: Request, slug: str, db: AsyncSession = Depends(get_async_db)):
-    """Login gate before public booking (same visual as /login/)."""
+    """Client gate: Telegram OAuth or contact form (ФИО + телефон)."""
+    from app.deps import normalize_phone
+    from app.security.csrf import validate_csrf_token
+    from app.services.client_auth import normalize_telegram_username
     from app.utils.safe_redirect import login_url_with_next, safe_next_url
 
     from app.services.client_channel import remember_auth_intent, with_client_query
@@ -176,6 +205,9 @@ async def specialist_welcome(request: Request, slug: str, db: AsyncSession = Dep
     }
     err_key = request.query_params.get("error") or ""
     error = welcome_errors.get(err_key)
+    fio = (request.query_params.get("fio") or "").strip()
+    phone_value = (request.query_params.get("phone") or "").strip()
+    telegram_value = (request.query_params.get("telegram") or "").strip()
 
     auth_user = await get_current_user_async(request, db)
     if auth_user:
@@ -185,6 +217,37 @@ async def specialist_welcome(request: Request, slug: str, db: AsyncSession = Dep
         _sync_booking_session(request)
         return RedirectResponse(next_url, status_code=302)
 
+    if request.method == "POST":
+        form = await request.form()
+        if not validate_csrf_token(request, form.get("csrf_token")):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+        elif (form.get("action") or "contact") == "contact":
+            fio = (form.get("fio") or "").strip()
+            phone_value = (form.get("phone") or "").strip()
+            telegram_value = (form.get("telegram") or "").strip()
+            phone_n = normalize_phone(phone_value)
+            telegram_n = normalize_telegram_username(telegram_value)
+            if form.get("accept_privacy") != "1":
+                error = "Нужно согласие на обработку персональных данных."
+            elif len(fio) < 3:
+                error = "Укажите ФИО полностью."
+            elif not phone_n:
+                error = "Укажите полный номер телефона в формате +7 (XXX) XXX-XX-XX."
+            else:
+                set_client_gate(
+                    request.session,
+                    consultant_id=consultant.id,
+                    name=fio,
+                    phone=phone_n,
+                    telegram=telegram_n,
+                    verified=True,
+                )
+                request.session["register_phone"] = phone_n
+                if telegram_n:
+                    request.session["pc_telegram"] = telegram_n
+                _sync_booking_session(request)
+                return RedirectResponse(next_url, status_code=302)
+
     return templates.TemplateResponse(
         "public/welcome.html",
         await page_context_async(
@@ -192,9 +255,12 @@ async def specialist_welcome(request: Request, slug: str, db: AsyncSession = Dep
             db,
             None,
             consultant=consultant,
+            public_slug=slug,
             next_url=next_url,
             error=error,
-            email=(request.query_params.get("email") or "").strip(),
+            fio=fio,
+            phone=phone_value,
+            telegram=telegram_value,
             login_url=login_url_with_next(next_url, client_channel),
             bot_username=(settings.telegram_bot_username or "").lstrip("@"),
             client_channel=client_channel,

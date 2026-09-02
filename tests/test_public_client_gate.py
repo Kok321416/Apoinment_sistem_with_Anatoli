@@ -30,7 +30,9 @@ def test_apply_client_gate_from_user_sets_verified_session():
 
 def test_set_client_gate_requires_contact():
     session = {}
-    set_client_gate(session, consultant_id=1, name="A", email="", telegram="", verified=True)
+    set_client_gate(session, consultant_id=1, name="A", phone="", telegram="", verified=True)
     assert not client_gate_ok(session, 1)
+    set_client_gate(session, consultant_id=1, name="A", phone="+79991234567", verified=True)
+    assert client_gate_ok(session, 1)
     set_client_gate(session, consultant_id=1, name="A", email="a@b.c", verified=True)
     assert client_gate_ok(session, 1)

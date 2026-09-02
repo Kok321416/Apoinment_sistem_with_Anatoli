@@ -193,15 +193,18 @@ async def resolve_consultant_by_slug_async(db: AsyncSession, slug: str) -> Consu
 
 
 def client_gate_ok(session: dict, consultant_id: int) -> bool:
-    return (
-        session.get("pc_consultant_id") == consultant_id
-        and bool(session.get("pc_verified"))
-        and bool((session.get("pc_name") or "").strip())
-        and (
-            bool((session.get("pc_email") or "").strip())
-            or bool((session.get("pc_telegram") or "").strip())
-        )
-    )
+    """Gate open when client gave name + phone (form) or name + telegram (OAuth)."""
+    if session.get("pc_consultant_id") != consultant_id or not session.get("pc_verified"):
+        return False
+    if not (session.get("pc_name") or "").strip():
+        return False
+    if (session.get("pc_phone") or "").strip():
+        return True
+    if (session.get("pc_telegram") or "").strip():
+        return True
+    if (session.get("pc_email") or "").strip():
+        return True
+    return False
 
 
 def set_client_gate(
@@ -256,11 +259,14 @@ def client_display_name(user) -> str:
 
 def apply_client_gate_from_user(db: Session, session: dict, *, consultant_id: int, user) -> None:
     """Open booking gate for a logged-in account (after register/login via specialist link)."""
+    from app.deps import normalize_phone
     from app.models import SocialAccount
 
     name = client_display_name(user)
     email = (getattr(user, "email", None) or "").strip()
     phone = (session.get("register_phone") or session.get("pc_phone") or "").strip()
+    if not phone:
+        phone = normalize_phone(getattr(user, "username", None) or "")
     telegram = (session.get("pc_telegram") or "").strip()
 
     user_id = getattr(user, "id", None)
@@ -299,11 +305,14 @@ def apply_client_gate_from_user(db: Session, session: dict, *, consultant_id: in
 async def apply_client_gate_from_user_async(db, session: dict, *, consultant_id: int, user) -> None:
     from sqlalchemy import select
 
+    from app.deps import normalize_phone
     from app.models import SocialAccount
 
     name = client_display_name(user)
     email = (getattr(user, "email", None) or "").strip()
     phone = (session.get("register_phone") or session.get("pc_phone") or "").strip()
+    if not phone:
+        phone = normalize_phone(getattr(user, "username", None) or "")
     telegram = (session.get("pc_telegram") or "").strip()
 
     user_id = getattr(user, "id", None)
