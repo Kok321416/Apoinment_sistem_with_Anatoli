@@ -1,54 +1,59 @@
 {% extends "layouts/booking.html" %}
 
 {% block meta_tags %}
-{% set page_title = test.title ~ " — диагностика" %}
-{% set meta_description = test.short_description %}
+{% set page_title = test.title ~ " — прохождение" %}
 {% include "components/meta.html" %}
 {% endblock %}
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/booking.css?v=27">
-<link rel="stylesheet" href="/static/css/diagnostics.css?v=5">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=6">
 {% endblock %}
 
 {% block booking_content %}
-<div class="diag-page diag-take">
-    <p class="mb-lg"><a class="btn btn--ghost btn--sm" href="/s/{{ public_slug }}/diagnostics/">← К списку</a></p>
-    <header class="diag-page__head">
-        <h1 class="text-h1">{{ test.title }}</h1>
-        <p class="text-body text-muted">{{ test.short_description }}</p>
-    </header>
+<div class="diag-page diag-take diag-wizard" id="diagWizard" data-total="{{ test.items|length }}">
+    <p class="mb-lg"><a class="btn btn--ghost btn--sm" href="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/">← К инструкции</a></p>
 
-    {% include "components/diagnostics_test_intro.html" %}
-
-    {% if request.query_params.get('error') == 'incomplete' %}
-    <div class="alert alert--error mb-lg" role="alert">Ответьте на все вопросы, чтобы завершить тест.</div>
-    {% endif %}
-
-    <form method="POST" action="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/submit/" class="diag-form card card--static" id="diagTakeForm">
+    <form method="POST" action="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/submit/" class="diag-form" id="diagTakeForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="source" value="profile">
         {% if request.session.get('diagnostics_invitation_id') %}
         <input type="hidden" name="invitation_id" value="{{ request.session.get('diagnostics_invitation_id') }}">
         {% endif %}
 
-        <ol class="diag-items">
+        <div class="diag-wizard__progress" aria-live="polite">
+            <p class="diag-wizard__counter text-body-sm">Вопрос <span id="diagQNum">1</span> из {{ test.items|length }}</p>
+            <div class="diag-wizard__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="diagProgressBar">
+                <span class="diag-wizard__bar-fill" id="diagProgressFill" style="width: 0%"></span>
+            </div>
+        </div>
+
+        <div class="diag-wizard__slides">
             {% for item in test.items %}
-            <li class="diag-item">
+            <section class="diag-wizard__slide card card--static{% if loop.first %} is-active{% endif %}" data-step="{{ loop.index0 }}" {% if not loop.first %}hidden{% endif %}>
+                {% if item.image_url %}
+                <figure class="diag-wizard__figure">
+                    <img src="{{ item.image_url }}" alt="Изображение для вопроса {{ loop.index }}" class="diag-wizard__img" loading="lazy">
+                </figure>
+                {% endif %}
                 <p class="diag-item__q"><span class="diag-item__n">{{ loop.index }}.</span> {{ item.text }}</p>
                 <div class="diag-item__opts" role="radiogroup" aria-label="Вопрос {{ loop.index }}">
                     {% for label, val in item.options %}
                     <label class="diag-opt">
-                        <input type="radio" name="{{ item.id }}" value="{{ val }}" required>
+                        <input type="radio" name="{{ item.id }}" value="{{ val }}" required data-step-required>
                         <span>{{ label }}</span>
                     </label>
                     {% endfor %}
                 </div>
-            </li>
+            </section>
             {% endfor %}
-        </ol>
+        </div>
 
-        <button type="submit" class="btn btn--primary mt-lg" id="diagSubmitBtn">Завершить</button>
+        <div class="diag-wizard__nav">
+            <button type="button" class="btn btn--ghost" id="diagPrevBtn" disabled>Назад</button>
+            <button type="button" class="btn btn--primary" id="diagNextBtn">Далее</button>
+            <button type="submit" class="btn btn--primary" id="diagSubmitBtn" hidden>Завершить</button>
+        </div>
     </form>
 
     <div class="diag-submit-overlay" id="diagSubmitOverlay" hidden aria-hidden="true" aria-live="polite">
@@ -58,5 +63,6 @@
         </div>
     </div>
 </div>
-<script src="/static/js/diagnostics-take.js?v=1" defer></script>
+<script src="/static/js/diagnostics-wizard.js?v=1" defer></script>
+<script src="/static/js/diagnostics-take.js?v=2" defer></script>
 {% endblock %}

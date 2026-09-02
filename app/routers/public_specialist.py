@@ -640,14 +640,14 @@ async def specialist_diagnostics_hub(
             auth_user,
             consultant=consultant,
             public_slug=slug,
-            tests=list_tests(only_runnable=False),
+            tests=list_tests(only_runnable=True),
             attempts=attempts,
         ),
     )
 
 
 @router.get("/s/{slug}/diagnostics/tests/{test_code}/")
-async def specialist_diagnostics_take(
+async def specialist_diagnostics_intro(
     request: Request,
     slug: str,
     test_code: str,
@@ -665,6 +665,48 @@ async def specialist_diagnostics_take(
     if not test or not test.runnable:
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
     next_path = f"/s/{slug}/diagnostics/tests/{test_code}/"
+    auth_user, redirect = await _require_logged_in_client(request, consultant, next_path, db)
+    if redirect:
+        return redirect
+    consultant = (
+        await db.execute(
+            select(Consultant)
+            .options(selectinload(Consultant.category))
+            .where(Consultant.id == consultant.id)
+        )
+    ).scalar_one()
+    return templates.TemplateResponse(
+        "public/diagnostics_intro.html",
+        await page_context_async(
+            request,
+            db,
+            auth_user,
+            consultant=consultant,
+            public_slug=slug,
+            test=test,
+        ),
+    )
+
+
+@router.get("/s/{slug}/diagnostics/tests/{test_code}/run/")
+async def specialist_diagnostics_take(
+    request: Request,
+    slug: str,
+    test_code: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    from sqlalchemy.orm import selectinload
+
+    from app.diagnostics.catalog import get_test
+    from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+
+    consultant = await _get_consultant_by_slug_async(db, slug)
+    if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
+        raise HTTPException(status_code=404, detail="Диагностика недоступна")
+    test = get_test(test_code)
+    if not test or not test.runnable:
+        return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
+    next_path = f"/s/{slug}/diagnostics/tests/{test_code}/run/"
     auth_user, redirect = await _require_logged_in_client(request, consultant, next_path, db)
     if redirect:
         return redirect
@@ -724,7 +766,7 @@ async def specialist_diagnostics_submit(
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
     answers = parse_diagnostic_answers(form.multi_items())
     if missing_answer_ids(test, answers):
-        return RedirectResponse(f"/s/{slug}/diagnostics/tests/{test_code}/?error=incomplete", status_code=302)
+        return RedirectResponse(f"/s/{slug}/diagnostics/tests/{test_code}/run/?error=incomplete", status_code=302)
     consultant_id = int(consultant.id)
     attempt_id = None
     try:

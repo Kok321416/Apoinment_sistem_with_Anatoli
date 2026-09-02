@@ -26,7 +26,7 @@ def test_catalog_has_requested_codes():
     assert "bhs" in codes
     assert "bdi" in codes
     assert "schmischek" in codes
-    assert "rmet" in codes
+    assert "eyes" in codes
     assert "wcq" in codes
     assert "osop" in codes
 
@@ -57,7 +57,7 @@ def test_bhs_max_severe():
 
 
 def test_runnable_tests_have_russian_instruction():
-    for code in ("bhs", "bdi", "wcq", "schmischek", "osop"):
+    for code in ("bhs", "bdi", "wcq", "schmischek", "osop", "eyes"):
         test = get_test(code)
         assert test and test.runnable
         assert test.instruction
@@ -71,7 +71,7 @@ def test_runnable_and_pending():
     assert get_test("osop").runnable is True
     assert get_test("bhs").runnable is True
     assert get_test("bdi").runnable is True
-    assert get_test("rmet").runnable is False
+    assert get_test("eyes").runnable is True
 
 
 def test_wcq_scoring_returns_eight_scales():

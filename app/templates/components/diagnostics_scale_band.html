@@ -1,0 +1,24 @@
+<section class="diag-scale-band diag-scale-band--{{ s.band_level | default('medium') }}" aria-label="{{ s.title }}: {{ s.score }}{% if s.max is defined %} из {{ s.max }}{% endif %}, {{ s.band_label }}">
+    <div class="diag-scale-band__head">
+        <h4 class="diag-scale-band__title">{{ s.title }}</h4>
+        <span class="diag-scale-band__score">{{ s.score }}{% if s.max is defined %} / {{ s.max }}{% endif %}</span>
+    </div>
+    <div class="diag-scale-band__track" role="presentation">
+        <span class="diag-scale-band__zone diag-scale-band__zone--low" title="Низкий"></span>
+        <span class="diag-scale-band__zone diag-scale-band__zone--mid" title="Средний"></span>
+        <span class="diag-scale-band__zone diag-scale-band__zone--high" title="Высокий"></span>
+        <span class="diag-scale-band__marker" style="left: {{ s.marker_pct | default(0) }}%"></span>
+    </div>
+    <div class="diag-scale-band__labels">
+        <span>Низкий</span>
+        <span>Средний</span>
+        <span>Высокий</span>
+    </div>
+    <p class="diag-scale-band__level">
+        <span class="diag-scale-band__dot"></span>
+        {{ s.band_label }}
+    </p>
+    {% if s.interpretation %}
+    <p class="diag-scale-band__interp text-body-sm text-muted">{{ s.interpretation }}</p>
+    {% endif %}
+</section>

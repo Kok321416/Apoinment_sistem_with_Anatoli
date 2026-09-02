@@ -265,3 +265,167 @@
 html.tg-webapp .diag-cta {
     bottom: 0;
 }
+
+/* Intro page */
+.diag-intro__meta {
+    display: grid;
+    gap: 1rem;
+    margin: 1.25rem 0 0;
+}
+
+.diag-intro__meta dt {
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.diag-intro__meta dd {
+    margin: 0;
+    color: var(--text-muted, #64748b);
+}
+
+/* Wizard */
+.diag-wizard__progress {
+    margin-bottom: 1.25rem;
+}
+
+.diag-wizard__bar {
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--surface-200, #e2e8f0);
+    overflow: hidden;
+}
+
+.diag-wizard__bar-fill {
+    display: block;
+    height: 100%;
+    background: var(--accent-primary, #2563eb);
+    transition: width 0.2s ease;
+}
+
+.diag-wizard__figure {
+    margin: 0 0 1rem;
+    text-align: center;
+}
+
+.diag-wizard__img {
+    max-width: 100%;
+    max-height: 12rem;
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--border-default, #e5e5e5);
+}
+
+.diag-wizard__nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.diag-wizard__slide--error {
+    outline: 2px solid var(--color-danger, #dc2626);
+    outline-offset: 2px;
+}
+
+/* Color band scales */
+.diag-scales--bands {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.diag-scale-band__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.diag-scale-band__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.diag-scale-band__score {
+    font-size: 0.875rem;
+    color: var(--text-muted, #64748b);
+}
+
+.diag-scale-band__track {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    height: 0.65rem;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.diag-scale-band__zone--low {
+    background: #86efac;
+}
+
+.diag-scale-band__zone--mid {
+    background: #fde047;
+}
+
+.diag-scale-band__zone--high {
+    background: #fca5a5;
+}
+
+.diag-scale-band__marker {
+    position: absolute;
+    top: 50%;
+    width: 0.85rem;
+    height: 0.85rem;
+    margin-left: -0.425rem;
+    border-radius: 50%;
+    background: var(--bg-900, #fff);
+    border: 2px solid #1e293b;
+    transform: translateY(-50%);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.diag-scale-band__labels {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--text-muted, #64748b);
+    text-align: center;
+}
+
+.diag-scale-band__level {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.75rem 0 0;
+    font-weight: 600;
+}
+
+.diag-scale-band__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.diag-scale-band--low .diag-scale-band__level {
+    color: #15803d;
+}
+
+.diag-scale-band--medium .diag-scale-band__level {
+    color: #a16207;
+}
+
+.diag-scale-band--elevated .diag-scale-band__level {
+    color: #c2410c;
+}
+
+.diag-scale-band--high .diag-scale-band__level {
+    color: #b91c1c;
+}
+
+.diag-scale-band__interp {
+    margin: 0.5rem 0 0;
+}

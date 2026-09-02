@@ -236,8 +236,19 @@
             </div>
             <p class="client-diag__invite" id="diag-invite-url" hidden></p>
             {% if diagnostic_results %}
-            <div class="diag-history client-diag__list">
+            <ul class="client-diag__history text-body-sm">
                 {% for r in diagnostic_results %}
+                <li class="client-diag__history-item">
+                    <time datetime="{{ r.completed_at }}">{{ r.completed_at.strftime('%d.%m.%Y') if r.completed_at else '' }}</time>
+                    <span class="client-diag__history-title">{{ r.title }}</span>
+                    <span class="client-diag__history-band text-muted">{{ r.summary }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            <div class="diag-history client-diag__list mt-lg">
+                {% for r in diagnostic_results %}
+                {% set diag_results_base = '/diagnostics/results' %}
+                {% set show_detail_link = true %}
                 {% include "components/diagnostics_result_card.html" %}
                 {% endfor %}
             </div>

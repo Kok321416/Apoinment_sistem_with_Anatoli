@@ -188,7 +188,7 @@ def test_logged_out_with_booking_gate_still_requires_account(diagnostics_client)
     client.get("/s/spec/", follow_redirects=True)
     client.get("/s/spec/diagnostics/", follow_redirects=True)
 
-    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/", follow_redirects=True)
+    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/run/", follow_redirects=True)
     csrf_m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
     assert csrf_m, "csrf for logout"
     client.post("/logout/", data={"csrf_token": csrf_m.group(1)}, follow_redirects=True)
@@ -208,10 +208,9 @@ def test_diagnostics_hub_and_submit_bhs(diagnostics_client):
     assert "Диагностика" in hub.text
     assert BHS.title in hub.text
 
-    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/", follow_redirects=True)
+    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/run/", follow_redirects=True)
     assert take.status_code == 200, take.text[:500]
-    assert "Инструкция" in take.text
-    assert "Завершить" in take.text
+    assert "Вопрос" in take.text
 
     m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
     assert m, "csrf_token missing on take page"
@@ -264,7 +263,7 @@ def test_diagnostics_works_when_tables_missing_initially(diagnostics_client):
         reset_diagnostics_ddl_ready_for_tests()
         client = TestClient(app)
         _login_client(client)
-        take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/", follow_redirects=True)
+        take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/run/", follow_redirects=True)
         assert take.status_code == 200, take.text[:400]
         m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
         assert m
@@ -277,7 +276,7 @@ def test_diagnostics_result_idor_redirects_other_client(diagnostics_client):
     """Client B must not read client A diagnostic attempt."""
     client, _cid, client_a_id, engine, session_factory, _prepare = diagnostics_client
     _login_client(client)
-    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/", follow_redirects=True)
+    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/run/", follow_redirects=True)
     assert take.status_code == 200
     m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
     assert m

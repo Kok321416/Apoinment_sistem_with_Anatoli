@@ -1,0 +1,45 @@
+{% extends "layouts/booking.html" %}
+
+{% block meta_tags %}
+{% set page_title = test.title ~ " — диагностика" %}
+{% set meta_description = test.short_description %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/booking.css?v=27">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=6">
+{% endblock %}
+
+{% block booking_content %}
+<div class="diag-page diag-intro">
+    <p class="mb-lg"><a class="btn btn--ghost btn--sm" href="/s/{{ public_slug }}/diagnostics/">← К списку тестов</a></p>
+    <header class="diag-page__head">
+        <h1 class="text-h1">{{ test.title }}</h1>
+        <p class="text-body text-muted">{{ test.short_description }}</p>
+    </header>
+
+    <section class="card card--static diag-instruction">
+        <h2 class="diag-instruction__title text-h2">Инструкция</h2>
+        {% if test.instruction %}
+        <p class="text-body">{{ test.instruction }}</p>
+        {% endif %}
+        <dl class="diag-intro__meta">
+            <div>
+                <dt>Что нужно сделать</dt>
+                <dd>Ответьте на вопросы, выбирая вариант, который наиболее соответствует вашему состоянию или впечатлению.</dd>
+            </div>
+            <div>
+                <dt>Время прохождения</dt>
+                <dd>~ {{ test.duration_minutes }} мин</dd>
+            </div>
+            <div>
+                <dt>Количество вопросов</dt>
+                <dd>{{ test.items|length }}</dd>
+            </div>
+        </dl>
+        <p class="text-body-sm text-muted">Результат не является медицинским диагнозом и сохраняется в вашем профиле у специалиста.</p>
+        <a class="btn btn--primary mt-lg" href="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/run/">Начать тест</a>
+    </section>
+</div>
+{% endblock %}

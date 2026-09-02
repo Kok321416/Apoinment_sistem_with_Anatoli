@@ -136,9 +136,11 @@ def missing_answer_ids(test, answers: dict[str, Any]) -> list[str]:
 
 
 def score_test_answers(test, answers: dict[str, Any]) -> dict[str, Any]:
-    if not test or not test.runnable or not test.score_fn:
+    from app.diagnostics.engine import engine
+
+    if not test or not test.runnable:
         raise ValueError("Тест недоступен для расчёта")
-    return test.score_fn(answers, test)
+    return engine.score(test.code, answers)
 
 
 def build_preview_result(test, scored: dict[str, Any]) -> dict[str, Any]:
@@ -281,16 +283,18 @@ async def complete_attempt(
     attempt: DiagnosticAttempt,
     answers: dict[str, Any],
 ) -> DiagnosticAttempt:
+    from app.diagnostics.engine import engine
+
     test = get_test(attempt.test_code)
-    if not test or not test.runnable or not test.score_fn:
+    if not test or not test.runnable:
         raise ValueError("Тест недоступен для расчёта")
-    result = test.score_fn(answers, test)
-    attempt.answers_json = json.dumps(answers, ensure_ascii=False)
+    result = engine.score(attempt.test_code, answers)
     attempt.scores_json = json.dumps(result.get("scores") or {}, ensure_ascii=False)
     attempt.scales_json = json.dumps(result.get("scales") or [], ensure_ascii=False)
     attempt.interpretation_json = json.dumps(result.get("interpretation") or {}, ensure_ascii=False)
     attempt.summary_text = (result.get("summary") or "")[:2000]
     attempt.flags_json = json.dumps(result.get("flags") or [], ensure_ascii=False)
+    attempt.answers_json = "{}"  # store only aggregated result, not per-item answers
     attempt.status = "completed"
     attempt.completed_at = datetime.utcnow()
     await db.flush()
@@ -386,11 +390,18 @@ async def list_attempts_for_card(
 
 
 def attempt_to_view(attempt: DiagnosticAttempt) -> dict[str, Any]:
+    from app.diagnostics.engine import _band_level, _marker_pct
+
     test = get_test(attempt.test_code)
     try:
         scales = json.loads(attempt.scales_json or "[]")
     except json.JSONDecodeError:
         scales = []
+    for s in scales:
+        if "band_level" not in s:
+            s["band_level"] = _band_level(s.get("band_label") or "")
+        if "marker_pct" not in s:
+            s["marker_pct"] = _marker_pct(s)
     try:
         interpretation = json.loads(attempt.interpretation_json or "{}")
     except json.JSONDecodeError:

@@ -37,6 +37,7 @@ class ItemDef:
     options: tuple[tuple[str, int], ...]  # value label → score contribution
     reverse: bool = False
     scale_code: str = "total"
+    image_url: str = ""
 
 
 @dataclass
@@ -732,18 +733,9 @@ OSOP = TestDefinition(
 
 
 # Pending tests — catalog only until assets/keys are supplied.
-PENDING_TESTS = (
-    TestDefinition(
-        code="rmet",
-        version="0",
-        title="Чтение эмоций по глазам (RMET)",
-        short_description="Требует набора изображений и ключей Baron-Cohen. Пока в каталоге.",
-        duration_minutes=15,
-        source_citation="Baron-Cohen S. et al. Reading the Mind in the Eyes — assets/keys pending.",
-        source_urls=("https://psytests.org/emo/eyespsy.html",),
-        scoring_status="pending_source",
-    ),
-)
+PENDING_TESTS: tuple = ()
+
+from app.diagnostics.tests.eyes import EYES  # noqa: E402
 
 _REGISTRY: dict[str, TestDefinition] = {
     BHS.code: BHS,
@@ -751,6 +743,7 @@ _REGISTRY: dict[str, TestDefinition] = {
     WCQ.code: WCQ,
     SCHMISCHEK.code: SCHMISCHEK,
     OSOP.code: OSOP,
+    EYES.code: EYES,
 }
 for t in PENDING_TESTS:
     _REGISTRY[t.code] = t

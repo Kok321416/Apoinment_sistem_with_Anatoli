@@ -7,7 +7,7 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/booking.css?v=27">
-<link rel="stylesheet" href="/static/css/diagnostics.css?v=4">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=6">
 {% endblock %}
 
 {% block booking_content %}
@@ -19,6 +19,7 @@
     </div>
     {% endif %}
     {% set r = result %}
+    {% set show_detail_link = false %}
     {% set diag_results_base = '/s/' ~ public_slug ~ '/diagnostics/results' %}
     {% include "components/diagnostics_result_card.html" %}
 

@@ -155,17 +155,6 @@ async def diagnostics_result(
             return redirect
 
     view = attempt_to_view(attempt)
-    show_answers = False
-    answers = {}
-    cons = (
-        await db.execute(select(Consultant).where(Consultant.user_id == user.id))
-    ).scalar_one_or_none()
-    if cons and cons.id == attempt.consultant_id:
-        show_answers = True
-        try:
-            answers = json.loads(attempt.answers_json or "{}")
-        except json.JSONDecodeError:
-            answers = {}
 
     return templates.TemplateResponse(
         "app/diagnostics_result.html",
@@ -176,8 +165,8 @@ async def diagnostics_result(
             cabinet_nav_active="diagnostics",
             result=view,
             attempt=attempt,
-            show_answers=show_answers,
-            answers=answers,
+            show_answers=False,
+            answers={},
             test=get_test(attempt.test_code),
         ),
     )
