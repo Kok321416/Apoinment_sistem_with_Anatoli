@@ -1,4 +1,4 @@
-{% extends "layouts/auth.html" %}
+{% extends "layouts/booking.html" %}
 {% from "components/icon.html" import auth_provider_icon %}
 
 {% block meta_tags %}
@@ -8,74 +8,112 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/auth.css?v=25">
+<link rel="stylesheet" href="/static/css/booking.css?v=29">
+<link rel="stylesheet" href="/static/css/auth.css?v=26">
+<link rel="stylesheet" href="/static/css/public-welcome.css?v=1">
 {% endblock %}
 
-{% block auth_content %}
+{% block booking_content %}
 {% set cq = ('&client=' ~ client_channel) if client_channel and client_channel != 'web' else '' %}
 {% set nq = '?next=' ~ (next_url | urlencode) ~ cq %}
-<div class="auth-card card card--static animate-fade-in-up">
-    <h1 class="text-h1 auth-card__title">Запись к специалисту</h1>
-    <p class="text-body-sm text-muted auth-card__lead">
-        {{ consultant.first_name }} {{ consultant.last_name }}.
-        {% if welcome_purpose == 'diagnostics' %}
-        Укажите контакты или войдите через Телеграм, чтобы пройти диагностику.
-        {% else %}
-        Укажите контакты или войдите через Телеграм — откроется выбор даты и времени.
-        {% endif %}
-    </p>
+<div class="welcome-gate" id="welcomeGate">
+    <a class="welcome-gate__back" href="/s/{{ public_slug }}/">← К профилю специалиста</a>
+
+    <header class="welcome-gate__hero">
+        <p class="welcome-gate__eyebrow">Шаг перед записью</p>
+        <h1 class="welcome-gate__title">Укажите контакты</h1>
+        <p class="welcome-gate__lead">
+            {% if welcome_purpose == 'diagnostics' %}
+            Чтобы пройти диагностику у <strong>{{ consultant.first_name }} {{ consultant.last_name }}</strong>, войдите через Telegram или заполните форму ниже.
+            {% else %}
+            Чтобы выбрать дату и время у <strong>{{ consultant.first_name }} {{ consultant.last_name }}</strong>, войдите через Telegram или укажите ФИО и телефон.
+            {% endif %}
+        </p>
+    </header>
 
     {% if error %}
-    <div class="alert alert--error" role="alert">{{ error }}</div>
+    <div class="alert alert--error welcome-gate__alert" role="alert">{{ error }}</div>
     {% endif %}
 
     {% if telegram_bot_username or bot_username %}
-    <div class="form-field">
-        <span class="form-field__label">Войти через Телеграм</span>
+    <section class="welcome-gate__panel welcome-gate__telegram" aria-labelledby="welcome-tg-title">
+        <h2 class="welcome-gate__panel-title" id="welcome-tg-title">Быстрый вход</h2>
         <div class="auth-methods">
             <a href="/accounts/telegram/login/{{ nq }}" class="auth-method auth-method--telegram auth-method--solo">
                 {{ auth_provider_icon('telegram') }}
-                <span>Войти через Телеграм</span>
+                <span>Войти через Telegram</span>
             </a>
         </div>
-        <p class="form-field__hint">Откроется Telegram — подтвердите вход в боте и вернитесь в браузер для записи.</p>
-    </div>
+        <p class="welcome-gate__panel-hint">Подтвердите вход в боте и вернитесь в браузер — имя подтянется автоматически.</p>
+    </section>
 
-    <hr class="auth-divider">
-    <p class="text-body-sm text-muted text-center auth-divider__label">или укажите контакты</p>
+    <p class="welcome-gate__split" aria-hidden="true">или форма</p>
     {% endif %}
 
-    <div class="alert alert--info" id="welcomeReturningNote" hidden role="status"></div>
+    <section class="welcome-gate__panel" aria-labelledby="welcome-form-title">
+        <h2 class="welcome-gate__panel-title" id="welcome-form-title">Ваши данные</h2>
 
-    <form method="POST" action="/s/{{ public_slug }}/welcome/?next={{ next_url | urlencode }}" id="welcomeContactForm" data-lookup-url="/s/{{ public_slug }}/welcome/lookup/">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="action" value="contact">
-        <div class="stack">
-            <div class="form-field">
-                <label class="form-field__label" for="fio">ФИО <span class="text-muted">(для записи)</span></label>
-                <input class="input" type="text" id="fio" name="fio" required autocomplete="name" placeholder="Иванов Иван Иванович" minlength="3" value="{{ fio or '' }}">
-            </div>
-            <div class="form-field">
-                <label class="form-field__label" for="phone">Телефон</label>
-                <input class="input" type="tel" id="phone" name="phone" data-phone-mask data-phone-lazy="0" required inputmode="numeric" autocomplete="tel" placeholder="+7 (___) ___-__-__" value="{{ phone or '' }}">
-                <p class="form-field__hint">На этот номер придут уведомления в Телеграм, если аккаунт найдётся.</p>
-            </div>
-            <div class="form-field">
-                <label class="form-field__label" for="telegram">Ник в Телеграм <span class="text-muted">(необязательно)</span></label>
-                <input class="input" type="text" id="telegram" name="telegram" autocomplete="off" placeholder="@username" value="{{ telegram or '' }}">
-                <p class="form-field__hint">Помогает боту отправить сообщение о записи автоматически.</p>
-            </div>
-            <label class="form-check">
-                <input type="checkbox" name="accept_privacy" value="1" required>
-                <span class="text-body-sm">Согласен(на) на обработку персональных данных</span>
-            </label>
-            <button type="submit" class="btn btn--primary">Продолжить к записи</button>
-        </div>
-    </form>
+        <div class="welcome-gate__note" id="welcomeReturningNote" hidden role="status"></div>
 
-    <div class="auth-footer-links">
-        <p><a href="/s/{{ public_slug }}/">← К профилю специалиста</a></p>
-    </div>
+        <form
+            method="POST"
+            action="/s/{{ public_slug }}/welcome/?next={{ next_url | urlencode }}"
+            id="welcomeContactForm"
+            class="welcome-gate__form"
+            data-lookup-url="/s/{{ public_slug }}/welcome/lookup/"
+            novalidate
+        >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="contact">
+            <div class="stack">
+                <div class="form-field">
+                    <label class="form-field__label" for="fio">ФИО</label>
+                    <input
+                        class="input"
+                        type="text"
+                        id="fio"
+                        name="fio"
+                        required
+                        autocomplete="name"
+                        placeholder="Иванов Иван Иванович"
+                        minlength="3"
+                        value="{{ fio or '' }}"
+                        aria-describedby="fioError"
+                    >
+                    <p class="welcome-gate__field-error" id="fioError" hidden>Укажите фамилию и имя полностью.</p>
+                </div>
+                <div class="form-field">
+                    <label class="form-field__label" for="phone">Телефон</label>
+                    <input
+                        class="input"
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        data-phone-mask
+                        data-phone-lazy="0"
+                        required
+                        inputmode="numeric"
+                        autocomplete="tel"
+                        placeholder="+7 (___) ___-__-__"
+                        value="{{ phone or '' }}"
+                        aria-describedby="phoneError"
+                    >
+                    <p class="form-field__hint">На этот номер придут уведомления, если аккаунт найдётся в Telegram.</p>
+                    <p class="welcome-gate__field-error" id="phoneError" hidden>Укажите номер в формате +7 (XXX) XXX-XX-XX.</p>
+                </div>
+                <div class="form-field">
+                    <label class="form-field__label" for="telegram">Ник в Telegram <span class="text-muted">(необязательно)</span></label>
+                    <input class="input" type="text" id="telegram" name="telegram" autocomplete="off" placeholder="@username" value="{{ telegram or '' }}">
+                </div>
+                <label class="welcome-gate__consent" id="welcomeConsent">
+                    <input type="checkbox" name="accept_privacy" value="1" required>
+                    <span>Согласен(на) на обработку персональных данных</span>
+                </label>
+                <p class="welcome-gate__field-error" id="privacyError" hidden>Нужно согласие на обработку персональных данных.</p>
+                <button type="submit" class="btn btn--primary welcome-gate__submit">Продолжить к записи</button>
+            </div>
+        </form>
+    </section>
 </div>
-<script src="/static/js/public-welcome.js?v=1" defer></script>
+<script src="/static/js/public-welcome.js?v=2" defer></script>
 {% endblock %}
