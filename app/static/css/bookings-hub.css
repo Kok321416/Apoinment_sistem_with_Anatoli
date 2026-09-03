@@ -409,12 +409,6 @@
     color: var(--accent-secondary);
     font-weight: var(--font-weight-medium);
 }
-.bookings-sidebar__revenue {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: var(--font-weight-bold);
-    color: var(--accent-success);
-}
 .bookings-sidebar__mini-cal {
     padding: var(--space-lg);
     border-radius: var(--radius-sm);

@@ -11,8 +11,8 @@
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=45">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=14">
-<link rel="stylesheet" href="/static/css/bookings-hub.css?v=8">
-<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=25">
+<link rel="stylesheet" href="/static/css/bookings-hub.css?v=9">
+<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=26">
 <link rel="stylesheet" href="/static/css/specialist-book.css?v=6">
 {% endblock %}
 
@@ -204,11 +204,6 @@
                 {% endif %}
             </section>
 
-            <section class="bookings-sidebar__block">
-                <h2 class="bookings-sidebar__title">Доход сегодня</h2>
-                <p class="bookings-sidebar__revenue">{{ hub_sidebar.revenue_today|int }} ₽</p>
-            </section>
-
             <section class="bookings-sidebar__block bookings-sidebar__block--stub">
                 <h2 class="bookings-sidebar__title">Свободное время</h2>
                 <p class="bookings-sidebar__stub">{{ hub_sidebar.free_time_note }}</p>
@@ -276,7 +271,7 @@
 
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
-<script src="/static/js/specialist-bookings.js?v=25" defer></script>
+<script src="/static/js/specialist-bookings.js?v=26" defer></script>
 <script src="/static/js/specialist-book.js?v=7" defer></script>
 <script type="application/json" id="bookings-hub-data">{{ hub_payload | tojson }}</script>
 {% endblock %}

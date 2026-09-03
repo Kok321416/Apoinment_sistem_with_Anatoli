@@ -344,6 +344,19 @@
     color: var(--text-primary);
 }
 
+.event-popover__date {
+    margin: 0 0 var(--space-2xs);
+    font-size: var(--font-size-caption);
+    color: var(--text-muted);
+    text-transform: capitalize;
+}
+
+.event-popover__contact {
+    margin: var(--space-2xs) 0;
+    color: var(--text-secondary);
+    word-break: break-word;
+}
+
 .event-popover .popover-actions {
     display: flex;
     flex-wrap: wrap;
@@ -541,16 +554,15 @@
     font-weight: var(--font-weight-medium);
 }
 
+.cal-mobile-event__contact {
+    font-size: var(--font-size-caption);
+    opacity: 0.9;
+    word-break: break-word;
+}
+
 .cal-mobile-event__service {
     opacity: 0.85;
     font-size: var(--font-size-caption);
-}
-
-.cal-mobile-event__status {
-    flex: 0 0 auto;
-    margin-left: auto;
-    font-size: var(--font-size-caption);
-    opacity: 0.9;
 }
 
 @media (min-width: 900px) {
@@ -640,22 +652,49 @@
 }
 
 .week-day-col__list button {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
     width: 100%;
     text-align: left;
-    padding: var(--space-2xs) var(--space-xs);
+    padding: var(--space-sm) var(--space-md);
     border: none;
     border-radius: var(--radius-sm);
-    background: var(--surface-100);
     cursor: pointer;
     font-size: var(--font-size-body-sm);
+    line-height: 1.35;
+    white-space: normal;
+    overflow: visible;
 }
 
 .week-day-col__list button:hover {
-    background: var(--surface-300);
+    filter: brightness(1.06);
+}
+
+.week-event__time {
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-caption);
+}
+
+.week-event__name {
+    font-weight: var(--font-weight-medium);
+    color: inherit;
+}
+
+.week-event__contact {
+    font-size: var(--font-size-caption);
+    opacity: 0.9;
+    word-break: break-word;
 }
 
 @media (max-width: 900px) {
     .week-grid {
         grid-template-columns: 1fr;
+    }
+
+    .week-day-col__list button {
+        padding: var(--space-md) var(--space-lg);
+        min-height: 44px;
     }
 }

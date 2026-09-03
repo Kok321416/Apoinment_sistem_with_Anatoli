@@ -110,11 +110,8 @@
             } else {
                 html.push('<ul class="week-day-col__list">');
                 events.forEach(function (ev) {
-                    var timeStr = ev.time || '';
-                    if (ev.end_time) timeStr += ' - ' + ev.end_time;
                     html.push('<li><button type="button" ' + eventAttrs(ev) + '>');
-                    html.push('<span class="week-event__time">' + escapeAttr(timeStr) + '</span> ');
-                    html.push('<span class="week-event__name">' + escapeAttr(ev.client_name || '—') + '</span>');
+                    html.push(weekEventInnerHtml(ev));
                     html.push('</button></li>');
                 });
                 html.push('</ul>');
@@ -155,13 +152,6 @@
         }
     }
 
-    var statusLabels = {
-        confirmed: 'Подтверждена',
-        pending: 'Ожидает',
-        completed: 'Завершена',
-        cancelled: 'Отменена'
-    };
-
     function formatDayHeading(dateStr) {
         var parts = dateStr.split('-');
         if (parts.length !== 3) return dateStr;
@@ -170,10 +160,61 @@
         return Number(parts[2]) + ' ' + monthNames[Number(parts[1]) - 1].toLowerCase() + ', ' + weekdays[d.getDay()];
     }
 
-    function eventAttrs(ev) {
+    function formatTimeRange(ev) {
         var timeStr = ev.time || '';
-        if (ev.end_time) timeStr += ' - ' + ev.end_time;
-        return 'class="cal-event ' + (ev.status || '') + '" data-id="' + ev.id + '" data-status="' + escapeAttr(ev.status || '') + '" data-calendar-id="' + (ev.calendar_id || '') + '" data-service-id="' + (ev.service_id || '') + '" data-client_name="' + escapeAttr(ev.client_name) + '" data-client_phone="' + escapeAttr(ev.client_phone) + '" data-client_email="' + escapeAttr(ev.client_email || '') + '" data-client_telegram="' + escapeAttr(ev.client_telegram || '') + '" data-time="' + escapeAttr(timeStr) + '" data-service="' + escapeAttr(ev.service || '') + '"';
+        if (ev.end_time) timeStr += ' – ' + ev.end_time;
+        return timeStr;
+    }
+
+    /** Primary contact for chips: phone → telegram → email */
+    function primaryContact(ev) {
+        var phone = (ev.client_phone || '').trim();
+        if (phone) return phone;
+        var tg = (ev.client_telegram || '').trim();
+        if (tg) return tg.indexOf('@') === 0 ? tg : '@' + tg.replace(/^@/, '');
+        var email = (ev.client_email || '').trim();
+        return email || '';
+    }
+
+    function eventAttrs(ev) {
+        var timeStr = formatTimeRange(ev);
+        return 'class="cal-event ' + (ev.status || '') + '" data-id="' + ev.id + '" data-date="' + escapeAttr(ev.date || '') + '" data-status="' + escapeAttr(ev.status || '') + '" data-calendar-id="' + (ev.calendar_id || '') + '" data-service-id="' + (ev.service_id || '') + '" data-client_name="' + escapeAttr(ev.client_name) + '" data-client_phone="' + escapeAttr(ev.client_phone) + '" data-client_email="' + escapeAttr(ev.client_email || '') + '" data-client_telegram="' + escapeAttr(ev.client_telegram || '') + '" data-time="' + escapeAttr(timeStr) + '" data-service="' + escapeAttr(ev.service || '') + '"';
+    }
+
+    function weekEventInnerHtml(ev) {
+        var timeStr = formatTimeRange(ev);
+        var contact = primaryContact(ev);
+        var html = [];
+        html.push('<span class="week-event__time">' + escapeAttr(timeStr) + '</span>');
+        html.push('<span class="week-event__name">' + escapeAttr(ev.client_name || '—') + '</span>');
+        if (contact) {
+            html.push('<span class="week-event__contact">' + escapeAttr(contact) + '</span>');
+        }
+        return html.join('');
+    }
+
+    function monthChipLabel(ev) {
+        var time = ev.time || '';
+        var name = ev.client_name || '';
+        var contact = primaryContact(ev);
+        var label = time;
+        if (name) label += (label ? ' ' : '') + name;
+        if (contact && !name) label += (label ? ' · ' : '') + contact;
+        return label.trim() || '—';
+    }
+
+    function mobileEventInnerHtml(ev) {
+        var timeStr = formatTimeRange(ev);
+        var contact = primaryContact(ev);
+        var html = [];
+        html.push('<span class="cal-mobile-event__time">' + escapeAttr(timeStr) + '</span>');
+        html.push('<span class="cal-mobile-event__main">');
+        html.push('<span class="cal-mobile-event__name">' + escapeAttr(ev.client_name || '—') + '</span>');
+        if (contact) {
+            html.push('<span class="cal-mobile-event__contact">' + escapeAttr(contact) + '</span>');
+        }
+        html.push('</span>');
+        return html.join('');
     }
 
     function renderMobileList() {
@@ -196,17 +237,8 @@
             html.push('<h3 class="cal-mobile-day__title">' + formatDayHeading(dateStr) + '</h3>');
             html.push('<ul class="cal-mobile-day__list">');
             events.forEach(function (ev) {
-                var status = (ev.status || '').toLowerCase();
-                var label = statusLabels[status] || (ev.status || '');
-                var timeStr = ev.time || '';
-                if (ev.end_time) timeStr += ' - ' + ev.end_time;
                 html.push('<li><button type="button" ' + eventAttrs(ev) + '>');
-                html.push('<span class="cal-mobile-event__time">' + escapeAttr(timeStr) + '</span>');
-                html.push('<span class="cal-mobile-event__main">');
-                html.push('<span class="cal-mobile-event__name">' + escapeAttr(ev.client_name || '—') + '</span>');
-                if (ev.service) html.push('<span class="cal-mobile-event__service">' + escapeAttr(ev.service) + '</span>');
-                html.push('</span>');
-                if (label) html.push('<span class="cal-mobile-event__status">' + escapeAttr(label) + '</span>');
+                html.push(mobileEventInnerHtml(ev));
                 html.push('</button></li>');
             });
             html.push('</ul></section>');
@@ -232,7 +264,7 @@
         }
         html += '<div class="day-events">';
         events.forEach(function (ev) {
-            html += '<div ' + eventAttrs(ev) + '>' + (ev.time || '') + ' ' + (ev.client_name || '') + '</div>';
+            html += '<div ' + eventAttrs(ev) + ' title="' + escapeAttr(monthChipLabel(ev) + (primaryContact(ev) ? ' · ' + primaryContact(ev) : '')) + '">' + escapeAttr(monthChipLabel(ev)) + '</div>';
         });
         html += '</div>';
         cell.innerHTML = html;
@@ -249,18 +281,24 @@
         var email = el.getAttribute('data-client_email') || '';
         var telegram = el.getAttribute('data-client_telegram') || '';
         var time = el.getAttribute('data-time') || '';
-        var service = el.getAttribute('data-service') || '';
+        var dateStr = el.getAttribute('data-date') || '';
         var bookingId = el.getAttribute('data-id') || '';
         var status = (el.getAttribute('data-status') || '').toLowerCase();
         var pop = document.getElementById('eventPopover');
         if (!pop) return;
 
         var parts = ['<h4>' + (name || '—') + '</h4>'];
+        if (dateStr) parts.push('<p class="event-popover__date">' + formatDayHeading(dateStr) + '</p>');
         if (time) parts.push('<p class="time">' + time + '</p>');
-        if (service) parts.push('<p>Услуга: ' + service + '</p>');
-        if (phone) parts.push('<p>Телефон: ' + phone + '</p>');
-        if (email) parts.push('<p>Почта: ' + email + '</p>');
-        if (telegram) parts.push('<p>Телеграм: ' + telegram + '</p>');
+        if (phone) parts.push('<p class="event-popover__contact">Телефон: ' + phone + '</p>');
+        if (email) parts.push('<p class="event-popover__contact">Почта: ' + email + '</p>');
+        if (telegram) {
+            var tgLabel = telegram.indexOf('@') === 0 ? telegram : '@' + telegram.replace(/^@/, '');
+            parts.push('<p class="event-popover__contact">Телеграм: ' + tgLabel + '</p>');
+        }
+        if (!phone && !email && !telegram) {
+            parts.push('<p class="event-popover__contact text-muted">Контакты не указаны</p>');
+        }
 
         var actionUrl = window.location.pathname + (window.location.search || '');
         var csrfEl = document.getElementById('csrfToken');
