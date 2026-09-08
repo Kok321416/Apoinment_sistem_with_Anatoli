@@ -451,6 +451,12 @@ def send_reminders(db: Session) -> dict:
         )
         .all()
     )
+    logger.info(
+        "send_reminders start tz=%s now=%s candidates=%s",
+        settings.timezone,
+        now.isoformat(),
+        len(bookings),
+    )
 
     for booking in bookings:
         if not booking.booking_time:
@@ -472,8 +478,9 @@ def send_reminders(db: Session) -> dict:
         h1 = booking.calendar.reminder_hours_first if booking.calendar else 24
         h2 = booking.calendar.reminder_hours_second if booking.calendar else 1
         win = 45
-        in_first = (h1 * 60 - win) <= delta_minutes <= (h1 * 60 + win)
-        in_second = (h2 * 60 - win) <= delta_minutes <= (h2 * 60 + win)
+        # 0 = reminder disabled in calendar settings; do not treat T-0 as a window.
+        in_first = h1 > 0 and (h1 * 60 - win) <= delta_minutes <= (h1 * 60 + win)
+        in_second = h2 > 0 and (h2 * 60 - win) <= delta_minutes <= (h2 * 60 + win)
 
         if in_first:
             if not booking.reminder_24h_sent:
@@ -541,6 +548,7 @@ def send_reminders(db: Session) -> dict:
                     sent["spec_1"] += 1
 
     db.commit()
+    logger.info("send_reminders done sent=%s", sent)
     return sent
 
 

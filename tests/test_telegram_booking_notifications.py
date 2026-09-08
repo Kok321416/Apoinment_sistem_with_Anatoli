@@ -462,6 +462,140 @@ def test_reminders_use_booking_telegram_id():
     db.close()
 
 
+def _reminder_booking(db, cal, svc, day, **kwargs):
+    booking = Booking(
+        service_id=svc.id,
+        calendar_id=cal.id,
+        booking_date=day,
+        booking_time=time(12, 0),
+        booking_end_time=time(13, 0),
+        client_name="Client",
+        client_phone="+7999",
+        status="confirmed",
+        telegram_id=909090,
+        reminder_24h_sent=False,
+        reminder_1h_sent=False,
+        specialist_reminder_24h_sent=False,
+        specialist_reminder_1h_sent=False,
+        **kwargs,
+    )
+    db.add(booking)
+    db.commit()
+    return booking
+
+
+def _run_reminders_at(db, day, hour, minute, *, send_ok=True):
+    from zoneinfo import ZoneInfo
+
+    tz = ZoneInfo("Europe/Moscow")
+    now = datetime.combine(day, time(hour, minute), tzinfo=tz)
+    sent = []
+
+    def _send(chat_id, text, bot_token=None, **kwargs):
+        sent.append((str(chat_id), kwargs.get("recipient_type")))
+        return send_ok
+
+    with (
+        patch.object(tg, "_send_telegram", side_effect=_send),
+        patch.object(tg, "notify_dedup_enabled", return_value=False),
+        patch("app.services.telegram.datetime") as mock_dt,
+    ):
+        mock_dt.now.return_value = now
+        mock_dt.combine = datetime.combine
+        result = tg.send_reminders(db)
+    client_sent = [cid for cid, kind in sent if kind == "client" or kind is None]
+    spec_sent = [cid for cid, kind in sent if kind != "client"]
+    # Specialist path calls _send_telegram directly without recipient_type.
+    # Split by known ids after tests set them.
+    return result, sent
+
+
+def test_reminders_send_to_specialist_and_client_in_1h_window():
+    db = _session()
+    consultant, cal, svc, day = _seed(db)
+    cal.reminder_hours_first = 24
+    cal.reminder_hours_second = 1
+    db.add(
+        Integration(
+            consultant_id=consultant.id,
+            telegram_connected=True,
+            telegram_enabled=True,
+            telegram_chat_id="555001",
+        )
+    )
+    db.commit()
+    _reminder_booking(db, cal, svc, day)
+
+    result, sent = _run_reminders_at(db, day, 11, 0)
+    chats = [cid for cid, _kind in sent]
+    assert "909090" in chats
+    assert "555001" in chats
+    assert result["client_1"] == 1
+    assert result["spec_1"] == 1
+    db.close()
+
+
+def test_reminders_skip_when_hours_disabled():
+    """h=0 means off; must not treat ±45 min around start as a window."""
+    db = _session()
+    consultant, cal, svc, day = _seed(db)
+    cal.reminder_hours_first = 0
+    cal.reminder_hours_second = 0
+    db.add(
+        Integration(
+            consultant_id=consultant.id,
+            telegram_connected=True,
+            telegram_enabled=True,
+            telegram_chat_id="555002",
+        )
+    )
+    db.commit()
+    _reminder_booking(db, cal, svc, day)
+
+    result, sent = _run_reminders_at(db, day, 11, 30)
+    assert sent == []
+    assert result["client_1"] == 0
+    assert result["spec_1"] == 0
+    db.close()
+
+
+def test_reminders_outside_45min_window_are_not_sent():
+    db = _session()
+    _consultant, cal, svc, day = _seed(db)
+    cal.reminder_hours_first = 24
+    cal.reminder_hours_second = 1
+    _reminder_booking(db, cal, svc, day)
+
+    # T-106 min is outside 1h ±45 window
+    result, sent = _run_reminders_at(db, day, 10, 14)
+    assert sent == []
+    assert result == {"client_24": 0, "client_1": 0, "spec_24": 0, "spec_1": 0}
+    db.close()
+
+
+def test_reminders_skip_specialist_without_chat_id():
+    db = _session()
+    consultant, cal, svc, day = _seed(db)
+    cal.reminder_hours_second = 1
+    db.add(
+        Integration(
+            consultant_id=consultant.id,
+            telegram_connected=False,
+            telegram_enabled=True,
+            telegram_chat_id="",
+        )
+    )
+    db.commit()
+    _reminder_booking(db, cal, svc, day)
+
+    result, sent = _run_reminders_at(db, day, 11, 0)
+    chats = [cid for cid, _kind in sent]
+    assert "909090" in chats
+    assert "555002" not in chats
+    assert result["spec_1"] == 0
+    db.close()
+
+
 @pytest.mark.asyncio
 async def test_create_public_booking_async_resolves_telegram_id():
     from app.services.bookings import create_public_booking_async

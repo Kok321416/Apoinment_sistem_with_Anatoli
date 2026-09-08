@@ -242,7 +242,7 @@
             <ul class="client-diag__history text-body-sm">
                 {% for r in diagnostic_results %}
                 <li class="client-diag__history-item">
-                    <time datetime="{{ r.completed_at }}">{{ r.completed_at.strftime('%d.%m.%Y') if r.completed_at else '' }}</time>
+                    <time datetime="{{ r.completed_at }}">{% if r.completed_at %}{{ r.completed_at.strftime('%d.%m.%Y') }}{% endif %}</time>
                     <span class="client-diag__history-title">{{ r.title }}</span>
                     <span class="client-diag__history-band text-muted">{{ r.summary }}</span>
                 </li>

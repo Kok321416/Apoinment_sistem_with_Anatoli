@@ -2187,17 +2187,14 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
     stats = await booking_stats_async(db, consultant.id, [card.id])
     crm_client = serialize_card(card, stats, date_cls.today())
     today = date_cls.today()
-    upcoming_bookings = [
-        b
-        for b in history
-        if b.booking_date and b.booking_date >= today and b.status in ("pending", "confirmed")
-    ][:5]
 
     diagnostic_results: list = []
     show_diagnostics = False
+    diagnostics_touched_session = False
     try:
         show_diagnostics = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
         if show_diagnostics:
+            diagnostics_touched_session = True
             diagnostic_results = [
                 attempt_to_view(a)
                 for a in await list_attempts_for_card(
@@ -2208,8 +2205,82 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
         import logging
 
         logging.getLogger(__name__).exception("client card diagnostics block failed card_id=%s", card.id)
+        diagnostics_touched_session = True
+        try:
+            await db.rollback()
+        except Exception:
+            pass
         diagnostic_results = []
-        show_diagnostics = False
+        try:
+            show_diagnostics = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
+        except Exception:
+            show_diagnostics = False
+
+    # Diagnostics may commit/rollback and expire ORM instances used by the template.
+    if diagnostics_touched_session:
+        try:
+            card = (
+                await db.execute(
+                    select(ClientCard).where(
+                        ClientCard.id == card_id,
+                        ClientCard.consultant_id == consultant.id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if not card:
+                return RedirectResponse("/clients/", status_code=302)
+            consultant = (
+                await db.execute(
+                    select(Consultant)
+                    .options(selectinload(Consultant.category))
+                    .where(Consultant.id == consultant.id)
+                )
+            ).scalar_one()
+            history_q = or_(Booking.client_card_id == card.id)
+            if card.email:
+                history_q = or_(history_q, Booking.client_email == card.email)
+            if card.phone:
+                history_q = or_(history_q, Booking.client_phone == card.phone)
+            if card.telegram:
+                t = card.telegram.replace("@", "").strip().split("/")[-1].split("?")[0]
+                if t:
+                    history_q = or_(history_q, Booking.client_telegram.ilike(f"%{t}%"))
+            if cal_ids:
+                history = list(
+                    (
+                        await db.execute(
+                            select(Booking)
+                            .options(selectinload(Booking.service), selectinload(Booking.calendar))
+                            .where(Booking.calendar_id.in_(cal_ids), history_q)
+                            .distinct()
+                            .order_by(Booking.booking_date.desc())
+                            .limit(50)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+            else:
+                history = []
+            stats = await booking_stats_async(db, consultant.id, [card.id])
+            crm_client = serialize_card(card, stats, date_cls.today())
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "client card rehydrate after diagnostics failed card_id=%s", card_id
+            )
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            return RedirectResponse("/clients/?error=card", status_code=302)
+
+    upcoming_bookings = [
+        b
+        for b in history
+        if b.booking_date and b.booking_date >= today and b.status in ("pending", "confirmed")
+    ][:5]
 
     return templates.TemplateResponse(
         "client_card_detail.html",

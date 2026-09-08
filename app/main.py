@@ -73,6 +73,14 @@ app.include_router(telegram_webhook.router)
 @app.get("/health")
 async def health():
     """Liveness: no MySQL. Telegram keepalive and load balancers must stay fast."""
+    # Restore booking reminders when HTTP cron secrets are missing: keepalive
+    # pings /health every ~5 min; tick runs send_reminders in a background thread.
+    try:
+        from app.services.reminder_tick import schedule_reminders_tick
+
+        schedule_reminders_tick()
+    except Exception:
+        logger.exception("reminder tick schedule failed")
     return {"status": "ok"}
 
 
@@ -158,15 +166,26 @@ async def service_worker():
     )
 
 
+def _cron_expected_secret() -> str:
+    """Prefer dedicated cron/bot secrets; fall back to bot token (same as bot API)."""
+    return (
+        settings.cron_secret
+        or settings.bot_api_secret
+        or settings.telegram_bot_token
+        or ""
+    ).strip()
+
+
 def _internal_secret_ok(request: Request) -> bool:
     import secrets as _secrets
 
-    expected = (settings.cron_secret or settings.bot_api_secret or "").strip()
+    expected = _cron_expected_secret()
     if not expected:
         return False
     got = (
         (request.headers.get("x-cron-secret") or "").strip()
         or (request.headers.get("x-bot-api-secret") or "").strip()
+        or (request.headers.get("x-bot-token") or "").strip()
         or (request.query_params.get("token") or "").strip()
     )
     return bool(got) and _secrets.compare_digest(got, expected)
@@ -175,10 +194,11 @@ def _internal_secret_ok(request: Request) -> bool:
 @app.get("/internal/cron/reminders/")
 @app.post("/internal/cron/reminders/")
 async def cron_send_reminders(request: Request):
-    """Run booking reminders. Auth: CRON_SECRET or BOT_API_SECRET via header/query."""
+    """Run booking reminders. Auth: CRON_SECRET, BOT_API_SECRET, or TELEGRAM_BOT_TOKEN."""
     from fastapi.responses import JSONResponse
 
-    if not (settings.cron_secret or settings.bot_api_secret or "").strip():
+    if not _cron_expected_secret():
+        logger.warning("cron reminders rejected: no CRON_SECRET/BOT_API_SECRET/TELEGRAM_BOT_TOKEN")
         return JSONResponse({"ok": False, "error": "cron secret not configured"}, status_code=503)
     if not _internal_secret_ok(request):
         return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
@@ -187,6 +207,7 @@ async def cron_send_reminders(request: Request):
         from app.services.telegram import send_reminders_async
 
         sent = await send_reminders_async()
+        logger.info("cron reminders sent=%s", sent)
         return {"ok": True, "sent": sent}
     except Exception as exc:
         logger.exception("cron reminders failed")

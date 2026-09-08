@@ -372,3 +372,115 @@ def test_diagnostics_creates_client_card_and_specialist_sees_results(diagnostics
     views = asyncio.run(_list_for_card())
     assert views
     assert views[0]["test_code"] == BHS.code
+
+    # Specialist CRM card page must render (no Internal Server Error) with results.
+    spec = TestClient(client.app)
+    login_page = spec.get("/login/", follow_redirects=True)
+    csrf_m = re.search(r'name="csrf_token"\s+value="([^"]+)"', login_page.text)
+    assert csrf_m
+    spec.post(
+        "/login/",
+        data={"login": "spec@test.com", "password": "specpass", "csrf_token": csrf_m.group(1)},
+        follow_redirects=False,
+    )
+    page = spec.get(f"/clients/{card.id}/#diagnostics", follow_redirects=True)
+    assert page.status_code == 200, page.text[:800]
+    assert "Диагностика" in page.text
+    assert "Internal Server Error" not in page.text
+    assert views[0]["title"] in page.text or BHS.code in page.text
+
+
+def test_list_attempts_for_card_matches_by_email_when_user_id_unlinked(diagnostics_client):
+    import asyncio
+
+    from sqlalchemy import select
+
+    from app.models import ClientCard, DiagnosticAttempt, User
+    from app.services.diagnostics_service import list_attempts_for_card
+
+    client, consultant_id, client_user_id, _engine, session_factory, _prepare = diagnostics_client
+    _login_client(client)
+    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/run/", follow_redirects=True)
+    m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
+    assert m
+    _submit_bhs(client, m.group(1))
+
+    async def _unlink_and_list():
+        async with session_factory() as db:
+            user = await db.get(User, client_user_id)
+            user.email = "kok321416x@yandex.ru"
+            card = (
+                await db.execute(
+                    select(ClientCard).where(
+                        ClientCard.consultant_id == consultant_id,
+                        ClientCard.client_user_id == client_user_id,
+                    )
+                )
+            ).scalar_one()
+            # Simulate CRM card created from email without user link; attempt keeps user id.
+            card.client_user_id = None
+            card.email = "kok321416x@yandex.ru"
+            attempt = (
+                await db.execute(
+                    select(DiagnosticAttempt).where(DiagnosticAttempt.client_user_id == client_user_id)
+                )
+            ).scalar_one()
+            attempt.client_card_id = None
+            await db.commit()
+            card_id = card.id
+            rows = await list_attempts_for_card(
+                db, consultant_id=consultant_id, client_card_id=card_id
+            )
+            return card_id, [r.id for r in rows], rows[0].client_card_id if rows else None
+
+    card_id, ids, linked = asyncio.run(_unlink_and_list())
+    assert ids
+    assert linked == card_id
+
+
+def test_client_card_detail_survives_diagnostics_session_rollback(diagnostics_client):
+    """Regression: diagnostics DB error must not leave expired card → 500."""
+    import asyncio
+    from unittest.mock import AsyncMock, patch
+
+    from sqlalchemy import select
+
+    from app.models import ClientCard
+
+    client, consultant_id, client_user_id, _engine, session_factory, _prepare = diagnostics_client
+
+    async def _card_id():
+        async with session_factory() as db:
+            card = ClientCard(
+                consultant_id=consultant_id,
+                client_user_id=client_user_id,
+                name="Client",
+                email="client@test.com",
+            )
+            db.add(card)
+            await db.commit()
+            await db.refresh(card)
+            return card.id
+
+    card_id = asyncio.run(_card_id())
+    spec = TestClient(client.app)
+    login_page = spec.get("/login/", follow_redirects=True)
+    csrf_m = re.search(r'name="csrf_token"\s+value="([^"]+)"', login_page.text)
+    assert csrf_m
+    spec.post(
+        "/login/",
+        data={"login": "spec@test.com", "password": "specpass", "csrf_token": csrf_m.group(1)},
+        follow_redirects=False,
+    )
+
+    async def _boom(*args, **kwargs):
+        raise RuntimeError("simulated diagnostics failure")
+
+    with patch(
+        "app.services.diagnostics_service.list_attempts_for_card",
+        new=AsyncMock(side_effect=_boom),
+    ):
+        page = spec.get(f"/clients/{card_id}/", follow_redirects=True)
+    assert page.status_code == 200, page.text[:800]
+    assert "Internal Server Error" not in page.text
+    assert "Клиент" in page.text or "client" in page.text.lower() or "Client" in page.text

@@ -435,6 +435,7 @@ async def list_attempts_for_client(
         return list((await db.execute(q)).scalars().all())
     except (ProgrammingError, OperationalError, DBAPIError) as exc:
         if _skip_diagnostics_read_on_missing_table(exc):
+            await db.rollback()
             return []
         raise
 
@@ -444,13 +445,37 @@ async def list_attempts_for_card(
 ) -> list[DiagnosticAttempt]:
     from sqlalchemy import or_
 
+    from app.models import User
+
     card = await db.get(ClientCard, client_card_id)
     if not card or card.consultant_id != consultant_id:
         return []
 
     match = [DiagnosticAttempt.client_card_id == client_card_id]
+    user_ids: set[int] = set()
     if card.client_user_id:
-        match.append(DiagnosticAttempt.client_user_id == card.client_user_id)
+        user_ids.add(int(card.client_user_id))
+
+    # Results may be saved under the auth user before the CRM card was linked.
+    email = (card.email or "").strip().lower()
+    if email and not email.endswith("@telegram.user"):
+        for uid in (
+            await db.execute(
+                select(User.id).where(User.email == email)
+            )
+        ).scalars():
+            user_ids.add(int(uid))
+    phone = (card.phone or "").strip()
+    if phone:
+        for uid in (
+            await db.execute(
+                select(User.id).where(User.username == phone)
+            )
+        ).scalars():
+            user_ids.add(int(uid))
+
+    if user_ids:
+        match.append(DiagnosticAttempt.client_user_id.in_(sorted(user_ids)))
 
     q = (
         select(DiagnosticAttempt)
@@ -462,12 +487,35 @@ async def list_attempts_for_card(
         .order_by(DiagnosticAttempt.completed_at.desc())
     )
     try:
-        return list((await db.execute(q)).scalars().all())
+        rows = list((await db.execute(q)).scalars().all())
     except (ProgrammingError, OperationalError, DBAPIError) as exc:
         if _skip_diagnostics_read_on_missing_table(exc):
             await db.rollback()
             return []
         raise
+
+    # Backfill card link so later CRM views stay stable.
+    for attempt in rows:
+        if not attempt.client_card_id:
+            attempt.client_card_id = client_card_id
+        if card.client_user_id is None and attempt.client_user_id:
+            card.client_user_id = attempt.client_user_id
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        logger.exception(
+            "list_attempts_for_card backfill failed consultant=%s card=%s",
+            consultant_id,
+            client_card_id,
+        )
+        # Re-read without mutating if commit failed.
+        try:
+            rows = list((await db.execute(q)).scalars().all())
+        except Exception:
+            await db.rollback()
+            return []
+    return rows
 
 
 def attempt_to_view(attempt: DiagnosticAttempt) -> dict[str, Any]:

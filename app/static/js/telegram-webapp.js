@@ -412,6 +412,13 @@
     }
 
     function ensureHubAuth(tg) {
+        var path = window.location.pathname || "/";
+        var isHub = path === "/tg/" || path === "/tg";
+        // Cabinet pages (e.g. /clients/…) must not run hub boot/auth UI — it steals
+        // the session and can blank the specialist CRM inside Mini App WebView.
+        if (!isHub) {
+            return Promise.resolve(true);
+        }
         var retry = document.getElementById("tg-hub-retry");
         if (retry && !retry.getAttribute("data-bound")) {
             retry.setAttribute("data-bound", "1");

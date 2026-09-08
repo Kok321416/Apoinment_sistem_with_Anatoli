@@ -42,12 +42,13 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           BOT_API_SECRET: ${{ secrets.BOT_API_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           REMINDERS_URL: ${{ vars.REMINDERS_CRON_URL }}
         run: |
           set -euo pipefail
-          TOKEN="${CRON_SECRET:-${BOT_API_SECRET:-}}"
+          TOKEN="${CRON_SECRET:-${BOT_API_SECRET:-${TELEGRAM_BOT_TOKEN:-}}}"
           if [ -z "$TOKEN" ]; then
-            echo "No CRON_SECRET / BOT_API_SECRET in GitHub secrets — skip reminders."
+            echo "No CRON_SECRET / BOT_API_SECRET / TELEGRAM_BOT_TOKEN — rely on /health reminder tick."
             exit 0
           fi
           URL="${REMINDERS_URL:-https://allyourclients.ru/internal/cron/reminders/}"
