@@ -135,19 +135,19 @@ async def diagnostics_result(
         await db.execute(select(DiagnosticAttempt).where(DiagnosticAttempt.id == attempt_id))
     ).scalar_one_or_none()
     if not attempt or attempt.status != "completed":
-        return RedirectResponse("/", status_code=302)
+        return RedirectResponse("/clients/", status_code=302)
 
-    allowed = attempt.client_user_id == user.id
-    if not allowed:
-        cons = (
-            await db.execute(select(Consultant).where(Consultant.user_id == user.id))
-        ).scalar_one_or_none()
-        if cons and cons.id == attempt.consultant_id:
-            allowed = True
-    if not allowed:
-        return RedirectResponse("/", status_code=302)
+    cons = (
+        await db.execute(select(Consultant).where(Consultant.user_id == user.id))
+    ).scalar_one_or_none()
+    is_specialist = bool(cons and cons.id == attempt.consultant_id)
+    is_client = attempt.client_user_id == user.id
+    if not is_specialist and not is_client:
+        return RedirectResponse("/clients/", status_code=302)
 
-    if attempt.client_user_id == user.id:
+    # Specialist CRM must stay in cabinet result view. Redirecting dual-role users
+    # (same account as client) to /s/.../diagnostics/ bounced them away from results.
+    if is_client and not is_specialist:
         redirect = await _redirect_diagnostics_to_profile(
             db, attempt.consultant_id, f"results/{attempt_id}/"
         )
@@ -155,6 +155,11 @@ async def diagnostics_result(
             return redirect
 
     view = attempt_to_view(attempt)
+    back_href = "/clients/"
+    if is_specialist and attempt.client_card_id:
+        back_href = f"/clients/{attempt.client_card_id}/#diagnostics"
+    elif is_specialist:
+        back_href = "/clients/"
 
     return templates.TemplateResponse(
         "app/diagnostics_result.html",
@@ -162,12 +167,13 @@ async def diagnostics_result(
             request,
             db,
             user,
-            cabinet_nav_active="diagnostics",
+            cabinet_nav_active="clients",
             result=view,
             attempt=attempt,
             show_answers=False,
             answers={},
             test=get_test(attempt.test_code),
+            diagnostics_back_href=back_href,
         ),
     )
 

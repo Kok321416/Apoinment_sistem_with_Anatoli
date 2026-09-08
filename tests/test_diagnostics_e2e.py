@@ -389,6 +389,135 @@ def test_diagnostics_creates_client_card_and_specialist_sees_results(diagnostics
     assert "Internal Server Error" not in page.text
     assert views[0]["title"] in page.text or BHS.code in page.text
 
+    # Specialist opens client results from CRM (different accounts).
+    detail = spec.get(f"/diagnostics/results/{attempt.id}/", follow_redirects=False)
+    assert detail.status_code == 200, (
+        f"expected 200 results page, got {detail.status_code} loc={detail.headers.get('location')}"
+    )
+    assert "результат" in detail.text.lower() or views[0]["title"] in detail.text
+    assert "Internal Server Error" not in detail.text
+
+    # Hash tab on card must stay on the same card URL (not redirect to list).
+    tab = spec.get(f"/clients/{card.id}/#diagnostics", follow_redirects=False)
+    assert tab.status_code == 200
+    assert "Диагностика" in tab.text
+
+
+def test_dual_role_specialist_opens_own_results_from_crm(diagnostics_client):
+    """Same account is specialist + client: CRM → results must not bounce to /clients/ list."""
+    import asyncio
+
+    from sqlalchemy import select
+
+    from app.models import ClientCard, DiagnosticAttempt
+
+    client, consultant_id, _client_user_id, _engine, session_factory, _prepare = diagnostics_client
+
+    # Log in as specialist and take the test as that same user (Artem dual-role).
+    login_page = client.get("/login/", follow_redirects=True)
+    csrf_m = re.search(r'name="csrf_token"\s+value="([^"]+)"', login_page.text)
+    assert csrf_m
+    client.post(
+        "/login/",
+        data={"login": "spec@test.com", "password": "specpass", "csrf_token": csrf_m.group(1)},
+        follow_redirects=False,
+    )
+    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/run/", follow_redirects=True)
+    m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
+    assert m
+    loc = _submit_bhs(client, m.group(1))
+    attempt_id = int(loc.rstrip("/").split("/")[-1])
+
+    async def _card_for_spec():
+        async with session_factory() as db:
+            attempt = await db.get(DiagnosticAttempt, attempt_id)
+            card = (
+                await db.execute(
+                    select(ClientCard).where(
+                        ClientCard.consultant_id == consultant_id,
+                        ClientCard.client_user_id == attempt.client_user_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            return attempt.client_user_id, card.id if card else None, attempt.client_card_id
+
+    user_id, card_id, linked = asyncio.run(_card_for_spec())
+    assert linked or card_id
+    card_id = linked or card_id
+
+    crm = client.get(f"/clients/{card_id}/#diagnostics", follow_redirects=True)
+    assert crm.status_code == 200, crm.text[:500]
+    assert "clients/?error" not in str(crm.url)
+    assert "Диагностика" in crm.text
+
+    # Critical: must render results in cabinet, not redirect to public hub or list.
+    results = client.get(f"/diagnostics/results/{attempt_id}/", follow_redirects=False)
+    assert results.status_code == 200, (
+        f"got {results.status_code} location={results.headers.get('location')}"
+    )
+    assert "К диагностике" in results.text
+    assert f"/clients/{card_id}/#diagnostics" in results.text
+
+
+def test_specialist_results_for_email_client_like_artem(diagnostics_client):
+    """CRM diagnostics → results for client email kok321416x@yandex.ru."""
+    import asyncio
+
+    from sqlalchemy import select
+
+    from app.models import ClientCard, DiagnosticAttempt, User
+
+    client, consultant_id, client_user_id, _engine, session_factory, _prepare = diagnostics_client
+
+    async def _set_email():
+        async with session_factory() as db:
+            user = await db.get(User, client_user_id)
+            user.email = "kok321416x@yandex.ru"
+            await db.commit()
+
+    asyncio.run(_set_email())
+    _login_client(client)
+    take = client.get(f"/s/spec/diagnostics/tests/{BHS.code}/run/", follow_redirects=True)
+    m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
+    assert m
+    loc = _submit_bhs(client, m.group(1))
+    attempt_id = int(loc.rstrip("/").split("/")[-1])
+
+    async def _card_id():
+        async with session_factory() as db:
+            card = (
+                await db.execute(
+                    select(ClientCard).where(
+                        ClientCard.consultant_id == consultant_id,
+                        ClientCard.client_user_id == client_user_id,
+                    )
+                )
+            ).scalar_one()
+            return card.id
+
+    card_id = asyncio.run(_card_id())
+
+    spec = TestClient(client.app)
+    login_page = spec.get("/login/", follow_redirects=True)
+    csrf_m = re.search(r'name="csrf_token"\s+value="([^"]+)"', login_page.text)
+    assert csrf_m
+    spec.post(
+        "/login/",
+        data={"login": "spec@test.com", "password": "specpass", "csrf_token": csrf_m.group(1)},
+        follow_redirects=False,
+    )
+
+    crm = spec.get(f"/clients/{card_id}/#diagnostics", follow_redirects=True)
+    assert crm.status_code == 200
+    assert "panel-diagnostics" in crm.text or "Диагностика" in crm.text
+
+    results = spec.get(f"/diagnostics/results/{attempt_id}/", follow_redirects=True)
+    assert results.status_code == 200
+    assert "Internal Server Error" not in results.text
+    assert f"/clients/{card_id}/#diagnostics" in results.text or "К диагностике" in results.text
+    # Must not land on the clients list as the primary page
+    assert 'id="clients-page"' not in results.text and "client-cards" not in results.text.lower()
+
 
 def test_list_attempts_for_card_matches_by_email_when_user_id_unlinked(diagnostics_client):
     import asyncio

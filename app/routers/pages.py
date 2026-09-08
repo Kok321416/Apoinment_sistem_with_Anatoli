@@ -2183,8 +2183,9 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
             .where(Consultant.id == consultant.id)
         )
     ).scalar_one()
+    consultant_id = int(consultant.id)
 
-    stats = await booking_stats_async(db, consultant.id, [card.id])
+    stats = await booking_stats_async(db, consultant_id, [card.id])
     crm_client = serialize_card(card, stats, date_cls.today())
     today = date_cls.today()
 
@@ -2198,7 +2199,7 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
             diagnostic_results = [
                 attempt_to_view(a)
                 for a in await list_attempts_for_card(
-                    db, consultant_id=consultant.id, client_card_id=card.id
+                    db, consultant_id=consultant_id, client_card_id=card.id
                 )
             ]
     except Exception:
@@ -2212,9 +2213,17 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
             pass
         diagnostic_results = []
         try:
+            # Re-load consultant after rollback — do not touch expired instance.
+            consultant = (
+                await db.execute(
+                    select(Consultant)
+                    .options(selectinload(Consultant.category))
+                    .where(Consultant.id == consultant_id)
+                )
+            ).scalar_one()
             show_diagnostics = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
         except Exception:
-            show_diagnostics = False
+            show_diagnostics = True  # keep tab; results may be empty
 
     # Diagnostics may commit/rollback and expire ORM instances used by the template.
     if diagnostics_touched_session:
@@ -2223,7 +2232,7 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
                 await db.execute(
                     select(ClientCard).where(
                         ClientCard.id == card_id,
-                        ClientCard.consultant_id == consultant.id,
+                        ClientCard.consultant_id == consultant_id,
                     )
                 )
             ).scalar_one_or_none()
@@ -2233,7 +2242,7 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
                 await db.execute(
                     select(Consultant)
                     .options(selectinload(Consultant.category))
-                    .where(Consultant.id == consultant.id)
+                    .where(Consultant.id == consultant_id)
                 )
             ).scalar_one()
             history_q = or_(Booking.client_card_id == card.id)
@@ -2262,7 +2271,7 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
                 )
             else:
                 history = []
-            stats = await booking_stats_async(db, consultant.id, [card.id])
+            stats = await booking_stats_async(db, consultant_id, [card.id])
             crm_client = serialize_card(card, stats, date_cls.today())
         except Exception:
             import logging
@@ -2274,7 +2283,31 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
                 await db.rollback()
             except Exception:
                 pass
-            return RedirectResponse("/clients/?error=card", status_code=302)
+            # Stay on the card URL (do not dump specialist to /clients/ list).
+            card = (
+                await db.execute(
+                    select(ClientCard).where(
+                        ClientCard.id == card_id,
+                        ClientCard.consultant_id == consultant_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if not card:
+                return RedirectResponse("/clients/", status_code=302)
+            consultant = (
+                await db.execute(
+                    select(Consultant)
+                    .options(selectinload(Consultant.category))
+                    .where(Consultant.id == consultant_id)
+                )
+            ).scalar_one()
+            history = []
+            stats = await booking_stats_async(db, consultant_id, [card.id])
+            crm_client = serialize_card(card, stats, date_cls.today())
+            if error is None:
+                error = "Не удалось загрузить блок диагностики. Обновите страницу."
+            show_diagnostics = True
+            diagnostic_results = diagnostic_results or []
 
     upcoming_bookings = [
         b

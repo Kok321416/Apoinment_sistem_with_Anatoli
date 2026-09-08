@@ -30,6 +30,11 @@
                 history.replaceState(null, '', '#' + name);
             }
         } catch (e) {}
+        if (name === 'diagnostics' && panels.diagnostics) {
+            try {
+                panels.diagnostics.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            } catch (e2) {}
+        }
     }
 
     tabs.forEach(function (btn) {
@@ -39,11 +44,20 @@
     });
 
     root.querySelectorAll('[data-goto-tab]').forEach(function (el) {
-        el.addEventListener('click', function () {
-            activate(el.getAttribute('data-goto-tab') || 'overview');
+        el.addEventListener('click', function (e) {
+            var tab = el.getAttribute('data-goto-tab') || 'overview';
+            if (panels[tab] || tab === 'history') {
+                e.preventDefault();
+                activate(tab);
+            }
         });
     });
 
-    var hash = (location.hash || '').replace(/^#/, '');
-    if (panels[hash] || hash === 'history') activate(hash);
+    function activateFromHash() {
+        var hash = (location.hash || '').replace(/^#/, '');
+        if (panels[hash] || hash === 'history') activate(hash);
+    }
+
+    activateFromHash();
+    window.addEventListener('hashchange', activateFromHash);
 })();

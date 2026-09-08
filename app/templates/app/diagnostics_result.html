@@ -12,7 +12,7 @@
 
 {% block app_content %}
 <div class="diag-page">
-    <p class="mb-lg"><a class="btn btn--ghost btn--sm" href="/diagnostics/">← К диагностике</a></p>
+    <p class="mb-lg"><a class="btn btn--ghost btn--sm" href="{{ diagnostics_back_href|default('/clients/') }}">← К диагностике</a></p>
     {% set r = result %}
     {% include "components/diagnostics_result_card.html" %}
 
