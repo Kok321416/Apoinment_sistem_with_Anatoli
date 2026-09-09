@@ -279,6 +279,7 @@ def _cabinet_nav_from_path(path: str) -> tuple[str, str]:
         ("/calendars/", "manage", "Управление услугами и календарем"),
         ("/services/", "manage", "Управление услугами и календарем"),
         ("/booking/", "bookings", "Записи"),
+        ("/statistics/", "statistics", "Статистика"),
         ("/clients/", "clients", "Клиенты"),
         ("/profile/", "profile", "Профиль"),
         ("/integrations/", "integrations", "Интеграции"),

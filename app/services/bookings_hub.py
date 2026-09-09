@@ -227,10 +227,23 @@ async def build_bookings_payload_async(
     past: list[Booking],
     today: date,
     now: time,
+    *,
+    include_dashboard: bool = False,
 ) -> dict:
-    all_stats = await stats_bookings_async(db, cal_ids)
+    # Dashboard KPIs live on /statistics/ — skip extra query on the bookings hub.
+    dashboard = (
+        dashboard_stats(await stats_bookings_async(db, cal_ids), today)
+        if include_dashboard
+        else {
+            "today_count": 0,
+            "tomorrow_count": 0,
+            "week_count": 0,
+            "week_revenue": 0.0,
+            "today_revenue": 0.0,
+        }
+    )
     return {
-        "dashboard": dashboard_stats(all_stats, today),
+        "dashboard": dashboard,
         "upcoming_groups": group_by_day(upcoming, today, now),
         "past_groups": group_by_day(past, today, now, reverse=True),
         "sidebar": sidebar_data(upcoming, today, now),

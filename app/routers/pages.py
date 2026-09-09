@@ -1481,6 +1481,96 @@ async def available_slots(
     )
 
 
+@router.get("/statistics/")
+async def specialist_statistics(request: Request, db: AsyncSession = Depends(get_async_db)):
+    from zoneinfo import ZoneInfo
+
+    from app.auth.session import get_current_user_async
+    from app.deps import require_specialist_mode_async
+    from app.services.statistics_hub import build_statistics_payload, parse_range
+
+    user = await get_current_user_async(request, db)
+    if not user:
+        return _login_redirect(request)
+    consultant = await require_specialist_mode_async(request, db, user)
+
+    tz = ZoneInfo(get_settings().timezone or "Europe/Moscow")
+    today = datetime.now(tz).date()
+    date_from, date_to = parse_range(
+        request.query_params.get("from"),
+        request.query_params.get("to"),
+        today,
+    )
+    payload = await build_statistics_payload(
+        db,
+        consultant_id=consultant.id,
+        date_from=date_from,
+        date_to=date_to,
+        today=today,
+        now=datetime.now(tz).time(),
+    )
+    return templates.TemplateResponse(
+        "statistics.html",
+        await page_context_async(
+            request,
+            db,
+            user,
+            consultant=consultant,
+            date_from=date_from.isoformat(),
+            date_to=date_to.isoformat(),
+            status_cards=payload["cards"],
+            export_rows=payload["export_rows"],
+            booking_count=payload["booking_count"],
+            counts=payload["counts"],
+        ),
+    )
+
+
+@router.get("/statistics/export.xlsx")
+async def specialist_statistics_export_xlsx(
+    request: Request, db: AsyncSession = Depends(get_async_db)
+):
+    from zoneinfo import ZoneInfo
+
+    from app.auth.session import get_current_user_async
+    from app.deps import require_specialist_mode_async
+    from app.services.excel_export import consultations_workbook
+    from app.services.statistics_hub import build_statistics_payload, parse_range
+
+    user = await get_current_user_async(request, db)
+    if not user:
+        return _login_redirect(request)
+    consultant = await require_specialist_mode_async(request, db, user)
+
+    tz = ZoneInfo(get_settings().timezone or "Europe/Moscow")
+    today = datetime.now(tz).date()
+    date_from, date_to = parse_range(
+        request.query_params.get("from"),
+        request.query_params.get("to"),
+        today,
+    )
+    payload = await build_statistics_payload(
+        db,
+        consultant_id=consultant.id,
+        date_from=date_from,
+        date_to=date_to,
+        today=today,
+        now=datetime.now(tz).time(),
+    )
+    data = consultations_workbook(
+        payload["export_rows"],
+        date_from=date_from.isoformat(),
+        date_to=date_to.isoformat(),
+        specialist_name=f"{(consultant.first_name or '').strip()} {(consultant.last_name or '').strip()}".strip(),
+    )
+    filename = f"consultations_{date_from.isoformat()}_{date_to.isoformat()}.xlsx"
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/booking/")
 @router.post("/booking/")
 async def specialist_bookings(request: Request, db: AsyncSession = Depends(get_async_db)):
@@ -2333,6 +2423,106 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
             diagnostic_results=diagnostic_results,
             show_diagnostics=show_diagnostics,
         ),
+    )
+
+
+@router.post("/clients/{card_id}/diagnostics/{attempt_id}/delete/")
+async def client_card_diagnostics_delete(
+    request: Request,
+    card_id: int,
+    attempt_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    from app.services.diagnostics_service import delete_attempt_for_consultant
+
+    user = await _require_user_async(request, db)
+    if not user:
+        return _login_redirect(request)
+    consultant = await require_specialist_mode_async(request, db, user)
+    form = await request.form()
+    if not _form_csrf_ok(request, form):
+        return RedirectResponse(
+            f"/clients/{card_id}/#diagnostics",
+            status_code=302,
+        )
+    card = (
+        await db.execute(
+            select(ClientCard).where(
+                ClientCard.id == card_id,
+                ClientCard.consultant_id == consultant.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not card:
+        return RedirectResponse("/clients/", status_code=302)
+    ok = await delete_attempt_for_consultant(
+        db,
+        attempt_id=attempt_id,
+        consultant_id=consultant.id,
+        client_card_id=card.id,
+    )
+    if ok:
+        await db.commit()
+    else:
+        await db.rollback()
+    return RedirectResponse(f"/clients/{card_id}/#diagnostics", status_code=302)
+
+
+@router.get("/clients/{card_id}/diagnostics/export.xlsx")
+async def client_card_diagnostics_export_xlsx(
+    request: Request,
+    card_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    from app.services.diagnostics_service import attempt_to_view, list_attempts_for_card
+    from app.services.excel_export import client_diagnostics_workbook
+    from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+    from sqlalchemy.orm import selectinload
+
+    user = await _require_user_async(request, db)
+    if not user:
+        return _login_redirect(request)
+    consultant = await require_specialist_mode_async(request, db, user)
+    consultant = (
+        await db.execute(
+            select(Consultant)
+            .options(selectinload(Consultant.category))
+            .where(Consultant.id == consultant.id)
+        )
+    ).scalar_one()
+    if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
+        raise HTTPException(status_code=404, detail="Диагностика недоступна")
+    card = (
+        await db.execute(
+            select(ClientCard).where(
+                ClientCard.id == card_id,
+                ClientCard.consultant_id == consultant.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not card:
+        raise HTTPException(status_code=404, detail="Карточка не найдена")
+
+    attempts = await list_attempts_for_card(
+        db, consultant_id=consultant.id, client_card_id=card.id
+    )
+    results = [attempt_to_view(a) for a in attempts]
+    profile = {
+        "id": card.id,
+        "name": (card.name or "").strip() or f"Клиент #{card.id}",
+        "phone": card.phone or "",
+        "email": card.email or "",
+        "telegram": card.telegram or "",
+        "notes": card.notes or "",
+    }
+    data = client_diagnostics_workbook(profile=profile, results=results)
+    filename = f"diagnostics_client_{card.id}.xlsx"
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename=\"{filename}\""
+        },
     )
 
 

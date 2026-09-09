@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="/static/css/clients-crm.css?v=9">
 <link rel="stylesheet" href="/static/css/specialist-book.css?v=6">
 {% if show_diagnostics %}
-<link rel="stylesheet" href="/static/css/diagnostics.css?v=2">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=7">
 {% endif %}
 {% endblock %}
 
@@ -44,9 +44,7 @@
                     </span>
                 </div>
                 <p class="client-detail__meta">
-                    Записей: {{ total_bookings|default(0) }}
-                    · Завершено: {{ completed_count|default(0) }}
-                    · Карточка: {{ crm_client.completeness.percent }}%
+                    Карточка заполнена на {{ crm_client.completeness.percent }}%
                 </p>
             </div>
         </div>
@@ -64,6 +62,7 @@
             >Записать на приём</button>
             {% if show_diagnostics %}
             <a href="#diagnostics" class="btn btn--secondary client-detail__diag-cta" data-goto-tab="diagnostics">Диагностика</a>
+            <a href="/clients/{{ card.id }}/diagnostics/export.xlsx" class="btn btn--secondary" id="diag-export-xlsx">Выгрузить Excel</a>
             {% endif %}
             {% if card.phone %}
             <a href="tel:{{ card.phone }}" class="btn btn--secondary">Позвонить</a>
@@ -86,25 +85,6 @@
     </div>
 
     <section class="client-detail__panel card" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
-        <ul class="client-detail__stats">
-            <li class="client-detail__stat">
-                <span class="client-detail__stat-value">{{ total_bookings|default(0) }}</span>
-                <span class="client-detail__stat-label">Всего записей</span>
-            </li>
-            <li class="client-detail__stat">
-                <span class="client-detail__stat-value">{{ completed_count|default(0) }}</span>
-                <span class="client-detail__stat-label">Завершено</span>
-            </li>
-            <li class="client-detail__stat">
-                <span class="client-detail__stat-value">{{ crm_client.completeness.percent }}%</span>
-                <span class="client-detail__stat-label">Заполненность</span>
-            </li>
-            <li class="client-detail__stat">
-                <span class="client-detail__stat-value">{{ upcoming_bookings|length }}</span>
-                <span class="client-detail__stat-label">Предстоящих</span>
-            </li>
-        </ul>
-
         <h2 class="client-detail__section-title">Контакты и данные</h2>
         <form method="POST" action="/clients/{{ card.id }}/" class="stack client-detail__form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -236,6 +216,7 @@
                     <p class="client-diag__lead">Результаты опросников и ссылка для клиента. Клиент этот блок не видит в вашей карточке.</p>
                 </div>
                 <button type="button" class="btn btn--primary" id="diag-invite-btn" data-card-id="{{ card.id }}" data-csrf="{{ csrf_token }}">Ссылка на диагностику</button>
+                <a href="/clients/{{ card.id }}/diagnostics/export.xlsx" class="btn btn--secondary">Выгрузить Excel</a>
             </div>
             <p class="client-diag__invite" id="diag-invite-url" hidden></p>
             {% if diagnostic_results %}
@@ -252,6 +233,8 @@
                 {% for r in diagnostic_results %}
                 {% set diag_results_base = '/diagnostics/results' %}
                 {% set show_detail_link = true %}
+                {% set show_delete = true %}
+                {% set diag_delete_card_id = card.id %}
                 {% include "components/diagnostics_result_card.html" %}
                 {% endfor %}
             </div>

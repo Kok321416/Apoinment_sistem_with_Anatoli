@@ -626,3 +626,45 @@ def attempt_to_view(attempt: DiagnosticAttempt) -> dict[str, Any]:
         "viz": test.viz if test else "bars",
         "disclaimer": interpretation.get("disclaimer") or DISCLAIMER_RU,
     }
+
+
+async def delete_attempt_for_consultant(
+    db: AsyncSession,
+    *,
+    attempt_id: int,
+    consultant_id: int,
+    client_card_id: int | None = None,
+) -> bool:
+    """Hard-delete a completed attempt owned by this specialist (optional card scope)."""
+    attempt = (
+        await db.execute(
+            select(DiagnosticAttempt).where(
+                DiagnosticAttempt.id == attempt_id,
+                DiagnosticAttempt.consultant_id == consultant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not attempt:
+        return False
+    if client_card_id is not None:
+        # Allow delete when linked to this card, or matched via list_attempts_for_card rules
+        # by requiring the attempt appears for the card.
+        if attempt.client_card_id and int(attempt.client_card_id) != int(client_card_id):
+            return False
+        if not attempt.client_card_id:
+            card = await db.get(ClientCard, client_card_id)
+            if not card or card.consultant_id != consultant_id:
+                return False
+            owned = False
+            if card.client_user_id and attempt.client_user_id == card.client_user_id:
+                owned = True
+            else:
+                rows = await list_attempts_for_card(
+                    db, consultant_id=consultant_id, client_card_id=client_card_id
+                )
+                owned = any(a.id == attempt.id for a in rows)
+            if not owned:
+                return False
+    await db.delete(attempt)
+    await db.flush()
+    return True

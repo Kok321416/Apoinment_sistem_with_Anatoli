@@ -1,0 +1,104 @@
+{% extends "layouts/app.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Статистика — " ~ site_brand_name %}
+{% set meta_description = "Статистика консультаций — " ~ site_brand_name %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/app.css?v=45">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=14">
+<link rel="stylesheet" href="/static/css/bookings-hub.css?v=9">
+<link rel="stylesheet" href="/static/css/statistics.css?v=1">
+{% endblock %}
+
+{% block app_content %}
+<div class="stats-page bookings-page" id="stats-page">
+    <section class="bookings-hero card" id="stats-hero">
+        <div class="bookings-hero__glow bookings-hero__glow--purple" aria-hidden="true"></div>
+        <div class="bookings-hero__glow bookings-hero__glow--cyan" aria-hidden="true"></div>
+        <div class="bookings-hero__inner">
+            <div class="bookings-hero__main">
+                <span class="hub-hero__glyph" data-icon="overview" aria-hidden="true"></span>
+                <div>
+                    <h1 class="bookings-hero__title">Статистика</h1>
+                    <p class="bookings-hero__desc">Сводка консультаций за выбранный период и выгрузка в Excel.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="stats-filters card">
+        <form method="GET" action="/statistics/" class="stats-filters__form" id="stats-range-form">
+            <div class="form-field">
+                <label class="form-field__label" for="date_from">С даты</label>
+                <input class="input" type="date" id="date_from" name="from" value="{{ date_from }}">
+            </div>
+            <div class="form-field">
+                <label class="form-field__label" for="date_to">По дату</label>
+                <input class="input" type="date" id="date_to" name="to" value="{{ date_to }}">
+            </div>
+            <div class="stats-filters__actions">
+                <button type="submit" class="btn btn--primary">Показать</button>
+                <a
+                    class="btn btn--secondary"
+                    href="/statistics/export.xlsx?from={{ date_from }}&to={{ date_to }}"
+                    id="stats-export-xlsx"
+                >Выгрузить Excel</a>
+            </div>
+        </form>
+        <p class="stats-filters__hint text-muted text-body-sm">
+            Показано консультаций: <strong>{{ booking_count }}</strong>
+            ({{ date_from }} — {{ date_to }})
+        </p>
+    </section>
+
+    <section class="bookings-dashboard stats-dashboard" id="stats-dashboard" aria-label="Статистика консультаций">
+        {% for card in status_cards %}
+        <div class="bookings-dash-card {% if card.key == 'cancelled' %}bookings-dash-card--warning{% elif card.key == 'completed' %}bookings-dash-card--info{% elif card.key == 'total' %}bookings-dash-card--accent{% else %}bookings-dash-card--info{% endif %}">
+            <span class="bookings-dash-card__value">{{ card.value }}</span>
+            <span class="bookings-dash-card__label">{{ card.label }}</span>
+        </div>
+        {% endfor %}
+    </section>
+
+    <section class="stats-table card">
+        <h2 class="stats-table__title">Консультации за период</h2>
+        {% if export_rows %}
+        <div class="stats-table__scroll">
+            <table class="stats-table__grid">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Время</th>
+                        <th>Статус</th>
+                        <th>Услуга</th>
+                        <th>Клиент</th>
+                        <th>Контакты</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in export_rows %}
+                    <tr>
+                        <td>{{ row.date }}</td>
+                        <td>{{ row.time_range or row.time }}</td>
+                        <td>{{ row.status_label }}</td>
+                        <td>{{ row.service }}</td>
+                        <td>{{ row.client_name }}</td>
+                        <td class="text-body-sm text-muted">
+                            {% if row.client_phone %}{{ row.client_phone }}{% endif %}
+                            {% if row.client_email %}{% if row.client_phone %} · {% endif %}{{ row.client_email }}{% endif %}
+                            {% if row.client_telegram %}{% if row.client_phone or row.client_email %} · {% endif %}@{{ row.client_telegram|replace('@','') }}{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">За выбранный период консультаций нет.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

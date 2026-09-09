@@ -1,4 +1,4 @@
-<article class="diag-result card card--static">
+<article class="diag-result card card--static" data-attempt-id="{{ r.id|default('') }}">
     <div class="diag-result__head">
         <h3 class="diag-result__title">{{ r.title }}</h3>
         <time class="diag-result__date text-body-sm text-muted" datetime="{{ r.completed_at }}">
@@ -14,7 +14,20 @@
     </div>
     {% endif %}
     <p class="text-body-sm text-muted mt-md">{{ r.disclaimer }}</p>
-    {% if r.id and show_detail_link | default(true) %}
-    <a class="btn btn--secondary btn--sm mt-lg" href="{{ (diag_results_base | default('/diagnostics/results')) }}/{{ r.id }}/">Подробнее</a>
-    {% endif %}
+    <div class="diag-result__actions mt-lg">
+        {% if r.id and show_detail_link | default(true) %}
+        <a class="btn btn--secondary btn--sm" href="{{ (diag_results_base | default('/diagnostics/results')) }}/{{ r.id }}/">Подробнее</a>
+        {% endif %}
+        {% if r.id and show_delete | default(false) and diag_delete_card_id %}
+        <form
+            method="POST"
+            action="/clients/{{ diag_delete_card_id }}/diagnostics/{{ r.id }}/delete/"
+            class="diag-result__delete-form"
+            onsubmit="return confirm('Удалить этот результат диагностики?');"
+        >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn--ghost btn--sm diag-result__delete">Удалить</button>
+        </form>
+        {% endif %}
+    </div>
 </article>

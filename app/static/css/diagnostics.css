@@ -103,6 +103,22 @@
     overflow-wrap: anywhere;
 }
 
+.diag-result__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.diag-result__delete-form {
+    display: inline;
+    margin: 0;
+}
+
+.diag-result__delete {
+    color: var(--danger, #b42318);
+}
+
 .diag-scales {
     list-style: none;
     padding: 0;

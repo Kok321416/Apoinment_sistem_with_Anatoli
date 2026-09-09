@@ -35,17 +35,6 @@
         </div>
     </section>
 
-    <section class="bookings-dashboard" id="bookings-dashboard" aria-label="Статистика записей">
-        <div class="bookings-dash-card bookings-dash-card--accent">
-            <span class="bookings-dash-card__value">{{ hub_dashboard.today_count }}</span>
-            <span class="bookings-dash-card__label">Сегодня</span>
-        </div>
-        <div class="bookings-dash-card bookings-dash-card--info">
-            <span class="bookings-dash-card__value">{{ hub_dashboard.tomorrow_count }}</span>
-            <span class="bookings-dash-card__label">Завтра</span>
-        </div>
-    </section>
-
     {% if success %}
     <div class="alert alert--success" role="status">{{ success }}</div>
     {% endif %}

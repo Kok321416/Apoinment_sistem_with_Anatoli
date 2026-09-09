@@ -224,14 +224,19 @@ def dashboard_stats(db: Session, consultant_id: int, cards: list[ClientCard]) ->
     }
 
 
-async def dashboard_stats_async(db, consultant_id: int, cards: list[ClientCard]) -> dict:
+async def dashboard_stats_async(
+    db, consultant_id: int, cards: list[ClientCard], *, include_booking_stats: bool = True
+) -> dict:
     today = date.today()
     total = len(cards)
     new_count = sum(
         1 for c in cards
         if c.created_at and (today - c.created_at.date()).days <= NEW_DAYS
     )
-    today_bookings, upcoming = await consultant_booking_counts_async(db, consultant_id)
+    if include_booking_stats:
+        today_bookings, upcoming = await consultant_booking_counts_async(db, consultant_id)
+    else:
+        today_bookings, upcoming = 0, 0
     completeness_vals = [card_completeness(c)["percent"] for c in cards]
     avg_completeness = round(sum(completeness_vals) / total) if total else 0
     last_updated = max((c.updated_at for c in cards if c.updated_at), default=None)
@@ -311,12 +316,16 @@ def build_crm_payload(db: Session, consultant_id: int, cards: list[ClientCard]) 
     }
 
 
-async def build_crm_payload_async(db, consultant_id: int, cards: list[ClientCard]) -> dict:
+async def build_crm_payload_async(
+    db, consultant_id: int, cards: list[ClientCard], *, include_booking_stats: bool = False
+) -> dict:
     card_ids = [c.id for c in cards]
     stats = await booking_stats_async(db, consultant_id, card_ids)
     today = date.today()
     serialized = [serialize_card(c, stats, today) for c in cards]
-    dash = await dashboard_stats_async(db, consultant_id, cards)
+    dash = await dashboard_stats_async(
+        db, consultant_id, cards, include_booking_stats=include_booking_stats
+    )
     return {
         "dashboard": dash,
         "clients": serialized,

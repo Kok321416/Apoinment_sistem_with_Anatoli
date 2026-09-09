@@ -33,25 +33,6 @@
         </div>
     </section>
 
-    <section class="clients-dashboard" id="clients-dashboard" aria-label="Статистика CRM">
-        <div class="clients-dash-card clients-dash-card--accent">
-            <span class="clients-dash-card__value" data-dash="total">{{ crm_dashboard.total }}</span>
-            <span class="clients-dash-card__label">Всего клиентов</span>
-        </div>
-        <div class="clients-dash-card clients-dash-card--success">
-            <span class="clients-dash-card__value" data-dash="new_count">{{ crm_dashboard.new_count }}</span>
-            <span class="clients-dash-card__label">Новых</span>
-        </div>
-        <div class="clients-dash-card clients-dash-card--info">
-            <span class="clients-dash-card__value" data-dash="today_bookings">{{ crm_dashboard.today_bookings }}</span>
-            <span class="clients-dash-card__label">Записей сегодня</span>
-        </div>
-        <div class="clients-dash-card clients-dash-card--warning">
-            <span class="clients-dash-card__value" data-dash="upcoming">{{ crm_dashboard.upcoming }}</span>
-            <span class="clients-dash-card__label">Предстоящих встреч</span>
-        </div>
-    </section>
-
     {% if success %}
     <div class="alert alert--success" role="status">{{ success }}</div>
     {% endif %}

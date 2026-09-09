@@ -1,0 +1,57 @@
+/* Statistics hub — extends bookings-hub visual language */
+.stats-filters {
+    padding: var(--space-lg, 1.25rem);
+    margin-bottom: var(--space-lg, 1.25rem);
+}
+.stats-filters__form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+.stats-filters__form .form-field {
+    min-width: 10rem;
+}
+.stats-filters__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.stats-filters__hint {
+    margin: 0.75rem 0 0;
+}
+.stats-dashboard {
+    margin-bottom: var(--space-lg, 1.25rem);
+}
+.stats-table {
+    padding: var(--space-lg, 1.25rem);
+}
+.stats-table__title {
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+}
+.stats-table__scroll {
+    overflow-x: auto;
+}
+.stats-table__grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.925rem;
+}
+.stats-table__grid th,
+.stats-table__grid td {
+    padding: 0.55rem 0.65rem;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    text-align: left;
+    vertical-align: top;
+}
+.stats-table__grid th {
+    font-weight: 600;
+    white-space: nowrap;
+    background: var(--surface-muted, #f8fafc);
+}
+@media (max-width: 720px) {
+    .stats-filters__form .form-field {
+        flex: 1 1 100%;
+    }
+}
