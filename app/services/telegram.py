@@ -431,6 +431,75 @@ def on_booking_updated(db: Session, booking: Booking, created: bool = False) -> 
 
 
 def send_reminders(db: Session) -> dict:
+    from sqlalchemy import text
+
+    from app.database import engine as sa_engine
+
+    dialect = getattr(getattr(sa_engine, "dialect", None), "name", "") or ""
+    lock_held = False
+    if dialect == "mysql":
+        try:
+            got = db.execute(text("SELECT GET_LOCK('ayc_send_reminders', 0)")).scalar()
+            if not got:
+                logger.info("send_reminders skipped: lock busy")
+                return {"client_24": 0, "client_1": 0, "spec_24": 0, "spec_1": 0, "skipped": "lock"}
+            lock_held = True
+        except Exception:
+            logger.exception("send_reminders GET_LOCK failed; continuing without lock")
+
+    try:
+        return _send_reminders_body(db)
+    finally:
+        if lock_held:
+            try:
+                db.execute(text("SELECT RELEASE_LOCK('ayc_send_reminders')"))
+            except Exception:
+                logger.exception("send_reminders RELEASE_LOCK failed")
+
+
+def _claim_booking_flag(db: Session, booking_id: int, flag_name: str) -> bool:
+    """Atomically claim a reminder flag so concurrent runners cannot double-send."""
+    from sqlalchemy import text
+
+    allowed = {
+        "reminder_24h_sent",
+        "reminder_1h_sent",
+        "specialist_reminder_24h_sent",
+        "specialist_reminder_1h_sent",
+    }
+    if flag_name not in allowed:
+        return False
+    # Commit claim immediately so a parallel process sees it before we send.
+    res = db.execute(
+        text(
+            f"UPDATE bookings SET {flag_name} = 1 "
+            f"WHERE id = :id AND ({flag_name} = 0 OR {flag_name} IS NULL)"
+        ),
+        {"id": booking_id},
+    )
+    db.commit()
+    return bool(res.rowcount)
+
+
+def _unclaim_booking_flag(db: Session, booking_id: int, flag_name: str) -> None:
+    from sqlalchemy import text
+
+    allowed = {
+        "reminder_24h_sent",
+        "reminder_1h_sent",
+        "specialist_reminder_24h_sent",
+        "specialist_reminder_1h_sent",
+    }
+    if flag_name not in allowed:
+        return
+    try:
+        db.execute(text(f"UPDATE bookings SET {flag_name} = 0 WHERE id = :id"), {"id": booking_id})
+        db.commit()
+    except Exception:
+        logger.exception("unclaim %s failed booking=%s", flag_name, booking_id)
+
+
+def _send_reminders_body(db: Session) -> dict:
     tz = ZoneInfo(settings.timezone)
     now = datetime.now(tz)
     sent = {"client_24": 0, "client_1": 0, "spec_24": 0, "spec_1": 0}
@@ -465,6 +534,8 @@ def send_reminders(db: Session) -> dict:
         delta_minutes = (booking_dt - now).total_seconds() / 60
         if delta_minutes <= 0:
             continue
+        # Label by actual remaining time (config hours only select the window).
+        hours_label = max(1, int(round(delta_minutes / 60.0)))
 
         specialist_chat_id = None
         specialist_bot_token = None
@@ -488,32 +559,49 @@ def send_reminders(db: Session) -> dict:
                     skip_client = notify_dedup_enabled() and same_telegram_chat(
                         booking.telegram_id, specialist_chat_id
                     )
-                    if not skip_client:
-                        if send_telegram_to_client(booking.telegram_id, format_reminder_message(booking, h1)):
-                            booking.reminder_24h_sent = True
-                            sent["client_24"] += 1
-                    else:
+                    if skip_client:
                         from app.services.app_counters import record_notify_dedup_hit
 
-                        record_notify_dedup_hit(db)
-                        # Mark sent so we do not retry forever when dedup skips duplicate
+                        if _claim_booking_flag(db, booking.id, "reminder_24h_sent"):
+                            record_notify_dedup_hit(db)
+                            booking.reminder_24h_sent = True
+                    elif _claim_booking_flag(db, booking.id, "reminder_24h_sent"):
                         booking.reminder_24h_sent = True
+                        if send_telegram_to_client(
+                            booking.telegram_id, format_reminder_message(booking, hours_label)
+                        ):
+                            sent["client_24"] += 1
+                        else:
+                            _unclaim_booking_flag(db, booking.id, "reminder_24h_sent")
+                            booking.reminder_24h_sent = False
                 else:
                     from app.services.booking_email import notify_client_reminder_email
                     from app.services.vk_messages import notify_client_reminder_vk
 
-                    delivered = False
-                    if booking.vk_user_id:
-                        delivered = notify_client_reminder_vk(booking, h1)
-                    if not delivered:
-                        delivered = notify_client_reminder_email(booking, h1)
-                    if delivered:
+                    if _claim_booking_flag(db, booking.id, "reminder_24h_sent"):
                         booking.reminder_24h_sent = True
-                        sent["client_24"] += 1
+                        delivered = False
+                        if booking.vk_user_id:
+                            delivered = notify_client_reminder_vk(booking, hours_label)
+                        if not delivered:
+                            delivered = notify_client_reminder_email(booking, hours_label)
+                        if delivered:
+                            sent["client_24"] += 1
+                        else:
+                            _unclaim_booking_flag(db, booking.id, "reminder_24h_sent")
+                            booking.reminder_24h_sent = False
             if specialist_chat_id and not booking.specialist_reminder_24h_sent:
-                if _send_telegram(specialist_chat_id, format_specialist_reminder_message(booking, h1), specialist_bot_token):
+                if _claim_booking_flag(db, booking.id, "specialist_reminder_24h_sent"):
                     booking.specialist_reminder_24h_sent = True
-                    sent["spec_24"] += 1
+                    if _send_telegram(
+                        specialist_chat_id,
+                        format_specialist_reminder_message(booking, hours_label),
+                        specialist_bot_token,
+                    ):
+                        sent["spec_24"] += 1
+                    else:
+                        _unclaim_booking_flag(db, booking.id, "specialist_reminder_24h_sent")
+                        booking.specialist_reminder_24h_sent = False
 
         if in_second:
             if not booking.reminder_1h_sent:
@@ -521,33 +609,50 @@ def send_reminders(db: Session) -> dict:
                     skip_client = notify_dedup_enabled() and same_telegram_chat(
                         booking.telegram_id, specialist_chat_id
                     )
-                    if not skip_client:
-                        if send_telegram_to_client(booking.telegram_id, format_reminder_message(booking, h2)):
-                            booking.reminder_1h_sent = True
-                            sent["client_1"] += 1
-                    else:
+                    if skip_client:
                         from app.services.app_counters import record_notify_dedup_hit
 
-                        record_notify_dedup_hit(db)
+                        if _claim_booking_flag(db, booking.id, "reminder_1h_sent"):
+                            record_notify_dedup_hit(db)
+                            booking.reminder_1h_sent = True
+                    elif _claim_booking_flag(db, booking.id, "reminder_1h_sent"):
                         booking.reminder_1h_sent = True
+                        if send_telegram_to_client(
+                            booking.telegram_id, format_reminder_message(booking, hours_label)
+                        ):
+                            sent["client_1"] += 1
+                        else:
+                            _unclaim_booking_flag(db, booking.id, "reminder_1h_sent")
+                            booking.reminder_1h_sent = False
                 else:
                     from app.services.booking_email import notify_client_reminder_email
                     from app.services.vk_messages import notify_client_reminder_vk
 
-                    delivered = False
-                    if booking.vk_user_id:
-                        delivered = notify_client_reminder_vk(booking, h2)
-                    if not delivered:
-                        delivered = notify_client_reminder_email(booking, h2)
-                    if delivered:
+                    if _claim_booking_flag(db, booking.id, "reminder_1h_sent"):
                         booking.reminder_1h_sent = True
-                        sent["client_1"] += 1
+                        delivered = False
+                        if booking.vk_user_id:
+                            delivered = notify_client_reminder_vk(booking, hours_label)
+                        if not delivered:
+                            delivered = notify_client_reminder_email(booking, hours_label)
+                        if delivered:
+                            sent["client_1"] += 1
+                        else:
+                            _unclaim_booking_flag(db, booking.id, "reminder_1h_sent")
+                            booking.reminder_1h_sent = False
             if specialist_chat_id and not booking.specialist_reminder_1h_sent:
-                if _send_telegram(specialist_chat_id, format_specialist_reminder_message(booking, h2), specialist_bot_token):
+                if _claim_booking_flag(db, booking.id, "specialist_reminder_1h_sent"):
                     booking.specialist_reminder_1h_sent = True
-                    sent["spec_1"] += 1
+                    if _send_telegram(
+                        specialist_chat_id,
+                        format_specialist_reminder_message(booking, hours_label),
+                        specialist_bot_token,
+                    ):
+                        sent["spec_1"] += 1
+                    else:
+                        _unclaim_booking_flag(db, booking.id, "specialist_reminder_1h_sent")
+                        booking.specialist_reminder_1h_sent = False
 
-    db.commit()
     logger.info("send_reminders done sent=%s", sent)
     return sent
 

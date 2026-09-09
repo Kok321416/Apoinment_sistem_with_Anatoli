@@ -596,6 +596,33 @@ def test_reminders_skip_specialist_without_chat_id():
     db.close()
 
 
+def test_reminders_second_pass_does_not_duplicate():
+    """Atomic claim must prevent a second send_reminders pass from double-messaging."""
+    db = _session()
+    consultant, cal, svc, day = _seed(db)
+    cal.reminder_hours_first = 24
+    cal.reminder_hours_second = 1
+    db.add(
+        Integration(
+            consultant_id=consultant.id,
+            telegram_connected=True,
+            telegram_enabled=True,
+            telegram_chat_id="555003",
+        )
+    )
+    db.commit()
+    _reminder_booking(db, cal, svc, day)
+
+    result1, sent1 = _run_reminders_at(db, day, 11, 0)
+    result2, sent2 = _run_reminders_at(db, day, 11, 0)
+    assert result1["client_1"] == 1
+    assert result1["spec_1"] == 1
+    assert result2["client_1"] == 0
+    assert result2["spec_1"] == 0
+    assert len(sent2) == 0
+    db.close()
+
+
 @pytest.mark.asyncio
 async def test_create_public_booking_async_resolves_telegram_id():
     from app.services.bookings import create_public_booking_async

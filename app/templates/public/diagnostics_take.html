@@ -17,6 +17,9 @@
     <form method="POST" action="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/submit/" class="diag-form" id="diagTakeForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="source" value="profile">
+        {% if gender %}
+        <input type="hidden" name="gender" value="{{ gender }}">
+        {% endif %}
         {% if request.session.get('diagnostics_invitation_id') %}
         <input type="hidden" name="invitation_id" value="{{ request.session.get('diagnostics_invitation_id') }}">
         {% endif %}

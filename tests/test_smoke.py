@@ -70,8 +70,10 @@ def test_reminder_copy_uses_hours():
     msg = format_reminder_message(booking, 6)
     assert "6" in msg
     assert "24 часа" not in msg
+    assert "10:00" in msg and "МСК" in msg
     spec = format_specialist_reminder_message(booking, 6)
     assert "6" in spec
+    assert "МСК" in spec
 
 
 def test_bot_api_rejects_raw_token_when_secret_set(monkeypatch):

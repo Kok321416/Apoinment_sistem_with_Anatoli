@@ -167,6 +167,8 @@ def parse_diagnostic_answers(form_items) -> dict[str, Any]:
     for key, val in form_items:
         if key.startswith("i") and key[1:].isdigit():
             answers[key] = val
+        elif key == "gender" and val is not None and str(val).strip():
+            answers["gender"] = str(val).strip().lower()
     return answers
 
 

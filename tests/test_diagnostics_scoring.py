@@ -10,8 +10,9 @@ def test_parse_diagnostic_answers_ignores_meta_fields():
         ("i1", "2"),
         ("i2", "0"),
         ("booking_id", "5"),
+        ("gender", "f"),
     ]
-    assert parse_diagnostic_answers(items) == {"i1": "2", "i2": "0"}
+    assert parse_diagnostic_answers(items) == {"i1": "2", "i2": "0", "gender": "f"}
 
 
 def test_missing_answer_ids_detects_gaps():
@@ -26,7 +27,7 @@ def test_catalog_has_requested_codes():
     assert "bhs" in codes
     assert "bdi" in codes
     assert "schmischek" in codes
-    assert "eyes" in codes
+    assert "eyes" not in codes
     assert "wcq" in codes
     assert "osop" in codes
 
@@ -57,7 +58,7 @@ def test_bhs_max_severe():
 
 
 def test_runnable_tests_have_russian_instruction():
-    for code in ("bhs", "bdi", "wcq", "schmischek", "osop", "eyes"):
+    for code in ("bhs", "bdi", "wcq", "schmischek", "osop"):
         test = get_test(code)
         assert test and test.runnable
         assert test.instruction
@@ -69,9 +70,25 @@ def test_runnable_and_pending():
     assert get_test("wcq").runnable is True
     assert get_test("schmischek").runnable is True
     assert get_test("osop").runnable is True
+    assert get_test("osop").requires_gender is True
     assert get_test("bhs").runnable is True
     assert get_test("bdi").runnable is True
-    assert get_test("eyes").runnable is True
+    assert get_test("eyes") is None
+
+
+def test_osop_gender_variants():
+    male = get_test("osop", gender="m")
+    female = get_test("osop", gender="f")
+    assert male and female
+    assert len(male.items) == 97
+    assert len(female.items) == 107
+    answers_m = {item.id: 0 for item in male.items}
+    answers_m["gender"] = "m"
+    from app.diagnostics.engine import DiagnosticEngine
+
+    result = DiagnosticEngine().score("osop", answers_m)
+    assert result["scales"]
+    assert result["interpretation"]["gender"] == "m"
 
 
 def test_wcq_scoring_returns_eight_scales():

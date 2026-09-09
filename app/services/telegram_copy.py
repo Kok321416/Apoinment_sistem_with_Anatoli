@@ -63,9 +63,15 @@ def _telegram_link(username: str) -> str:
 
 def booking_base_info(booking: Booking) -> dict[str, str]:
     """Escaped booking fields for templates."""
+    from app.config import get_settings
+
     time_str = booking.booking_time.strftime("%H:%M") if booking.booking_time else "-"
     end_str = booking.booking_end_time.strftime("%H:%M") if booking.booking_end_time else ""
     slot = f"{time_str}" + (f" - {end_str}" if end_str else "")
+    # Wall-clock times are stored in site timezone (default Europe/Moscow).
+    tz_name = (get_settings().timezone or "Europe/Moscow").strip()
+    tz_label = "МСК" if "Moscow" in tz_name else tz_name.split("/")[-1]
+    slot_with_tz = f"{slot} ({tz_label})" if slot != "-" else slot
     service_name = booking.service.name if booking.service else "Консультация"
     duration = ""
     if booking.service and booking.service.duration_minutes:
@@ -79,7 +85,7 @@ def booking_base_info(booking: Booking) -> dict[str, str]:
     return {
         "service_name": tg_escape(service_name),
         "date_str": tg_escape(date_str),
-        "slot": tg_escape(slot),
+        "slot": tg_escape(slot_with_tz),
         "duration": tg_escape(duration),
         "calendar_name": tg_escape(calendar_name),
         "consultant_name": tg_escape(consultant_name),

@@ -202,6 +202,50 @@
         });
     }
 
+    function wireExportDownloads(tg) {
+        /* Telegram WebView often ignores plain /export.xlsx navigation. */
+        document.addEventListener(
+            "click",
+            function (e) {
+                var a = e.target && e.target.closest ? e.target.closest('a[href*="export.xlsx"]') : null;
+                if (!a) return;
+                var href = (a.getAttribute("href") || "").trim();
+                if (!href) return;
+                var abs;
+                try {
+                    abs = new URL(href, window.location.href).href;
+                } catch (err0) {
+                    return;
+                }
+                if (!/^https?:\/\//i.test(abs)) return;
+                e.preventDefault();
+                e.stopPropagation();
+                var fileName = (abs.split("?")[0].split("/").pop() || "export.xlsx").replace(/[^\w.\-]+/g, "_");
+                try {
+                    if (tg && typeof tg.downloadFile === "function") {
+                        var p = tg.downloadFile({ url: abs, file_name: fileName });
+                        if (p && typeof p.then === "function") {
+                            p.catch(function () {
+                                if (typeof tg.openLink === "function") tg.openLink(abs);
+                                else window.location.href = abs;
+                            });
+                            return;
+                        }
+                        return;
+                    }
+                } catch (err1) {}
+                try {
+                    if (tg && typeof tg.openLink === "function") {
+                        tg.openLink(abs);
+                        return;
+                    }
+                } catch (err2) {}
+                window.location.href = abs;
+            },
+            true
+        );
+    }
+
     function wireExternalLinks(tg) {
         document.addEventListener(
             "click",
@@ -495,6 +539,7 @@
             applyViewport(tg);
             wireBackButton(tg);
             wireExternalLinks(tg);
+            wireExportDownloads(tg);
             wireHaptics();
             wireMainButton(tg);
 

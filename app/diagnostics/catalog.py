@@ -56,10 +56,15 @@ class TestDefinition:
     score_fn: Callable[[dict[str, Any], "TestDefinition"], dict[str, Any]] | None = None
     viz: str = "bars"  # bars | bands | radar
     attention_flags: tuple[str, ...] = ()
+    requires_gender: bool = False
 
     @property
     def runnable(self) -> bool:
-        return self.scoring_status == "ready" and bool(self.items) and self.score_fn is not None
+        if self.scoring_status != "ready" or self.score_fn is None:
+            return False
+        if self.requires_gender:
+            return True
+        return bool(self.items)
 
 
 def _band_for(score: int, scale: ScaleDef) -> tuple[str, str]:
@@ -654,88 +659,12 @@ SCHMISCHEK = TestDefinition(
 )
 
 
-# ── OSOP parenting attitudes (краткая форма) ────────────────────────────────
+# ── СОП / OSOP (А. Н. Орел) — gender variants in tests/sop.py ───────────────
 
-_OSOP_OPTS = (
-    ("Полностью не согласен", 1),
-    ("Скорее не согласен", 2),
-    ("Нейтрально", 3),
-    ("Скорее согласен", 4),
-    ("Полностью согласен", 5),
-)
-_OSOP_SCALE_BANDS = (
-    (4, 8, "низкая", "Стиль выражен слабо."),
-    (9, 14, "умеренная", "Умеренная выраженность стиля."),
-    (15, 20, "выраженная", "Стиль выражен ярко."),
-)
-_OSOP_SCALES = {
-    "authoritarian": ScaleDef("authoritarian", "Авторитарность", 4, 20, _OSOP_SCALE_BANDS),
-    "democratic": ScaleDef("democratic", "Демократичность", 4, 20, _OSOP_SCALE_BANDS),
-    "permissive": ScaleDef("permissive", "Попустительство", 4, 20, _OSOP_SCALE_BANDS),
-}
-_OSOP_ITEMS_DATA: tuple[tuple[str, str], ...] = (
-    ("authoritarian", "Ребёнок должен безусловно подчиняться взрослым."),
-    ("authoritarian", "Нарушение правил должно наказываться."),
-    ("authoritarian", "Родитель всегда прав в споре с ребёнком."),
-    ("authoritarian", "Дисциплина важнее эмоций ребёнка."),
-    ("authoritarian", "Ребёнку нельзя оспаривать мои решения."),
-    ("authoritarian", "Я строго контролирую поведение ребёнка."),
-    ("democratic", "Важно объяснять ребёнку причины правил."),
-    ("democratic", "Я учитываю мнение ребёнка при решениях."),
-    ("democratic", "Мы обсуждаем семейные правила вместе."),
-    ("democratic", "Ребёнок может высказывать свои чувства."),
-    ("democratic", "Я поддерживаю самостоятельность ребёнка."),
-    ("democratic", "Я поощряю ответственность, а не только послушание."),
-    ("permissive", "Я часто иду на уступки, чтобы избежать конфликта."),
-    ("permissive", "Мне трудно отказывать ребёнку."),
-    ("permissive", "Правила у нас часто меняются."),
-    ("permissive", "Я редко наказываю за проступки."),
-    ("permissive", "Ребёнок сам решает, чем заниматься."),
-    ("permissive", "Я избегаю строгих требований."),
-)
-
-
-def _osop_items() -> tuple[ItemDef, ...]:
-    return tuple(
-        ItemDef(id=f"i{i}", text=text, options=_OSOP_OPTS, scale_code=scale)
-        for i, (scale, text) in enumerate(_OSOP_ITEMS_DATA, start=1)
-    )
-
-
-def _osop_item_map() -> dict[str, str]:
-    return {f"i{i}": scale for i, (scale, _) in enumerate(_OSOP_ITEMS_DATA, start=1)}
-
-
-def score_osop(answers: dict[str, Any], test: TestDefinition) -> dict[str, Any]:
-    return _score_likert_scales(
-        answers, test, item_scale_map=_osop_item_map(), scale_by_code=_OSOP_SCALES
-    )
-
-
-OSOP = TestDefinition(
-    code="osop",
-    version="1-short",
-    title="Стили семейного воспитания",
-    short_description="18 утверждений о родительских установках, 3 шкалы.",
-    instruction=(
-        "Прочитайте каждое утверждение о воспитании и отметьте степень своего согласия. "
-        "Отвечайте так, как это обычно бывает у вас в отношениях с ребёнком."
-    ),
-    duration_minutes=10,
-    source_citation="OSOP / parenting style inventories. Краткая адаптация для онлайн-опроса.",
-    source_urls=("https://psytests.org/parent/osopFf.html",),
-    scoring_status="ready",
-    items=_osop_items(),
-    scales=tuple(_OSOP_SCALES.values()),
-    score_fn=score_osop,
-    viz="radar",
-)
-
+from app.diagnostics.tests.sop import OSOP, build_osop_test, score_sop  # noqa: E402
 
 # Pending tests — catalog only until assets/keys are supplied.
 PENDING_TESTS: tuple = ()
-
-from app.diagnostics.tests.eyes import EYES  # noqa: E402
 
 _REGISTRY: dict[str, TestDefinition] = {
     BHS.code: BHS,
@@ -743,7 +672,6 @@ _REGISTRY: dict[str, TestDefinition] = {
     WCQ.code: WCQ,
     SCHMISCHEK.code: SCHMISCHEK,
     OSOP.code: OSOP,
-    EYES.code: EYES,
 }
 for t in PENDING_TESTS:
     _REGISTRY[t.code] = t
@@ -756,5 +684,18 @@ def list_tests(*, only_runnable: bool = False) -> list[TestDefinition]:
     return tests
 
 
-def get_test(code: str) -> TestDefinition | None:
-    return _REGISTRY.get((code or "").strip().lower())
+def _normalize_gender(gender: str | None) -> str | None:
+    g = (gender or "").strip().lower()
+    if g in ("f", "female", "ж", "w", "woman"):
+        return "f"
+    if g in ("m", "male", "м", "man"):
+        return "m"
+    return None
+
+
+def get_test(code: str, *, gender: str | None = None) -> TestDefinition | None:
+    key = (code or "").strip().lower()
+    if key == "osop":
+        g = _normalize_gender(gender)
+        return build_osop_test(g) if g else OSOP
+    return _REGISTRY.get(key)

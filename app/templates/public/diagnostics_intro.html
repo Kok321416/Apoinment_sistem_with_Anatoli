@@ -35,11 +35,28 @@
             </div>
             <div>
                 <dt>Количество вопросов</dt>
-                <dd>{{ test.items|length }}</dd>
+                <dd>
+                    {% if test.items|length %}
+                        {{ test.items|length }}
+                    {% elif test.requires_gender %}
+                        97 (муж.) / 107 (жен.)
+                    {% else %}
+                        —
+                    {% endif %}
+                </dd>
             </div>
         </dl>
         <p class="text-body-sm text-muted">Результат не является медицинским диагнозом и сохраняется в вашем профиле у специалиста.</p>
-        <a class="btn btn--primary mt-lg" href="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/run/">Начать тест</a>
+
+        {% if test.requires_gender and not gender %}
+        <p class="text-body mt-lg"><strong>Выберите вариант опросника:</strong></p>
+        <div class="diag-intro__gender mt-md" style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+            <a class="btn btn--primary" href="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/run/?gender=m">Мужской вариант</a>
+            <a class="btn btn--primary" href="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/run/?gender=f">Женский вариант</a>
+        </div>
+        {% else %}
+        <a class="btn btn--primary mt-lg" href="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/run/{% if gender %}?gender={{ gender }}{% endif %}">Начать тест</a>
+        {% endif %}
     </section>
 </div>
 {% endblock %}

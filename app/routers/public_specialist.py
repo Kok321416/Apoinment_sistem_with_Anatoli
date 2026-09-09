@@ -671,6 +671,7 @@ async def specialist_diagnostics_intro(
     slug: str,
     test_code: str,
     db: AsyncSession = Depends(get_async_db),
+    gender: str | None = None,
 ):
     from sqlalchemy.orm import selectinload
 
@@ -680,10 +681,12 @@ async def specialist_diagnostics_intro(
     consultant = await _get_consultant_by_slug_async(db, slug)
     if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
         raise HTTPException(status_code=404, detail="Диагностика недоступна")
-    test = get_test(test_code)
+    test = get_test(test_code, gender=gender)
     if not test or not test.runnable:
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
     next_path = f"/s/{slug}/diagnostics/tests/{test_code}/"
+    if gender:
+        next_path = f"{next_path}?gender={gender}"
     auth_user, redirect = await _require_logged_in_client(request, consultant, next_path, db)
     if redirect:
         return redirect
@@ -703,6 +706,7 @@ async def specialist_diagnostics_intro(
             consultant=consultant,
             public_slug=slug,
             test=test,
+            gender=gender,
         ),
     )
 
@@ -713,6 +717,7 @@ async def specialist_diagnostics_take(
     slug: str,
     test_code: str,
     db: AsyncSession = Depends(get_async_db),
+    gender: str | None = None,
 ):
     from sqlalchemy.orm import selectinload
 
@@ -722,10 +727,17 @@ async def specialist_diagnostics_take(
     consultant = await _get_consultant_by_slug_async(db, slug)
     if not consultant_has_feature(consultant, FEATURE_DIAGNOSTICS):
         raise HTTPException(status_code=404, detail="Диагностика недоступна")
-    test = get_test(test_code)
+    test = get_test(test_code, gender=gender)
     if not test or not test.runnable:
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
+    if getattr(test, "requires_gender", False) and not test.items:
+        return RedirectResponse(
+            f"/s/{slug}/diagnostics/tests/{test_code}/?error=gender",
+            status_code=302,
+        )
     next_path = f"/s/{slug}/diagnostics/tests/{test_code}/run/"
+    if gender:
+        next_path = f"{next_path}?gender={gender}"
     auth_user, redirect = await _require_logged_in_client(request, consultant, next_path, db)
     if redirect:
         return redirect
@@ -745,6 +757,7 @@ async def specialist_diagnostics_take(
             consultant=consultant,
             public_slug=slug,
             test=test,
+            gender=gender,
         ),
     )
 
@@ -782,12 +795,17 @@ async def specialist_diagnostics_submit(
     form = await request.form()
     if not validate_csrf_token(request, form.get("csrf_token")):
         return RedirectResponse(f"/s/{slug}/diagnostics/?error=csrf", status_code=302)
-    test = get_test(test_code)
-    if not test or not test.runnable:
-        return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
     answers = parse_diagnostic_answers(form.multi_items())
+    gender = answers.get("gender") or form.get("gender")
+    test = get_test(test_code, gender=gender)
+    if not test or not test.runnable or (getattr(test, "requires_gender", False) and not test.items):
+        return RedirectResponse(f"/s/{slug}/diagnostics/?error=test", status_code=302)
     if missing_answer_ids(test, answers):
-        return RedirectResponse(f"/s/{slug}/diagnostics/tests/{test_code}/run/?error=incomplete", status_code=302)
+        run_q = f"?gender={gender}&error=incomplete" if gender else "?error=incomplete"
+        return RedirectResponse(
+            f"/s/{slug}/diagnostics/tests/{test_code}/run/{run_q}",
+            status_code=302,
+        )
     consultant_id = int(consultant.id)
     attempt_id = None
     try:

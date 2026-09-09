@@ -1,7 +1,6 @@
 """Diagnostic Engine unit tests."""
 from app.diagnostics.catalog import BHS, get_test
 from app.diagnostics.engine import DiagnosticEngine
-from app.diagnostics.tests.eyes import score_eyes, EYES
 
 
 def test_engine_enriches_scales_with_band_level():
@@ -13,15 +12,11 @@ def test_engine_enriches_scales_with_band_level():
     assert "marker_pct" in scale
 
 
-def test_eyes_scoring_counts_correct():
-    answers = {}
-    for i in range(1, 13):
-        from app.diagnostics.tests.eyes import _EYES_KEYS
+def test_osop_engine_requires_gender():
+    import pytest
 
-        answers[f"i{i}"] = _EYES_KEYS[i - 1]
-    result = score_eyes(answers, EYES)
-    assert result["scores"]["accuracy"] == 12
-    assert result["scales"][0]["band_label"] == "высокая"
+    with pytest.raises(ValueError):
+        DiagnosticEngine().score("osop", {f"i{i}": 0 for i in range(1, 10)})
 
 
 def test_complete_attempt_clears_answers_not_in_view():

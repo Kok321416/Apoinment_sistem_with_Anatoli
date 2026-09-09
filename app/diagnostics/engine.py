@@ -34,8 +34,13 @@ class DiagnosticEngine:
     """Score answers and build a normalized result payload for persistence/display."""
 
     def score(self, test_code: str, answers: dict[str, Any]) -> dict[str, Any]:
-        test = get_test(test_code)
-        if not test or not test.runnable or not test.score_fn:
+        gender = answers.get("gender") if isinstance(answers, dict) else None
+        test = get_test(test_code, gender=gender)
+        if not test or not test.score_fn:
+            raise ValueError("Тест недоступен для расчёта")
+        if getattr(test, "requires_gender", False) and not test.items:
+            raise ValueError("Для этого теста нужно указать пол (gender)")
+        if not test.runnable and not test.items:
             raise ValueError("Тест недоступен для расчёта")
         raw = test.score_fn(answers, test)
         return self.enrich(raw)
