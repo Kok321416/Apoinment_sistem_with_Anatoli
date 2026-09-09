@@ -21,10 +21,14 @@ print('Database connection OK')
 "$PYTHON" -c "from app.db_schema import ensure_telegram_login_schema; ensure_telegram_login_schema(); print('Auth schema OK')"
 
 "$PYTHON" -c "
-from app.db_schema import ensure_all_schema, get_schema_health
+from app.db_schema import ensure_all_schema, ensure_diagnostics_schema, diagnostics_tables_exist, get_schema_health
 ensure_all_schema()
+ok = ensure_diagnostics_schema()
 health = get_schema_health()
 print('App schema OK', health)
+print('Diagnostics schema OK', ok, 'tables_exist', diagnostics_tables_exist())
+if not ok or not diagnostics_tables_exist():
+    raise SystemExit('Diagnostics tables missing after ensure_diagnostics_schema')
 if health.get('degraded'):
     raise SystemExit('Schema degraded: ' + ', '.join(health.get('issues') or []))
 "

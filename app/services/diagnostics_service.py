@@ -119,11 +119,16 @@ async def ensure_diagnostics_write_ready(db: AsyncSession) -> bool:
 
 async def _ensure_diagnostics_tables_on_session(db: AsyncSession) -> bool:
     """Create diagnostics tables on the async session bind (no inspect — avoids MissingGreenlet)."""
+    from sqlalchemy import inspect as sa_inspect
+
     from app.database import Base
-    from app.db_schema import _DIAGNOSTICS_TABLES
+    from app.db_schema import _DIAGNOSTICS_TABLES, _create_diagnostics_tables_raw_mysql
 
     def _create(sync_conn) -> None:
         Base.metadata.create_all(bind=sync_conn, tables=list(_DIAGNOSTICS_TABLES))
+        insp = sa_inspect(sync_conn)
+        if any(not insp.has_table(t.name) for t in _DIAGNOSTICS_TABLES):
+            _create_diagnostics_tables_raw_mysql(sync_conn)
 
     conn = await db.connection()
     await conn.run_sync(_create)

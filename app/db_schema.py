@@ -196,6 +196,11 @@ def _refresh_schema_health() -> None:
                 issue = f"services.{column} missing"
                 issues.append(issue)
                 logger.critical("Schema degraded: %s", issue)
+    for table_name in (t.name for t in _DIAGNOSTICS_TABLES):
+        if not _table_exists(table_name):
+            issue = f"{table_name} missing"
+            issues.append(issue)
+            logger.critical("Schema degraded: %s", issue)
     _schema_issues = issues
     _schema_degraded = bool(issues)
 
@@ -392,26 +397,137 @@ def ensure_email_auth_schema() -> None:
 
 
 def ensure_diagnostics_schema(bind=None) -> bool:
-    """Create diagnostics tables if missing. Safe to call repeatedly."""
+    """Create diagnostics tables if missing. Safe to call repeatedly.
+
+    Falls back to plain MySQL ``CREATE TABLE IF NOT EXISTS`` without FK constraints
+    when SQLAlchemy ``create_all`` cannot create tables (common on shared hosting
+    when FOREIGN KEY creation is restricted).
+    """
     bind = bind or engine
     try:
         insp = inspect(bind)
         missing = [t for t in _DIAGNOSTICS_TABLES if not insp.has_table(t.name)]
         if not missing:
             return True
-        for table in _DIAGNOSTICS_TABLES:
-            if table not in missing:
-                continue
-            Base.metadata.create_all(bind=bind, tables=[table])
+        for table in missing:
+            try:
+                Base.metadata.create_all(bind=bind, tables=[table])
+            except Exception:
+                logger.exception("create_all failed for diagnostics table %s", table.name)
         insp = inspect(bind)
         still_missing = [t.name for t in _DIAGNOSTICS_TABLES if not insp.has_table(t.name)]
         if still_missing:
+            logger.warning(
+                "diagnostics create_all left missing tables %s — trying raw DDL",
+                still_missing,
+            )
+            _create_diagnostics_tables_raw_mysql(bind)
+            insp = inspect(bind)
+            still_missing = [t.name for t in _DIAGNOSTICS_TABLES if not insp.has_table(t.name)]
+        if still_missing:
             logger.error("diagnostics tables still missing: %s", still_missing)
             return False
-        logger.info("Created diagnostics tables: %s", [t.name for t in missing])
+        logger.info("Diagnostics tables ready")
         return True
     except Exception:
         logger.exception("ensure_diagnostics_schema failed")
+        return False
+
+
+def _create_diagnostics_tables_raw_mysql(bind) -> None:
+    """FK-free DDL — enough for app INSERT/SELECT when hosting blocks FK DDL."""
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS client_specialist_links (
+            id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            client_user_id INT NOT NULL,
+            consultant_id INT NOT NULL,
+            source VARCHAR(32) NOT NULL DEFAULT 'visit',
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            last_opened_at DATETIME NOT NULL,
+            created_at DATETIME NOT NULL,
+            UNIQUE KEY uq_client_specialist_link (client_user_id, consultant_id),
+            KEY ix_client_specialist_links_client_user_id (client_user_id),
+            KEY ix_client_specialist_links_consultant_id (consultant_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS diagnostic_invitations (
+            id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            token_hash VARCHAR(64) NOT NULL,
+            consultant_id INT NOT NULL,
+            client_user_id INT NULL,
+            client_card_id INT NULL,
+            test_codes_json TEXT NOT NULL,
+            expires_at DATETIME NULL,
+            revoked_at DATETIME NULL,
+            max_uses INT NOT NULL DEFAULT 1,
+            use_count INT NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            created_by_user_id INT NULL,
+            UNIQUE KEY ix_diagnostic_invitations_token_hash (token_hash),
+            KEY ix_diagnostic_invitations_consultant_id (consultant_id),
+            KEY ix_diagnostic_invitations_client_user_id (client_user_id),
+            KEY ix_diagnostic_invitations_client_card_id (client_card_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS diagnostic_attempts (
+            id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            client_user_id INT NOT NULL,
+            consultant_id INT NOT NULL,
+            client_card_id INT NULL,
+            invitation_id INT NULL,
+            booking_id INT NULL,
+            test_code VARCHAR(64) NOT NULL,
+            test_version VARCHAR(32) NOT NULL DEFAULT '1',
+            status VARCHAR(16) NOT NULL DEFAULT 'in_progress',
+            started_at DATETIME NOT NULL,
+            completed_at DATETIME NULL,
+            answers_json TEXT NOT NULL,
+            scores_json TEXT NOT NULL,
+            scales_json TEXT NOT NULL,
+            interpretation_json TEXT NOT NULL,
+            summary_text TEXT NOT NULL,
+            flags_json TEXT NOT NULL,
+            source VARCHAR(32) NOT NULL DEFAULT 'cabinet',
+            KEY ix_diagnostic_attempts_client_user_id (client_user_id),
+            KEY ix_diagnostic_attempts_consultant_id (consultant_id),
+            KEY ix_diagnostic_attempts_client_card_id (client_card_id),
+            KEY ix_diagnostic_attempts_invitation_id (invitation_id),
+            KEY ix_diagnostic_attempts_test_code (test_code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+    )
+    dialect = getattr(getattr(bind, "dialect", None), "name", "") or ""
+    if dialect and dialect != "mysql":
+        # SQLite / tests: recreate via metadata without FK enforcement issues.
+        for table in _DIAGNOSTICS_TABLES:
+            if not inspect(bind).has_table(table.name):
+                Base.metadata.create_all(bind=bind, tables=[table])
+        return
+
+    from sqlalchemy.engine import Engine
+
+    def _run(conn) -> None:
+        for stmt in statements:
+            conn.execute(text(stmt))
+
+    # Engine vs Connection (async run_sync passes a Connection).
+    if isinstance(bind, Engine):
+        with bind.begin() as conn:
+            _run(conn)
+    else:
+        _run(bind)
+
+
+def diagnostics_tables_exist(bind=None) -> bool:
+    bind = bind or engine
+    try:
+        insp = inspect(bind)
+        return all(insp.has_table(t.name) for t in _DIAGNOSTICS_TABLES)
+    except Exception:
+        logger.exception("diagnostics_tables_exist check failed")
         return False
 
 
