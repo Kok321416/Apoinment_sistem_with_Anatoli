@@ -273,6 +273,10 @@ def test_tg_hub_serves_webapp_boot_v26(mini_app_client):
     assert 'id="tg-hub-authed"' in r.text
     assert 'id="tg-hub-guest"' in r.text
     assert 'id="tg-hub-error"' in r.text
+    assert 'href="/statistics/"' in r.text
+    assert 'href="/clients/"' in r.text
+    assert "Статистика" in r.text
+    assert "Клиенты" in r.text
 
 
 def test_webapp_auth_idempotent_and_bearer_without_cookie(mini_app_client):
