@@ -13,7 +13,7 @@ from sqlalchemy.pool import StaticPool
 import app.models  # noqa: F401
 from app.auth.passwords import hash_password
 from app.database import Base, get_async_db
-from app.diagnostics.catalog import BHS, get_test
+from app.diagnostics.catalog import BAI, BHS, INTERPRETATION_LEAD_RU, get_test
 from app.models import Calendar, Category, Consultant, Service, User
 
 
@@ -156,6 +156,23 @@ def _submit_bhs(client: TestClient, csrf: str) -> str:
     return loc
 
 
+def _submit_bai(client: TestClient, csrf: str, *, score_value: int = 1) -> str:
+    test = get_test(BAI.code)
+    assert test and test.runnable
+    data = {"csrf_token": csrf, "source": "profile"}
+    for item in test.items:
+        data[item.id] = str(score_value)
+    submit = client.post(
+        f"/s/spec/diagnostics/tests/{BAI.code}/submit/",
+        data=data,
+        follow_redirects=False,
+    )
+    assert submit.status_code == 302, submit.text[:500]
+    loc = submit.headers.get("location") or ""
+    assert "/s/spec/diagnostics/results/" in loc, f"unexpected redirect: {loc}"
+    return loc
+
+
 def test_diagnostics_requires_login(diagnostics_client):
     client, _cid, _uid, *_ = diagnostics_client
     r = client.get("/s/spec/diagnostics/", follow_redirects=False)
@@ -224,6 +241,80 @@ def test_diagnostics_hub_and_submit_bhs(diagnostics_client):
     assert hub2.status_code == 200
     assert "История результатов" in hub2.text
     assert "Полная расшифровка" in hub2.text or BHS.title in hub2.text
+
+
+def test_diagnostics_hub_and_submit_bai_with_interpretation(diagnostics_client):
+    """BAI from psytests depT1u: hub → take → submit → client+specialist see interpretation lead."""
+    import asyncio
+
+    from sqlalchemy import select
+
+    from app.models import ClientCard, DiagnosticAttempt
+
+    client, consultant_id, client_user_id, _engine, session_factory, _prepare = diagnostics_client
+    _login_client(client)
+
+    hub = client.get("/s/spec/diagnostics/", follow_redirects=True)
+    assert hub.status_code == 200
+    assert BAI.title in hub.text
+    assert f"/s/spec/diagnostics/tests/{BAI.code}/" in hub.text
+
+    take = client.get(f"/s/spec/diagnostics/tests/{BAI.code}/run/", follow_redirects=True)
+    assert take.status_code == 200, take.text[:500]
+    assert "Вопрос" in take.text
+    m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
+    assert m, "csrf_token missing on BAI take page"
+    loc = _submit_bai(client, m.group(1), score_value=1)
+
+    result = client.get(loc, follow_redirects=True)
+    assert result.status_code == 200, result.text[:500]
+    assert "Тревога" in result.text or "тревог" in result.text.lower()
+    assert INTERPRETATION_LEAD_RU[:40] in result.text
+    assert "предположительный" in result.text.lower() or "психологом" in result.text.lower()
+    assert "умеренн" in result.text.lower()  # 21 items × 1 = 21 → moderate
+
+    async def _card_and_attempt():
+        async with session_factory() as db:
+            card = (
+                await db.execute(
+                    select(ClientCard).where(
+                        ClientCard.consultant_id == consultant_id,
+                        ClientCard.client_user_id == client_user_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            attempt = (
+                await db.execute(
+                    select(DiagnosticAttempt).where(
+                        DiagnosticAttempt.client_user_id == client_user_id,
+                        DiagnosticAttempt.test_code == BAI.code,
+                    )
+                )
+            ).scalar_one_or_none()
+            return card, attempt
+
+    card, attempt = asyncio.run(_card_and_attempt())
+    assert card is not None
+    assert attempt is not None and attempt.status == "completed"
+
+    spec = TestClient(client.app)
+    login_page = spec.get("/login/", follow_redirects=True)
+    csrf_m = re.search(r'name="csrf_token"\s+value="([^"]+)"', login_page.text)
+    assert csrf_m
+    spec.post(
+        "/login/",
+        data={"login": "spec@test.com", "password": "specpass", "csrf_token": csrf_m.group(1)},
+        follow_redirects=False,
+    )
+    crm = spec.get(f"/clients/{card.id}/#diagnostics", follow_redirects=True)
+    assert crm.status_code == 200
+    assert BAI.title in crm.text or "Тревога" in crm.text
+    assert INTERPRETATION_LEAD_RU[:40] in crm.text
+
+    detail = spec.get(f"/diagnostics/results/{attempt.id}/", follow_redirects=False)
+    assert detail.status_code == 200, detail.headers.get("location")
+    assert INTERPRETATION_LEAD_RU[:40] in detail.text
+    assert "Интерпретация" in detail.text
 
 
 def test_diagnostics_flow_from_profile_link(diagnostics_client):
