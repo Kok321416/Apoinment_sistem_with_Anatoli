@@ -595,6 +595,7 @@ async def list_attempts_for_card(
 
 
 def attempt_to_view(attempt: DiagnosticAttempt) -> dict[str, Any]:
+    from app.diagnostics.catalog import compose_overall_interpretation
     from app.diagnostics.engine import _band_level, _marker_pct
 
     test = get_test(attempt.test_code)
@@ -611,6 +612,12 @@ def attempt_to_view(attempt: DiagnosticAttempt) -> dict[str, Any]:
         interpretation = json.loads(attempt.interpretation_json or "{}")
     except json.JSONDecodeError:
         interpretation = {}
+    if not isinstance(interpretation, dict):
+        interpretation = {}
+    interpretation = dict(interpretation)
+    interpretation["overall"] = compose_overall_interpretation(
+        str(interpretation.get("overall") or attempt.summary_text or "")
+    )
     try:
         flags = json.loads(attempt.flags_json or "[]")
     except json.JSONDecodeError:

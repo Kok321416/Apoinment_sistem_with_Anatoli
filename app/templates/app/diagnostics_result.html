@@ -14,12 +14,14 @@
 <div class="diag-page">
     <p class="mb-lg"><a class="btn btn--ghost btn--sm" href="{{ diagnostics_back_href|default('/clients/') }}">← К диагностике</a></p>
     {% set r = result %}
+    {% set show_detail_link = false %}
+    {% set show_card_interp = false %}
     {% include "components/diagnostics_result_card.html" %}
 
     {% if result.interpretation and result.interpretation.overall %}
     <section class="card card--static mt-3xl">
         <h2 class="text-h2">Интерпретация</h2>
-        <p class="text-body">{{ result.interpretation.overall }}</p>
+        <p class="text-body" style="white-space: pre-line;">{{ result.interpretation.overall }}</p>
         {% if result.interpretation.crisis_hint %}
         <div class="alert alert--warning mt-lg" role="status">{{ result.interpretation.crisis_hint }}</div>
         {% endif %}

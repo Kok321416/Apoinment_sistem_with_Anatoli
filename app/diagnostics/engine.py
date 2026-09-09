@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.diagnostics.catalog import DISCLAIMER_RU, get_test
+from app.diagnostics.catalog import DISCLAIMER_RU, compose_overall_interpretation, get_test
 
 
 def _band_level(band_label: str) -> str:
@@ -46,9 +46,11 @@ class DiagnosticEngine:
         return self.enrich(raw)
 
     def enrich(self, result: dict[str, Any]) -> dict[str, Any]:
-        interpretation = result.get("interpretation") or {}
+        interpretation = dict(result.get("interpretation") or {})
         if "disclaimer" not in interpretation:
             interpretation["disclaimer"] = DISCLAIMER_RU
+        overall = interpretation.get("overall") or ""
+        interpretation["overall"] = compose_overall_interpretation(str(overall))
         scales_out = []
         for scale in result.get("scales") or []:
             s = dict(scale)

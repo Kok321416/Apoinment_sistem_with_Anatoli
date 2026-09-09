@@ -26,10 +26,28 @@ def test_catalog_has_requested_codes():
     codes = {t.code for t in list_tests()}
     assert "bhs" in codes
     assert "bdi" in codes
+    assert "bai" in codes
     assert "schmischek" in codes
     assert "eyes" not in codes
     assert "wcq" in codes
     assert "osop" in codes
+
+
+def test_bai_scoring_bands_and_interpretation_lead():
+    from app.diagnostics.catalog import INTERPRETATION_LEAD_RU
+    from app.diagnostics.engine import engine
+
+    test = get_test("bai")
+    assert test and test.runnable
+    assert len(test.items) == 21
+    # All mild (1) → total 21 → moderate (16–25) per BAI Manual 1993
+    answers = {f"i{i}": 1 for i in range(1, 22)}
+    result = engine.score("bai", answers)
+    assert result["scores"]["total"] == 21
+    assert result["scales"][0]["band_label"] == "умеренная"
+    overall = result["interpretation"]["overall"]
+    assert overall.startswith(INTERPRETATION_LEAD_RU[:40])
+    assert "диагноз" in overall.lower()
 
 
 def test_bhs_all_non_keyed_minimal():
@@ -58,7 +76,7 @@ def test_bhs_max_severe():
 
 
 def test_runnable_tests_have_russian_instruction():
-    for code in ("bhs", "bdi", "wcq", "schmischek", "osop"):
+    for code in ("bhs", "bdi", "bai", "wcq", "schmischek", "osop"):
         test = get_test(code)
         assert test and test.runnable
         assert test.instruction
@@ -73,6 +91,7 @@ def test_runnable_and_pending():
     assert get_test("osop").requires_gender is True
     assert get_test("bhs").runnable is True
     assert get_test("bdi").runnable is True
+    assert get_test("bai").runnable is True
     assert get_test("eyes") is None
 
 

@@ -17,6 +17,7 @@ from app.diagnostics.catalog import (
     ScaleDef,
     TestDefinition,
     _band_for,
+    compose_overall_interpretation,
 )
 
 _YES_NO = (("Да", 1), ("Нет", 0))
@@ -115,7 +116,7 @@ def score_sop(answers: dict[str, Any], test: TestDefinition) -> dict[str, Any]:
         if s["code"] in ("self_harm", "aggression", "delinquent") and s["score"] >= 10:
             flags.append(s["code"])
     interpretation = {
-        "overall": "; ".join(summary_bits),
+        "overall": compose_overall_interpretation("; ".join(summary_bits)),
         "disclaimer": DISCLAIMER_RU,
         "crisis_hint": CRISIS_HINT_RU if flags else "",
         "gender": gender,

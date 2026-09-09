@@ -6,6 +6,15 @@
         </time>
     </div>
     <p class="diag-result__summary">{{ r.summary }}</p>
+    {% if (show_card_interp | default(true)) and r.interpretation and r.interpretation.overall %}
+    <div class="diag-result__interp mt-md">
+        <p class="text-body-sm diag-result__interp-text" style="white-space: pre-line;">{{ r.interpretation.overall }}</p>
+    </div>
+    {% elif (show_card_interp | default(true)) and r.overall %}
+    <div class="diag-result__interp mt-md">
+        <p class="text-body-sm diag-result__interp-text" style="white-space: pre-line;">{{ r.overall }}</p>
+    </div>
+    {% endif %}
     {% if r.scales %}
     <div class="diag-scales diag-scales--bands">
         {% for s in r.scales %}
