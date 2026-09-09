@@ -93,6 +93,8 @@ def serialize_slot(slot: TimeSlot) -> dict:
 
 
 def serialize_calendar_settings(calendar: Calendar) -> dict:
+    from app.services.site_timezone import calendar_timezone_name
+
     disabled = parse_disabled_weekdays(getattr(calendar, "disabled_weekdays", None))
     return {
         "id": calendar.id,
@@ -105,6 +107,7 @@ def serialize_calendar_settings(calendar: Calendar) -> dict:
         "reminder_hours_first": calendar.reminder_hours_first or 0,
         "reminder_hours_second": calendar.reminder_hours_second or 0,
         "disabled_weekdays": sorted(disabled),
+        "timezone": calendar_timezone_name(calendar),
     }
 
 

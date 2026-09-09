@@ -8,7 +8,14 @@ from app.models import Booking, Integration
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-TIMEZONE_STR = "Europe/Moscow"
+
+
+def _gcal_tz_name(booking: Booking | None = None) -> str:
+    from app.services.site_timezone import calendar_timezone_name, site_timezone_name
+
+    if booking is not None:
+        return calendar_timezone_name(getattr(booking, "calendar", None))
+    return site_timezone_name()
 
 
 def _get_calendar_service(integration: Integration):
@@ -39,16 +46,16 @@ def _get_calendar_service(integration: Integration):
 
 
 def _booking_start_end(booking: Booking):
-    from zoneinfo import ZoneInfo
+    from app.services.site_timezone import calendar_timezone_name, calendar_zoneinfo
 
-    tz = ZoneInfo(settings.timezone)
+    tz = calendar_zoneinfo(getattr(booking, "calendar", None))
     start_dt = datetime.combine(booking.booking_date, booking.booking_time, tzinfo=tz)
     if booking.booking_end_time:
         end_dt = datetime.combine(booking.booking_date, booking.booking_end_time, tzinfo=tz)
     else:
         duration = booking.service.duration_minutes if booking.service else 60
         end_dt = start_dt + timedelta(minutes=duration)
-    return start_dt, end_dt
+    return start_dt, end_dt, calendar_timezone_name(getattr(booking, "calendar", None))
 
 
 def create_booking_google_event(db: Session, integration: Integration, booking: Booking) -> bool:
@@ -57,7 +64,7 @@ def create_booking_google_event(db: Session, integration: Integration, booking: 
         return False
     calendar_id = (integration.google_calendar_id or "").strip() or "primary"
     try:
-        start_dt, end_dt = _booking_start_end(booking)
+        start_dt, end_dt, tz_name = _booking_start_end(booking)
         event = {
             "summary": f"Консультация: {booking.client_name}",
             "description": (
@@ -67,8 +74,8 @@ def create_booking_google_event(db: Session, integration: Integration, booking: 
                 f"Telegram: {booking.client_telegram or '-'}\n"
                 f"{booking.notes or ''}"
             ).strip(),
-            "start": {"dateTime": start_dt.isoformat(), "timeZone": TIMEZONE_STR},
-            "end": {"dateTime": end_dt.isoformat(), "timeZone": TIMEZONE_STR},
+            "start": {"dateTime": start_dt.isoformat(), "timeZone": tz_name},
+            "end": {"dateTime": end_dt.isoformat(), "timeZone": tz_name},
         }
         created = service.events().insert(calendarId=calendar_id, body=event).execute()
         event_id = created.get("id")
@@ -89,7 +96,7 @@ def update_booking_google_event(db: Session, integration: Integration, booking: 
         return False
     calendar_id = (integration.google_calendar_id or "").strip() or "primary"
     try:
-        start_dt, end_dt = _booking_start_end(booking)
+        start_dt, end_dt, tz_name = _booking_start_end(booking)
         event = {
             "summary": f"Консультация: {booking.client_name}",
             "description": (
@@ -99,8 +106,8 @@ def update_booking_google_event(db: Session, integration: Integration, booking: 
                 f"Telegram: {booking.client_telegram or '-'}\n"
                 f"{booking.notes or ''}"
             ).strip(),
-            "start": {"dateTime": start_dt.isoformat(), "timeZone": TIMEZONE_STR},
-            "end": {"dateTime": end_dt.isoformat(), "timeZone": TIMEZONE_STR},
+            "start": {"dateTime": start_dt.isoformat(), "timeZone": tz_name},
+            "end": {"dateTime": end_dt.isoformat(), "timeZone": tz_name},
         }
         service.events().update(
             calendarId=calendar_id,

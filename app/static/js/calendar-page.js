@@ -49,7 +49,8 @@
                 '<span class="calendar-badge"><strong>Перерыв:</strong> ' + settings.break_between_services_minutes + ' мин</span>' +
                 '<span class="calendar-badge"><strong>Лимит в день:</strong> ' + limit + '</span>' +
                 '<span class="calendar-badge"><strong>Запись за:</strong> ' + settings.book_ahead_hours + ' ч</span>' +
-                '<span class="calendar-badge"><strong>Напоминания:</strong> ' + (reminders.length ? reminders.join(' и ') : 'выкл') + '</span>';
+                '<span class="calendar-badge"><strong>Напоминания:</strong> ' + (reminders.length ? reminders.join(' и ') : 'выкл') + '</span>' +
+                '<span class="calendar-badge"><strong>Пояс:</strong> ' + (settings.timezone || '—') + '</span>';
         }
 
         function syncSettingsForm(settings) {
@@ -60,6 +61,10 @@
             document.getElementById('setting-reminder-second').value = settings.reminder_hours_second || 1;
             document.getElementById('setting-reminder-first-enabled').checked = settings.reminder_hours_first > 0;
             document.getElementById('setting-reminder-second-enabled').checked = settings.reminder_hours_second > 0;
+            var tzEl = document.getElementById('setting-timezone');
+            if (tzEl && settings.timezone) {
+                tzEl.value = settings.timezone;
+            }
         }
 
         function renderDayChips(schedule) {
@@ -303,6 +308,7 @@
                     reminder_hours_second: parseInt(document.getElementById('setting-reminder-second').value, 10) || 1,
                     reminder_first_enabled: document.getElementById('setting-reminder-first-enabled').checked,
                     reminder_second_enabled: document.getElementById('setting-reminder-second-enabled').checked,
+                    timezone: (document.getElementById('setting-timezone') || {}).value || undefined,
                 };
                 const data = await api.saveSettings(payload);
                 showToast(data.message || 'Настройки сохранены');

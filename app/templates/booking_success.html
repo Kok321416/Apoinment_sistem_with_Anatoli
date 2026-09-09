@@ -28,6 +28,10 @@
         в {{ booking.booking_time|time('H:i') }}.
         {% endif %}
         {% endif %}
+        <br><span class="text-muted text-body-sm">{{ calendar_timezone_hint or site_timezone_hint }}</span>
+        {% if booking_viewer_time_line %}
+        <br><span class="text-muted text-body-sm">{{ booking_viewer_time_line }}</span>
+        {% endif %}
     </p>
 </div>
 
@@ -53,6 +57,10 @@
                         {{ booking.booking_time|time('H:i') }} – {{ booking.booking_end_time|time('H:i') }}
                     {% else %}
                         {{ booking.booking_time|time('H:i') }}
+                    {% endif %}
+                    <span class="text-muted text-body-sm">({{ calendar_timezone_label or site_timezone_label }})</span>
+                    {% if booking_viewer_time_line %}
+                    <br><span class="text-muted text-body-sm">{{ booking_viewer_time_line }}</span>
                     {% endif %}
                 </td>
             </tr>

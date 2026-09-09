@@ -119,6 +119,15 @@
                         <span>часов</span>
                     </label>
                 </div>
+                <div class="settings-card">
+                    <label class="settings-card__label" for="setting-timezone">Часовой пояс</label>
+                    <select class="input" id="setting-timezone" name="timezone">
+                        {% for tz_value, tz_label in calendar_timezone_choices %}
+                        <option value="{{ tz_value }}"{% if (calendar.timezone or site_timezone) == tz_value %} selected{% endif %}>{{ tz_label }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="form-field__hint">Время слотов и напоминаний — в этом поясе.</p>
+                </div>
             </div>
             <button type="submit" class="btn btn--primary btn--lg calendar-settings-form__save" id="settings-save-btn">Сохранить изменения</button>
         </form>
@@ -140,5 +149,5 @@
 <script src="/static/js/calendar-api.js?v=2" defer></script>
 <script src="/static/js/calendar-week-grid.js?v=2" defer></script>
 <script src="/static/js/calendar-day-editor.js?v=4" defer></script>
-<script src="/static/js/calendar-page.js?v=4" defer></script>
+<script src="/static/js/calendar-page.js?v=5" defer></script>
 {% endblock %}

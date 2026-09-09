@@ -220,6 +220,7 @@ def create_public_booking(
     client_email: str,
     client_telegram: str,
     client_user_id: int | None = None,
+    client_timezone: str | None = None,
 ) -> tuple[Booking | None, str | None]:
     consultant = calendar.consultant
 
@@ -290,11 +291,9 @@ def create_public_booking(
     if max_per_day > 0 and len(existing_bookings) >= max_per_day:
         return None, "Достигнут лимит записей на этот день."
 
-    from zoneinfo import ZoneInfo
+    from app.services.site_timezone import calendar_zoneinfo
 
-    from app.config import get_settings
-
-    tz = ZoneInfo(get_settings().timezone)
+    tz = calendar_zoneinfo(calendar)
     ahead = calendar.book_ahead_hours
     book_ahead_hours = 24 if ahead is None else int(ahead)
     min_start = datetime.now(tz) + timedelta(hours=book_ahead_hours)
@@ -328,6 +327,9 @@ def create_public_booking(
 
     vk_user_id = resolve_vk_user_id_for_user(db, client_user_id)
     telegram_id = resolve_telegram_id_for_user(db, client_user_id)
+    from app.services.site_timezone import normalize_timezone_name
+
+    client_tz = normalize_timezone_name(client_timezone) or None
     booking = Booking(
         service_id=service.id,
         time_slot_id=time_slot.id,
@@ -346,6 +348,7 @@ def create_public_booking(
         vk_user_id=vk_user_id,
         telegram_id=telegram_id,
         source="client",
+        client_timezone=client_tz,
     )
     db.add(booking)
     db.commit()
@@ -368,6 +371,7 @@ async def create_public_booking_async(
     client_user_id: int | None = None,
     *,
     consultant: Consultant | None = None,
+    client_timezone: str | None = None,
 ) -> tuple[Booking | None, str | None]:
     """AsyncSession twin of create_public_booking. Notify/Google still via sync bridge."""
     from sqlalchemy import select
@@ -459,11 +463,9 @@ async def create_public_booking_async(
     if max_per_day > 0 and len(existing_bookings) >= max_per_day:
         return None, "Достигнут лимит записей на этот день."
 
-    from zoneinfo import ZoneInfo
+    from app.services.site_timezone import calendar_zoneinfo
 
-    from app.config import get_settings
-
-    tz = ZoneInfo(get_settings().timezone)
+    tz = calendar_zoneinfo(calendar)
     ahead = calendar.book_ahead_hours
     book_ahead_hours = 24 if ahead is None else int(ahead)
     min_start = datetime.now(tz) + timedelta(hours=book_ahead_hours)
@@ -497,6 +499,9 @@ async def create_public_booking_async(
 
     vk_user_id = await resolve_vk_user_id_for_user_async(db, client_user_id)
     telegram_id = await resolve_telegram_id_for_user_async(db, client_user_id)
+    from app.services.site_timezone import normalize_timezone_name
+
+    client_tz = normalize_timezone_name(client_timezone) or None
     booking = Booking(
         service_id=service.id,
         time_slot_id=time_slot.id,
@@ -515,6 +520,7 @@ async def create_public_booking_async(
         vk_user_id=vk_user_id,
         telegram_id=telegram_id,
         source="client",
+        client_timezone=client_tz,
     )
     db.add(booking)
     await db.commit()
@@ -863,11 +869,9 @@ async def create_specialist_booking_async(
 
 
 def mark_past_bookings_completed(db: Session, calendars: list[Calendar]) -> None:
-    from zoneinfo import ZoneInfo
+    from app.services.site_timezone import site_zoneinfo
 
-    from app.config import get_settings
-
-    tz = ZoneInfo(get_settings().timezone or "Europe/Moscow")
+    tz = site_zoneinfo()
     now = datetime.now(tz).replace(tzinfo=None)
     calendar_ids = [c.id for c in calendars]
     bookings = (
@@ -884,13 +888,11 @@ def mark_past_bookings_completed(db: Session, calendars: list[Calendar]) -> None
 
 
 async def mark_past_bookings_completed_async(db, calendars: list[Calendar]) -> None:
-    from zoneinfo import ZoneInfo
-
     from sqlalchemy import select
 
-    from app.config import get_settings
+    from app.services.site_timezone import site_zoneinfo
 
-    tz = ZoneInfo(get_settings().timezone or "Europe/Moscow")
+    tz = site_zoneinfo()
     now = datetime.now(tz).replace(tzinfo=None)
     calendar_ids = [c.id for c in calendars]
     if not calendar_ids:

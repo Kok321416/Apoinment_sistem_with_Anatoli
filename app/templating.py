@@ -306,8 +306,21 @@ def _resolve_load_telegram_webapp(request, extra: dict) -> bool:
 
 
 def _page_context_base(request, user, *, has_consultant: bool, active_mode: str, header: dict, **extra):
+    from app.services.site_timezone import (
+        CALENDAR_TIMEZONE_CHOICES,
+        calendar_timezone_hint,
+        calendar_timezone_label,
+        calendar_timezone_name,
+        site_timezone_hint,
+        site_timezone_label,
+        site_timezone_name,
+    )
+
     nav_key, section_title = _cabinet_nav_from_path(getattr(request.url, "path", "/") or "/")
     load_tg = _resolve_load_telegram_webapp(request, extra)
+    calendar = extra.get("calendar")
+    cal_tz_name = calendar_timezone_name(calendar) if calendar is not None else site_timezone_name()
+    cal_tz_hint = calendar_timezone_hint(calendar) if calendar is not None else site_timezone_hint()
     ctx = {
         "request": request,
         "user": user,
@@ -323,6 +336,13 @@ def _page_context_base(request, user, *, has_consultant: bool, active_mode: str,
         "url_for": url_for,
         "site_brand_name": settings.site_brand_name,
         "site_url": settings.site_url.rstrip("/"),
+        "site_timezone": site_timezone_name(),
+        "site_timezone_label": site_timezone_label(),
+        "site_timezone_hint": site_timezone_hint(),
+        "calendar_timezone": cal_tz_name,
+        "calendar_timezone_label": calendar_timezone_label(calendar) if calendar is not None else site_timezone_label(),
+        "calendar_timezone_hint": cal_tz_hint,
+        "calendar_timezone_choices": CALENDAR_TIMEZONE_CHOICES,
         "canonical_url": str(request.url).split("?")[0],
         "support_email": settings.support_email,
         "yandex_metrika_id": settings.yandex_metrika_id,

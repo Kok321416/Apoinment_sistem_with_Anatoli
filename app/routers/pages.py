@@ -1255,6 +1255,11 @@ async def calendar_settings(request: Request, calendar_id: int, db: AsyncSession
         calendar.max_services_per_day = _form_int(form, "max_services_per_day", 0) or 0
         calendar.reminder_hours_first = _form_int(form, "reminder_hours_first", 24) or 24
         calendar.reminder_hours_second = _form_int(form, "reminder_hours_second", 1) or 1
+        from app.services.site_timezone import normalize_timezone_name
+
+        tz = normalize_timezone_name(form.get("timezone"))
+        if tz:
+            calendar.timezone = tz
         await db.commit()
         from app.services.response_cache import invalidate_calendar
 
@@ -1494,7 +1499,7 @@ async def specialist_statistics(request: Request, db: AsyncSession = Depends(get
         return _login_redirect(request)
     consultant = await require_specialist_mode_async(request, db, user)
 
-    tz = ZoneInfo(get_settings().timezone or "Europe/Moscow")
+    tz = ZoneInfo(get_settings().timezone or "Asia/Irkutsk")
     today = datetime.now(tz).date()
     date_from, date_to = parse_range(
         request.query_params.get("from"),
@@ -1542,7 +1547,7 @@ async def specialist_statistics_export_xlsx(
         return _login_redirect(request)
     consultant = await require_specialist_mode_async(request, db, user)
 
-    tz = ZoneInfo(get_settings().timezone or "Europe/Moscow")
+    tz = ZoneInfo(get_settings().timezone or "Asia/Irkutsk")
     today = datetime.now(tz).date()
     date_from, date_to = parse_range(
         request.query_params.get("from"),
@@ -1659,7 +1664,7 @@ async def specialist_bookings(request: Request, db: AsyncSession = Depends(get_a
 
     from zoneinfo import ZoneInfo
 
-    tz = ZoneInfo(get_settings().timezone or "Europe/Moscow")
+    tz = ZoneInfo(get_settings().timezone or "Asia/Irkutsk")
     now_dt = datetime.now(tz)
     today = now_dt.date()
     now = now_dt.time()

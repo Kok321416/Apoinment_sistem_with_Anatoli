@@ -228,6 +228,16 @@ def _apply_app_schema_patches() -> None:
     except Exception:
         logger.exception("calendars.disabled_weekdays patch failed")
 
+    try:
+        _add_column("calendars", "timezone", "VARCHAR(64) NULL")
+    except Exception:
+        logger.exception("calendars.timezone patch failed")
+
+    try:
+        _add_column("bookings", "client_timezone", "VARCHAR(64) NULL")
+    except Exception:
+        logger.exception("bookings.client_timezone patch failed")
+
     for column, ddl in (
         ("color", "VARCHAR(7) NOT NULL DEFAULT '#7d5cff'"),
         ("icon", "VARCHAR(50) NULL"),

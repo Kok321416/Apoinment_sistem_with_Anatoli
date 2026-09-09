@@ -17,11 +17,130 @@
     var dayPanelTitle = document.getElementById("dayPanelTitle");
     var slotsUrl = root.dataset.slotsUrl || "";
     var todayStr = root.dataset.today || "";
+    var calendarTz = root.dataset.calendarTz || "Asia/Irkutsk";
+    var calendarTzLabel = root.dataset.calendarTzLabel || calendarTz;
+    var clientTzEl = document.getElementById("client_timezone");
+    var viewerTzHint = document.getElementById("viewerTzHint");
+    var viewerTz = "";
+    try {
+        viewerTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    } catch (e) {
+        viewerTz = "";
+    }
+    if (clientTzEl && viewerTz) {
+        clientTzEl.value = viewerTz;
+    }
+    if (viewerTzHint && viewerTz && viewerTz !== calendarTz) {
+        viewerTzHint.hidden = false;
+        viewerTzHint.textContent =
+            "Ваш пояс: " + viewerTz + ". Ниже у выбранного слота будет показано ваше локальное время.";
+    }
     var weeklyWindows = {};
     try {
         weeklyWindows = JSON.parse(root.dataset.weeklyWindows || "{}");
     } catch (e) {
         weeklyWindows = {};
+    }
+
+    function formatInTz(dateStr, timeStr, timeZone) {
+        if (!dateStr || !timeStr || !timeZone) return "";
+        try {
+            var iso = dateStr + "T" + timeStr + ":00";
+            // Interpret wall-clock in calendar TZ via temporal offset trick:
+            // build Instant by formatting parts in calendar zone is hard without libs;
+            // use Date with explicit offset from Intl when possible.
+            var probe = new Date(iso + "Z");
+            if (isNaN(probe.getTime())) return "";
+            // Better: use Intl with formatToParts on a Date constructed from UTC guess then adjust.
+            // Simpler approach for modern browsers: Temporal if available, else approximate via
+            // locale string parsing of the calendar-local instant.
+            var formatter = new Intl.DateTimeFormat("en-US", {
+                timeZone: calendarTz,
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+            });
+            // Find UTC ms such that calendarTz wall clock matches dateStr/timeStr.
+            var target = dateStr + " " + timeStr;
+            var guess = Date.parse(dateStr + "T" + timeStr + ":00Z");
+            if (isNaN(guess)) return "";
+            var best = guess;
+            for (var i = 0; i < 3; i++) {
+                var parts = formatter.formatToParts(new Date(best));
+                var map = {};
+                parts.forEach(function (p) {
+                    if (p.type !== "literal") map[p.type] = p.value;
+                });
+                var got =
+                    map.year +
+                    "-" +
+                    map.month +
+                    "-" +
+                    map.day +
+                    " " +
+                    map.hour.replace(/^24$/, "00") +
+                    ":" +
+                    map.minute;
+                var wantY = parseInt(dateStr.slice(0, 4), 10);
+                var wantM = parseInt(dateStr.slice(5, 7), 10);
+                var wantD = parseInt(dateStr.slice(8, 10), 10);
+                var wantH = parseInt(timeStr.slice(0, 2), 10);
+                var wantMin = parseInt(timeStr.slice(3, 5), 10);
+                var gotY = parseInt(map.year, 10);
+                var gotM = parseInt(map.month, 10);
+                var gotD = parseInt(map.day, 10);
+                var gotH = parseInt(map.hour.replace(/^24$/, "00"), 10);
+                var gotMin = parseInt(map.minute, 10);
+                var deltaMin =
+                    ((wantY - gotY) * 525600 +
+                        (wantM - gotM) * 43800 +
+                        (wantD - gotD) * 1440 +
+                        (wantH - gotH) * 60 +
+                        (wantMin - gotMin));
+                best += deltaMin * 60 * 1000;
+                if (got === target || Math.abs(deltaMin) < 1) break;
+            }
+            var outFmt = new Intl.DateTimeFormat("ru-RU", {
+                timeZone: timeZone,
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+            });
+            return outFmt.format(new Date(best)).replace(",", "");
+        } catch (err) {
+            return "";
+        }
+    }
+
+    function updateReviewDual() {
+        var review = document.getElementById("bookReviewText");
+        if (!review || !dateEl.value || !timeEl.value) return;
+        var base =
+            "Услуга, дата и время специалиста: " +
+            dateEl.value +
+            " " +
+            timeEl.value +
+            (endEl.value ? "–" + endEl.value : "") +
+            " (" +
+            calendarTzLabel +
+            ")";
+        if (viewerTz && viewerTz !== calendarTz) {
+            var localStart = formatInTz(dateEl.value, timeEl.value, viewerTz);
+            var localEnd = endEl.value ? formatInTz(dateEl.value, endEl.value, viewerTz) : "";
+            if (localStart) {
+                base +=
+                    ". У вас: " +
+                    localStart +
+                    (localEnd ? "–" + localEnd : "") +
+                    " (" +
+                    viewerTz +
+                    ")";
+            }
+        }
+        review.textContent = base;
     }
 
     var monthNames = [
@@ -184,6 +303,10 @@
                         timeEl.value = s.start_time || "";
                         endEl.value = s.end_time || "";
                         submitBtn.disabled = false;
+                        var reviewBlock = document.getElementById("bookReview");
+                        if (reviewBlock) reviewBlock.hidden = false;
+                        updateReviewDual();
+                        setProgressStep(4);
                     });
                     slotsGrid.appendChild(btn);
                 });

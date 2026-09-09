@@ -406,6 +406,7 @@ async def specialist_calendar_book(
                 service_id = 0
         booking_time = (form.get("booking_time") or "").strip()
         booking_end = (form.get("booking_end_time") or "").strip()
+        client_timezone = (form.get("client_timezone") or "").strip()
         client_phone = (form.get("client_phone") or form.get("phone") or "").strip()
         if client_phone:
             request.session["pc_phone"] = client_phone
@@ -429,12 +430,14 @@ async def specialist_calendar_book(
                 request.session.get("pc_telegram", ""),
                 client_user_id=(auth_user.id if auth_user else None),
                 consultant=consultant,
+                client_timezone=client_timezone or None,
             )
             if err:
                 error = err
             else:
                 from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
                 from app.services.diagnostics_service import touch_client_specialist_link
+                from app.services.site_timezone import format_dual_slot
 
                 booked_service = booking.service
                 show_diag = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
@@ -450,6 +453,10 @@ async def specialist_calendar_book(
                         await db.commit()
                     except Exception:
                         await db.rollback()
+                dual = format_dual_slot(booking)
+                viewer_line = ""
+                if dual.get("dual_line"):
+                    viewer_line = dual["dual_line"][0].upper() + dual["dual_line"][1:]
                 return templates.TemplateResponse(
                     "booking_success.html",
                     await page_context_async(
@@ -463,6 +470,7 @@ async def specialist_calendar_book(
                         back_url=f"/s/{slug}/",
                         show_diagnostics_cta=show_diag,
                         diagnostics_url=diag_url,
+                        booking_viewer_time_line=viewer_line,
                     ),
                 )
 

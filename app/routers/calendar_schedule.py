@@ -136,6 +136,7 @@ class CalendarSettingsBody(BaseModel):
     reminder_hours_second: int = 0
     reminder_first_enabled: bool = True
     reminder_second_enabled: bool = True
+    timezone: str | None = None
     csrf_token: str | None = None
 
 
@@ -360,6 +361,12 @@ async def update_calendar_settings(
     calendar.book_ahead_hours = max(0, body.book_ahead_hours)
     calendar.reminder_hours_first = body.reminder_hours_first if body.reminder_first_enabled else 0
     calendar.reminder_hours_second = body.reminder_hours_second if body.reminder_second_enabled else 0
+    if body.timezone is not None:
+        from app.services.site_timezone import normalize_timezone_name
+
+        tz = normalize_timezone_name(body.timezone)
+        if tz:
+            calendar.timezone = tz
     await db.commit()
     from app.services.response_cache import invalidate_calendar
 

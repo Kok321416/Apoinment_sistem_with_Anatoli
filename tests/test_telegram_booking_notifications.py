@@ -450,10 +450,11 @@ def test_reminders_use_booking_telegram_id():
     sent_to = []
     with patch.object(tg, "send_telegram_to_client", side_effect=lambda tid, text: sent_to.append(tid) or True):
         with patch.object(tg, "notify_dedup_enabled", return_value=False):
+            from datetime import timezone as dt_timezone
             from zoneinfo import ZoneInfo
 
-            tz = ZoneInfo("Europe/Moscow")
-            now = datetime.combine(day, time(11, 30), tzinfo=tz)
+            tz = ZoneInfo("Asia/Irkutsk")
+            now = datetime.combine(day, time(11, 30), tzinfo=tz).astimezone(dt_timezone.utc)
             with patch("app.services.telegram.datetime") as mock_dt:
                 mock_dt.now.return_value = now
                 mock_dt.combine = datetime.combine
@@ -485,10 +486,13 @@ def _reminder_booking(db, cal, svc, day, **kwargs):
 
 
 def _run_reminders_at(db, day, hour, minute, *, send_ok=True):
+    from datetime import timezone as dt_timezone
     from zoneinfo import ZoneInfo
 
-    tz = ZoneInfo("Europe/Moscow")
-    now = datetime.combine(day, time(hour, minute), tzinfo=tz)
+    # Wall-clock in calendar/site TZ (Asia/Irkutsk); convert to UTC for patched now.
+    tz = ZoneInfo("Asia/Irkutsk")
+    now_local = datetime.combine(day, time(hour, minute), tzinfo=tz)
+    now = now_local.astimezone(dt_timezone.utc)
     sent = []
 
     def _send(chat_id, text, bot_token=None, **kwargs):

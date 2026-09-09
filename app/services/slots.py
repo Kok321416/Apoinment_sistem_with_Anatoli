@@ -30,11 +30,9 @@ def _compute_available_slots(
 
     break_minutes = calendar.break_between_services_minutes or 0
     break_delta = timedelta(minutes=break_minutes)
-    from zoneinfo import ZoneInfo
+    from app.services.site_timezone import calendar_zoneinfo
 
-    from app.config import get_settings
-
-    tz = ZoneInfo(get_settings().timezone)
+    tz = calendar_zoneinfo(calendar)
     now = datetime.now(tz)
     ahead = calendar.book_ahead_hours
     book_ahead_hours = 24 if ahead is None else int(ahead)

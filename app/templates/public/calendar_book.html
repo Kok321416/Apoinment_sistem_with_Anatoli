@@ -13,6 +13,8 @@
     data-slots-url="/s/{{ slug }}/c/{{ calendar.id }}/slots/"
     data-weekly-windows='{{ weekly_windows_json|safe }}'
     data-today="{{ today }}"
+    data-calendar-tz="{{ calendar_timezone }}"
+    data-calendar-tz-label="{{ calendar_timezone_label }}"
 >
     <p class="text-caption"><a class="link-accent" href="/s/{{ slug }}/">← К профилю специалиста</a></p>
     <h1 class="book-cal-scene__title">{{ calendar.name }}</h1>
@@ -83,8 +85,11 @@
             <input type="hidden" name="booking_date" id="booking_date" value="" required>
             <input type="hidden" name="booking_time" id="booking_time" value="">
             <input type="hidden" name="booking_end_time" id="booking_end_time" value="">
+            <input type="hidden" name="client_timezone" id="client_timezone" value="">
             <div class="form-field mt-lg">
                 <span class="form-field__label">Свободное время</span>
+                <p class="form-field__hint">{{ calendar_timezone_hint }}</p>
+                <p class="form-field__hint" id="viewerTzHint" hidden></p>
                 <div id="slotsGrid" class="slots-grid" aria-live="polite"></div>
                 <p class="form-field__hint" id="slotsHint">Выберите услугу и день в календаре.</p>
             </div>
@@ -123,5 +128,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/public-calendar-book.js?v=9" defer></script>
+<script src="/static/js/public-calendar-book.js?v=10" defer></script>
 {% endblock %}

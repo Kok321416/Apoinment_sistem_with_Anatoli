@@ -75,6 +75,8 @@ class Calendar(Base):
     reminder_hours_first: Mapped[int] = mapped_column(Integer, default=24)
     reminder_hours_second: Mapped[int] = mapped_column(Integer, default=1)
     disabled_weekdays: Mapped[str] = mapped_column(String(32), default="")
+    # IANA zone for wall-clock slots (e.g. Asia/Irkutsk). Empty → site TIMEZONE.
+    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
 
     consultant = relationship("Consultant", back_populates="calendars")
     time_slots = relationship("TimeSlot", back_populates="calendar")
@@ -194,6 +196,8 @@ class Booking(Base):
     google_event_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # client = public funnel; specialist = created by specialist in cabinet
     source: Mapped[str | None] = mapped_column(String(32), nullable=True, default="client", server_default="client")
+    # IANA zone detected from client's browser at booking time (display only).
+    client_timezone: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
 
     service = relationship("Service", back_populates="bookings")
     calendar = relationship("Calendar", back_populates="bookings")

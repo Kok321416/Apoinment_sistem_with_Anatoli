@@ -1,7 +1,6 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -22,7 +21,6 @@ from app.services.telegram_copy import (
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-TIMEZONE_STR = "Europe/Moscow"
 
 _tg_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="tg-send")
 
@@ -500,10 +498,15 @@ def _unclaim_booking_flag(db: Session, booking_id: int, flag_name: str) -> None:
 
 
 def _send_reminders_body(db: Session) -> dict:
-    tz = ZoneInfo(settings.timezone)
-    now = datetime.now(tz)
+    from datetime import timezone as dt_timezone
+
+    from app.services.site_timezone import booking_starts_at, calendar_timezone_name
+
+    now_utc = datetime.now(dt_timezone.utc)
     sent = {"client_24": 0, "client_1": 0, "spec_24": 0, "spec_1": 0}
-    horizon = now.date() + timedelta(days=14)
+    # Horizon in calendar-local dates: use UTC date ±1 as safe window bounds.
+    horizon = now_utc.date() + timedelta(days=14)
+    past_floor = now_utc.date() - timedelta(days=1)
 
     bookings = (
         db.query(Booking)
@@ -515,23 +518,24 @@ def _send_reminders_body(db: Session) -> dict:
         )
         .filter(
             Booking.status.in_(["pending", "confirmed"]),
-            Booking.booking_date >= now.date(),
+            Booking.booking_date >= past_floor,
             Booking.booking_date <= horizon,
         )
         .all()
     )
     logger.info(
-        "send_reminders start tz=%s now=%s candidates=%s",
-        settings.timezone,
-        now.isoformat(),
+        "send_reminders start now_utc=%s candidates=%s",
+        now_utc.isoformat(),
         len(bookings),
     )
 
     for booking in bookings:
         if not booking.booking_time:
             continue
-        booking_dt = datetime.combine(booking.booking_date, booking.booking_time, tzinfo=tz)
-        delta_minutes = (booking_dt - now).total_seconds() / 60
+        booking_dt = booking_starts_at(booking)
+        if booking_dt is None:
+            continue
+        delta_minutes = (booking_dt.astimezone(dt_timezone.utc) - now_utc).total_seconds() / 60
         if delta_minutes <= 0:
             continue
         # Label by actual remaining time (config hours only select the window).
@@ -552,6 +556,16 @@ def _send_reminders_body(db: Session) -> dict:
         # 0 = reminder disabled in calendar settings; do not treat T-0 as a window.
         in_first = h1 > 0 and (h1 * 60 - win) <= delta_minutes <= (h1 * 60 + win)
         in_second = h2 > 0 and (h2 * 60 - win) <= delta_minutes <= (h2 * 60 + win)
+
+        if in_first or in_second:
+            logger.debug(
+                "reminder candidate booking=%s cal_tz=%s delta_min=%.1f in_first=%s in_second=%s",
+                booking.id,
+                calendar_timezone_name(booking.calendar),
+                delta_minutes,
+                in_first,
+                in_second,
+            )
 
         if in_first:
             if not booking.reminder_24h_sent:

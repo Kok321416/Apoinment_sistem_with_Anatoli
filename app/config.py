@@ -30,7 +30,7 @@ class Settings:
         h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()
     ]
     site_url: str = _site
-    timezone: str = os.getenv("TIMEZONE", "Europe/Moscow")
+    timezone: str = os.getenv("TIMEZONE", "Asia/Irkutsk")
 
     db_name: str | None = os.getenv("DB_NAME")
     db_user: str = os.getenv("DB_USER", "appointment_user")

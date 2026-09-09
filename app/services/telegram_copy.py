@@ -63,15 +63,9 @@ def _telegram_link(username: str) -> str:
 
 def booking_base_info(booking: Booking) -> dict[str, str]:
     """Escaped booking fields for templates."""
-    from app.config import get_settings
+    from app.services.site_timezone import format_dual_slot
 
-    time_str = booking.booking_time.strftime("%H:%M") if booking.booking_time else "-"
-    end_str = booking.booking_end_time.strftime("%H:%M") if booking.booking_end_time else ""
-    slot = f"{time_str}" + (f" - {end_str}" if end_str else "")
-    # Wall-clock times are stored in site timezone (default Europe/Moscow).
-    tz_name = (get_settings().timezone or "Europe/Moscow").strip()
-    tz_label = "МСК" if "Moscow" in tz_name else tz_name.split("/")[-1]
-    slot_with_tz = f"{slot} ({tz_label})" if slot != "-" else slot
+    dual = format_dual_slot(booking)
     service_name = booking.service.name if booking.service else "Консультация"
     duration = ""
     if booking.service and booking.service.duration_minutes:
@@ -82,14 +76,19 @@ def booking_base_info(booking: Booking) -> dict[str, str]:
         c = booking.calendar.consultant
         consultant_name = f"{c.first_name or ''} {c.last_name or ''}".strip() or c.email or consultant_name
     date_str = booking.booking_date.strftime("%d.%m.%Y") if booking.booking_date else "-"
+    viewer_line = ""
+    if dual["dual_line"]:
+        viewer_line = f"\n🕐 {dual['dual_line']}"
     return {
         "service_name": tg_escape(service_name),
         "date_str": tg_escape(date_str),
-        "slot": tg_escape(slot_with_tz),
+        "slot": tg_escape(dual["slot_with_tz"]),
         "duration": tg_escape(duration),
         "calendar_name": tg_escape(calendar_name),
         "consultant_name": tg_escape(consultant_name),
         "client_name": tg_escape(booking.client_name or "-"),
+        "tz_label": tg_escape(dual["tz_label"]),
+        "viewer_line": tg_escape(viewer_line) if viewer_line else "",
     }
 
 
@@ -107,7 +106,8 @@ def format_reminder_message(booking: Booking, hours_ahead: int) -> str:
         f"Через {label} у вас консультация.\n\n"
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
         f"📅 Дата: {info['date_str']}\n"
-        f"🕐 Время: {info['slot']}\n"
+        f"🕐 Время: {info['slot']}{info['viewer_line']}\n"
+        f"🌐 Пояс специалиста: {info['tz_label']}\n"
         f"👤 Специалист: {info['consultant_name']}\n"
         f"📍 Место: {info['calendar_name']}"
     )
@@ -128,6 +128,7 @@ def format_specialist_reminder_message(booking: Booking, hours_ahead: int) -> st
         f"📌 Услуга: {info['service_name']}{info['duration']}\n"
         f"📅 Дата: {info['date_str']}\n"
         f"🕐 Время: {info['slot']}\n"
+        f"🌐 Пояс: {info['tz_label']}\n"
         f"📍 Календарь: {info['calendar_name']}\n"
         f"📞 Контакт: {contact_str}"
     )

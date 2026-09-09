@@ -61,19 +61,24 @@ def test_reminder_copy_uses_hours():
         booking_end_time=time(11, 0),
         booking_date=date.today() + timedelta(days=1),
         service=SimpleNamespace(name="Консультация", duration_minutes=60),
-        calendar=SimpleNamespace(name="Основной", consultant=SimpleNamespace(first_name="Иван", last_name="Петров", email="a@b.c")),
+        calendar=SimpleNamespace(
+            name="Основной",
+            timezone="Asia/Irkutsk",
+            consultant=SimpleNamespace(first_name="Иван", last_name="Петров", email="a@b.c"),
+        ),
         client_name="Клиент",
         client_phone="+7000",
         client_telegram="",
         client_email="",
+        client_timezone=None,
     )
     msg = format_reminder_message(booking, 6)
     assert "6" in msg
     assert "24 часа" not in msg
-    assert "10:00" in msg and "МСК" in msg
+    assert "10:00" in msg and "Иркутск" in msg
     spec = format_specialist_reminder_message(booking, 6)
     assert "6" in spec
-    assert "МСК" in spec
+    assert "Иркутск" in spec
 
 
 def test_bot_api_rejects_raw_token_when_secret_set(monkeypatch):

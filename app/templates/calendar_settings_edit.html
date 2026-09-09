@@ -45,6 +45,16 @@
             <p class="form-field__hint">За сколько часов до консультации отправлять второе уведомление (например 1 = за час).</p>
         </div>
 
+        <div class="form-field">
+            <label class="form-field__label" for="timezone">Часовой пояс календаря</label>
+            <select class="input" id="timezone" name="timezone">
+                {% for tz_value, tz_label in calendar_timezone_choices %}
+                <option value="{{ tz_value }}"{% if (calendar.timezone or site_timezone) == tz_value %} selected{% endif %}>{{ tz_label }}</option>
+                {% endfor %}
+            </select>
+            <p class="form-field__hint">Слоты и напоминания считаются в этом поясе. Клиентам из других поясов система покажет их локальное время.</p>
+        </div>
+
         <button type="submit" class="btn btn--primary">Сохранить</button>
     </form>
 </section>
