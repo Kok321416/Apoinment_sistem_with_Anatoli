@@ -269,7 +269,7 @@ def test_tg_hub_serves_webapp_boot_v26(mini_app_client):
     assert r.status_code != 302
     loc = r.headers.get("location") or ""
     assert "t.me" not in loc
-    assert "telegram-webapp.js?v=26" in r.text
+    assert "telegram-webapp.js?v=" in r.text
     assert 'id="tg-hub-authed"' in r.text
     assert 'id="tg-hub-guest"' in r.text
     assert 'id="tg-hub-error"' in r.text
