@@ -94,7 +94,8 @@ async def test_ensure_diagnostics_tables_concurrent_calls_are_idempotent():
 
 
 @pytest.mark.asyncio
-async def test_ensure_diagnostics_tables_skips_ddl_when_already_ready():
+async def test_ensure_diagnostics_tables_skips_ddl_when_probe_ok():
+    """Process-wide ready flag alone is not enough — request bind is probed."""
     from app.services import diagnostics_service as ds
 
     ds.reset_diagnostics_ddl_ready_for_tests()
@@ -106,6 +107,8 @@ async def test_ensure_diagnostics_tables_skips_ddl_when_already_ready():
         poolclass=StaticPool,
     )
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
     with patch.object(ds, "_ensure_diagnostics_tables_on_session") as async_ddl:
         with patch("app.db_schema.ensure_diagnostics_schema") as sync_ensure:
@@ -114,6 +117,41 @@ async def test_ensure_diagnostics_tables_skips_ddl_when_already_ready():
             assert ok is True
             sync_ensure.assert_not_called()
             async_ddl.assert_not_called()
+
+    ds.reset_diagnostics_ddl_ready_for_tests()
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_ensure_recreates_when_flag_true_but_tables_missing_on_bind():
+    """Stale DDL-ready flag must not block creating tables on the async bind."""
+    from app.services import diagnostics_service as ds
+
+    ds.reset_diagnostics_ddl_ready_for_tests()
+    ds._mark_diagnostics_ddl_ready()
+
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        for table in ("diagnostic_attempts", "diagnostic_invitations", "client_specialist_links"):
+            await conn.execute(__import__("sqlalchemy").text(f"DROP TABLE IF EXISTS {table}"))
+
+    with patch("app.db_schema.ensure_diagnostics_schema", return_value=False):
+        async with session_factory() as db:
+            ok = await ds.ensure_diagnostics_write_ready(db)
+            assert ok is True
+
+    async with session_factory() as db:
+        from sqlalchemy import text
+
+        row = await db.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
+        names = {r[0] for r in row.fetchall()}
+        assert "diagnostic_attempts" in names
 
     ds.reset_diagnostics_ddl_ready_for_tests()
     await engine.dispose()

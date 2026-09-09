@@ -587,6 +587,8 @@ async def _require_logged_in_client(request: Request, consultant: Consultant, ne
 async def specialist_diagnostics_hub(
     request: Request, slug: str, db: AsyncSession = Depends(get_async_db)
 ):
+    from sqlalchemy.orm import selectinload
+
     from app.diagnostics.catalog import list_tests
     from app.services.diagnostics_service import (
         attempt_to_view,
@@ -602,32 +604,53 @@ async def specialist_diagnostics_hub(
     auth_user, redirect = await _require_logged_in_client(request, consultant, next_path, db)
     if redirect:
         return redirect
+
+    consultant_id = int(consultant.id)
+    session_may_be_dirty = False
     if auth_user.id != consultant.user_id:
         try:
             link = await touch_client_specialist_link(
                 db,
                 client_user_id=auth_user.id,
-                consultant_id=consultant.id,
+                consultant_id=consultant_id,
                 source="diagnostics",
             )
             if link is not None:
                 await db.commit()
+                session_may_be_dirty = True
         except Exception:
             logger.exception(
                 "touch_client_specialist_link failed slug=%s user=%s", slug, auth_user.id
             )
             await db.rollback()
-    attempts = []
+            session_may_be_dirty = True
+
+    attempts: list = []
     try:
         attempts = [
             attempt_to_view(a)
             for a in await list_attempts_for_client(
-                db, client_user_id=auth_user.id, consultant_id=consultant.id
+                db, client_user_id=auth_user.id, consultant_id=consultant_id
             )
         ]
     except Exception:
         logger.exception("list_attempts_for_client failed slug=%s user=%s", slug, auth_user.id)
-        await db.rollback()
+        session_may_be_dirty = True
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
+    # Rollback/commit above can expire ORM — reload before template (MissingGreenlet).
+    if session_may_be_dirty:
+        consultant = (
+            await db.execute(
+                select(Consultant)
+                .options(selectinload(Consultant.category))
+                .where(Consultant.id == consultant_id)
+            )
+        ).scalar_one()
+
     return templates.TemplateResponse(
         "public/diagnostics_hub.html",
         await page_context_async(

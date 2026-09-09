@@ -34,37 +34,56 @@ def reset_diagnostics_ddl_ready_for_tests() -> None:
 
 
 async def _probe_diagnostics_tables(db: AsyncSession) -> bool:
-    """Fast check — no DDL, no sync engine inspect."""
+    """Fast check on the request bind — SAVEPOINT so missing tables do not poison the session."""
     from sqlalchemy import text
 
     try:
-        await db.execute(text("SELECT 1 FROM diagnostic_attempts LIMIT 1"))
-        return True
+        try:
+            async with db.begin_nested():
+                await db.execute(text("SELECT 1 FROM diagnostic_attempts LIMIT 1"))
+                return True
+        except (ProgrammingError, OperationalError, DBAPIError) as nested_exc:
+            if _is_missing_diagnostics_table(nested_exc):
+                return False
+            raise
     except (ProgrammingError, OperationalError, DBAPIError) as exc:
         if _is_missing_diagnostics_table(exc):
-            await db.rollback()
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             return False
         raise
 
 
 async def ensure_diagnostics_tables(db: AsyncSession | None = None) -> bool:
-    """Create diagnostics tables on first use if deploy patches missed them."""
+    """Create diagnostics tables on first use if deploy patches missed them.
+
+    Prefer verifying/creating on the request AsyncSession bind. Sync engine ensure is a
+    fallback only — sync/async URLs can diverge and a process-wide ready flag must not
+    skip creating tables on the DB the request actually uses.
+    """
     global _DIAGNOSTICS_DDL_READY
-    if _DIAGNOSTICS_DDL_READY:
-        return True
 
     if db is not None:
         try:
             if await _probe_diagnostics_tables(db):
                 _mark_diagnostics_ddl_ready()
                 return True
+        except Exception:
+            logger.exception("diagnostics probe failed")
+
+        _DIAGNOSTICS_DDL_READY = False
+        try:
             ok = await _ensure_diagnostics_tables_on_session(db)
-            if ok:
+            if ok and await _probe_diagnostics_tables(db):
                 _mark_diagnostics_ddl_ready()
                 return True
         except Exception:
             logger.exception("ensure_diagnostics_tables async ddl failed")
-            return False
+
+    if _DIAGNOSTICS_DDL_READY and db is None:
+        return True
 
     from app.db_schema import ensure_diagnostics_schema
 
@@ -74,13 +93,27 @@ async def ensure_diagnostics_tables(db: AsyncSession | None = None) -> bool:
     except Exception:
         logger.exception("ensure_diagnostics_tables sync failed")
 
+    if ok and db is not None:
+        try:
+            if await _probe_diagnostics_tables(db):
+                _mark_diagnostics_ddl_ready()
+                return True
+            # Sync create succeeded on another bind — still missing on request DB.
+            logger.error(
+                "diagnostics tables exist on sync engine but not on async session bind"
+            )
+            return False
+        except Exception:
+            logger.exception("diagnostics post-sync probe failed")
+            return False
+
     if ok:
         _mark_diagnostics_ddl_ready()
     return ok
 
 
 async def ensure_diagnostics_write_ready(db: AsyncSession) -> bool:
-    """Ensure diagnostics tables exist before saving an attempt."""
+    """Ensure diagnostics tables exist on the request DB before saving."""
     return await ensure_diagnostics_tables(db)
 
 
@@ -94,6 +127,9 @@ async def _ensure_diagnostics_tables_on_session(db: AsyncSession) -> bool:
 
     conn = await db.connection()
     await conn.run_sync(_create)
+    # SQLite keeps DDL in the session transaction; without commit tables vanish on close.
+    # MySQL DDL usually auto-commits; an extra commit here is still safe.
+    await db.commit()
     return True
 
 
@@ -424,6 +460,11 @@ async def start_attempt(
 async def list_attempts_for_client(
     db: AsyncSession, *, client_user_id: int, consultant_id: int | None = None
 ) -> list[DiagnosticAttempt]:
+    """Load completed attempts for a client.
+
+    Prefer SAVEPOINT so a missing diagnostics table does not ``rollback()`` the
+    whole request session (that expires ORM instances → MissingGreenlet in templates).
+    """
     q = select(DiagnosticAttempt).where(
         DiagnosticAttempt.client_user_id == client_user_id,
         DiagnosticAttempt.status == "completed",
@@ -432,10 +473,19 @@ async def list_attempts_for_client(
         q = q.where(DiagnosticAttempt.consultant_id == consultant_id)
     q = q.order_by(DiagnosticAttempt.completed_at.desc())
     try:
-        return list((await db.execute(q)).scalars().all())
+        try:
+            async with db.begin_nested():
+                return list((await db.execute(q)).scalars().all())
+        except (ProgrammingError, OperationalError, DBAPIError) as nested_exc:
+            if _skip_diagnostics_read_on_missing_table(nested_exc):
+                return []
+            raise
     except (ProgrammingError, OperationalError, DBAPIError) as exc:
         if _skip_diagnostics_read_on_missing_table(exc):
-            await db.rollback()
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             return []
         raise
 
@@ -487,34 +537,53 @@ async def list_attempts_for_card(
         .order_by(DiagnosticAttempt.completed_at.desc())
     )
     try:
-        rows = list((await db.execute(q)).scalars().all())
+        try:
+            async with db.begin_nested():
+                rows = list((await db.execute(q)).scalars().all())
+        except (ProgrammingError, OperationalError, DBAPIError) as nested_exc:
+            if _skip_diagnostics_read_on_missing_table(nested_exc):
+                return []
+            raise
     except (ProgrammingError, OperationalError, DBAPIError) as exc:
         if _skip_diagnostics_read_on_missing_table(exc):
-            await db.rollback()
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             return []
         raise
 
-    # Backfill card link so later CRM views stay stable.
+    # Backfill card link so later CRM views stay stable (no full-session poison on failure).
+    dirty = False
     for attempt in rows:
         if not attempt.client_card_id:
             attempt.client_card_id = client_card_id
+            dirty = True
         if card.client_user_id is None and attempt.client_user_id:
             card.client_user_id = attempt.client_user_id
-    try:
-        await db.commit()
-    except Exception:
-        await db.rollback()
-        logger.exception(
-            "list_attempts_for_card backfill failed consultant=%s card=%s",
-            consultant_id,
-            client_card_id,
-        )
-        # Re-read without mutating if commit failed.
+            dirty = True
+    if dirty:
         try:
-            rows = list((await db.execute(q)).scalars().all())
+            await db.commit()
         except Exception:
-            await db.rollback()
-            return []
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            logger.exception(
+                "list_attempts_for_card backfill failed consultant=%s card=%s",
+                consultant_id,
+                client_card_id,
+            )
+            try:
+                async with db.begin_nested():
+                    rows = list((await db.execute(q)).scalars().all())
+            except Exception:
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+                return []
     return rows
 
 

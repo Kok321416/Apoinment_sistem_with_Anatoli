@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Request
@@ -31,6 +32,7 @@ from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has
 from app.templating import page_context_async, templates
 from app.utils.safe_redirect import login_url_with_next, safe_next_url
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["diagnostics"])
 
 
@@ -263,15 +265,24 @@ async def api_create_invite(request: Request, db: AsyncSession = Depends(get_asy
         if not card:
             return JSONResponse({"ok": False, "error": "card"}, status_code=404)
         client_user_id = card.client_user_id
-    inv, raw = await create_invitation(
-        db,
-        consultant_id=cons.id,
-        created_by_user_id=user.id,
-        client_user_id=client_user_id,
-        client_card_id=card_id_i,
-        test_codes=payload.get("test_codes") or [],
-    )
-    await db.commit()
+    from app.services.diagnostics_service import ensure_diagnostics_write_ready
+
+    try:
+        if not await ensure_diagnostics_write_ready(db):
+            return JSONResponse({"ok": False, "error": "schema"}, status_code=503)
+        inv, raw = await create_invitation(
+            db,
+            consultant_id=cons.id,
+            created_by_user_id=user.id,
+            client_user_id=client_user_id,
+            client_card_id=card_id_i,
+            test_codes=payload.get("test_codes") or [],
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        logger.exception("diagnostics invite create failed user=%s", user.id)
+        return JSONResponse({"ok": False, "error": "save"}, status_code=500)
     from app.config import get_settings
 
     base = get_settings().site_url.rstrip("/")
