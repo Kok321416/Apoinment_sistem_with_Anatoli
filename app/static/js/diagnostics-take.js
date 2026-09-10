@@ -11,13 +11,24 @@
     var submitting = false;
 
     function slideAnswered(slide) {
-        var radios = slide.querySelectorAll('input[type="radio"]');
-        for (var i = 0; i < radios.length; i++) {
-            if (radios[i].checked) {
-                return true;
+        if (slide.hasAttribute("hidden") && !slide.classList.contains("is-active")) {
+            return true;
+        }
+        var requiredRadios = slide.querySelectorAll('input[type="radio"][data-step-required]');
+        var names = {};
+        for (var i = 0; i < requiredRadios.length; i++) {
+            var name = requiredRadios[i].name;
+            names[name] = names[name] || false;
+            if (requiredRadios[i].checked) {
+                names[name] = true;
             }
         }
-        return false;
+        for (var key in names) {
+            if (Object.prototype.hasOwnProperty.call(names, key) && !names[key]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     function allSlidesAnswered() {

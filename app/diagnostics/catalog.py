@@ -5,8 +5,10 @@ Item banks cite published adaptations; operators must ensure licensing for produ
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable
+
+from app.diagnostics.interpretations import band_for_score, bands_for
 
 
 DISCLAIMER_RU = (
@@ -51,10 +53,21 @@ class ScaleDef:
 class ItemDef:
     id: str
     text: str
-    options: tuple[tuple[str, int], ...]  # value label → score contribution
+    options: tuple[tuple[str, Any], ...] = ()  # label → score or stored value
     reverse: bool = False
     scale_code: str = "total"
     image_url: str = ""
+    kind: str = "single"  # single | slider | optional_text
+    optional: bool = False
+    min_value: int = 1
+    max_value: int = 10
+    show_if_item: str = ""
+    show_if_values: tuple[str, ...] = ()
+    other_values: tuple[str, ...] = ()
+    other_placeholder: str = ""
+    slider_low: str = ""
+    slider_high: str = ""
+    slide_group: str = ""
 
 
 @dataclass
@@ -71,9 +84,11 @@ class TestDefinition:
     items: tuple[ItemDef, ...] = ()
     scales: tuple[ScaleDef, ...] = ()
     score_fn: Callable[[dict[str, Any], "TestDefinition"], dict[str, Any]] | None = None
-    viz: str = "bars"  # bars | bands | radar
+    viz: str = "bars"  # bars | bands | radar | answers
     attention_flags: tuple[str, ...] = ()
     requires_gender: bool = False
+    featured: bool = False
+    keep_answers: bool = False
 
     @property
     def runnable(self) -> bool:
@@ -83,8 +98,39 @@ class TestDefinition:
             return True
         return bool(self.items)
 
+    def wizard_slides(self) -> list[tuple["ItemDef", ...]]:
+        """Group items that share a wizard slide (optional notes stay on the parent)."""
+        slides: list[list[ItemDef]] = []
+        current_group: str | None = None
+        bucket: list[ItemDef] = []
+        for item in self.items:
+            if item.kind == "optional_text":
+                continue
+            group = item.slide_group or item.id
+            if current_group is None or group != current_group:
+                if bucket:
+                    slides.append(bucket)
+                current_group = group
+                bucket = [item]
+            else:
+                bucket.append(item)
+        if bucket:
+            slides.append(bucket)
+        return [tuple(s) for s in slides]
 
-def _band_for(score: int, scale: ScaleDef) -> tuple[str, str]:
+
+def item_is_visible(item: ItemDef, answers: dict[str, Any]) -> bool:
+    if not getattr(item, "show_if_item", ""):
+        return True
+    raw = answers.get(item.show_if_item)
+    return str(raw or "") in {str(v) for v in (item.show_if_values or ())}
+
+
+def _band_for(score: int, scale: ScaleDef, *, test_code: str | None = None) -> tuple[str, str]:
+    if test_code:
+        found = band_for_score(test_code, scale.code, int(score))
+        if found:
+            return found
     for lo, hi, label, text in scale.bands:
         if lo <= score <= hi:
             return label, text
@@ -114,7 +160,7 @@ def score_sum_total(answers: dict[str, Any], test: TestDefinition) -> dict[str, 
     scale = test.scales[0] if test.scales else ScaleDef(
         code="total", title="Итог", min_score=0, max_score=total, bands=((0, total, "результат", ""),)
     )
-    label, interp = _band_for(total, scale)
+    label, interp = _band_for(total, scale, test_code=test.code)
     flags: list[str] = []
     if "crisis_high" in test.attention_flags and total >= scale.bands[-1][0]:
         flags.append("attention_high")
@@ -163,7 +209,7 @@ def _score_likert_scales(
     scales_out = []
     for code, scale in scale_by_code.items():
         score = totals.get(code, 0)
-        label, interp = _band_for(score, scale)
+        label, interp = _band_for(score, scale, test_code=test.code)
         scales_out.append(
             {
                 "code": code,
@@ -222,7 +268,7 @@ def _score_yes_no_scales(
     scales_out = []
     for code, scale in scale_by_code.items():
         score = totals.get(code, 0)
-        label, interp = _band_for(score, scale)
+        label, interp = _band_for(score, scale, test_code=test.code)
         scales_out.append(
             {
                 "code": code,
@@ -333,7 +379,7 @@ def score_bhs(answers: dict[str, Any], test: TestDefinition) -> dict[str, Any]:
             total += 1
         detail.append({"item_id": f"i{i}", "answered_true": answered_true, "keyed": keyed})
     scale = test.scales[0]
-    label, interp = _band_for(total, scale)
+    label, interp = _band_for(total, scale, test_code=test.code)
     flags = []
     if total >= 15:
         flags.append("attention_high")
@@ -386,36 +432,7 @@ BHS = TestDefinition(
             title="Безнадёжность",
             min_score=0,
             max_score=20,
-            bands=(
-                (
-                    0,
-                    3,
-                    "минимальная",
-                    "Суммарный балл в диапазоне минимальной безнадёжности (Beck Hopelessness Scale). "
-                    "Взгляд на будущее в целом не выглядит резко пессимистичным по этой шкале.",
-                ),
-                (
-                    4,
-                    8,
-                    "лёгкая",
-                    "Лёгкая выраженность безнадёжности. Имеет смысл обратить внимание на ожидания от будущего "
-                    "и при желании обсудить это с психологом.",
-                ),
-                (
-                    9,
-                    14,
-                    "умеренная",
-                    "Умеренная безнадёжность по шкале Бека. Рекомендуется обсуждение со специалистом; "
-                    "высокий пессимизм относительно будущего связан с риском ухудшения состояния.",
-                ),
-                (
-                    15,
-                    20,
-                    "выраженная",
-                    "Высокий показатель безнадёжности. Рекомендуется обратиться за профессиональной поддержкой "
-                    "в ближайшее время.",
-                ),
-            ),
+            bands=bands_for("bhs", "total"),
         ),
     ),
     score_fn=score_bhs,
@@ -493,35 +510,7 @@ BDI = TestDefinition(
             title="Депрессия (BDI)",
             min_score=0,
             max_score=63,
-            bands=(
-                (
-                    0,
-                    9,
-                    "минимальная",
-                    "Суммарный балл в диапазоне минимальной выраженности симптомов по классической шкале BDI "
-                    "(Beck et al.). Это скрининг настроения, а не диагноз депрессии.",
-                ),
-                (
-                    10,
-                    18,
-                    "лёгкая",
-                    "Лёгкая выраженность симптомов по BDI. Может отражать временное снижение фона настроения; "
-                    "полезно обсудить с психологом, если состояние сохраняется.",
-                ),
-                (
-                    19,
-                    29,
-                    "умеренная",
-                    "Умеренная выраженность по BDI. Рекомендуется обсуждение со специалистом и оценка динамики "
-                    "самочувствия.",
-                ),
-                (
-                    30,
-                    63,
-                    "выраженная",
-                    "Высокий суммарный балл по BDI. Рекомендуется обратиться за профессиональной помощью.",
-                ),
-            ),
+            bands=bands_for("bdi", "total"),
         ),
     ),
     score_fn=score_sum_total,
@@ -603,35 +592,7 @@ BAI = TestDefinition(
             title="Тревога (BAI)",
             min_score=0,
             max_score=63,
-            bands=(
-                (
-                    0,
-                    7,
-                    "минимальная",
-                    "Суммарный балл в диапазоне минимальной тревоги по руководству BAI (Beck & Steer, 1993). "
-                    "Симптомы тревоги по этой шкале выражены слабо.",
-                ),
-                (
-                    8,
-                    15,
-                    "лёгкая",
-                    "Лёгкая выраженность тревоги по BAI. Имеет смысл отслеживать самочувствие и при сохранении "
-                    "симптомов обсудить их с психологом.",
-                ),
-                (
-                    16,
-                    25,
-                    "умеренная",
-                    "Умеренная выраженность тревоги по BAI. Рекомендуется обсуждение со специалистом; "
-                    "шкала отражает субъективную и соматическую тревогу за неделю.",
-                ),
-                (
-                    26,
-                    63,
-                    "выраженная",
-                    "Высокая выраженность тревоги по BAI. Рекомендуется обратиться за профессиональной поддержкой.",
-                ),
-            ),
+            bands=bands_for("bai", "total"),
         ),
     ),
     score_fn=score_sum_total,
@@ -648,21 +609,15 @@ _WCQ_OPTS = (
     ("Умеренно характерно", 2),
     ("Очень характерно", 3),
 )
-_WCQ_SCALE_BANDS = (
-    (0, 3, "низкая", "Этот способ совладания используется редко."),
-    (4, 6, "умеренная", "Способ используется иногда, в умеренной степени."),
-    (7, 9, "повышенная", "Способ используется часто — одна из привычных стратегий."),
-    (10, 12, "выраженная", "Способ используется очень часто как ведущая стратегия совладания."),
-)
 _WCQ_SCALES = {
-    "confront": ScaleDef("confront", "Конфронтация", 0, 12, _WCQ_SCALE_BANDS),
-    "distance": ScaleDef("distance", "Дистанцирование", 0, 12, _WCQ_SCALE_BANDS),
-    "control": ScaleDef("control", "Самоконтроль", 0, 12, _WCQ_SCALE_BANDS),
-    "support": ScaleDef("support", "Поиск поддержки", 0, 12, _WCQ_SCALE_BANDS),
-    "accept": ScaleDef("accept", "Принятие ответственности", 0, 12, _WCQ_SCALE_BANDS),
-    "escape": ScaleDef("escape", "Избегание", 0, 12, _WCQ_SCALE_BANDS),
-    "plan": ScaleDef("plan", "Планирование", 0, 12, _WCQ_SCALE_BANDS),
-    "reappraise": ScaleDef("reappraise", "Переоценка", 0, 12, _WCQ_SCALE_BANDS),
+    "confront": ScaleDef("confront", "Конфронтация", 0, 12, bands_for("wcq", "confront")),
+    "distance": ScaleDef("distance", "Дистанцирование", 0, 12, bands_for("wcq", "distance")),
+    "control": ScaleDef("control", "Самоконтроль", 0, 12, bands_for("wcq", "control")),
+    "support": ScaleDef("support", "Поиск поддержки", 0, 12, bands_for("wcq", "support")),
+    "accept": ScaleDef("accept", "Принятие ответственности", 0, 12, bands_for("wcq", "accept")),
+    "escape": ScaleDef("escape", "Избегание", 0, 12, bands_for("wcq", "escape")),
+    "plan": ScaleDef("plan", "Планирование", 0, 12, bands_for("wcq", "plan")),
+    "reappraise": ScaleDef("reappraise", "Переоценка", 0, 12, bands_for("wcq", "reappraise")),
 }
 _WCQ_ITEMS_DATA: tuple[tuple[str, str], ...] = (
     ("confront", "Я стараюсь отстаивать свою позицию, даже если это вызывает спор."),
@@ -741,22 +696,17 @@ WCQ = TestDefinition(
 
 # ── Schmischek accentuations (краткая форма, 40 пунктов) ───────────────────
 
-_SHMI_SCALE_BANDS = (
-    (0, 1, "низкая", "Черта выражена слабо, акцентуация по этой шкале не проявляется."),
-    (2, 2, "умеренная", "Умеренная выраженность черты — заметна, но не доминирует."),
-    (3, 4, "выраженная", "Выраженная акцентуация черты. Имеет смысл обсудить профиль с психологом."),
-)
 _SHMI_SCALES = {
-    "demo": ScaleDef("demo", "Демонстративность", 0, 4, _SHMI_SCALE_BANDS),
-    "ped": ScaleDef("ped", "Педантичность", 0, 4, _SHMI_SCALE_BANDS),
-    "stuck": ScaleDef("stuck", "Застревание", 0, 4, _SHMI_SCALE_BANDS),
-    "excit": ScaleDef("excit", "Возбудимость", 0, 4, _SHMI_SCALE_BANDS),
-    "hyper": ScaleDef("hyper", "Гипертимность", 0, 4, _SHMI_SCALE_BANDS),
-    "dyst": ScaleDef("dyst", "Дистимность", 0, 4, _SHMI_SCALE_BANDS),
-    "anx": ScaleDef("anx", "Тревожность", 0, 4, _SHMI_SCALE_BANDS),
-    "cycl": ScaleDef("cycl", "Циклотимность", 0, 4, _SHMI_SCALE_BANDS),
-    "emot": ScaleDef("emot", "Эмотивность", 0, 4, _SHMI_SCALE_BANDS),
-    "exalt": ScaleDef("exalt", "Экзальтированность", 0, 4, _SHMI_SCALE_BANDS),
+    "demo": ScaleDef("demo", "Демонстративность", 0, 4, bands_for("schmischek", "demo")),
+    "ped": ScaleDef("ped", "Педантичность", 0, 4, bands_for("schmischek", "ped")),
+    "stuck": ScaleDef("stuck", "Застревание", 0, 4, bands_for("schmischek", "stuck")),
+    "excit": ScaleDef("excit", "Возбудимость", 0, 4, bands_for("schmischek", "excit")),
+    "hyper": ScaleDef("hyper", "Гипертимность", 0, 4, bands_for("schmischek", "hyper")),
+    "dyst": ScaleDef("dyst", "Дистимность", 0, 4, bands_for("schmischek", "dyst")),
+    "anx": ScaleDef("anx", "Тревожность", 0, 4, bands_for("schmischek", "anx")),
+    "cycl": ScaleDef("cycl", "Циклотимность", 0, 4, bands_for("schmischek", "cycl")),
+    "emot": ScaleDef("emot", "Эмотивность", 0, 4, bands_for("schmischek", "emot")),
+    "exalt": ScaleDef("exalt", "Экзальтированность", 0, 4, bands_for("schmischek", "exalt")),
 }
 _SHMI_ITEMS_DATA: tuple[tuple[str, str], ...] = (
     ("demo", "Мне нравится быть в центре внимания."),
@@ -847,11 +797,13 @@ SCHMISCHEK = TestDefinition(
 # ── СОП / OSOP (А. Н. Орел) — gender variants in tests/sop.py ───────────────
 
 from app.diagnostics.tests.sop import OSOP, build_osop_test, score_sop  # noqa: E402
+from app.diagnostics.tests.client_status import CLIENT_STATUS  # noqa: E402
 
 # Pending tests — catalog only until assets/keys are supplied.
 PENDING_TESTS: tuple = ()
 
 _REGISTRY: dict[str, TestDefinition] = {
+    CLIENT_STATUS.code: CLIENT_STATUS,
     BHS.code: BHS,
     BDI.code: BDI,
     BAI.code: BAI,

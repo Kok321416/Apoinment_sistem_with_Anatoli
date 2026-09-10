@@ -19,6 +19,7 @@ from app.diagnostics.catalog import (
     _band_for,
     compose_overall_interpretation,
 )
+from app.diagnostics.interpretations import bands_for
 
 _YES_NO = (("Да", 1), ("Нет", 0))
 
@@ -32,13 +33,6 @@ _SCALE_META: dict[str, tuple[str, int]] = {
     "delinquent": ("Склонность к делинквентному поведению", 25),
     "female_role": ("Принятие женской социальной роли", 35),
 }
-
-_BANDS = (
-    (0, 4, "низкая", "Показатель в зоне низких значений для данной шкалы."),
-    (5, 9, "умеренная", "Умеренная выраженность."),
-    (10, 14, "повышенная", "Повышенные значения — обратить внимание специалиста."),
-    (15, 99, "высокая", "Высокие значения по шкале."),
-)
 
 
 @lru_cache(maxsize=1)
@@ -63,7 +57,7 @@ def _scales_for(gender: str) -> tuple[ScaleDef, ...]:
     out = []
     for code in keys:
         title, max_s = _SCALE_META.get(code, (code, 30))
-        out.append(ScaleDef(code, title, 0, max_s, _BANDS))
+        out.append(ScaleDef(code, title, 0, max_s, bands_for("osop", code)))
     return tuple(out)
 
 
@@ -97,7 +91,7 @@ def score_sop(answers: dict[str, Any], test: TestDefinition) -> dict[str, Any]:
     scales_out = []
     for code, score in scores.items():
         scale = scale_defs[code]
-        label, interp = _band_for(score, scale)
+        label, interp = _band_for(score, scale, test_code="osop")
         scales_out.append(
             {
                 "code": code,

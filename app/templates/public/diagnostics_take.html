@@ -7,11 +7,11 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/booking.css?v=27">
-<link rel="stylesheet" href="/static/css/diagnostics.css?v=6">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=7">
 {% endblock %}
 
 {% block booking_content %}
-<div class="diag-page diag-take diag-wizard" id="diagWizard" data-total="{{ test.items|length }}">
+<div class="diag-page diag-take diag-wizard" id="diagWizard" data-total="{{ test.wizard_slides()|length }}">
     <p class="mb-lg"><a class="btn btn--ghost btn--sm" href="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/">← К инструкции</a></p>
 
     <form method="POST" action="/s/{{ public_slug }}/diagnostics/tests/{{ test.code }}/submit/" class="diag-form" id="diagTakeForm">
@@ -25,29 +25,72 @@
         {% endif %}
 
         <div class="diag-wizard__progress" aria-live="polite">
-            <p class="diag-wizard__counter text-body-sm">Вопрос <span id="diagQNum">1</span> из {{ test.items|length }}</p>
+            <p class="diag-wizard__counter text-body-sm">Вопрос <span id="diagQNum">1</span> из <span id="diagQTotal">{{ test.wizard_slides()|length }}</span></p>
             <div class="diag-wizard__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="diagProgressBar">
                 <span class="diag-wizard__bar-fill" id="diagProgressFill" style="width: 0%"></span>
             </div>
         </div>
 
         <div class="diag-wizard__slides">
-            {% for item in test.items %}
-            <section class="diag-wizard__slide card card--static{% if loop.first %} is-active{% endif %}" data-step="{{ loop.index0 }}" {% if not loop.first %}hidden{% endif %}>
-                {% if item.image_url %}
-                <figure class="diag-wizard__figure">
-                    <img src="{{ item.image_url }}" alt="Изображение для вопроса {{ loop.index }}" class="diag-wizard__img" loading="lazy">
-                </figure>
-                {% endif %}
-                <p class="diag-item__q"><span class="diag-item__n">{{ loop.index }}.</span> {{ item.text }}</p>
-                <div class="diag-item__opts" role="radiogroup" aria-label="Вопрос {{ loop.index }}">
-                    {% for label, val in item.options %}
-                    <label class="diag-opt">
-                        <input type="radio" name="{{ item.id }}" value="{{ val }}" required data-step-required>
-                        <span>{{ label }}</span>
-                    </label>
-                    {% endfor %}
+            {% for slide_items in test.wizard_slides() %}
+            {% set lead = slide_items[0] %}
+            <section
+                class="diag-wizard__slide card card--static{% if loop.first %} is-active{% endif %}"
+                data-step="{{ loop.index0 }}"
+                data-show-if-item="{{ lead.show_if_item }}"
+                data-show-if-values="{{ lead.show_if_values|join(',') }}"
+                {% if not loop.first %}hidden{% endif %}
+            >
+                {% for item in slide_items %}
+                <div class="diag-item" data-item-id="{{ item.id }}" data-kind="{{ item.kind }}">
+                    {% if item.image_url %}
+                    <figure class="diag-wizard__figure">
+                        <img src="{{ item.image_url }}" alt="Изображение для вопроса" class="diag-wizard__img" loading="lazy">
+                    </figure>
+                    {% endif %}
+                    <p class="diag-item__q">{{ item.text }}</p>
+                    {% if item.kind == 'slider' %}
+                    <div class="diag-slider">
+                        <input
+                            type="range"
+                            class="diag-slider__input"
+                            name="{{ item.id }}"
+                            id="{{ item.id }}"
+                            min="{{ item.min_value }}"
+                            max="{{ item.max_value }}"
+                            value="{{ item.min_value }}"
+                            required
+                            data-step-required
+                        >
+                        <div class="diag-slider__meta">
+                            <span>{{ item.slider_low or item.min_value }}</span>
+                            <strong class="diag-slider__value">{{ item.min_value }}</strong>
+                            <span>{{ item.slider_high or item.max_value }}</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="diag-item__opts" role="radiogroup" aria-label="{{ item.text }}">
+                        {% for label, val in item.options %}
+                        <label class="diag-opt">
+                            <input
+                                type="radio"
+                                name="{{ item.id }}"
+                                value="{{ val }}"
+                                {% if not item.optional %}required data-step-required{% endif %}
+                            >
+                            <span>{{ label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if item.other_values %}
+                    <div class="diag-other" data-other-for="{{ item.id }}" data-other-values="{{ item.other_values|join(',') }}" hidden>
+                        <label class="form-field__label" for="{{ item.id }}_note">{{ item.other_placeholder or 'Можете уточнить' }}</label>
+                        <textarea class="input diag-other__input" id="{{ item.id }}_note" name="{{ item.id }}_note" rows="3" placeholder="{{ item.other_placeholder }}"></textarea>
+                    </div>
+                    {% endif %}
                 </div>
+                {% endfor %}
             </section>
             {% endfor %}
         </div>
@@ -66,6 +109,6 @@
         </div>
     </div>
 </div>
-<script src="/static/js/diagnostics-wizard.js?v=1" defer></script>
-<script src="/static/js/diagnostics-take.js?v=3" defer></script>
+<script src="/static/js/diagnostics-wizard.js?v=2" defer></script>
+<script src="/static/js/diagnostics-take.js?v=4" defer></script>
 {% endblock %}

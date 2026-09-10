@@ -57,6 +57,11 @@ def reset_rate_limit(key: str) -> None:
     _buckets.pop(key, None)
 
 
+def clear_in_memory_rate_limits() -> None:
+    """Drop process-local buckets so pytest sessions do not leak login caps."""
+    _buckets.clear()
+
+
 def _prune_stale(now: float, *, window_sec: int) -> None:
     stale = [k for k, times in _buckets.items() if not times or now - times[-1] >= window_sec]
     for k in stale[: max(1, len(stale) // 2)]:

@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import DBAPIError, OperationalError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.diagnostics.catalog import DISCLAIMER_RU, get_test
+from app.diagnostics.catalog import DISCLAIMER_RU, get_test, item_is_visible
 from app.models import ClientCard, ClientSpecialistLink, Consultant, DiagnosticAttempt, DiagnosticInvitation
 from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
 
@@ -162,10 +162,15 @@ def hash_invite_token(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+import re
+
+_ANSWER_KEY = re.compile(r"^i\d+[a-z0-9_]*$")
+
+
 def parse_diagnostic_answers(form_items) -> dict[str, Any]:
     answers: dict[str, Any] = {}
     for key, val in form_items:
-        if key.startswith("i") and key[1:].isdigit():
+        if _ANSWER_KEY.match(key or ""):
             answers[key] = val
         elif key == "gender" and val is not None and str(val).strip():
             answers["gender"] = str(val).strip().lower()
@@ -175,7 +180,16 @@ def parse_diagnostic_answers(form_items) -> dict[str, Any]:
 def missing_answer_ids(test, answers: dict[str, Any]) -> list[str]:
     if not test or not test.items:
         return []
-    return [item.id for item in test.items if item.id not in answers]
+    missing = []
+    for item in test.items:
+        if getattr(item, "optional", False) or getattr(item, "kind", "single") == "optional_text":
+            continue
+        if not item_is_visible(item, answers):
+            continue
+        raw = answers.get(item.id)
+        if raw is None or str(raw).strip() == "":
+            missing.append(item.id)
+    return missing
 
 
 def score_test_answers(test, answers: dict[str, Any]) -> dict[str, Any]:
@@ -194,9 +208,11 @@ def build_preview_result(test, scored: dict[str, Any]) -> dict[str, Any]:
         "summary": scored.get("summary") or "",
         "scales": scored.get("scales") or [],
         "interpretation": interpretation,
+        "answer_rows": interpretation.get("answers") or [],
         "viz": test.viz,
         "disclaimer": interpretation.get("disclaimer") or DISCLAIMER_RU,
         "unsaved": True,
+        "featured": bool(getattr(test, "featured", False)),
     }
 
 
@@ -337,7 +353,10 @@ async def complete_attempt(
     attempt.interpretation_json = json.dumps(result.get("interpretation") or {}, ensure_ascii=False)
     attempt.summary_text = (result.get("summary") or "")[:2000]
     attempt.flags_json = json.dumps(result.get("flags") or [], ensure_ascii=False)
-    attempt.answers_json = "{}"  # store only aggregated result, not per-item answers
+    if getattr(test, "keep_answers", False):
+        attempt.answers_json = json.dumps(answers or {}, ensure_ascii=False)
+    else:
+        attempt.answers_json = "{}"  # store only aggregated result, not per-item answers
     attempt.status = "completed"
     attempt.completed_at = datetime.utcnow()
     await db.flush()
@@ -622,6 +641,13 @@ def attempt_to_view(attempt: DiagnosticAttempt) -> dict[str, Any]:
         flags = json.loads(attempt.flags_json or "[]")
     except json.JSONDecodeError:
         flags = []
+    try:
+        stored_answers = json.loads(attempt.answers_json or "{}")
+    except json.JSONDecodeError:
+        stored_answers = {}
+    if not isinstance(stored_answers, dict):
+        stored_answers = {}
+    interp_answers = interpretation.get("answers") or []
     return {
         "id": attempt.id,
         "test_code": attempt.test_code,
@@ -631,9 +657,13 @@ def attempt_to_view(attempt: DiagnosticAttempt) -> dict[str, Any]:
         "summary": attempt.summary_text,
         "scales": scales,
         "interpretation": interpretation,
+        "answers": interp_answers or stored_answers,
+        "answer_rows": interp_answers,
         "flags": flags,
         "viz": test.viz if test else "bars",
         "disclaimer": interpretation.get("disclaimer") or DISCLAIMER_RU,
+        "featured": bool(test and getattr(test, "featured", False)),
+        "keep_answers": bool(test and getattr(test, "keep_answers", False)),
     }
 
 

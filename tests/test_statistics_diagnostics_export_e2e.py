@@ -228,6 +228,7 @@ def test_diagnostics_delete_and_export_xlsx(stats_client):
     assert "Профиль" in wb.sheetnames
     assert "Диагностика — сводка" in wb.sheetnames
     assert "Шкалы" in wb.sheetnames
+    assert "Анамнез" in wb.sheetnames
     profile = wb["Профиль"]
     assert profile["B4"].value == "Иван Клиентов"
     summary = wb["Диагностика — сводка"]

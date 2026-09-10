@@ -22,6 +22,18 @@
         {% endfor %}
     </div>
     {% endif %}
+    {% set answer_rows = r.answer_rows or (r.interpretation.answers if r.interpretation else none) %}
+    {% if answer_rows %}
+    <div class="diag-answers mt-md">
+        {% for row in answer_rows %}
+        <div class="diag-answers__row">
+            <p class="diag-answers__q">{{ row.question }}</p>
+            <p class="diag-answers__a text-body">{{ row.answer or '—' }}</p>
+            {% if row.note %}<p class="diag-answers__note text-body-sm text-muted">{{ row.note }}</p>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
     <p class="text-body-sm text-muted mt-md">{{ r.disclaimer }}</p>
     <div class="diag-result__actions mt-lg">
         {% if r.id and show_detail_link | default(true) %}

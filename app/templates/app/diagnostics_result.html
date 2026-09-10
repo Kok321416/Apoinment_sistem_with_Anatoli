@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/diagnostics.css?v=2">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=7">
 {% endblock %}
 
 {% block app_content %}
@@ -26,6 +26,21 @@
         <div class="alert alert--warning mt-lg" role="status">{{ result.interpretation.crisis_hint }}</div>
         {% endif %}
         <p class="text-body-sm text-muted mt-lg">{{ result.disclaimer }}</p>
+    </section>
+    {% endif %}
+
+    {% if result.interpretation and result.interpretation.answers %}
+    <section class="card card--static mt-3xl">
+        <h2 class="text-h2">Ответы</h2>
+        <ul class="diag-answers">
+            {% for row in result.interpretation.answers %}
+            <li>
+                <p class="diag-answers__q">{{ row.question }}</p>
+                <p class="diag-answers__a">{{ row.answer or '—' }}</p>
+                {% if row.note %}<p class="diag-answers__note text-body-sm text-muted">{{ row.note }}</p>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
     </section>
     {% endif %}
 

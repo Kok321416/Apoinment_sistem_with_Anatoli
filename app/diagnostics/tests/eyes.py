@@ -14,6 +14,7 @@ from app.diagnostics.catalog import (
     TestDefinition,
     _band_for,
 )
+from app.diagnostics.interpretations import bands_for
 
 # correct option index (0-based) per item
 _EYES_KEYS: tuple[int, ...] = (2, 1, 3, 0, 2, 1, 3, 2, 0, 1, 2, 3)
@@ -71,7 +72,7 @@ def score_eyes(answers: dict[str, Any], test: TestDefinition) -> dict[str, Any]:
         if chosen == key_idx:
             correct += 1
     scale = test.scales[0]
-    label, interp = _band_for(correct, scale)
+    label, interp = _band_for(correct, scale, test_code=test.code)
     return {
         "scores": {"accuracy": correct},
         "scales": [
@@ -118,12 +119,7 @@ EYES = TestDefinition(
             title="Точность чтения эмоций",
             min_score=0,
             max_score=12,
-            bands=(
-                (0, 4, "низкая", "Результат ниже среднего для данной краткой формы."),
-                (5, 8, "средняя", "Результат в среднем диапазоне."),
-                (9, 10, "повышенная", "Хорошее распознавание эмоциональных состояний по глазам."),
-                (11, 12, "высокая", "Очень высокая точность в данной краткой форме."),
-            ),
+            bands=bands_for("eyes", "accuracy"),
         ),
     ),
     score_fn=score_eyes,

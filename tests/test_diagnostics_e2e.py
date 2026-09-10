@@ -317,6 +317,110 @@ def test_diagnostics_hub_and_submit_bai_with_interpretation(diagnostics_client):
     assert "Интерпретация" in detail.text
 
 
+def _submit_client_status(client: TestClient, csrf: str, **overrides) -> str:
+    data = {
+        "csrf_token": csrf,
+        "source": "profile",
+        "i1": "married",
+        "i2": "partner",
+        "i3": "7",
+        "i4": "anxiety",
+        "i5": "months",
+        "i6": "talk",
+        "i7": "one",
+        "i8": "rather_good",
+        "i9": "work",
+        "i9b": "6",
+        "i10": "rather_calm",
+        "i11": "rather_safe",
+        "i12": "close",
+        "i13": "no",
+        "i14": "no",
+        "i16": "anxiety",
+    }
+    data.update(overrides)
+    submit = client.post(
+        "/s/spec/diagnostics/tests/client_status/submit/",
+        data=data,
+        follow_redirects=False,
+    )
+    assert submit.status_code == 302, submit.text[:800]
+    loc = submit.headers.get("location") or ""
+    assert "/s/spec/diagnostics/results/" in loc, f"unexpected redirect: {loc}"
+    return loc
+
+
+def test_diagnostics_hub_features_client_status_and_saves_answers(diagnostics_client):
+    import asyncio
+
+    from sqlalchemy import select
+
+    from app.models import ClientCard, DiagnosticAttempt
+
+    client, consultant_id, client_user_id, _engine, session_factory, _prepare = diagnostics_client
+    _login_client(client)
+
+    hub = client.get("/s/spec/diagnostics/", follow_redirects=True)
+    assert hub.status_code == 200
+    assert "diag-card--featured" in hub.text
+    assert "Общий опрос по статусу" in hub.text
+    assert hub.text.find("Общий опрос по статусу") < hub.text.find(BHS.title)
+    assert "type=\"range\"" not in hub.text
+
+    take = client.get("/s/spec/diagnostics/tests/client_status/run/", follow_redirects=True)
+    assert take.status_code == 200, take.text[:500]
+    assert 'type="range"' in take.text
+    m = re.search(r'name="csrf_token"\s+value="([^"]+)"', take.text)
+    assert m
+    loc = _submit_client_status(client, m.group(1), i13="yes", i13_note="")
+
+    result = client.get(loc, follow_redirects=True)
+    assert result.status_code == 200, result.text[:500]
+    assert INTERPRETATION_LEAD_RU[:40] in result.text
+    assert "Как вы оцениваете своё состояние" in result.text
+    assert "Тревога" in result.text
+
+    async def _attempt():
+        async with session_factory() as db:
+            card = (
+                await db.execute(
+                    select(ClientCard).where(
+                        ClientCard.consultant_id == consultant_id,
+                        ClientCard.client_user_id == client_user_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            attempt = (
+                await db.execute(
+                    select(DiagnosticAttempt).where(
+                        DiagnosticAttempt.client_user_id == client_user_id,
+                        DiagnosticAttempt.test_code == "client_status",
+                    )
+                )
+            ).scalar_one_or_none()
+            return card, attempt
+
+    card, attempt = asyncio.run(_attempt())
+    assert card is not None
+    assert attempt is not None and attempt.status == "completed"
+    assert attempt.answers_json and attempt.answers_json != "{}"
+    assert '"i3"' in attempt.answers_json
+
+    with TestClient(client.app) as spec:
+        login_page = spec.get("/login/", follow_redirects=True)
+        csrf_m = re.search(r'name="csrf_token"\s+value="([^"]+)"', login_page.text)
+        assert csrf_m
+        spec.post(
+            "/login/",
+            data={"login": "spec@test.com", "password": "specpass", "csrf_token": csrf_m.group(1)},
+            follow_redirects=False,
+        )
+        crm = spec.get(f"/clients/{card.id}/#diagnostics", follow_redirects=True)
+        assert crm.status_code == 200
+        assert "Общий опрос по статусу" in crm.text
+        assert "Тревога" in crm.text or "состояние" in crm.text.lower()
+
+
 def test_diagnostics_flow_from_profile_link(diagnostics_client):
     client, _cid, _uid, *_ = diagnostics_client
     _login_client(client)

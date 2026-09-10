@@ -8,7 +8,7 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=12">
-<link rel="stylesheet" href="/static/css/diagnostics.css?v=2">
+<link rel="stylesheet" href="/static/css/diagnostics.css?v=7">
 {% endblock %}
 
 {% block app_content %}
@@ -42,7 +42,10 @@
         <h2 class="text-h2" id="diag-tests-title">Доступные тесты</h2>
         <div class="diag-grid">
             {% for t in tests %}
-            <article class="diag-card card card--static">
+            <article class="diag-card card card--static{% if t.featured %} diag-card--featured{% endif %}">
+                {% if t.featured %}
+                <p class="diag-card__badge">Сначала этот опрос</p>
+                {% endif %}
                 <h3 class="diag-card__title">{{ t.title }}</h3>
                 <p class="text-body-sm text-muted">{{ t.short_description }}</p>
                 <p class="diag-card__meta">~{{ t.duration_minutes }} мин

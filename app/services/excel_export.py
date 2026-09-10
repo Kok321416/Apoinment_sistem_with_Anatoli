@@ -263,6 +263,39 @@ def client_diagnostics_workbook(
     _autosize(scales_ws, max_width=40)
     scales_ws.freeze_panes = "A4"
 
+    answers_ws = wb.create_sheet("Анамнез")
+    answers_ws["A1"] = "Ответы опроса статуса"
+    answers_ws["A1"].font = _TITLE_FONT
+    answers_ws.merge_cells("A1:E1")
+    ans_headers = ["Дата", "Вопрос", "Ответ", "Уточнение", "Код"]
+    for i, h in enumerate(ans_headers, start=1):
+        answers_ws.cell(row=3, column=i, value=h)
+    _style_header_row(answers_ws, 3, len(ans_headers))
+    ans_row = 4
+    for r in results:
+        completed = r.get("completed_at")
+        if hasattr(completed, "strftime"):
+            completed = completed.strftime("%d.%m.%Y %H:%M")
+        interp = r.get("interpretation") or {}
+        rows = interp.get("answers") or r.get("answer_rows") or []
+        if not rows:
+            continue
+        for row in rows:
+            values = [
+                completed or "",
+                row.get("question") or "",
+                row.get("answer") or "",
+                row.get("note") or "",
+                row.get("id") or "",
+            ]
+            for c, val in enumerate(values, start=1):
+                answers_ws.cell(row=ans_row, column=c, value=val)
+            ans_row += 1
+    if ans_row > 4:
+        _style_body(answers_ws, 4, ans_row - 1, len(ans_headers))
+    _autosize(answers_ws, max_width=48)
+    answers_ws.freeze_panes = "A4"
+
     buf = BytesIO()
     wb.save(buf)
     return buf.getvalue()
