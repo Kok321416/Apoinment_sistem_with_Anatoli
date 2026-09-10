@@ -241,17 +241,23 @@ async def create_calendar_event(request: Request, db: AsyncSession = Depends(get
     except (TypeError, ValueError):
         return JSONResponse({"error": "Укажите календарь"}, status_code=400)
 
-    block, err = await create_calendar_block_async(
-        db,
-        consultant,
-        calendar_id=calendar_id,
-        title=(data.get("title") or "").strip(),
-        block_date=block_date,
-        start_time_str=(data.get("start_time") or data.get("booking_time") or "").strip(),
-        end_time_str=(data.get("end_time") or data.get("booking_end_time") or "").strip(),
-        notes=(data.get("notes") or "").strip(),
-        created_by_user_id=user.id,
-    )
+    try:
+        block, err = await create_calendar_block_async(
+            db,
+            consultant,
+            calendar_id=calendar_id,
+            title=(data.get("title") or "").strip(),
+            block_date=block_date,
+            start_time_str=(data.get("start_time") or data.get("booking_time") or "").strip(),
+            end_time_str=(data.get("end_time") or data.get("booking_end_time") or "").strip(),
+            notes=(data.get("notes") or "").strip(),
+            created_by_user_id=user.id,
+        )
+    except Exception as exc:
+        return JSONResponse(
+            {"error": f"Не удалось создать мероприятие: {type(exc).__name__}: {exc}"},
+            status_code=500,
+        )
     if err or not block:
         return JSONResponse({"error": err or "Не удалось создать мероприятие"}, status_code=400)
 
