@@ -220,6 +220,10 @@ async def create_calendar_block_async(
     notes: str = "",
     created_by_user_id: int | None = None,
 ) -> tuple[CalendarBlock | None, str | None]:
+    from app.db_schema import ensure_calendar_blocks_schema
+
+    ensure_calendar_blocks_schema()
+
     title = (title or "").strip()
     if not title:
         return None, "Укажите название мероприятия"

@@ -301,6 +301,11 @@ def _apply_app_schema_patches() -> None:
         logger.exception("bookings.source backfill failed")
 
     try:
+        ensure_calendar_blocks_schema()
+    except Exception:
+        logger.exception("calendar_blocks schema ensure failed")
+
+    try:
         from app.models import platform as platform_models
 
         Base.metadata.create_all(
@@ -404,6 +409,83 @@ def ensure_email_auth_schema() -> None:
         )
     except Exception:
         logger.exception("email auth schema ensure failed")
+
+
+def ensure_calendar_blocks_schema(bind=None) -> bool:
+    """Create calendar_blocks if missing (FK-free DDL fallback for shared hosting)."""
+    bind = bind or engine
+    table = core_models.CalendarBlock.__table__
+    try:
+        insp = inspect(bind)
+        if insp.has_table(table.name):
+            return True
+        try:
+            Base.metadata.create_all(bind=bind, tables=[table])
+        except Exception:
+            logger.exception("create_all failed for calendar_blocks")
+        insp = inspect(bind)
+        if insp.has_table(table.name):
+            logger.info("calendar_blocks table ready via create_all")
+            return True
+        dialect = getattr(getattr(bind, "dialect", None), "name", "") or ""
+        ddl = """
+        CREATE TABLE IF NOT EXISTS calendar_blocks (
+            id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            calendar_id INT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            notes TEXT NULL,
+            block_date DATE NOT NULL,
+            start_time TIME NOT NULL,
+            end_time TIME NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'active',
+            created_by_user_id INT NULL,
+            created_at DATETIME NULL,
+            updated_at DATETIME NULL,
+            KEY ix_calendar_blocks_calendar_id (calendar_id),
+            KEY ix_calendar_blocks_block_date (block_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+        from sqlalchemy.engine import Engine
+
+        def _run(conn) -> None:
+            if dialect == "sqlite":
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS calendar_blocks (
+                            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                            calendar_id INTEGER NOT NULL,
+                            title VARCHAR(255) NOT NULL,
+                            notes TEXT NULL,
+                            block_date DATE NOT NULL,
+                            start_time TIME NOT NULL,
+                            end_time TIME NOT NULL,
+                            status VARCHAR(20) NOT NULL DEFAULT 'active',
+                            created_by_user_id INTEGER NULL,
+                            created_at DATETIME NULL,
+                            updated_at DATETIME NULL
+                        )
+                        """
+                    )
+                )
+            else:
+                conn.execute(text(ddl))
+
+        if isinstance(bind, Engine):
+            with bind.begin() as conn:
+                _run(conn)
+        else:
+            _run(bind)
+        insp = inspect(bind)
+        ok = insp.has_table(table.name)
+        if ok:
+            logger.info("calendar_blocks table ready via raw DDL")
+        else:
+            logger.error("calendar_blocks still missing after raw DDL")
+        return ok
+    except Exception:
+        logger.exception("ensure_calendar_blocks_schema failed")
+        return False
 
 
 def ensure_diagnostics_schema(bind=None) -> bool:
@@ -562,6 +644,10 @@ def ensure_all_schema() -> None:
         ensure_diagnostics_schema()
     except Exception:
         logger.exception("diagnostics schema ensure failed")
+    try:
+        ensure_calendar_blocks_schema()
+    except Exception:
+        logger.exception("calendar_blocks schema ensure failed")
     # Deploy/migrate runs in a single process — no MySQL lock (avoids self-deadlock).
     ensure_schema_patches(use_lock=False)
     _refresh_schema_health()
