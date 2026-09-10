@@ -16,6 +16,11 @@ from app.services.bookings import (
     search_client_cards_async,
     serialize_client_card_match,
 )
+from app.services.calendar_blocks import (
+    cancel_calendar_block_async,
+    create_calendar_block_async,
+    serialize_block,
+)
 from app.services.slots import get_available_slots_async
 
 router = APIRouter(prefix="/api/specialist", tags=["specialist-booking"])
@@ -212,3 +217,69 @@ async def create_booking(request: Request, db: AsyncSession = Depends(get_async_
             "calendar": booking.calendar.name if booking.calendar else None,
         },
     }
+
+
+@router.post("/events/")
+async def create_calendar_event(request: Request, db: AsyncSession = Depends(get_async_db)):
+    """Create a calendar block (мероприятие) that occupies time."""
+    user = await _require_user(request, db)
+    if not user:
+        return JSONResponse({"error": "Требуется вход"}, status_code=401)
+    consultant = await require_specialist_mode_async(request, db, user)
+    data = await request.json()
+    csrf = data.get("csrf_token") or request.headers.get("X-CSRF-Token")
+    if not validate_csrf_token(request, csrf):
+        return JSONResponse({"error": "Ошибка безопасности (CSRF)"}, status_code=403)
+
+    try:
+        block_date = date.fromisoformat((data.get("block_date") or data.get("booking_date") or "").strip())
+    except ValueError:
+        return JSONResponse({"error": "Некорректная дата"}, status_code=400)
+
+    try:
+        calendar_id = int(data.get("calendar_id"))
+    except (TypeError, ValueError):
+        return JSONResponse({"error": "Укажите календарь"}, status_code=400)
+
+    block, err = await create_calendar_block_async(
+        db,
+        consultant,
+        calendar_id=calendar_id,
+        title=(data.get("title") or "").strip(),
+        block_date=block_date,
+        start_time_str=(data.get("start_time") or data.get("booking_time") or "").strip(),
+        end_time_str=(data.get("end_time") or data.get("booking_end_time") or "").strip(),
+        notes=(data.get("notes") or "").strip(),
+        created_by_user_id=user.id,
+    )
+    if err or not block:
+        return JSONResponse({"error": err or "Не удалось создать мероприятие"}, status_code=400)
+
+    return {"ok": True, "event": serialize_block(block)}
+
+
+@router.post("/events/{block_id}/cancel/")
+async def cancel_calendar_event(
+    block_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+):
+    user = await _require_user(request, db)
+    if not user:
+        return JSONResponse({"error": "Требуется вход"}, status_code=401)
+    consultant = await require_specialist_mode_async(request, db, user)
+    data = {}
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    csrf = (data.get("csrf_token") if isinstance(data, dict) else None) or request.headers.get(
+        "X-CSRF-Token"
+    )
+    if not validate_csrf_token(request, csrf):
+        return JSONResponse({"error": "Ошибка безопасности (CSRF)"}, status_code=403)
+
+    block, err = await cancel_calendar_block_async(db, consultant, block_id)
+    if err or not block:
+        return JSONResponse({"error": err or "Не удалось отменить"}, status_code=400)
+    return {"ok": True, "event": serialize_block(block)}

@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from app.models import Booking, Calendar, Service, TimeSlot
+from app.models import Booking, Calendar, CalendarBlock, Service, TimeSlot
 from app.services.calendar_schedule import is_day_disabled
 
 
@@ -15,6 +15,7 @@ def _compute_available_slots(
     booking_date: date,
     time_slots: list[TimeSlot],
     existing_bookings: list[Booking],
+    busy_blocks: list[CalendarBlock] | None = None,
     exclude_booking_id: int | None = None,
 ) -> dict:
     day_of_week = booking_date.weekday()
@@ -39,6 +40,24 @@ def _compute_available_slots(
     min_start = now + timedelta(hours=book_ahead_hours)
     step_minutes = 15
 
+    busy_ranges: list[tuple[datetime, datetime]] = []
+    for booking in existing_bookings:
+        if not booking.booking_end_time:
+            continue
+        busy_ranges.append(
+            (
+                datetime.combine(booking_date, booking.booking_time, tzinfo=tz),
+                datetime.combine(booking_date, booking.booking_end_time, tzinfo=tz),
+            )
+        )
+    for block in busy_blocks or []:
+        busy_ranges.append(
+            (
+                datetime.combine(booking_date, block.start_time, tzinfo=tz),
+                datetime.combine(booking_date, block.end_time, tzinfo=tz),
+            )
+        )
+
     available_windows = []
     available_times = []
 
@@ -62,14 +81,10 @@ def _compute_available_slots(
                 continue
 
             overlaps = False
-            for booking in existing_bookings:
-                if not booking.booking_end_time:
-                    continue
-                booking_start = datetime.combine(booking_date, booking.booking_time, tzinfo=tz)
-                booking_end = datetime.combine(booking_date, booking.booking_end_time, tzinfo=tz)
+            for busy_start, busy_end in busy_ranges:
                 if not (
-                    current_time + service_duration + break_delta <= booking_start
-                    or current_time >= booking_end + break_delta
+                    current_time + service_duration + break_delta <= busy_start
+                    or current_time >= busy_end + break_delta
                 ):
                     overlaps = True
                     break
@@ -113,12 +128,22 @@ def get_available_slots(
         )
         .all()
     )
+    busy_blocks = (
+        db.query(CalendarBlock)
+        .filter(
+            CalendarBlock.calendar_id == calendar.id,
+            CalendarBlock.block_date == booking_date,
+            CalendarBlock.status == "active",
+        )
+        .all()
+    )
     return _compute_available_slots(
         calendar=calendar,
         service=service,
         booking_date=booking_date,
         time_slots=time_slots,
         existing_bookings=existing_bookings,
+        busy_blocks=busy_blocks,
         exclude_booking_id=exclude_booking_id,
     )
 
@@ -159,11 +184,23 @@ async def get_available_slots_async(
             )
         ).scalars().all()
     )
+    busy_blocks = list(
+        (
+            await db.execute(
+                select(CalendarBlock).where(
+                    CalendarBlock.calendar_id == calendar.id,
+                    CalendarBlock.block_date == booking_date,
+                    CalendarBlock.status == "active",
+                )
+            )
+        ).scalars().all()
+    )
     return _compute_available_slots(
         calendar=calendar,
         service=service,
         booking_date=booking_date,
         time_slots=time_slots,
         existing_bookings=existing_bookings,
+        busy_blocks=busy_blocks,
         exclude_booking_id=exclude_booking_id,
     )

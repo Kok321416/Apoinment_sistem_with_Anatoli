@@ -312,6 +312,18 @@ def create_public_booking(
         if not (end_dt + break_delta <= booking_start or start_dt >= booking_end + break_delta):
             return None, "Это время уже занято или слишком близко к другой записи."
 
+    from app.services.calendar_blocks import blocks_overlap_sync
+
+    block_err = blocks_overlap_sync(
+        db,
+        calendar=calendar,
+        day=booking_date,
+        start_time=start_time_obj,
+        end_time=end_time_obj,
+    )
+    if block_err:
+        return None, block_err
+
     card = find_or_create_client_card(
         db,
         consultant,
@@ -483,6 +495,19 @@ async def create_public_booking_async(
         booking_end = datetime.combine(booking_date, booking.booking_end_time)
         if not (end_dt + break_delta <= booking_start or start_dt >= booking_end + break_delta):
             return None, "Это время уже занято или слишком близко к другой записи."
+
+    from app.services.calendar_blocks import blocks_overlap_async
+
+    block_err = await blocks_overlap_async(
+        db,
+        calendar=calendar,
+        day=booking_date,
+        start_time=start_time_obj,
+        end_time=end_time_obj,
+        lock=True,
+    )
+    if block_err:
+        return None, block_err
 
     card = await find_or_create_client_card_async(
         db,
@@ -769,6 +794,19 @@ async def create_specialist_booking_async(
         if not (end_dt + break_delta <= booking_start or start_dt >= booking_end + break_delta):
             return None, "Это время уже занято или слишком близко к другой записи.", None
 
+    from app.services.calendar_blocks import blocks_overlap_async
+
+    block_err = await blocks_overlap_async(
+        db,
+        calendar=calendar,
+        day=booking_date,
+        start_time=start_time_obj,
+        end_time=end_time_obj,
+        lock=True,
+    )
+    if block_err:
+        return None, block_err, None
+
     card = None
     if client_card_id is not None:
         card = (
@@ -975,6 +1013,18 @@ def reschedule_booking(
         if not (end_dt + break_delta <= other_start or start_dt >= other_end + break_delta):
             return "Это время уже занято."
 
+    from app.services.calendar_blocks import blocks_overlap_sync
+
+    block_err = blocks_overlap_sync(
+        db,
+        calendar=calendar,
+        day=new_date,
+        start_time=start_time_obj,
+        end_time=end_time_obj,
+    )
+    if block_err:
+        return block_err
+
     old_date = booking.booking_date
     old_time = booking.booking_time
     old_end = booking.booking_end_time
@@ -1080,6 +1130,18 @@ async def reschedule_booking_async(
         other_end = datetime.combine(new_date, other.booking_end_time)
         if not (end_dt + break_delta <= other_start or start_dt >= other_end + break_delta):
             return "Это время уже занято."
+
+    from app.services.calendar_blocks import blocks_overlap_async
+
+    block_err = await blocks_overlap_async(
+        db,
+        calendar=calendar,
+        day=new_date,
+        start_time=start_time_obj,
+        end_time=end_time_obj,
+    )
+    if block_err:
+        return block_err
 
     old_date = booking.booking_date
     old_time = booking.booking_time

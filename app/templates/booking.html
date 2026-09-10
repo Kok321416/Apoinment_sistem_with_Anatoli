@@ -12,8 +12,8 @@
 <link rel="stylesheet" href="/static/css/app.css?v=45">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=14">
 <link rel="stylesheet" href="/static/css/bookings-hub.css?v=9">
-<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=26">
-<link rel="stylesheet" href="/static/css/specialist-book.css?v=6">
+<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=27">
+<link rel="stylesheet" href="/static/css/specialist-book.css?v=7">
 {% endblock %}
 
 {% block app_content %}
@@ -31,6 +31,7 @@
             </div>
             <div class="bookings-hero__actions">
                 <button type="button" class="btn btn--primary btn--sm" data-specialist-book data-csrf="{{ csrf_token }}">Записать клиента</button>
+                <button type="button" class="btn btn--ghost btn--sm" data-specialist-event data-csrf="{{ csrf_token }}">Мероприятие</button>
             </div>
         </div>
     </section>
@@ -159,6 +160,7 @@
                         <span><span class="legend-dot pending"></span> Ожидает</span>
                         <span><span class="legend-dot completed"></span> Завершена</span>
                         <span><span class="legend-dot cancelled"></span> Отменена</span>
+                        <span><span class="legend-dot event"></span> Мероприятие</span>
                     </div>
                 </div>
             </div>
@@ -260,7 +262,8 @@
 
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
-<script src="/static/js/specialist-bookings.js?v=26" defer></script>
+<script src="/static/js/specialist-bookings.js?v=27" defer></script>
 <script src="/static/js/specialist-book.js?v=7" defer></script>
+<script src="/static/js/specialist-event.js?v=1" defer></script>
 <script type="application/json" id="bookings-hub-data">{{ hub_payload | tojson }}</script>
 {% endblock %}

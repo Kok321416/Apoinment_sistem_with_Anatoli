@@ -263,6 +263,7 @@
 
 .day-dot.confirmed { background: var(--accent-success); }
 .day-dot.pending { background: var(--accent-warning); }
+.day-dot.event { background: #5b6abf; }
 .day-dot.completed { background: var(--text-muted); }
 .day-dot.cancelled { background: var(--accent-danger); }
 
@@ -288,6 +289,7 @@
 .cal-event.pending { background: var(--accent-warning); color: var(--text-on-accent); }
 .cal-event.completed { background: var(--text-muted); color: var(--text-on-accent); }
 .cal-event.cancelled { background: var(--accent-danger); color: var(--text-on-accent); }
+.cal-event.event { background: #5b6abf; color: #fff; }
 
 .cal-event:hover {
     filter: brightness(1.08);
@@ -315,6 +317,7 @@
 .legend-dot.pending { background: var(--accent-warning); }
 .legend-dot.completed { background: var(--text-muted); }
 .legend-dot.cancelled { background: var(--accent-danger); }
+.legend-dot.event { background: #5b6abf; }
 
 .event-popover {
     position: fixed;

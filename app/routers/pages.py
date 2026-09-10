@@ -1806,6 +1806,7 @@ async def calendar_events(request: Request, db: AsyncSession = Depends(get_async
     events = [
         {
             "id": b.id,
+            "kind": "booking",
             "date": b.booking_date.isoformat(),
             "time": b.booking_time.strftime("%H:%M") if b.booking_time else "",
             "end_time": b.booking_end_time.strftime("%H:%M") if b.booking_end_time else "",
@@ -1820,6 +1821,11 @@ async def calendar_events(request: Request, db: AsyncSession = Depends(get_async
         }
         for b in bookings
     ]
+    from app.services.calendar_blocks import list_active_blocks_in_range, serialize_block
+
+    for block in await list_active_blocks_in_range(db, cal_ids, start_date, end_date):
+        events.append(serialize_block(block))
+    events.sort(key=lambda e: (e.get("date") or "", e.get("time") or ""))
     return {"success": True, "events": events}
 
 

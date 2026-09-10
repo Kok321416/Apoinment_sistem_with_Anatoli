@@ -82,6 +82,27 @@ class Calendar(Base):
     time_slots = relationship("TimeSlot", back_populates="calendar")
     services = relationship("Service", back_populates="calendar")
     bookings = relationship("Booking", back_populates="calendar")
+    calendar_blocks = relationship("CalendarBlock", back_populates="calendar")
+
+
+class CalendarBlock(Base):
+    """One-off busy interval (мероприятие) — blocks client/specialist bookings."""
+
+    __tablename__ = "calendar_blocks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    calendar_id: Mapped[int] = mapped_column(ForeignKey("calendars.id"), index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    block_date: Mapped[date] = mapped_column(Date, index=True)
+    start_time: Mapped[time] = mapped_column(Time)
+    end_time: Mapped[time] = mapped_column(Time)
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("auth_user.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    calendar = relationship("Calendar", back_populates="calendar_blocks")
 
 
 class TimeSlot(Base):

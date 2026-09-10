@@ -178,7 +178,9 @@
 
     function eventAttrs(ev) {
         var timeStr = formatTimeRange(ev);
-        return 'class="cal-event ' + (ev.status || '') + '" data-id="' + ev.id + '" data-date="' + escapeAttr(ev.date || '') + '" data-status="' + escapeAttr(ev.status || '') + '" data-calendar-id="' + (ev.calendar_id || '') + '" data-service-id="' + (ev.service_id || '') + '" data-client_name="' + escapeAttr(ev.client_name) + '" data-client_phone="' + escapeAttr(ev.client_phone) + '" data-client_email="' + escapeAttr(ev.client_email || '') + '" data-client_telegram="' + escapeAttr(ev.client_telegram || '') + '" data-time="' + escapeAttr(timeStr) + '" data-service="' + escapeAttr(ev.service || '') + '"';
+        var kind = ev.kind || 'booking';
+        var statusClass = kind === 'event' ? 'event' : (ev.status || '');
+        return 'class="cal-event ' + statusClass + '" data-kind="' + escapeAttr(kind) + '" data-id="' + ev.id + '" data-date="' + escapeAttr(ev.date || '') + '" data-status="' + escapeAttr(ev.status || '') + '" data-calendar-id="' + (ev.calendar_id || '') + '" data-service-id="' + (ev.service_id || '') + '" data-client_name="' + escapeAttr(ev.client_name) + '" data-client_phone="' + escapeAttr(ev.client_phone) + '" data-client_email="' + escapeAttr(ev.client_email || '') + '" data-client_telegram="' + escapeAttr(ev.client_telegram || '') + '" data-time="' + escapeAttr(timeStr) + '" data-service="' + escapeAttr(ev.service || '') + '"';
     }
 
     function weekEventInnerHtml(ev) {
@@ -186,7 +188,8 @@
         var contact = primaryContact(ev);
         var html = [];
         html.push('<span class="week-event__time">' + escapeAttr(timeStr) + '</span>');
-        html.push('<span class="week-event__name">' + escapeAttr(ev.client_name || '—') + '</span>');
+        var nameLabel = ev.kind === 'event' ? ('Мероприятие: ' + (ev.client_name || '—')) : (ev.client_name || '—');
+        html.push('<span class="week-event__name">' + escapeAttr(nameLabel) + '</span>');
         if (contact) {
             html.push('<span class="week-event__contact">' + escapeAttr(contact) + '</span>');
         }
@@ -198,6 +201,10 @@
         var name = ev.client_name || '';
         var contact = primaryContact(ev);
         var label = time;
+        if (ev.kind === 'event') {
+            label += (label ? ' ' : '') + '◆ ' + (name || 'Мероприятие');
+            return label.trim();
+        }
         if (name) label += (label ? ' ' : '') + name;
         if (contact && !name) label += (label ? ' · ' : '') + contact;
         return label.trim() || '—';
@@ -258,7 +265,8 @@
         if (events.length) {
             html += '<div class="day-dots">';
             events.slice(0, 4).forEach(function (ev) {
-                html += '<span class="day-dot ' + (ev.status || '') + '"></span>';
+                var dotClass = ev.kind === 'event' ? 'event' : (ev.status || '');
+                html += '<span class="day-dot ' + dotClass + '"></span>';
             });
             html += '</div>';
         }
@@ -284,12 +292,34 @@
         var dateStr = el.getAttribute('data-date') || '';
         var bookingId = el.getAttribute('data-id') || '';
         var status = (el.getAttribute('data-status') || '').toLowerCase();
+        var kind = (el.getAttribute('data-kind') || 'booking').toLowerCase();
         var pop = document.getElementById('eventPopover');
         if (!pop) return;
 
-        var parts = ['<h4>' + (name || '—') + '</h4>'];
+        var parts = ['<h4>' + (kind === 'event' ? ('Мероприятие: ' + (name || '—')) : (name || '—')) + '</h4>'];
         if (dateStr) parts.push('<p class="event-popover__date">' + formatDayHeading(dateStr) + '</p>');
         if (time) parts.push('<p class="time">' + time + '</p>');
+
+        var csrfEl = document.getElementById('csrfToken');
+        var csrf = csrfEl ? csrfEl.value : '';
+
+        if (kind === 'event') {
+            parts.push('<p class="event-popover__contact text-muted">Время занято — запись недоступна</p>');
+            if (bookingId && csrf && status === 'active') {
+                parts.push('<div class="popover-actions">');
+                parts.push('<button type="button" class="btn btn--danger btn--sm btn-cancel-event" data-event-id="' + escapeAttr(bookingId) + '">Снять блок</button>');
+                parts.push('</div>');
+            }
+            pop.innerHTML = parts.join('');
+            pop.hidden = false;
+            pop.style.display = 'block';
+            var rectEv = el.getBoundingClientRect();
+            pop.style.left = (rectEv.left + window.scrollX) + 'px';
+            pop.style.top = (rectEv.bottom + 4 + window.scrollY) + 'px';
+            if (rectEv.left + 320 > window.innerWidth) pop.style.left = (rectEv.right - 320 + window.scrollX) + 'px';
+            return;
+        }
+
         if (phone) parts.push('<p class="event-popover__contact">Телефон: ' + phone + '</p>');
         if (email) parts.push('<p class="event-popover__contact">Почта: ' + email + '</p>');
         if (telegram) {
@@ -301,8 +331,6 @@
         }
 
         var actionUrl = window.location.pathname + (window.location.search || '');
-        var csrfEl = document.getElementById('csrfToken');
-        var csrf = csrfEl ? csrfEl.value : '';
         var actionsHtml = [];
         if (bookingId && csrf) {
             actionsHtml.push('<div class="popover-actions">');
@@ -551,6 +579,36 @@
             if (cancelOpen && cancelOpen.dataset.bookingId) {
                 e.preventDefault();
                 openCancelModal(cancelOpen.dataset.bookingId);
+            }
+            var cancelEvent = e.target.closest('.btn-cancel-event');
+            if (cancelEvent && cancelEvent.dataset.eventId) {
+                e.preventDefault();
+                var csrfEl2 = document.getElementById('csrfToken');
+                var csrf2 = csrfEl2 ? csrfEl2.value : '';
+                cancelEvent.disabled = true;
+                fetch('/api/specialist/events/' + encodeURIComponent(cancelEvent.dataset.eventId) + '/cancel/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrf2
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ csrf_token: csrf2 })
+                }).then(function (r) {
+                    return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+                }).then(function (res) {
+                    if (!res.ok) {
+                        cancelEvent.disabled = false;
+                        if (window.showToast) window.showToast((res.data && res.data.error) || 'Не удалось снять блок', 'error');
+                        return;
+                    }
+                    hidePopover();
+                    if (window.showToast) window.showToast('Мероприятие снято', 'success');
+                    window.location.reload();
+                }).catch(function () {
+                    cancelEvent.disabled = false;
+                    if (window.showToast) window.showToast('Ошибка сети', 'error');
+                });
             }
         });
 

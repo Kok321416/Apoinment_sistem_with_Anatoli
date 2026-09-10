@@ -160,6 +160,12 @@
     color: var(--accent-danger, #dc2626);
 }
 
+.form-field--row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+}
+
 .sb-modal__foot {
     display: flex;
     justify-content: space-between;
