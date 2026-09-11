@@ -86,7 +86,10 @@
     </table>
 
     {% if booking.telegram_id %}
-    <p class="booking-notice booking-notice--success mt-3xl">Сообщение о записи отправлено вам в Телеграм.</p>
+    <p class="booking-notice booking-notice--success mt-3xl">Запись сохранена. Уведомление уходит в Телеграм — если сообщение не пришло, откройте бота и нажмите «Старт».</p>
+    {% if telegram_bot_username %}
+    <p class="mt-lg"><a class="btn btn--secondary btn--sm" href="https://t.me/{{ telegram_bot_username }}" target="_blank" rel="noopener">Открыть бота</a></p>
+    {% endif %}
     {% elif booking.vk_user_id %}
     <p class="booking-notice booking-notice--success mt-3xl">Сообщение о записи отправлено вам в VK{% if vk_allow_messages_url %} (если не пришло - разрешите сообщения от <a href="{{ vk_allow_messages_url }}" target="_blank" rel="noopener">сообщества</a>){% endif %}.</p>
     {% endif %}

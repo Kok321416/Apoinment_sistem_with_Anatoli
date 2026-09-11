@@ -388,12 +388,18 @@ def on_booking_created(db: Session, booking: Booking) -> None:
                 from app.services.app_counters import record_notify_dedup_hit
 
                 record_notify_dedup_hit(db)
+                _log_telegram_notification(
+                    booking_id=getattr(booking, "id", None),
+                    recipient_type="client",
+                    status="skipped",
+                    error_type="NotifyDedup",
+                )
             else:
-                send_telegram_async(
+                # Sync send: create path must finish before WSGI worker can recycle.
+                send_telegram_to_client(
                     booking.telegram_id,
                     format_client_booked_message(booking),
                     booking_id=getattr(booking, "id", None),
-                    recipient_type="client",
                 )
         else:
             _log_telegram_notification(

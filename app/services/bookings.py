@@ -558,9 +558,10 @@ async def create_public_booking_async(
         )
     ).scalar_one()
 
-    from app.services.notify_bridge import schedule_on_booking_created
+    from app.services.notify_bridge import run_on_booking_created_blocking
+    import asyncio
 
-    schedule_on_booking_created(booking.id)
+    await asyncio.to_thread(run_on_booking_created_blocking, booking.id)
     return booking, None
 
 
@@ -900,9 +901,10 @@ async def create_specialist_booking_async(
         )
     ).scalar_one()
 
-    from app.services.notify_bridge import schedule_on_booking_created
+    from app.services.notify_bridge import run_on_booking_created_blocking
+    import asyncio
 
-    schedule_on_booking_created(booking.id)
+    await asyncio.to_thread(run_on_booking_created_blocking, booking.id)
     return booking, None, None
 
 

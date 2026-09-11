@@ -104,6 +104,17 @@ def schedule_on_booking_created(booking_id: int) -> None:
     _tg_executor.submit(_run_on_booking_created, int(booking_id))
 
 
+def run_on_booking_created_blocking(booking_id: int, *, timeout: float = 15.0) -> None:
+    """Run create-notify and wait so Passenger/WSGI does not kill the send mid-flight."""
+    fut = _tg_executor.submit(_run_on_booking_created, int(booking_id))
+    try:
+        fut.result(timeout=timeout)
+    except Exception:
+        logger.exception(
+            "notify bridge on_booking_created wait failed id=%s", booking_id
+        )
+
+
 def schedule_status_changed(booking_id: int, old_status: str | None) -> None:
     _tg_executor.submit(_run_status_changed, int(booking_id), old_status)
 

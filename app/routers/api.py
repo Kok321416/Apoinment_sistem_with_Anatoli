@@ -453,11 +453,12 @@ async def api_specialist_booking_cancel(request: Request, db: AsyncSession = Dep
     )
     if not ok:
         return {"success": False, "error": message}
-    already = booking is not None and booking.status == "cancelled" and message == "Запись уже отменена"
+    # Do not touch booking.* here — cancel already committed; keep response idempotent/simple.
+    already = message == "Запись уже отменена"
     return {
         "success": True,
         "message": message,
-        "booking_id": booking.id if booking else booking_id,
+        "booking_id": booking.id if booking is not None else booking_id,
         "already": already,
     }
 
