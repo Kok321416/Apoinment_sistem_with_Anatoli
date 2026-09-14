@@ -674,21 +674,55 @@ async def register_page(request: Request, db: AsyncSession = Depends(get_async_d
 @router.get("/become-specialist/")
 @router.post("/become-specialist/")
 async def become_specialist_page(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
+    from app.services.client_channel import normalize_client_channel, remember_auth_intent
     from app.services.consultant_onboarding import (
         create_consultant_for_user_async,
         find_consultant_for_user_async,
     )
+    from app.services.telegram_webview import is_telegram_webview
+
+    client_channel = normalize_client_channel(request.query_params.get("client"))
+    next_after = safe_next_url(request.query_params.get("next"), default="")
+    form = None
+    if request.method == "POST":
+        form = await request.form()
+        client_channel = normalize_client_channel(
+            form.get("client") or request.query_params.get("client")
+        )
+        next_after = safe_next_url(
+            form.get("next") or request.query_params.get("next"),
+            default="",
+        )
+    tg_flow = (
+        client_channel == "tg"
+        or (next_after or "").startswith("/tg/")
+        or is_telegram_webview(request)
+    )
+    if tg_flow:
+        client_channel = "tg"
+        if not next_after:
+            next_after = "/tg/"
+    success_url = next_after if (tg_flow and next_after) else "/dashboard/"
+    if "session" in request.scope:
+        remember_auth_intent(
+            request.session,
+            next_url=next_after or "/become-specialist/",
+            client_channel=client_channel,
+        )
+
+    user = await _require_user_async(request, db)
+    if not user:
+        return RedirectResponse(
+            login_url_with_next("/become-specialist/", client_channel),
+            status_code=302,
+        )
 
     if await find_consultant_for_user_async(db, user.id):
-        return RedirectResponse("/dashboard/", status_code=302)
+        return RedirectResponse(success_url, status_code=302)
     error = None
     fio = f"{user.last_name or ''} {user.first_name or ''}".strip()
     phone = ""
     if request.method == "POST":
-        form = await request.form()
         fio = (form.get("fio") or "").strip()
         phone = normalize_phone(form.get("phone"))
         if not _form_csrf_ok(request, form):
@@ -704,17 +738,31 @@ async def become_specialist_page(request: Request, db: AsyncSession = Depends(ge
                 if "session" in request.scope:
                     request.session["has_consultant"] = True
                     request.session["active_mode"] = "specialist"
-                return RedirectResponse("/dashboard/", status_code=302)
+                return RedirectResponse(success_url, status_code=302)
             except IntegrityError:
                 await db.rollback()
-                error = "Не удалось создать профиль специалиста. Возможно, почта уже занята."
+                error = (
+                    "Не удалось создать профиль специалиста. "
+                    "Если эта почта уже занята другим специалистом, напишите в поддержку."
+                )
             except Exception:
                 logger.exception("become-specialist failed for user %s", user.id)
                 await db.rollback()
                 error = "Не удалось создать профиль. Попробуйте позже."
+    template = "public/become_specialist_tg.html" if tg_flow else "app/become_specialist.html"
     return templates.TemplateResponse(
-        "app/become_specialist.html",
-        await page_context_async(request, db, user, error=error, fio=fio, phone=phone),
+        template,
+        await page_context_async(
+            request,
+            db,
+            user,
+            error=error,
+            fio=fio,
+            phone=phone,
+            next_url=next_after,
+            client_channel=client_channel,
+            load_telegram_webapp=tg_flow,
+        ),
     )
 
 
@@ -1482,7 +1530,12 @@ async def available_slots(
     if not booking_date:
         return JSONResponse({"error": "Некорректная дата"}, status_code=400)
     return await get_available_slots_async(
-        db, calendar, service, booking_date, exclude_booking_id=exclude_booking_id
+        db,
+        calendar,
+        service,
+        booking_date,
+        exclude_booking_id=exclude_booking_id,
+        ignore_daily_limit=True,
     )
 
 

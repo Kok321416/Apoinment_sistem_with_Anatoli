@@ -68,6 +68,48 @@ def test_slots_hide_times_covered_by_block():
     assert "12:00" in starts
 
 
+def test_slots_daily_limit_hides_times_for_clients_but_not_when_ignored():
+    calendar = SimpleNamespace(
+        max_services_per_day=1,
+        break_between_services_minutes=0,
+        book_ahead_hours=0,
+        disabled_weekdays="",
+        timezone=None,
+    )
+    service = SimpleNamespace(duration_minutes=60)
+    booking_date = date(2099, 1, 5)
+    time_slots = [SimpleNamespace(start_time=time(10, 0), end_time=time(14, 0))]
+    existing = [
+        SimpleNamespace(
+            id=1,
+            booking_time=time(10, 0),
+            booking_end_time=time(11, 0),
+        )
+    ]
+
+    blocked = _compute_available_slots(
+        calendar=calendar,
+        service=service,
+        booking_date=booking_date,
+        time_slots=time_slots,
+        existing_bookings=existing,
+    )
+    assert blocked["available_slots"] == []
+
+    extra = _compute_available_slots(
+        calendar=calendar,
+        service=service,
+        booking_date=booking_date,
+        time_slots=time_slots,
+        existing_bookings=existing,
+        ignore_daily_limit=True,
+    )
+    starts = {s["start_time"] for s in extra["available_slots"]}
+    assert "10:00" not in starts
+    assert "11:00" in starts
+    assert "12:00" in starts
+
+
 @pytest.mark.asyncio
 async def test_create_block_requires_title():
     from app.services.calendar_blocks import create_calendar_block_async

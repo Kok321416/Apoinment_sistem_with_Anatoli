@@ -17,6 +17,7 @@ def _compute_available_slots(
     existing_bookings: list[Booking],
     busy_blocks: list[CalendarBlock] | None = None,
     exclude_booking_id: int | None = None,
+    ignore_daily_limit: bool = False,
 ) -> dict:
     day_of_week = booking_date.weekday()
     if is_day_disabled(calendar, day_of_week):
@@ -26,7 +27,11 @@ def _compute_available_slots(
         existing_bookings = [b for b in existing_bookings if b.id != exclude_booking_id]
 
     max_per_day = calendar.max_services_per_day or 0
-    if max_per_day > 0 and len(existing_bookings) >= max_per_day:
+    if (
+        not ignore_daily_limit
+        and max_per_day > 0
+        and len(existing_bookings) >= max_per_day
+    ):
         return {"available_slots": [], "available_windows": []}
 
     break_minutes = calendar.break_between_services_minutes or 0
@@ -105,6 +110,7 @@ def get_available_slots(
     service: Service,
     booking_date: date,
     exclude_booking_id: int | None = None,
+    ignore_daily_limit: bool = False,
 ) -> dict:
     day_of_week = booking_date.weekday()
     if is_day_disabled(calendar, day_of_week):
@@ -145,6 +151,7 @@ def get_available_slots(
         existing_bookings=existing_bookings,
         busy_blocks=busy_blocks,
         exclude_booking_id=exclude_booking_id,
+        ignore_daily_limit=ignore_daily_limit,
     )
 
 
@@ -154,6 +161,7 @@ async def get_available_slots_async(
     service: Service,
     booking_date: date,
     exclude_booking_id: int | None = None,
+    ignore_daily_limit: bool = False,
 ) -> dict:
     """Async hot-path for public / specialist slot JSON endpoints."""
     day_of_week = booking_date.weekday()
@@ -203,4 +211,5 @@ async def get_available_slots_async(
         existing_bookings=existing_bookings,
         busy_blocks=busy_blocks,
         exclude_booking_id=exclude_booking_id,
+        ignore_daily_limit=ignore_daily_limit,
     )

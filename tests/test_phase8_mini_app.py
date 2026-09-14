@@ -5,6 +5,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import re
 import time
 from urllib.parse import urlencode
 
@@ -164,6 +165,8 @@ def test_webapp_auth_api_sets_session_and_hub_state(mini_app_client):
     assert state.get("hub_available") is False
     assert state.get("reason") == "specialist_access_required"
     assert state.get("role") == "client"
+    assert state.get("can_become_specialist") is True
+    assert "/become-specialist/" in (state.get("become_specialist_url") or "")
 
     async def _add_consultant():
         async with session_factory() as db:
@@ -273,6 +276,10 @@ def test_tg_hub_serves_webapp_boot_v26(mini_app_client):
     assert 'id="tg-hub-authed"' in r.text
     assert 'id="tg-hub-guest"' in r.text
     assert 'id="tg-hub-error"' in r.text
+    assert 'id="tg-hub-become"' in r.text
+    assert 'id="tg-hub-become-cta"' in r.text
+    assert "/become-specialist/?client=tg" in r.text
+    assert "Создайте страницу специалиста" in r.text
     assert 'href="/statistics/"' in r.text
     assert 'href="/clients/"' in r.text
     assert "Статистика" in r.text
@@ -332,3 +339,115 @@ def test_webapp_diag_accepts_no_init_data_kind(mini_app_client, monkeypatch):
     )
     assert r.status_code == 200
     assert any("no_init_data" in msg for msg in recorded)
+
+
+def test_client_webapp_user_can_become_specialist_via_tg_form(mini_app_client):
+    client, session_factory, token = mini_app_client
+    init_data = _signed_init_data(token, tg_id=424301, username="upgrade")
+    auth = client.post("/api/telegram/webapp-auth", json={"init_data": init_data})
+    assert auth.status_code == 200, auth.text
+    assert auth.json().get("has_consultant") is False
+
+    hub = client.get("/api/telegram/hub-state")
+    assert hub.json().get("can_become_specialist") is True
+
+    page = client.get("/become-specialist/?client=tg&next=/tg/", follow_redirects=False)
+    assert page.status_code == 200, page.text[:400]
+    assert "Стать специалистом" in page.text
+    assert "Назад в Mini App" in page.text
+    csrf = re.search(r'name="csrf_token" value="([^"]+)"', page.text)
+    assert csrf
+
+    posted = client.post(
+        "/become-specialist/",
+        data={
+            "csrf_token": csrf.group(1),
+            "fio": "Иван Иванов",
+            "phone": "+79991234567",
+            "client": "tg",
+            "next": "/tg/",
+        },
+        follow_redirects=False,
+    )
+    assert posted.status_code in (302, 303), posted.text[:500]
+    loc = posted.headers.get("location") or ""
+    assert loc.startswith("/tg/"), loc
+
+    hub2 = client.get("/api/telegram/hub-state")
+    body = hub2.json()
+    assert body.get("has_consultant") is True
+    assert body.get("hub_available") is True
+    assert body.get("can_become_specialist") is False
+    assert body.get("role") == "specialist"
+
+    again = client.get("/become-specialist/?client=tg&next=/tg/", follow_redirects=False)
+    assert again.status_code in (302, 303)
+    assert (again.headers.get("location") or "").startswith("/tg/")
+
+    async def _one_consultant():
+        async with session_factory() as db:
+            user = (
+                await db.execute(select(User).where(User.username == "telegram_424301"))
+            ).scalar_one()
+            rows = (
+                await db.execute(select(Consultant).where(Consultant.user_id == user.id))
+            ).scalars().all()
+            assert len(rows) == 1
+
+    asyncio.run(_one_consultant())
+
+
+def test_become_specialist_survives_placeholder_and_clash_email(mini_app_client):
+    client, session_factory, token = mini_app_client
+    init_data = _signed_init_data(token, tg_id=424302, username="clashmail")
+    assert client.post("/api/telegram/webapp-auth", json={"init_data": init_data}).status_code == 200
+
+    async def _seed_clash():
+        from datetime import datetime
+
+        async with session_factory() as db:
+            cat = Category(name_category="Психолог", code="psychologist")
+            db.add(cat)
+            await db.flush()
+            user = (
+                await db.execute(select(User).where(User.username == "telegram_424302"))
+            ).scalar_one()
+            other = User(
+                username="other-spec@t.c",
+                email="other-spec@t.c",
+                password="x",
+                is_active=True,
+                date_joined=datetime.utcnow(),
+            )
+            db.add(other)
+            await db.flush()
+            db.add(
+                Consultant(
+                    first_name="O",
+                    last_name="S",
+                    email=user.email,
+                    phone="+79990000001",
+                    category_of_specialist_id=cat.id,
+                    user_id=other.id,
+                )
+            )
+            await db.commit()
+
+    asyncio.run(_seed_clash())
+
+    page = client.get("/become-specialist/?client=tg&next=/tg/")
+    csrf = re.search(r'name="csrf_token" value="([^"]+)"', page.text)
+    assert csrf
+    posted = client.post(
+        "/become-specialist/",
+        data={
+            "csrf_token": csrf.group(1),
+            "fio": "Петр Петров",
+            "phone": "+79997654321",
+            "client": "tg",
+            "next": "/tg/",
+        },
+        follow_redirects=False,
+    )
+    assert posted.status_code in (302, 303), posted.text[:800]
+    assert client.get("/api/telegram/hub-state").json().get("has_consultant") is True

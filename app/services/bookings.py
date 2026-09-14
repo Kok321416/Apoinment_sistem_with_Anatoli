@@ -781,10 +781,7 @@ async def create_specialist_booking_async(
         .scalars()
         .all()
     )
-    max_per_day = calendar.max_services_per_day or 0
-    if max_per_day > 0 and len(existing_bookings) >= max_per_day:
-        return None, "Достигнут лимит записей на этот день.", None
-
+    # Specialist may add a consultation past max_services_per_day; clients still cannot.
     break_minutes = calendar.break_between_services_minutes or 0
     break_delta = timedelta(minutes=break_minutes)
     for booking in existing_bookings:

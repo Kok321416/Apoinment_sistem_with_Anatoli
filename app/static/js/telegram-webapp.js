@@ -319,7 +319,7 @@
     }
 
     function hideHubPanels() {
-        ["tg-hub-guest", "tg-hub-authed", "tg-hub-boot", "tg-hub-error", "tg-hub-client-denied"].forEach(function (id) {
+        ["tg-hub-guest", "tg-hub-authed", "tg-hub-boot", "tg-hub-error", "tg-hub-client-denied", "tg-hub-become"].forEach(function (id) {
             var el = document.getElementById(id);
             if (el) el.hidden = true;
         });
@@ -371,6 +371,20 @@
         if (box) box.hidden = false;
     }
 
+    function showBecomeSpecialist(state) {
+        hideHubPanels();
+        var box = document.getElementById("tg-hub-become");
+        if (!box) {
+            showClientDenied();
+            return;
+        }
+        box.hidden = false;
+        document.body.classList.add("auth-page");
+        var cta = document.getElementById("tg-hub-become-cta");
+        var url = state && state.become_specialist_url;
+        if (cta && url) cta.setAttribute("href", url);
+    }
+
     var _accessToken = "";
 
     function authHeaders(extra) {
@@ -410,7 +424,11 @@
             showAuthedHub(state);
             return;
         }
-        if (state && state.authenticated && state.reason === "specialist_access_required") {
+        if (state && state.authenticated && (state.can_become_specialist || state.reason === "specialist_access_required")) {
+            if (state.can_become_specialist !== false) {
+                showBecomeSpecialist(state);
+                return;
+            }
             showClientDenied();
             return;
         }

@@ -180,3 +180,78 @@ async def test_specialist_booking_slot_taken():
     )
     assert booking is None
     assert "занято" in (err or "").lower()
+
+
+@pytest.mark.asyncio
+async def test_specialist_booking_ignores_daily_limit():
+    db = AsyncMock()
+    consultant = MagicMock(id=1)
+    calendar = MagicMock(
+        id=1,
+        consultant_id=1,
+        is_active=True,
+        max_services_per_day=1,
+        break_between_services_minutes=0,
+        book_ahead_hours=0,
+    )
+    service = MagicMock(
+        id=2,
+        consultant_id=1,
+        is_active=True,
+        calendar_id=1,
+        duration_minutes=60,
+    )
+    time_slot = MagicMock(
+        id=3,
+        calendar_id=1,
+        day_of_week=(date.today() + timedelta(days=1)).weekday(),
+        start_time=time(9, 0),
+        end_time=time(18, 0),
+        is_available=True,
+    )
+    existing = MagicMock(booking_end_time=None)
+
+    calls = {"n": 0}
+
+    async def execute(stmt):
+        calls["n"] += 1
+        result = MagicMock()
+        n = calls["n"]
+        if n == 1:
+            result.scalar_one_or_none.return_value = calendar
+            result.scalar_one.return_value = calendar
+        elif n == 2:
+            result.scalar_one_or_none.return_value = service
+        elif n == 3:
+            result.scalar_one.return_value = calendar
+        elif n == 4:
+            result.scalar_one_or_none.return_value = time_slot
+        elif n == 5:
+            result.scalar_one_or_none.return_value = None
+        elif n == 6:
+            result.scalars.return_value.all.return_value = [existing]
+        else:
+            result.scalar_one_or_none.return_value = None
+            result.scalars.return_value.all.return_value = []
+        return result
+
+    db.execute = execute
+    with patch(
+        "app.services.calendar_blocks.blocks_overlap_async",
+        new_callable=AsyncMock,
+        return_value=None,
+    ):
+        booking, err, _ = await create_specialist_booking_async(
+            db,
+            consultant,
+            calendar_id=1,
+            service_id=2,
+            booking_date=date.today() + timedelta(days=1),
+            booking_time_str="10:00",
+            booking_end_time_str="11:00",
+            client_name="Иванов Иван",
+            force_new_client=True,
+        )
+    assert booking is None
+    assert err != "Достигнут лимит записей на этот день."
+    assert "телефон" in (err or "").lower()

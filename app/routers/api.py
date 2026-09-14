@@ -621,11 +621,14 @@ async def api_telegram_hub_state(request: Request, db: AsyncSession = Depends(ge
         mode = await get_active_mode_async(request, db, user.id, has_consultant=False)
         if mode not in (MODE_CLIENT, MODE_SPECIALIST):
             mode = MODE_CLIENT
+    can_become = not has_c
     return {
         "authenticated": True,
         "role": role,
         "hub_available": has_c,
         "reason": None if has_c else "specialist_access_required",
+        "can_become_specialist": can_become,
+        "become_specialist_url": "/become-specialist/?client=tg&next=/tg/" if can_become else None,
         "has_consultant": has_c,
         "mode": MODE_SPECIALIST if has_c else MODE_CLIENT,
         "show_mode_switcher": False,

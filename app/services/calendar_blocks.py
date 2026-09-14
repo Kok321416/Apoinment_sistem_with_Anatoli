@@ -267,6 +267,8 @@ async def create_calendar_block_async(
     if err:
         return None, err
 
+    # Events are not counted against calendar.max_services_per_day (client booking cap).
+
     block = CalendarBlock(
         calendar_id=calendar.id,
         title=title,

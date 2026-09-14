@@ -20,7 +20,8 @@
   #tg-hub-guest[hidden],
   #tg-hub-boot[hidden],
   #tg-hub-error[hidden],
-  #tg-hub-client-denied[hidden] { display: none !important; }
+  #tg-hub-client-denied[hidden],
+  #tg-hub-become[hidden] { display: none !important; }
   #tg-hub-actions-specialist[hidden],
   #tg-hub-become-specialist[hidden] { display: none !important; }
 </style>
@@ -65,7 +66,7 @@
             <span class="tg-hub__card-title">Управление</span>
             <span class="tg-hub__card-desc">Календари и услуги</span>
         </a>
-        <a id="tg-hub-become-specialist" class="tg-hub__card-link" href="/become-specialist/" hidden>
+        <a id="tg-hub-become-specialist" class="tg-hub__card-link" href="/become-specialist/?client=tg&amp;next=/tg/" hidden>
             <span class="tg-hub__card-icon" data-icon="profile" aria-hidden="true"></span>
             <span class="tg-hub__card-title">Стать специалистом</span>
             <span class="tg-hub__card-desc">Включить приём клиентов</span>
@@ -90,6 +91,15 @@
         <h1 class="text-h1 auth-card__title">Не удалось открыть</h1>
         <p class="text-body-sm" id="tg-hub-error-text">Попробуйте ещё раз.</p>
         <p><button type="button" class="btn btn--primary" id="tg-hub-retry">Повторить</button></p>
+    </div>
+</div>
+
+<div id="tg-hub-become" class="tg-hub-auth" hidden>
+    <div class="auth-card card card--static">
+        <h1 class="text-h1 auth-card__title">Создайте страницу специалиста</h1>
+        <p class="text-body">Вы уже входили как клиент. Тем же Telegram можно открыть кабинет специалиста — новый аккаунт не нужен.</p>
+        <p><a id="tg-hub-become-cta" class="btn btn--primary" href="/become-specialist/?client=tg&amp;next=/tg/">Создать страницу специалиста</a></p>
+        <p class="text-body-sm text-muted">Запись к другому специалисту — по его публичной ссылке, не через этот экран.</p>
     </div>
 </div>
 

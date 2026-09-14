@@ -7,6 +7,38 @@ from app.deps import normalize_phone
 from app.models import Category, Consultant, Integration, User
 from app.services.bookings import parse_fio
 
+_PLACEHOLDER_EMAIL_DOMAINS = ("telegram.user", "local.user")
+
+
+def _looks_placeholder_email(email: str) -> bool:
+    value = (email or "").strip().lower()
+    if not value or "@" not in value:
+        return True
+    domain = value.rsplit("@", 1)[-1]
+    return domain in _PLACEHOLDER_EMAIL_DOMAINS
+
+
+def _email_candidates(user: User, email: str | None) -> list[str]:
+    raw = (email or user.email or "").strip()
+    out: list[str] = []
+    if raw and not _looks_placeholder_email(raw):
+        out.append(raw[:254])
+    out.append(f"user{user.id}@local.user")
+    out.append(f"user{user.id}.spec@local.user")
+    if raw and _looks_placeholder_email(raw):
+        prefixed = f"user{user.id}.{raw}"[:254]
+        if prefixed not in out:
+            out.append(prefixed)
+    for i in range(2, 40):
+        out.append(f"user{user.id}.{i}@local.user")
+    seen: set[str] = set()
+    unique: list[str] = []
+    for item in out:
+        if item and item not in seen:
+            seen.add(item)
+            unique.append(item)
+    return unique
+
 
 def user_has_consultant(db: Session, user_id: int) -> bool:
     return db.query(Consultant.id).filter(Consultant.user_id == user_id).first() is not None
@@ -14,6 +46,14 @@ def user_has_consultant(db: Session, user_id: int) -> bool:
 
 def find_consultant_for_user(db: Session, user_id: int) -> Consultant | None:
     return db.query(Consultant).filter(Consultant.user_id == user_id).first()
+
+
+def _allocate_consultant_email_sync(db: Session, user: User, email: str | None) -> str:
+    for candidate in _email_candidates(user, email):
+        clash = db.query(Consultant).filter(Consultant.email == candidate).first()
+        if not clash:
+            return candidate
+    return f"user{user.id}.{id(user) % 100000}@local.user"
 
 
 def create_consultant_for_user(
@@ -44,12 +84,7 @@ def create_consultant_for_user(
         category.code = "psychologist"
         db.flush()
 
-    consultant_email = (email or user.email or "").strip() or f"user{user.id}@local.user"
-    # Avoid unique email clash with another consultant
-    clash = db.query(Consultant).filter(Consultant.email == consultant_email).first()
-    if clash:
-        consultant_email = f"user{user.id}.{consultant_email}"
-
+    consultant_email = _allocate_consultant_email_sync(db, user, email)
     phone_n = normalize_phone(phone)
     consultant = Consultant(
         user_id=user.id,
@@ -89,6 +124,18 @@ async def find_consultant_for_user_async(db, user_id: int) -> Consultant | None:
     ).scalar_one_or_none()
 
 
+async def _allocate_consultant_email_async(db, user: User, email: str | None) -> str:
+    from sqlalchemy import select
+
+    for candidate in _email_candidates(user, email):
+        clash = (
+            await db.execute(select(Consultant).where(Consultant.email == candidate))
+        ).scalar_one_or_none()
+        if not clash:
+            return candidate
+    return f"user{user.id}.{id(user) % 100000}@local.user"
+
+
 async def create_consultant_for_user_async(
     db,
     user: User,
@@ -119,13 +166,7 @@ async def create_consultant_for_user_async(
         category.code = "psychologist"
         await db.flush()
 
-    consultant_email = (email or user.email or "").strip() or f"user{user.id}@local.user"
-    clash = (
-        await db.execute(select(Consultant).where(Consultant.email == consultant_email))
-    ).scalar_one_or_none()
-    if clash:
-        consultant_email = f"user{user.id}.{consultant_email}"
-
+    consultant_email = await _allocate_consultant_email_async(db, user, email)
     phone_n = normalize_phone(phone)
     consultant = Consultant(
         user_id=user.id,

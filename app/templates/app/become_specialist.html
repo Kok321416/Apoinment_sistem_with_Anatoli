@@ -16,9 +16,11 @@
 
 <form method="POST" action="/become-specialist/" class="stack mt-3xl" style="max-width: 28rem;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+    {% if client_channel %}<input type="hidden" name="client" value="{{ client_channel }}">{% endif %}
     <div class="form-field">
         <label class="form-field__label" for="fio">ФИО</label>
-        <input class="input" type="text" id="fio" name="fio" required minlength="5" value="{{ fio or '' }}" autocomplete="name">
+        <input class="input" type="text" id="fio" name="fio" required minlength="3" value="{{ fio or '' }}" autocomplete="name">
     </div>
     <div class="form-field">
         <label class="form-field__label" for="phone">Телефон</label>

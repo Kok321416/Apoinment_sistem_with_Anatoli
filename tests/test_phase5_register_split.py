@@ -69,3 +69,42 @@ def test_become_specialist_idempotent():
     assert c1.id == c2.id
     assert db.query(Consultant).filter(Consultant.user_id == user.id).count() == 1
     db.close()
+
+
+def test_become_specialist_when_email_taken_by_other_consultant():
+    db = _session()
+    taken = User(username="own", password="x", email="taken@t.c", date_joined=datetime.now())
+    client_user = User(
+        username="telegram_1",
+        password="x",
+        email="telegram_1@telegram.user",
+        date_joined=datetime.now(),
+    )
+    db.add_all([taken, client_user])
+    db.flush()
+    create_consultant_for_user(db, taken, fio="А А", phone="+79990001122", email="taken@t.c")
+    created = create_consultant_for_user(
+        db, client_user, fio="Б Б", phone="+79990001123", email="taken@t.c"
+    )
+    assert created.id != find_consultant_for_user(db, taken.id).id
+    assert created.email != "taken@t.c"
+    assert created.user_id == client_user.id
+    db.close()
+
+
+def test_become_specialist_telegram_placeholder_email():
+    db = _session()
+    user = User(
+        username="telegram_555",
+        password="x",
+        email="telegram_555@telegram.user",
+        date_joined=datetime.now(),
+    )
+    db.add(user)
+    db.flush()
+    created = create_consultant_for_user(
+        db, user, fio="В В", phone="+79990001124", email=user.email
+    )
+    assert created.email.endswith("@local.user")
+    assert "telegram.user" not in created.email
+    db.close()

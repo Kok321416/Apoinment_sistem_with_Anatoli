@@ -144,7 +144,12 @@ async def specialist_slots(
     if not calendar or not service:
         return JSONResponse({"error": "Календарь или услуга не найдены"}, status_code=404)
     return await get_available_slots_async(
-        db, calendar, service, day, exclude_booking_id=exclude_booking_id
+        db,
+        calendar,
+        service,
+        day,
+        exclude_booking_id=exclude_booking_id,
+        ignore_daily_limit=True,
     )
 
 
