@@ -1,0 +1,75 @@
+{% extends "platform_admin/layout.html" %}
+{% block title %}Notify outbox{% endblock %}
+{% block content %}
+<h1 class="pa-title">Уведомления (outbox)</h1>
+<p class="pa-muted">Очередь доставки: создание / отмена / перенос. Повторы идут автоматически; можно форсировать resend.</p>
+
+<div class="pa-stats" style="display:flex;flex-wrap:wrap;gap:1rem;margin:1rem 0">
+    <div class="pa-stat"><span>{{ metrics.pending }}</span> pending</div>
+    <div class="pa-stat"><span>{{ metrics.failed }}</span> failed</div>
+    <div class="pa-stat"><span>{{ metrics.done_today }}</span> done today</div>
+    <div class="pa-stat"><span>{{ metrics.counters.enqueued }}</span> enqueued Σ</div>
+    <div class="pa-stat"><span>{{ metrics.counters.done }}</span> done Σ</div>
+    <div class="pa-stat"><span>{{ metrics.counters.failed }}</span> fail Σ</div>
+    <div class="pa-stat"><span>{{ metrics.counters.retried }}</span> retry Σ</div>
+</div>
+
+<form method="get" class="pa-inline-form">
+    <label class="pa-label">Статус
+        <select class="pa-input" name="status">
+            <option value="">все</option>
+            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>pending</option>
+            <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>failed</option>
+            <option value="done" {% if status_filter == 'done' %}selected{% endif %}>done</option>
+        </select>
+    </label>
+    <label class="pa-label">Тип
+        <select class="pa-input" name="kind">
+            <option value="">все</option>
+            <option value="status_changed" {% if kind_filter == 'status_changed' %}selected{% endif %}>status_changed</option>
+            <option value="booking_created" {% if kind_filter == 'booking_created' %}selected{% endif %}>booking_created</option>
+            <option value="rescheduled" {% if kind_filter == 'rescheduled' %}selected{% endif %}>rescheduled</option>
+        </select>
+    </label>
+    <button type="submit" class="pa-btn pa-btn--secondary">Фильтр</button>
+</form>
+
+<form method="post" class="pa-inline-form" style="margin-top:0.5rem">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="action" value="process_now">
+    <button type="submit" class="pa-btn pa-btn--primary">Обработать очередь сейчас</button>
+</form>
+
+{% if rows %}
+<table class="pa-table">
+    <thead>
+    <tr><th>ID</th><th>Kind</th><th>Booking</th><th>Attempts</th><th>Next</th><th>Done</th><th>Error</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for row in rows %}
+    <tr>
+        <td>{{ row.id }}</td>
+        <td>{{ row.kind }}</td>
+        <td>{% if row.booking_id %}<a href="/platform-admin/bookings/{{ row.booking_id }}/">#{{ row.booking_id }}</a>{% else %}-{% endif %}</td>
+        <td>{{ row.attempts }}</td>
+        <td>{{ row.next_attempt_at or '-' }}</td>
+        <td>{{ row.done_at or '-' }}</td>
+        <td>{% if row.last_error %}<span class="pa-muted">{{ row.last_error[:100] }}</span>{% else %}-{% endif %}</td>
+        <td>
+            {% if not row.done_at or row.last_error %}
+            <form method="post" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="resend">
+                <input type="hidden" name="outbox_id" value="{{ row.id }}">
+                <button type="submit" class="pa-btn pa-btn--ghost" onclick="return confirm('Повторить доставку #{{ row.id }}?');">resend</button>
+            </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="pa-muted">Очередь пуста (или таблица ещё не создана).</p>
+{% endif %}
+{% endblock %}

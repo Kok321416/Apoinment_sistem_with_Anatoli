@@ -33,6 +33,7 @@
         {% if admin_perms.errors %}<a href="/platform-admin/errors/" class="{% if nav == 'errors' %}is-active{% endif %}">Ошибки</a>{% endif %}
         {% if admin_perms.security %}<a href="/platform-admin/security/" class="{% if nav == 'security' %}is-active{% endif %}">Безопасность</a>{% endif %}
         {% if admin_perms.email %}<a href="/platform-admin/email/" class="{% if nav == 'email' %}is-active{% endif %}">Email</a>{% endif %}
+        {% if admin_perms.notify %}<a href="/platform-admin/notify/" class="{% if nav == 'notify' %}is-active{% endif %}">Notify</a>{% endif %}
         {% if admin_perms.analytics %}<a href="/platform-admin/analytics/" class="{% if nav == 'analytics' %}is-active{% endif %}">Аналитика</a>{% endif %}
         {% if admin_perms.settings %}<a href="/platform-admin/settings/" class="{% if nav == 'settings' %}is-active{% endif %}">Настройки</a>{% endif %}
         {% if admin_perms.audit %}<a href="/platform-admin/audit/" class="{% if nav == 'audit' %}is-active{% endif %}">Audit</a>{% endif %}

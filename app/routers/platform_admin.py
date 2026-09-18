@@ -1210,6 +1210,111 @@ async def admin_email(request: Request, db: AsyncSession = Depends(get_async_db)
     )
 
 
+@router.get("/notify/")
+@router.post("/notify/")
+async def admin_notify_outbox(request: Request, db: AsyncSession = Depends(get_async_db)):
+    user = await _admin(request, db, PERM_OPS)
+    from app.database import SessionLocal
+    from app.services.notify_outbox import (
+        list_notify_outbox_async,
+        notify_outbox_metrics,
+        process_notify_outbox,
+        resend_notify_outbox,
+    )
+
+    success = error = None
+    status_filter = (request.query_params.get("status") or "").strip()
+    kind_filter = (request.query_params.get("kind") or "").strip()
+
+    if request.method == "POST":
+        form = await request.form()
+        if not _csrf_ok(request, form):
+            error = "Ошибка безопасности."
+        else:
+            action = (form.get("action") or "").strip()
+            if action == "process_now":
+                sdb = SessionLocal()
+                try:
+                    stats = process_notify_outbox(sdb, limit=50)
+                    success = (
+                        f"Обработано: {stats.get('processed', 0)}, "
+                        f"done={stats.get('done', 0)}, failed={stats.get('failed', 0)}"
+                    )
+                finally:
+                    sdb.close()
+                await write_admin_audit_async(
+                    db,
+                    actor_user_id=user.id,
+                    action="notify_outbox_process",
+                    entity="notify_outbox",
+                    request=request,
+                )
+                await db.commit()
+            elif action == "resend":
+                try:
+                    outbox_id = int(form.get("outbox_id") or 0)
+                except (TypeError, ValueError):
+                    outbox_id = 0
+                if not outbox_id:
+                    error = "Не указан id"
+                else:
+                    from app.services.rate_limit import check_rate_limit
+
+                    if not check_rate_limit(f"notify_resend:{user.id}", max_calls=20, window_sec=300):
+                        error = "Слишком много resend за 5 минут."
+                    else:
+                        sdb = SessionLocal()
+                        try:
+                            row, err = resend_notify_outbox(sdb, outbox_id)
+                        finally:
+                            sdb.close()
+                        if err:
+                            error = err
+                        else:
+                            success = f"Доставка #{outbox_id} выполнена" + (
+                                f" (booking {row.booking_id})" if row and row.booking_id else ""
+                            )
+                        await write_admin_audit_async(
+                            db,
+                            actor_user_id=user.id,
+                            action="notify_outbox_resend",
+                            entity="notify_outbox",
+                            entity_id=str(outbox_id),
+                            request=request,
+                        )
+                        await db.commit()
+            else:
+                error = "Неизвестное действие"
+
+    rows = await list_notify_outbox_async(
+        db,
+        status=status_filter or None,
+        kind=kind_filter or None,
+        limit=80,
+    )
+    sdb = SessionLocal()
+    try:
+        metrics = notify_outbox_metrics(sdb)
+    finally:
+        sdb.close()
+
+    return templates.TemplateResponse(
+        "platform_admin/notify.html",
+        await _ctx(
+            request,
+            db,
+            user,
+            nav="notify",
+            rows=rows,
+            metrics=metrics,
+            status_filter=status_filter,
+            kind_filter=kind_filter,
+            success=success,
+            error=error,
+        ),
+    )
+
+
 @router.get("/analytics/")
 async def admin_analytics(request: Request, db: AsyncSession = Depends(get_async_db)):
     user = await _admin(request, db, PERM_USERS_READ)

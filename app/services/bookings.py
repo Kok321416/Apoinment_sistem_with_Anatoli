@@ -1156,9 +1156,9 @@ async def reschedule_booking_async(
     booking.specialist_reminder_1h_sent = False
     await db.commit()
 
-    from app.services.notify_bridge import schedule_rescheduled
+    from app.services.notify_bridge import run_rescheduled_blocking
 
-    schedule_rescheduled(
+    run_rescheduled_blocking(
         booking.id,
         old_date=old_date,
         old_time=old_time,

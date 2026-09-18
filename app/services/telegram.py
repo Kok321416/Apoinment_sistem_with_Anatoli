@@ -296,13 +296,30 @@ def notify_booking_rescheduled(
 
             record_notify_dedup_hit(db)
 
+        text_client = format_booking_rescheduled_client(
+            booking, old_date=old_date, old_time=old_time, old_end_time=old_end_time
+        )
         if client_chat and not skip_client:
-            send_telegram_async(
-                client_chat,
-                format_booking_rescheduled_client(
-                    booking, old_date=old_date, old_time=old_time, old_end_time=old_end_time
-                ),
+            client_sent = bool(
+                send_telegram_to_client(
+                    client_chat,
+                    text_client,
+                    booking_id=getattr(booking, "id", None),
+                )
             )
+            if not client_sent:
+                from app.services.booking_email import notify_client_reschedule_email
+                from app.services.vk_messages import notify_client_reschedule_vk
+
+                _notify_client_fallback(
+                    booking,
+                    send_vk=lambda: notify_client_reschedule_vk(
+                        booking, old_date=old_date, old_time=old_time, old_end_time=old_end_time
+                    ),
+                    send_email=lambda: notify_client_reschedule_email(
+                        booking, old_date=old_date, old_time=old_time, old_end_time=old_end_time
+                    ),
+                )
         elif not client_chat:
             from app.services.booking_email import notify_client_reschedule_email
             from app.services.vk_messages import notify_client_reschedule_vk
@@ -317,12 +334,14 @@ def notify_booking_rescheduled(
                 ),
             )
         if specialist_chat_id:
-            send_telegram_async(
+            _send_telegram(
                 specialist_chat_id,
                 format_booking_rescheduled_specialist(
                     booking, old_date=old_date, old_time=old_time, old_end_time=old_end_time
                 ),
                 specialist_token,
+                booking_id=getattr(booking, "id", None),
+                recipient_type="specialist",
             )
     except Exception as e:
         logger.exception("Reschedule notification error: %s", e)

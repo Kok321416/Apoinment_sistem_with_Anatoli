@@ -242,3 +242,59 @@ def test_password_forgot_page_e2e(monkeypatch):
     finally:
         app.dependency_overrides.clear()
         asyncio.run(engine.dispose())
+
+
+def test_notify_outbox_enqueue_created_and_rescheduled():
+    from datetime import date, time as dtime
+
+    from app.services.notify_outbox import enqueue_booking_created, enqueue_rescheduled
+
+    db, engine = _session()
+    assert ensure_notify_outbox_schema(bind=engine)
+    cat = Category(name_category="Общая")
+    db.add(cat)
+    db.flush()
+    c = Consultant(
+        first_name="A",
+        last_name="B",
+        email="a@t.c",
+        phone="+7111",
+        category_of_specialist_id=cat.id,
+    )
+    db.add(c)
+    db.flush()
+    cal = Calendar(consultant_id=c.id, name="C", color="#000")
+    db.add(cal)
+    db.flush()
+    svc = Service(
+        consultant_id=c.id,
+        calendar_id=cal.id,
+        name="Консультация",
+        duration_minutes=60,
+        price=1000,
+        is_active=True,
+    )
+    db.add(svc)
+    db.flush()
+    b = Booking(
+        calendar_id=cal.id,
+        service_id=svc.id,
+        client_name="Клиент",
+        client_phone="+7222",
+        booking_date=date.today(),
+        booking_time=dtime(12, 0),
+        status="confirmed",
+        source="specialist",
+    )
+    db.add(b)
+    db.commit()
+
+    oid1 = enqueue_booking_created(db, b.id)
+    oid2 = enqueue_rescheduled(
+        db, b.id, old_date=date.today(), old_time=dtime(11, 0), old_end_time=dtime(12, 0)
+    )
+    db.commit()
+    assert oid1 and oid2
+    kinds = {db.get(NotifyOutbox, oid1).kind, db.get(NotifyOutbox, oid2).kind}
+    assert kinds == {"booking_created", "rescheduled"}
+    db.close()

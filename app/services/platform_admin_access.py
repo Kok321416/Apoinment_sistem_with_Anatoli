@@ -31,6 +31,7 @@ NAV_PERMISSIONS: dict[str, str | None] = {
     "errors": PERM_ERRORS,
     "security": None,
     "email": PERM_SETTINGS,
+    "notify": PERM_OPS,
     "analytics": PERM_USERS_READ,
     "settings": PERM_SETTINGS,
     "audit": PERM_AUDIT,
