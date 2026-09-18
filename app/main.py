@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -27,11 +28,18 @@ settings = get_settings()
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await _startup()
+    yield
+
+
 app = FastAPI(
     title="Appointment System",
     docs_url="/api/docs" if settings.debug else None,
     redoc_url="/api/redoc" if settings.debug else None,
     openapi_url="/api/openapi.json" if settings.debug else None,
+    lifespan=lifespan,
 )
 
 _session_same_site = settings.session_same_site if settings.session_same_site in ("lax", "strict", "none") else "lax"
@@ -247,8 +255,7 @@ async def internal_explain(request: Request):
         db.close()
 
 
-@app.on_event("startup")
-async def startup():
+async def _startup():
     from app.db_schema import ensure_all_schema
 
     try:

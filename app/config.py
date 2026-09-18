@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
 
@@ -139,6 +140,43 @@ class Settings:
         return f"sqlite+aiosqlite:///{self.base_dir / 'data.db'}"
 
 
-@lru_cache
+_SETTINGS = Settings()
+
+
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    """The one Settings object for this process.
+
+    Modules capture it at import (``settings = get_settings()``), so the identity must never change:
+    a second instance would leave those modules reading stale config while callers patch the new one.
+    Overrides therefore go on this object (or on the class), and ``cache_clear()`` stays harmless.
+    """
+    return _SETTINGS
+
+
+def settings_instance_state() -> dict:
+    """Snapshot of per-instance overrides; class defaults are not copied."""
+    return dict(get_settings().__dict__)
+
+
+def restore_settings_instance_state(snapshot: dict) -> None:
+    """Restore a :func:`settings_instance_state` snapshot, dropping any override added since.
+
+    Values set directly on the object shadow the class defaults, so a leftover override outlives the
+    code that added it and silently wins over later class-level configuration.
+    """
+    target = get_settings().__dict__
+    target.clear()
+    target.update(snapshot)
+
+
+@contextmanager
+def settings_overrides(**values):
+    """Temporarily override settings, then restore instance state exactly as it was."""
+    snapshot = settings_instance_state()
+    try:
+        for name, value in values.items():
+            setattr(get_settings(), name, value)
+        yield get_settings()
+    finally:
+        restore_settings_instance_state(snapshot)

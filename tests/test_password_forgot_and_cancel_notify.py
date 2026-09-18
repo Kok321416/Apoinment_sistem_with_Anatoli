@@ -87,7 +87,7 @@ def test_request_password_reset_telegram_sends(monkeypatch):
         sent["text"] = text
         return True
 
-    monkeypatch.setattr("app.services.telegram._send_telegram", _fake_send)
+    monkeypatch.setattr("app.services.telegram.send_telegram_message", _fake_send)
     ok, msg = request_password_reset(db, login_raw="+79001112233", channel="telegram")
     assert ok
     assert msg == GENERIC_OK

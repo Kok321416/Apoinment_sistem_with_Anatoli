@@ -12,7 +12,12 @@ from sqlalchemy.pool import StaticPool
 
 import app.models  # noqa: F401
 from app.auth.passwords import hash_password
-from app.database import Base, get_async_db
+from app.database import (
+    Base,
+    configure_async_sessionmaker,
+    get_async_db,
+    reset_async_sessionmaker,
+)
 from app.diagnostics.catalog import BAI, BHS, INTERPRETATION_LEAD_RU, get_test
 from app.models import Calendar, Category, Consultant, Service, User
 
@@ -110,19 +115,14 @@ def diagnostics_client(tmp_path):
             yield db
 
     app.dependency_overrides[get_async_db] = override_get_async_db
-
-    import app.database as database_module
-
-    database_module._async_engine = engine
-    database_module._AsyncSessionLocal = session_factory
+    configure_async_sessionmaker(session_factory, async_engine=engine)
 
     client = TestClient(app)
     try:
         yield client, consultant_id, client_user_id, engine, session_factory, _prepare
     finally:
         app.dependency_overrides.clear()
-        database_module._async_engine = None
-        database_module._AsyncSessionLocal = None
+        reset_async_sessionmaker()
         asyncio.run(engine.dispose())
 
 

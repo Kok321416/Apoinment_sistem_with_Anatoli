@@ -1,4 +1,19 @@
+"""Engines and session factories.
+
+How to get an async session:
+
+* inside a request handler — ``db: AsyncSession = Depends(get_async_db)``
+* outside a request (SSE, background threads, CLI) — ``async with async_session() as db``
+* in tests and scripts — ``configure_async_sessionmaker(factory)`` / ``reset_async_sessionmaker()``
+
+The engine and the session factory are module-private on purpose: the lazy bootstrap, the
+override seam and session cleanup all live behind the functions above, so renaming an internal
+never breaks callers.
+"""
+
+import threading
 from collections.abc import AsyncGenerator, Generator
+from contextlib import asynccontextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -33,14 +48,12 @@ engine = create_engine(settings.database_url, **_engine_kwargs)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 _async_engine = None
-_AsyncSessionLocal = None
+_async_sessionmaker = None
+_async_init_lock = threading.Lock()
 
 
-def _ensure_async_engine():
-    """Lazy async engine so sync-only deploys can import app before async deps are installed."""
-    global _async_engine, _AsyncSessionLocal
-    if _AsyncSessionLocal is not None:
-        return _AsyncSessionLocal
+def _build_async_sessionmaker():
+    """Async engine is built lazily so sync-only deploys can import app without async deps."""
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
     async_connect_args: dict = {}
@@ -54,15 +67,47 @@ def _ensure_async_engine():
     if not settings.async_database_url.startswith("sqlite"):
         async_kwargs["pool_size"] = settings.db_pool_size
         async_kwargs["max_overflow"] = settings.db_max_overflow
-    _async_engine = create_async_engine(settings.async_database_url, **async_kwargs)
-    _AsyncSessionLocal = async_sessionmaker(
-        bind=_async_engine,
+    new_engine = create_async_engine(settings.async_database_url, **async_kwargs)
+    factory = async_sessionmaker(
+        bind=new_engine,
         class_=AsyncSession,
         expire_on_commit=False,
         autocommit=False,
         autoflush=False,
     )
-    return _AsyncSessionLocal
+    return new_engine, factory
+
+
+def get_async_sessionmaker():
+    """Async session factory for the configured database."""
+    global _async_engine, _async_sessionmaker
+
+    if _async_sessionmaker is not None:
+        return _async_sessionmaker
+    with _async_init_lock:
+        if _async_sessionmaker is None:
+            _async_engine, _async_sessionmaker = _build_async_sessionmaker()
+        return _async_sessionmaker
+
+
+def get_async_engine():
+    """Async engine behind :func:`get_async_sessionmaker` (built on first use)."""
+    get_async_sessionmaker()
+    return _async_engine
+
+
+def configure_async_sessionmaker(session_factory, *, async_engine=None) -> None:
+    """Point async sessions at a different database — the supported seam for tests and scripts."""
+    global _async_engine, _async_sessionmaker
+
+    with _async_init_lock:
+        _async_engine = async_engine
+        _async_sessionmaker = session_factory
+
+
+def reset_async_sessionmaker() -> None:
+    """Forget the current factory; the next session rebuilds it from settings."""
+    configure_async_sessionmaker(None)
 
 
 class Base(DeclarativeBase):
@@ -78,10 +123,14 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-async def get_async_db() -> AsyncGenerator:
-    factory = _ensure_async_engine()
+@asynccontextmanager
+async def async_session() -> AsyncGenerator:
+    """Async session for code that has no request-scoped dependency to lean on."""
+    factory = get_async_sessionmaker()
     async with factory() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+        yield session
+
+
+async def get_async_db() -> AsyncGenerator:
+    async with async_session() as session:
+        yield session

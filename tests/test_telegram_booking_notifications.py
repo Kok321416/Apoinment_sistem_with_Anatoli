@@ -178,7 +178,7 @@ def test_telegram_client_booking_populates_telegram_id_and_notifies_client():
     sent, capture_sync, capture_async = _capture_notifications()
 
     with (
-        patch.object(tg, "_send_telegram", side_effect=capture_sync),
+        patch.object(tg, "send_telegram_message", side_effect=capture_sync),
         patch.object(tg, "send_telegram_async", side_effect=capture_async),
         patch.object(tg, "notify_specialist_new_booking", return_value=False),
     ):
@@ -210,7 +210,7 @@ def test_both_telegram_client_and_specialist_get_separate_notifications():
     sent, capture_sync, capture_async = _capture_notifications()
 
     with (
-        patch.object(tg, "_send_telegram", side_effect=capture_sync),
+        patch.object(tg, "send_telegram_message", side_effect=capture_sync),
         patch.object(tg, "send_telegram_async", side_effect=capture_async),
     ):
         booking, err = create_public_booking(
@@ -271,7 +271,7 @@ def test_specialist_without_integration_client_still_notified():
     sent, capture_sync, capture_async = _capture_notifications()
 
     with (
-        patch.object(tg, "_send_telegram", side_effect=capture_sync),
+        patch.object(tg, "send_telegram_message", side_effect=capture_sync),
         patch.object(tg, "send_telegram_async", side_effect=capture_async),
     ):
         booking, err = create_public_booking(
@@ -289,7 +289,7 @@ def test_telegram_send_failure_does_not_rollback_booking():
     _consultant, cal, svc, day = _seed(db)
     user = _telegram_user(db, uid="601602")
 
-    with patch.object(tg, "_send_telegram", return_value=False), patch.object(
+    with patch.object(tg, "send_telegram_message", return_value=False), patch.object(
         tg, "notify_specialist_new_booking", return_value=False
     ):
         booking, err = create_public_booking(
@@ -500,7 +500,7 @@ def _run_reminders_at(db, day, hour, minute, *, send_ok=True):
         return send_ok
 
     with (
-        patch.object(tg, "_send_telegram", side_effect=_send),
+        patch.object(tg, "send_telegram_message", side_effect=_send),
         patch.object(tg, "notify_dedup_enabled", return_value=False),
         patch("app.services.telegram.datetime") as mock_dt,
     ):
@@ -509,7 +509,7 @@ def _run_reminders_at(db, day, hour, minute, *, send_ok=True):
         result = tg.send_reminders(db)
     client_sent = [cid for cid, kind in sent if kind == "client" or kind is None]
     spec_sent = [cid for cid, kind in sent if kind != "client"]
-    # Specialist path calls _send_telegram directly without recipient_type.
+    # Specialist path calls send_telegram_message directly without recipient_type.
     # Split by known ids after tests set them.
     return result, sent
 

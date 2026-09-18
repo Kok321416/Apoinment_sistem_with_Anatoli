@@ -36,11 +36,21 @@ def _booking(*, client_tg, specialist_chat):
     )
 
 
+def _record_sends(monkeypatch, sent):
+    """Substitute the one transport seam every notify path delivers through."""
+
+    def fake_send(chat_id, text, bot_token=None, **_kwargs):
+        sent.append((str(chat_id), text, bot_token))
+        return True
+
+    monkeypatch.setattr(tg, "send_telegram_message", fake_send)
+
+
 def test_notify_status_sends_both_when_dedup_off(monkeypatch):
     sent = []
 
     monkeypatch.setattr(tg, "notify_dedup_enabled", lambda: False)
-    monkeypatch.setattr(tg, "send_telegram_async", lambda chat, text, token=None: sent.append((str(chat), text, token)))
+    _record_sends(monkeypatch, sent)
 
     booking = _booking(client_tg=200, specialist_chat="100")
     tg.notify_booking_status_changed(MagicMock(), booking, old_status="pending")
@@ -54,7 +64,7 @@ def test_notify_status_dedup_sends_celebration_same_chat(monkeypatch):
     sent = []
 
     monkeypatch.setattr(tg, "notify_dedup_enabled", lambda: True)
-    monkeypatch.setattr(tg, "send_telegram_async", lambda chat, text, token=None: sent.append((str(chat), text)))
+    _record_sends(monkeypatch, sent)
 
     booking = _booking(client_tg=100, specialist_chat="100")
     tg.notify_booking_status_changed(MagicMock(), booking, old_status="pending")
@@ -68,7 +78,7 @@ def test_notify_status_cancelled_still_notifies_specialist(monkeypatch):
     sent = []
 
     monkeypatch.setattr(tg, "notify_dedup_enabled", lambda: False)
-    monkeypatch.setattr(tg, "send_telegram_async", lambda chat, text, token=None: sent.append((str(chat), text)))
+    _record_sends(monkeypatch, sent)
 
     booking = _booking(client_tg=200, specialist_chat="100")
     booking.status = "cancelled"
@@ -86,7 +96,7 @@ def test_notify_specialist_new_booking_includes_action_buttons(monkeypatch):
         captured["reply_markup"] = reply_markup
         return True
 
-    monkeypatch.setattr(tg, "_send_telegram", fake_send)
+    monkeypatch.setattr(tg, "send_telegram_message", fake_send)
     monkeypatch.setattr(tg.settings, "site_url", "https://example.com")
 
     booking = _booking(client_tg=200, specialist_chat="100")

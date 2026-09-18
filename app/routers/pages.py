@@ -1,6 +1,7 @@
 import logging
 import os
 import uuid
+from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import quote, urlencode
@@ -155,16 +156,17 @@ async def _save_profile_photo(consultant: Consultant, upload) -> str | None:
     return None
 
 
+@asynccontextmanager
 async def _async_session_if_logged_in(request: Request):
     """Open async DB only when cookie session has user_id (public pages fast path)."""
     from app.auth.session import get_current_user_async, get_session_user_id
-    from app.database import _ensure_async_engine
+    from app.database import async_session
 
     if "session" not in request.scope or not get_session_user_id(request):
-        return None, None
-    db = _ensure_async_engine()()
-    user = await get_current_user_async(request, db)
-    return db, user
+        yield None, None
+        return
+    async with async_session() as db:
+        yield db, await get_current_user_async(request, db)
 
 
 async def _require_user_async(request: Request, db):
@@ -180,15 +182,11 @@ def _login_redirect(request: Request) -> RedirectResponse:
 @router.get("/")
 async def landing_page(request: Request):
     """Public landing: skip MySQL when guest (no session user) for faster TTFB."""
-    db, user = await _async_session_if_logged_in(request)
-    try:
+    async with _async_session_if_logged_in(request) as (db, user):
         return templates.TemplateResponse(
             "landing/index.html",
             await landing_context_async(request, db, user),
         )
-    finally:
-        if db is not None:
-            await db.close()
 
 
 @router.get("/tg/")
@@ -306,29 +304,21 @@ async def sitemap_xml():
 
 @router.get("/guide/")
 async def guide_page(request: Request):
-    db, user = await _async_session_if_logged_in(request)
-    try:
+    async with _async_session_if_logged_in(request) as (db, user):
         return templates.TemplateResponse(
             "landing/guide.html",
             await guide_context_async(request, db, user),
         )
-    finally:
-        if db is not None:
-            await db.close()
 
 
 @router.get("/apps/")
 async def apps_page(request: Request):
     """How to install / use on Android (RuStore soon) and iPhone (Mini App + PWA)."""
-    db, user = await _async_session_if_logged_in(request)
-    try:
+    async with _async_session_if_logged_in(request) as (db, user):
         return templates.TemplateResponse(
             "landing/apps.html",
             await apps_context_async(request, db, user),
         )
-    finally:
-        if db is not None:
-            await db.close()
 
 
 @router.get("/dashboard/")
@@ -419,8 +409,7 @@ async def legal_pages(request: Request):
         format_legal_sections,
     )
 
-    db, user = await _async_session_if_logged_in(request)
-    try:
+    async with _async_session_if_logged_in(request) as (db, user):
         template = "privacy.html" if request.url.path.startswith("/privacy") else "terms.html"
         brand = settings.site_brand_name
         site = settings.site_url.rstrip("/")
@@ -445,9 +434,6 @@ async def legal_pages(request: Request):
                 terms_sections=format_legal_sections(TERMS_SECTIONS, **ctx),
             ),
         )
-    finally:
-        if db is not None:
-            await db.close()
 
 
 @router.get("/register/")
@@ -771,14 +757,14 @@ async def become_specialist_page(request: Request, db: AsyncSession = Depends(ge
 async def login_page(request: Request):
     from app.auth.login_flow import finish_login_async
     from app.auth.session import get_current_user_async
-    from app.database import _ensure_async_engine
+    from app.database import async_session
     from app.services.email_verification import resend_verification_email_async
 
     needs_db = request.method == "POST" or (
         "session" in request.scope and request.session.get("user_id")
     )
-    db = _ensure_async_engine()() if needs_db else None
-    try:
+    async with AsyncExitStack() as stack:
+        db = await stack.enter_async_context(async_session()) if needs_db else None
         user = await get_current_user_async(request, db) if db is not None else None
         next_url = safe_next_url(request.query_params.get("next"), default="")
         from app.services.client_channel import remember_auth_intent, with_client_query
@@ -902,9 +888,6 @@ async def login_page(request: Request):
                 ),
             ),
         )
-    finally:
-        if db is not None:
-            await db.close()
 
 
 @router.get("/login/2fa/")

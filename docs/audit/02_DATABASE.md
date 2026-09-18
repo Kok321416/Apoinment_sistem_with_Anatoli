@@ -9,6 +9,27 @@
 
 **Rule:** Never call `inspect()` or sync ORM on connections from `AsyncSession` except inside `conn.run_sync()` with **DDL only** (`create_all`), not `has_table()`.
 
+## Getting an async session
+
+| Context | Use |
+|---------|-----|
+| Request handler | `db: AsyncSession = Depends(get_async_db)` |
+| Outside a request (SSE, threads, CLI) | `async with async_session() as db` |
+| Tests / scripts | `configure_async_sessionmaker(factory)` + `reset_async_sessionmaker()` |
+
+**Rule:** the engine and session factory in `app/database.py` are private. Reaching for them directly
+(`_ensure_async_engine`, `_AsyncSessionLocal`) broke unrelated callers and test setup on every rename,
+and hand-rolled sessions leaked when a caller forgot to close. `tests/test_database_session_contract.py`
+fails if a module goes back to the private names.
+
+## Settings
+
+`get_settings()` returns one object per process (`app/config.py`), because modules capture it at
+import: a second instance would leave them reading stale config. Override it in place — via
+`settings_overrides(...)` or monkeypatch — and never rely on `cache_clear()` producing a fresh object.
+Overrides set on the object shadow class defaults, so tests restore instance state after each test
+(`tests/conftest.py`); `tests/test_settings_identity_contract.py` pins the invariant.
+
 ## AsyncSession settings
 
 ```python

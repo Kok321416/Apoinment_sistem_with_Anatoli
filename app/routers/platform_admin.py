@@ -87,16 +87,15 @@ async def admin_api_kpi(request: Request, db: AsyncSession = Depends(get_async_d
 @router.get("/api/kpi/stream/")
 async def admin_api_kpi_stream(request: Request, db: AsyncSession = Depends(get_async_db)):
     await _admin(request, db, PERM_USERS_READ)
-    from app.database import _ensure_async_engine
+    from app.database import async_session
     from app.services.platform_admin_users import dashboard_kpi_async
 
     async def generate():
         try:
-            factory = _ensure_async_engine()
             while True:
                 if await request.is_disconnected():
                     break
-                async with factory() as session:
+                async with async_session() as session:
                     payload = json.dumps(await dashboard_kpi_async(session), ensure_ascii=False)
                     yield f"data: {payload}\n\n"
                 await asyncio.sleep(30)

@@ -71,7 +71,24 @@ def _log_telegram_notification(
         logger.info(msg)
 
 
-def _send_telegram(
+def _send_message_request(
+    chat_id,
+    text: str,
+    bot_token: str | None,
+    reply_markup: dict | None,
+) -> tuple[str, dict] | None:
+    """Resolve token and build the sendMessage request, or None when no token is configured."""
+    token = (bot_token or "").strip() or settings.telegram_bot_token
+    if not token:
+        logger.warning("TELEGRAM_BOT_TOKEN not set")
+        return None
+    data = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    if reply_markup:
+        data["reply_markup"] = reply_markup
+    return f"https://api.telegram.org/bot{token}/sendMessage", data
+
+
+def send_telegram_message(
     chat_id,
     text: str,
     bot_token: str | None = None,
@@ -80,9 +97,9 @@ def _send_telegram(
     booking_id: int | None = None,
     recipient_type: str | None = None,
 ) -> bool:
-    token = (bot_token or "").strip() or settings.telegram_bot_token
-    if not token:
-        logger.warning("TELEGRAM_BOT_TOKEN not set")
+    """Blocking transport for outgoing messages — the single seam every notify path goes through."""
+    request = _send_message_request(chat_id, text, bot_token, reply_markup)
+    if request is None:
         if recipient_type:
             _log_telegram_notification(
                 booking_id=booking_id,
@@ -91,10 +108,7 @@ def _send_telegram(
                 error_type="MissingToken",
             )
         return False
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    data = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
-    if reply_markup:
-        data["reply_markup"] = reply_markup
+    url, data = request
     try:
         import httpx
 
@@ -128,14 +142,10 @@ async def send_telegram_await(
     reply_markup: dict | None = None,
 ) -> bool:
     """Non-blocking Telegram send for async FastAPI handlers."""
-    token = (bot_token or "").strip() or settings.telegram_bot_token
-    if not token:
-        logger.warning("TELEGRAM_BOT_TOKEN not set")
+    request = _send_message_request(chat_id, text, bot_token, reply_markup)
+    if request is None:
         return False
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    data = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
-    if reply_markup:
-        data["reply_markup"] = reply_markup
+    url, data = request
     try:
         import httpx
 
@@ -159,7 +169,7 @@ def send_telegram_async(
 ) -> None:
     """Fire-and-forget send so FastAPI event loop is not blocked."""
     _tg_executor.submit(
-        _send_telegram,
+        send_telegram_message,
         chat_id,
         text,
         bot_token,
@@ -187,7 +197,7 @@ def _integration_notifications_on(integration: Integration | None) -> bool:
 
 
 def send_telegram_to_client(telegram_id: int, text: str, *, booking_id: int | None = None) -> bool:
-    return _send_telegram(
+    return send_telegram_message(
         telegram_id,
         text,
         booking_id=booking_id,
@@ -259,7 +269,7 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
         if specialist_chat_id:
             if new_status == "confirmed":
                 if skip_client:
-                    _send_telegram(
+                    send_telegram_message(
                         specialist_chat_id,
                         text_client,
                         specialist_token,
@@ -268,7 +278,7 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
                     )
             else:
                 text_spec = format_booking_status_changed_specialist(booking, new_status, old_status)
-                _send_telegram(
+                send_telegram_message(
                     specialist_chat_id,
                     text_spec,
                     specialist_token,
@@ -334,7 +344,7 @@ def notify_booking_rescheduled(
                 ),
             )
         if specialist_chat_id:
-            _send_telegram(
+            send_telegram_message(
                 specialist_chat_id,
                 format_booking_rescheduled_specialist(
                     booking, old_date=old_date, old_time=old_time, old_end_time=old_end_time
@@ -410,7 +420,7 @@ def notify_specialist_new_booking(booking: Booking) -> bool:
         if not chat_id:
             return False
         text = format_new_booking_message_for_specialist(booking)
-        return _send_telegram(
+        return send_telegram_message(
             chat_id,
             text,
             token,
@@ -660,7 +670,7 @@ def _send_reminders_body(db: Session) -> dict:
             if specialist_chat_id and not booking.specialist_reminder_24h_sent:
                 if _claim_booking_flag(db, booking.id, "specialist_reminder_24h_sent"):
                     booking.specialist_reminder_24h_sent = True
-                    if _send_telegram(
+                    if send_telegram_message(
                         specialist_chat_id,
                         format_specialist_reminder_message(booking, hours_label),
                         specialist_bot_token,
@@ -710,7 +720,7 @@ def _send_reminders_body(db: Session) -> dict:
             if specialist_chat_id and not booking.specialist_reminder_1h_sent:
                 if _claim_booking_flag(db, booking.id, "specialist_reminder_1h_sent"):
                     booking.specialist_reminder_1h_sent = True
-                    if _send_telegram(
+                    if send_telegram_message(
                         specialist_chat_id,
                         format_specialist_reminder_message(booking, hours_label),
                         specialist_bot_token,

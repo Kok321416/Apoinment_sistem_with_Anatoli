@@ -225,7 +225,7 @@ def request_password_reset(
                 return True, GENERIC_OK
             row = create_password_reset_token(db, user)
             link = reset_link_for_token(row.token)
-            from app.services.telegram import _send_telegram
+            from app.services.telegram import send_telegram_message
 
             text = (
                 "🔐 <b>Сброс пароля</b>\n\n"
@@ -233,7 +233,7 @@ def request_password_reset(
                 f'<a href="{link}">Открыть ссылку для нового пароля</a>\n\n'
                 "Если это были не вы — просто игнорируйте сообщение."
             )
-            ok = _send_telegram(chat_id, text)
+            ok = send_telegram_message(chat_id, text)
             if ok:
                 db.commit()
             else:
