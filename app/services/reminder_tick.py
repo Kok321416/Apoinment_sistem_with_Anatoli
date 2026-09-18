@@ -41,10 +41,19 @@ def _run_tick() -> None:
     global _running
     try:
         from app.database import SessionLocal
+        from app.services.notify_outbox import process_notify_outbox
         from app.services.telegram import send_reminders
 
         db = SessionLocal()
         try:
+            outbox = process_notify_outbox(db)
+            if outbox.get("processed"):
+                logger.info(
+                    "notify_outbox processed=%s done=%s failed=%s",
+                    outbox.get("processed"),
+                    outbox.get("done"),
+                    outbox.get("failed"),
+                )
             sent = send_reminders(db)
             logger.info(
                 "reminder_tick done client_24=%s client_1=%s spec_24=%s spec_1=%s",

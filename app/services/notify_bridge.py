@@ -1,4 +1,7 @@
-"""Fire-and-forget sync notify bridges so AsyncSession handlers do not block on TG/SMTP/Google."""
+"""Fire-and-forget sync notify bridges so AsyncSession handlers do not block on TG/SMTP/Google.
+
+Cancel/status paths also support blocking wait + durable outbox retry.
+"""
 from __future__ import annotations
 
 import logging
@@ -50,12 +53,16 @@ def _run_on_booking_created(booking_id: int) -> None:
         sdb.close()
 
 
-def _run_status_changed(booking_id: int, old_status: str | None) -> None:
+def _run_status_changed(booking_id: int, old_status: str | None, *, outbox_id: int | None = None) -> None:
     sdb = SessionLocal()
     try:
         sb = _load_booking(sdb, booking_id)
         if sb:
             notify_booking_status_changed(sdb, sb, old_status)
+            if outbox_id:
+                from app.services.notify_outbox import mark_outbox_done
+
+                mark_outbox_done(sdb, outbox_id)
             sdb.commit()
     except Exception:
         logger.exception("notify bridge status_changed failed id=%s", booking_id)
@@ -116,7 +123,53 @@ def run_on_booking_created_blocking(booking_id: int, *, timeout: float = 15.0) -
 
 
 def schedule_status_changed(booking_id: int, old_status: str | None) -> None:
-    _tg_executor.submit(_run_status_changed, int(booking_id), old_status)
+    outbox_id = None
+    sdb = SessionLocal()
+    try:
+        from app.services.notify_outbox import enqueue_status_changed
+
+        outbox_id = enqueue_status_changed(sdb, int(booking_id), old_status)
+        sdb.commit()
+    except Exception:
+        logger.exception("outbox enqueue status_changed failed id=%s", booking_id)
+        try:
+            sdb.rollback()
+        except Exception:
+            pass
+    finally:
+        sdb.close()
+    _tg_executor.submit(_run_status_changed, int(booking_id), old_status, outbox_id=outbox_id)
+
+
+def run_status_changed_blocking(
+    booking_id: int, old_status: str | None, *, timeout: float = 20.0
+) -> None:
+    """Cancel/status notify with wait — same reliability class as create-notify."""
+    outbox_id = None
+    sdb = SessionLocal()
+    try:
+        from app.services.notify_outbox import enqueue_status_changed
+
+        outbox_id = enqueue_status_changed(sdb, int(booking_id), old_status)
+        sdb.commit()
+    except Exception:
+        logger.exception("outbox enqueue status_changed failed id=%s", booking_id)
+        try:
+            sdb.rollback()
+        except Exception:
+            pass
+    finally:
+        sdb.close()
+
+    fut = _tg_executor.submit(
+        _run_status_changed, int(booking_id), old_status, outbox_id=outbox_id
+    )
+    try:
+        fut.result(timeout=timeout)
+    except Exception:
+        logger.exception(
+            "notify bridge status_changed wait failed id=%s", booking_id
+        )
 
 
 def schedule_rescheduled(

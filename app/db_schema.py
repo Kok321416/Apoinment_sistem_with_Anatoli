@@ -311,6 +311,11 @@ def _apply_app_schema_patches() -> None:
         logger.exception("integration_telegram_audit schema ensure failed")
 
     try:
+        ensure_notify_outbox_schema()
+    except Exception:
+        logger.exception("notify_outbox schema ensure failed")
+
+    try:
         from app.models import platform as platform_models
 
         Base.metadata.create_all(
@@ -327,6 +332,7 @@ def _apply_app_schema_patches() -> None:
                 platform_models.AdminRoleAssignment.__table__,
                 platform_models.AdminTwoFactor.__table__,
                 platform_models.UserTwoFactor.__table__,
+                platform_models.NotifyOutbox.__table__,
                 platform_models.BillingPlan.__table__,
                 platform_models.UserSubscription.__table__,
             ],
@@ -564,6 +570,84 @@ def ensure_integration_telegram_audit_schema(bind=None) -> bool:
         return False
 
 
+def ensure_notify_outbox_schema(bind=None) -> bool:
+    """Create notify_outbox if missing (shared hosting)."""
+    from app.models.platform import NotifyOutbox
+
+    bind = bind or engine
+    table = NotifyOutbox.__table__
+    try:
+        insp = inspect(bind)
+        if insp.has_table(table.name):
+            return True
+        try:
+            Base.metadata.create_all(bind=bind, tables=[table])
+        except Exception:
+            logger.exception("create_all failed for notify_outbox")
+        insp = inspect(bind)
+        if insp.has_table(table.name):
+            logger.info("notify_outbox ready via create_all")
+            return True
+        dialect = getattr(getattr(bind, "dialect", None), "name", "") or ""
+        from sqlalchemy.engine import Engine
+
+        def _run(conn) -> None:
+            if dialect == "sqlite":
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS notify_outbox (
+                            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                            kind VARCHAR(32) NOT NULL,
+                            booking_id INTEGER NULL,
+                            payload_json TEXT NOT NULL DEFAULT '{}',
+                            attempts INTEGER NOT NULL DEFAULT 0,
+                            next_attempt_at DATETIME NULL,
+                            last_error TEXT NULL,
+                            done_at DATETIME NULL,
+                            created_at DATETIME NULL
+                        )
+                        """
+                    )
+                )
+            else:
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS notify_outbox (
+                            id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                            kind VARCHAR(32) NOT NULL,
+                            booking_id INT NULL,
+                            payload_json TEXT NOT NULL,
+                            attempts INT NOT NULL DEFAULT 0,
+                            next_attempt_at DATETIME NULL,
+                            last_error TEXT NULL,
+                            done_at DATETIME NULL,
+                            created_at DATETIME NULL,
+                            KEY ix_notify_outbox_kind (kind),
+                            KEY ix_notify_outbox_booking_id (booking_id),
+                            KEY ix_notify_outbox_next_attempt_at (next_attempt_at),
+                            KEY ix_notify_outbox_done_at (done_at)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                        """
+                    )
+                )
+
+        if isinstance(bind, Engine):
+            with bind.begin() as conn:
+                _run(conn)
+        else:
+            _run(bind)
+        insp = inspect(bind)
+        ok = insp.has_table(table.name)
+        if ok:
+            logger.info("notify_outbox ready via raw DDL")
+        return ok
+    except Exception:
+        logger.exception("ensure_notify_outbox_schema failed")
+        return False
+
+
 def ensure_diagnostics_schema(bind=None) -> bool:
     """Create diagnostics tables if missing. Safe to call repeatedly.
 
@@ -728,6 +812,10 @@ def ensure_all_schema() -> None:
         ensure_integration_telegram_audit_schema()
     except Exception:
         logger.exception("integration_telegram_audit schema ensure failed")
+    try:
+        ensure_notify_outbox_schema()
+    except Exception:
+        logger.exception("notify_outbox schema ensure failed")
     # Deploy/migrate runs in a single process — no MySQL lock (avoids self-deadlock).
     ensure_schema_patches(use_lock=False)
     _refresh_schema_health()

@@ -47,6 +47,7 @@ URL_MAP = {
     "account_login": "/accounts/login/",
     "account_set_password": "/accounts/password/set/",
     "account_reset_password": "/accounts/password/reset/",
+    "account_forgot_password": "/accounts/password/forgot/",
     "connect_telegram_app": "/integrations/telegram/connect-app/",
     "account_email": "/profile/",
     "socialaccount_connections": "/accounts/social/connections/",

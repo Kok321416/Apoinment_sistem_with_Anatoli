@@ -228,8 +228,25 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
             record_notify_dedup_hit(db)
 
         text_client = format_booking_status_changed_client(booking, new_status, old_status)
+        client_sent = False
         if client_chat and not skip_client:
-            send_telegram_async(client_chat, text_client)
+            # Sync send (same as create-notify) so WSGI cannot recycle mid-flight.
+            client_sent = bool(
+                send_telegram_to_client(
+                    client_chat,
+                    text_client,
+                    booking_id=getattr(booking, "id", None),
+                )
+            )
+            if not client_sent:
+                from app.services.booking_email import notify_client_status_email
+                from app.services.vk_messages import notify_client_status_vk
+
+                _notify_client_fallback(
+                    booking,
+                    send_vk=lambda: notify_client_status_vk(booking, new_status, old_status),
+                    send_email=lambda: notify_client_status_email(booking, new_status, old_status),
+                )
         elif not client_chat:
             from app.services.booking_email import notify_client_status_email
             from app.services.vk_messages import notify_client_status_vk
@@ -241,12 +258,23 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
             )
         if specialist_chat_id:
             if new_status == "confirmed":
-                # Specialist already confirmed; client gets celebration (incl. dedup same-chat).
                 if skip_client:
-                    send_telegram_async(specialist_chat_id, text_client, specialist_token)
+                    _send_telegram(
+                        specialist_chat_id,
+                        text_client,
+                        specialist_token,
+                        booking_id=getattr(booking, "id", None),
+                        recipient_type="specialist",
+                    )
             else:
                 text_spec = format_booking_status_changed_specialist(booking, new_status, old_status)
-                send_telegram_async(specialist_chat_id, text_spec, specialist_token)
+                _send_telegram(
+                    specialist_chat_id,
+                    text_spec,
+                    specialist_token,
+                    booking_id=getattr(booking, "id", None),
+                    recipient_type="specialist",
+                )
     except Exception as e:
         logger.exception("Status change notification error: %s", e)
 

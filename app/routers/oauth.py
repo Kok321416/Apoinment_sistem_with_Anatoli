@@ -664,6 +664,55 @@ async def set_password_page(request: Request, db: AsyncSession = Depends(get_asy
     )
 
 
+@router.get("/password/forgot/")
+@router.post("/password/forgot/")
+async def password_forgot_page(request: Request, db: AsyncSession = Depends(get_async_db)):
+    from app.security.csrf import validate_csrf_token
+    from app.security.request_guards import client_ip
+    from app.services.password_reset import GENERIC_OK, request_password_reset_async
+    from app.services.rate_limit import check_rate_limit
+    from app.templating import page_context_async, templates
+
+    error = None
+    success = None
+    login_val = ""
+    channel = "telegram"
+    if request.method == "POST":
+        form = await request.form()
+        csrf = form.get("csrf_token") or form.get("csrfmiddlewaretoken")
+        if not validate_csrf_token(request, csrf):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+        else:
+            ip = client_ip(request)
+            if not check_rate_limit(f"pwd_forgot:{ip}", max_calls=8, window_sec=600):
+                error = "Слишком много запросов. Подождите несколько минут."
+            else:
+                login_val = (form.get("login") or form.get("email") or "").strip()
+                channel = (form.get("channel") or "telegram").strip().lower()
+                if not login_val:
+                    error = "Укажите телефон или почту."
+                else:
+                    ok, msg = await request_password_reset_async(
+                        db, login_raw=login_val, channel=channel
+                    )
+                    if ok:
+                        success = msg or GENERIC_OK
+                    else:
+                        error = msg
+    return templates.TemplateResponse(
+        "password_forgot.html",
+        await page_context_async(
+            request,
+            db,
+            None,
+            error=error,
+            success=success,
+            login=login_val,
+            channel=channel,
+        ),
+    )
+
+
 @router.get("/password/reset/")
 @router.post("/password/reset/")
 async def password_reset_page(request: Request, db: AsyncSession = Depends(get_async_db)):

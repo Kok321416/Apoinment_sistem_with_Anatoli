@@ -1770,9 +1770,9 @@ async def specialist_bookings(request: Request, db: AsyncSession = Depends(get_a
                         booking.status = "cancelled"
                         booking.cancel_reason = reason
                         await db.commit()
-                        from app.services.notify_bridge import schedule_status_changed
+                        from app.services.notify_bridge import run_status_changed_blocking
 
-                        schedule_status_changed(booking.id, old_status)
+                        run_status_changed_blocking(booking.id, old_status)
                         success = "Запись отменена"
                 elif action == "complete":
                     booking.status = "completed"

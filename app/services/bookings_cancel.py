@@ -58,15 +58,15 @@ async def specialist_cancel_booking_async(
     booking_pk = booking.id
     await db.commit()
     try:
-        from app.services.notify_bridge import schedule_status_changed
+        from app.services.notify_bridge import run_status_changed_blocking
 
-        schedule_status_changed(booking_pk, old_status)
+        run_status_changed_blocking(booking_pk, old_status)
     except Exception:
         # Cancel already persisted — never fail the API after commit.
         import logging
 
         logging.getLogger(__name__).exception(
-            "schedule_status_changed after cancel failed id=%s", booking_pk
+            "run_status_changed_blocking after cancel failed id=%s", booking_pk
         )
     return True, "Запись отменена", booking
 
@@ -101,14 +101,14 @@ def specialist_cancel_booking_sync(
     booking_pk = booking.id
     db.commit()
     try:
-        from app.services.notify_bridge import schedule_status_changed
+        from app.services.notify_bridge import run_status_changed_blocking
 
-        schedule_status_changed(booking_pk, old_status)
+        run_status_changed_blocking(booking_pk, old_status)
     except Exception:
         import logging
 
         logging.getLogger(__name__).exception(
-            "schedule_status_changed after cancel failed id=%s", booking_pk
+            "run_status_changed_blocking after cancel failed id=%s", booking_pk
         )
     return True, "Запись отменена", booking
 
