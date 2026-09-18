@@ -20,15 +20,65 @@
 .stats-filters__hint {
     margin: 0.75rem 0 0;
 }
+.stats-status-filter {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 12rem;
+}
+.stats-status-filter__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.stats-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    background: #fff;
+}
+.stats-status-pill input {
+    margin: 0;
+}
+.stats-status-pill.is-active {
+    border-color: #111;
+    background: #111;
+    color: #fff;
+}
+.stats-filter-tag {
+    display: inline-block;
+    margin-left: 0.25rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    background: #f1f5f9;
+    font-size: 0.8rem;
+}
 .stats-dashboard {
     margin-bottom: var(--space-lg, 1.25rem);
 }
 .stats-table {
     padding: var(--space-lg, 1.25rem);
 }
+.stats-table__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
 .stats-table__title {
-    margin: 0 0 1rem;
+    margin: 0;
     font-size: 1.1rem;
+}
+.stats-table__bulk {
+    display: flex;
+    gap: 0.5rem;
 }
 .stats-table__scroll {
     overflow-x: auto;
@@ -49,6 +99,10 @@
     font-weight: 600;
     white-space: nowrap;
     background: var(--surface-muted, #f8fafc);
+}
+.stats-table__check {
+    width: 2.25rem;
+    text-align: center;
 }
 @media (max-width: 720px) {
     .stats-filters__form .form-field {

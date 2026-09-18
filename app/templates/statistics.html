@@ -10,11 +10,11 @@
 <link rel="stylesheet" href="/static/css/app.css?v=45">
 <link rel="stylesheet" href="/static/css/hub-shared.css?v=14">
 <link rel="stylesheet" href="/static/css/bookings-hub.css?v=9">
-<link rel="stylesheet" href="/static/css/statistics.css?v=1">
+<link rel="stylesheet" href="/static/css/statistics.css?v=2">
 {% endblock %}
 
 {% block app_content %}
-<div class="stats-page bookings-page" id="stats-page">
+<div class="stats-page bookings-page" id="stats-page" data-csrf="{{ csrf_token }}">
     <section class="bookings-hero card" id="stats-hero">
         <div class="bookings-hero__glow bookings-hero__glow--purple" aria-hidden="true"></div>
         <div class="bookings-hero__glow bookings-hero__glow--cyan" aria-hidden="true"></div>
@@ -29,6 +29,13 @@
         </div>
     </section>
 
+    {% if flash_success %}
+    <div class="alert alert--success" role="status">{{ flash_success }}</div>
+    {% endif %}
+    {% if flash_error %}
+    <div class="alert alert--error" role="alert">{{ flash_error }}</div>
+    {% endif %}
+
     <section class="stats-filters card">
         <form method="GET" action="/statistics/" class="stats-filters__form" id="stats-range-form">
             <div class="form-field">
@@ -39,18 +46,49 @@
                 <label class="form-field__label" for="date_to">По дату</label>
                 <input class="input" type="date" id="date_to" name="to" value="{{ date_to }}">
             </div>
+            <fieldset class="stats-status-filter">
+                <legend class="form-field__label">Статус</legend>
+                <div class="stats-status-filter__pills" role="group" aria-label="Фильтр по статусу">
+                    <label class="stats-status-pill {% if not status_filters %}is-active{% endif %}">
+                        <input type="checkbox" name="status_all" value="1" id="stats-status-all" {% if not status_filters %}checked{% endif %}>
+                        Все
+                    </label>
+                    <label class="stats-status-pill {% if 'completed' in status_filters %}is-active{% endif %}">
+                        <input type="checkbox" name="status" value="completed" class="stats-status-opt" {% if 'completed' in status_filters %}checked{% endif %}>
+                        Завершена
+                    </label>
+                    <label class="stats-status-pill {% if 'cancelled' in status_filters %}is-active{% endif %}">
+                        <input type="checkbox" name="status" value="cancelled" class="stats-status-opt" {% if 'cancelled' in status_filters %}checked{% endif %}>
+                        Отменена
+                    </label>
+                    <label class="stats-status-pill {% if 'confirmed' in status_filters %}is-active{% endif %}">
+                        <input type="checkbox" name="status" value="confirmed" class="stats-status-opt" {% if 'confirmed' in status_filters %}checked{% endif %}>
+                        Подтверждена
+                    </label>
+                    <label class="stats-status-pill {% if 'pending' in status_filters %}is-active{% endif %}">
+                        <input type="checkbox" name="status" value="pending" class="stats-status-opt" {% if 'pending' in status_filters %}checked{% endif %}>
+                        Ожидает
+                    </label>
+                </div>
+            </fieldset>
             <div class="stats-filters__actions">
                 <button type="submit" class="btn btn--primary">Показать</button>
                 <a
                     class="btn btn--secondary"
-                    href="/statistics/export.xlsx?from={{ date_from }}&to={{ date_to }}"
+                    href="/statistics/export.xlsx?{{ export_query }}"
                     id="stats-export-xlsx"
                 >Выгрузить Excel</a>
             </div>
         </form>
         <p class="stats-filters__hint text-muted text-body-sm">
-            Показано консультаций: <strong>{{ booking_count }}</strong>
+            Показано: <strong>{{ booking_count }}</strong>
             ({{ date_from }} — {{ date_to }})
+            {% if status_filters %}
+            · фильтр:
+            {% for s in status_filters %}
+            <span class="stats-filter-tag">{{ s }}</span>
+            {% endfor %}
+            {% endif %}
         </p>
     </section>
 
@@ -64,41 +102,69 @@
     </section>
 
     <section class="stats-table card">
-        <h2 class="stats-table__title">Консультации за период</h2>
-        {% if export_rows %}
-        <div class="stats-table__scroll">
-            <table class="stats-table__grid">
-                <thead>
-                    <tr>
-                        <th>Дата</th>
-                        <th>Время</th>
-                        <th>Статус</th>
-                        <th>Услуга</th>
-                        <th>Клиент</th>
-                        <th>Контакты</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in export_rows %}
-                    <tr>
-                        <td>{{ row.date }}</td>
-                        <td>{{ row.time_range or row.time }}</td>
-                        <td>{{ row.status_label }}</td>
-                        <td>{{ row.service }}</td>
-                        <td>{{ row.client_name }}</td>
-                        <td class="text-body-sm text-muted">
-                            {% if row.client_phone %}{{ row.client_phone }}{% endif %}
-                            {% if row.client_email %}{% if row.client_phone %} · {% endif %}{{ row.client_email }}{% endif %}
-                            {% if row.client_telegram %}{% if row.client_phone or row.client_email %} · {% endif %}@{{ row.client_telegram|replace('@','') }}{% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="stats-table__head">
+            <h2 class="stats-table__title">Консультации и мероприятия за период</h2>
+            <div class="stats-table__bulk">
+                <button type="submit" form="stats-delete-form" class="btn btn--danger btn--sm" id="stats-delete-btn" disabled>Удалить выбранные</button>
+            </div>
         </div>
+        {% if export_rows %}
+        <form method="POST" action="/statistics/" id="stats-delete-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="delete_selected">
+            <input type="hidden" name="from" value="{{ date_from }}">
+            <input type="hidden" name="to" value="{{ date_to }}">
+            {% for s in status_filters %}
+            <input type="hidden" name="status" value="{{ s }}">
+            {% endfor %}
+            <div class="stats-table__scroll">
+                <table class="stats-table__grid">
+                    <thead>
+                        <tr>
+                            <th class="stats-table__check">
+                                <input type="checkbox" id="stats-select-all" title="Выбрать все" aria-label="Выбрать все">
+                            </th>
+                            <th>Дата</th>
+                            <th>Время</th>
+                            <th>Статус</th>
+                            <th>Услуга</th>
+                            <th>Клиент / название</th>
+                            <th>Контакты</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in export_rows %}
+                        <tr>
+                            <td class="stats-table__check">
+                                {% if row.kind == 'event' %}
+                                <input type="checkbox" class="stats-row-check" name="event_ids" value="{{ row.id }}" aria-label="Выбрать {{ row.client_name }}">
+                                {% else %}
+                                <input type="checkbox" class="stats-row-check" name="booking_ids" value="{{ row.id }}" aria-label="Выбрать {{ row.client_name }}">
+                                {% endif %}
+                            </td>
+                            <td>{{ row.date }}</td>
+                            <td>{{ row.time_range or row.time }}</td>
+                            <td>{{ row.status_label }}</td>
+                            <td>{{ row.service }}</td>
+                            <td>{{ row.client_name }}</td>
+                            <td class="text-body-sm text-muted">
+                                {% if row.client_phone %}{{ row.client_phone }}{% endif %}
+                                {% if row.client_email %}{% if row.client_phone %} · {% endif %}{{ row.client_email }}{% endif %}
+                                {% if row.client_telegram %}{% if row.client_phone or row.client_email %} · {% endif %}@{{ row.client_telegram|replace('@','') }}{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
         {% else %}
-        <p class="text-muted">За выбранный период консультаций нет.</p>
+        <p class="text-muted">За выбранный период записей нет.</p>
         {% endif %}
     </section>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/statistics.js?v=1" defer></script>
 {% endblock %}

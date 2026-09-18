@@ -197,6 +197,43 @@ def test_statistics_page_and_xlsx(stats_client):
     assert 'id="stats-dashboard"' in stats.text
     assert "Завершены" in stats.text
     assert "Отменены" in stats.text
+    assert "stats-select-all" in stats.text or 'id="stats-select-all"' in stats.text
+    assert "Удалить выбранные" in stats.text
+    assert 'name="status" value="cancelled"' in stats.text
+    assert 'name="status" value="completed"' in stats.text
+    assert "statistics.js" in stats.text
+
+    filtered = client.get(
+        f"/statistics/?from={start.isoformat()}&to={(today + timedelta(days=7)).isoformat()}&status=cancelled",
+        follow_redirects=True,
+    )
+    assert filtered.status_code == 200
+    assert "Отменена" in filtered.text
+    # completed booking should be filtered out of table when only cancelled selected
+    # (status label Завершена may still appear in KPI cards)
+    assert "export.xlsx" in filtered.text
+    assert "status=cancelled" in filtered.text
+
+    # delete one cancelled booking via form
+    import re as _re
+    booking_ids = _re.findall(r'name="booking_ids" value="(\d+)"', filtered.text)
+    assert booking_ids
+    csrf = _re.search(r'name="csrf_token"\s+value="([^"]+)"', filtered.text)
+    assert csrf
+    delete = client.post(
+        "/statistics/",
+        data={
+            "csrf_token": csrf.group(1),
+            "action": "delete_selected",
+            "from": start.isoformat(),
+            "to": (today + timedelta(days=7)).isoformat(),
+            "status": "cancelled",
+            "booking_ids": booking_ids[0],
+        },
+        follow_redirects=True,
+    )
+    assert delete.status_code == 200
+    assert "Удалено" in delete.text
     assert "Выгрузить Excel" in stats.text
 
     xlsx = client.get(

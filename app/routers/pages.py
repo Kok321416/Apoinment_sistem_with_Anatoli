@@ -1540,12 +1540,20 @@ async def available_slots(
 
 
 @router.get("/statistics/")
+@router.post("/statistics/")
 async def specialist_statistics(request: Request, db: AsyncSession = Depends(get_async_db)):
     from zoneinfo import ZoneInfo
+    from urllib.parse import urlencode
 
     from app.auth.session import get_current_user_async
     from app.deps import require_specialist_mode_async
-    from app.services.statistics_hub import build_statistics_payload, parse_range
+    from app.services.statistics_hub import (
+        build_statistics_payload,
+        delete_statistics_items_async,
+        parse_range,
+        parse_status_filters,
+        status_filter_query,
+    )
 
     user = await get_current_user_async(request, db)
     if not user:
@@ -1554,11 +1562,73 @@ async def specialist_statistics(request: Request, db: AsyncSession = Depends(get
 
     tz = ZoneInfo(get_settings().timezone or "Asia/Irkutsk")
     today = datetime.now(tz).date()
+    flash_success = None
+    flash_error = None
+
+    if request.method == "POST":
+        form = await request.form()
+        if not _form_csrf_ok(request, form):
+            flash_error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+        elif (form.get("action") or "") == "delete_selected":
+            def _ids(name: str) -> list[int]:
+                out: list[int] = []
+                for raw in form.getlist(name):
+                    try:
+                        out.append(int(raw))
+                    except (TypeError, ValueError):
+                        continue
+                return out
+
+            booking_ids = _ids("booking_ids")
+            event_ids = _ids("event_ids")
+            if not booking_ids and not event_ids:
+                flash_error = "Выберите хотя бы одну запись или мероприятие."
+            else:
+                deleted_b, deleted_e = await delete_statistics_items_async(
+                    db,
+                    consultant_id=consultant.id,
+                    booking_ids=booking_ids,
+                    event_ids=event_ids,
+                )
+                parts = []
+                if deleted_b:
+                    parts.append(f"записей: {deleted_b}")
+                if deleted_e:
+                    parts.append(f"мероприятий: {deleted_e}")
+                flash_success = "Удалено — " + ", ".join(parts) if parts else "Нечего удалять."
+        q = {}
+        if form.get("from"):
+            q["from"] = str(form.get("from"))
+        if form.get("to"):
+            q["to"] = str(form.get("to"))
+        for st in form.getlist("status"):
+            q.setdefault("status", [])
+            if isinstance(q["status"], list):
+                q["status"].append(str(st))
+        params = []
+        if q.get("from"):
+            params.append(("from", q["from"]))
+        if q.get("to"):
+            params.append(("to", q["to"]))
+        for st in q.get("status") or []:
+            params.append(("status", st))
+        if flash_success:
+            params.append(("ok", flash_success))
+        if flash_error:
+            params.append(("err", flash_error))
+        return RedirectResponse(
+            url="/statistics/" + (("?" + urlencode(params)) if params else ""),
+            status_code=303,
+        )
+
     date_from, date_to = parse_range(
         request.query_params.get("from"),
         request.query_params.get("to"),
         today,
     )
+    statuses = parse_status_filters(list(request.query_params.getlist("status")))
+    flash_success = request.query_params.get("ok")
+    flash_error = request.query_params.get("err")
     payload = await build_statistics_payload(
         db,
         consultant_id=consultant.id,
@@ -1566,7 +1636,12 @@ async def specialist_statistics(request: Request, db: AsyncSession = Depends(get
         date_to=date_to,
         today=today,
         now=datetime.now(tz).time(),
+        statuses=statuses,
     )
+    status_qs = status_filter_query(statuses)
+    export_qs = f"from={date_from.isoformat()}&to={date_to.isoformat()}"
+    if status_qs:
+        export_qs = f"{export_qs}&{status_qs}"
     return templates.TemplateResponse(
         "statistics.html",
         await page_context_async(
@@ -1580,6 +1655,10 @@ async def specialist_statistics(request: Request, db: AsyncSession = Depends(get
             export_rows=payload["export_rows"],
             booking_count=payload["booking_count"],
             counts=payload["counts"],
+            status_filters=statuses,
+            export_query=export_qs,
+            flash_success=flash_success,
+            flash_error=flash_error,
         ),
     )
 
@@ -1593,7 +1672,7 @@ async def specialist_statistics_export_xlsx(
     from app.auth.session import get_current_user_async
     from app.deps import require_specialist_mode_async
     from app.services.excel_export import consultations_workbook
-    from app.services.statistics_hub import build_statistics_payload, parse_range
+    from app.services.statistics_hub import build_statistics_payload, parse_range, parse_status_filters
 
     user = await get_current_user_async(request, db)
     if not user:
@@ -1607,6 +1686,7 @@ async def specialist_statistics_export_xlsx(
         request.query_params.get("to"),
         today,
     )
+    statuses = parse_status_filters(list(request.query_params.getlist("status")))
     payload = await build_statistics_payload(
         db,
         consultant_id=consultant.id,
@@ -1614,6 +1694,7 @@ async def specialist_statistics_export_xlsx(
         date_to=date_to,
         today=today,
         now=datetime.now(tz).time(),
+        statuses=statuses,
     )
     data = consultations_workbook(
         payload["export_rows"],
