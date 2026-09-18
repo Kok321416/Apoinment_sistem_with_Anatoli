@@ -366,9 +366,32 @@ body.tg-webapp .text-h1 {
 body.tg-webapp .hub-grid,
 body.tg-webapp .stats-grid,
 body.tg-webapp .features-grid,
-body.tg-webapp [class*="__grid"]:not(.tg-hub__switch):not(.booking-cal__grid) {
+body.tg-webapp [class*="__grid"]:not(.tg-hub__switch):not(.booking-cal__grid):not(.stats-table__grid) {
     grid-template-columns: 1fr !important;
     gap: var(--tg-gap) !important;
+}
+
+/* Statistics hub in Mini App: keep table layout, enlarge touch targets */
+body.tg-webapp .stats-status-filter__pills {
+    gap: 0.5rem;
+}
+body.tg-webapp .stats-status-pill {
+    min-height: 2.5rem;
+    padding: 0.5rem 0.85rem;
+}
+body.tg-webapp .stats-table__check input,
+body.tg-webapp #stats-select-all,
+body.tg-webapp .stats-row-check {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+body.tg-webapp .stats-table__head {
+    flex-direction: column;
+    align-items: stretch;
+}
+body.tg-webapp #stats-delete-btn {
+    width: 100%;
+    min-height: 2.75rem;
 }
 
 body.tg-webapp .booking-cal__grid {
