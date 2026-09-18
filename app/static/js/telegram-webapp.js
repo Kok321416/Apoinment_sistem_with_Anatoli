@@ -246,6 +246,67 @@
         );
     }
 
+    function wireConnectTelegram(tg) {
+        /* Mini App: bind notify chat via initData (no broken t.me deep link). */
+        document.addEventListener(
+            "click",
+            function (e) {
+                var a = e.target && e.target.closest ? e.target.closest('a[href*="/integrations/telegram/connect-app/"]') : null;
+                if (!a) return;
+                var initData = (tg && tg.initData) || "";
+                if (!initData) return; /* browser: follow bridge page */
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                var csrf = "";
+                try {
+                    var el = document.querySelector('input[name="csrf_token"], [data-csrf]');
+                    if (el) csrf = el.value || el.getAttribute("data-csrf") || "";
+                } catch (err0) {}
+
+                fetch("/api/specialist/connect-telegram-webapp", {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": csrf,
+                    },
+                    body: JSON.stringify({ init_data: initData, csrf_token: csrf }),
+                })
+                    .then(function (res) {
+                        return res.json().then(function (data) {
+                            return { ok: res.ok, data: data || {} };
+                        });
+                    })
+                    .then(function (out) {
+                        if (out.ok && out.data.success) {
+                            try {
+                                if (tg && typeof tg.HapticFeedback === "object" && tg.HapticFeedback.notificationOccurred) {
+                                    tg.HapticFeedback.notificationOccurred("success");
+                                }
+                            } catch (err1) {}
+                            window.location.href = "/integrations/?tg_connected=1";
+                            return;
+                        }
+                        var msg = (out.data && out.data.error) || "Не удалось подключить";
+                        try {
+                            if (tg && typeof tg.showAlert === "function") tg.showAlert(msg);
+                            else window.alert(msg);
+                        } catch (err2) {
+                            window.alert(msg);
+                        }
+                        /* Fallback: bridge + openTelegramLink */
+                        window.location.href = a.getAttribute("href") || "/integrations/telegram/connect-app/";
+                    })
+                    .catch(function () {
+                        window.location.href = a.getAttribute("href") || "/integrations/telegram/connect-app/";
+                    });
+            },
+            true
+        );
+    }
+
     function wireExternalLinks(tg) {
         document.addEventListener(
             "click",
@@ -558,6 +619,7 @@
             wireBackButton(tg);
             wireExternalLinks(tg);
             wireExportDownloads(tg);
+            wireConnectTelegram(tg);
             wireHaptics();
             wireMainButton(tg);
 

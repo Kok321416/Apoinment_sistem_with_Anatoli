@@ -105,11 +105,26 @@ async def start_for_user(message: Message) -> None:
     await apply_mode_ui(message, "client", dual=False)
 
 
+def _start_arg(message: Message, command: CommandObject | None) -> str:
+    """Deep-link payload from CommandObject or raw ``/start …`` text."""
+    arg = (command.args if command else "") or ""
+    arg = str(arg).strip()
+    if arg:
+        return arg
+    text = (message.text or "").strip()
+    if not text:
+        return ""
+    # "/start connect_spec_…" or "/start@bot connect_spec_…"
+    parts = text.split(maxsplit=1)
+    if len(parts) < 2:
+        return ""
+    return parts[1].strip()
+
+
 @router.message(CommandStart(deep_link=True))
 @router.message(CommandStart())
 async def cmd_start(message: Message, command: CommandObject | None = None) -> None:
-    arg = (command.args if command else "") or ""
-    arg = arg.strip()
+    arg = _start_arg(message, command)
     user = message.from_user
     if user:
         try:

@@ -267,6 +267,74 @@ async def confirm_specialist_telegram(request: Request, db: AsyncSession = Depen
     return {"success": True, "message": "Телеграм подключен"}
 
 
+@router.post("/specialist/connect-telegram-webapp")
+async def connect_telegram_webapp(request: Request, db: AsyncSession = Depends(get_async_db)):
+    """One-click specialist notify bind from Mini App (validated initData).
+
+    Bypasses t.me deep links that Telegram WebView often drops to bare /start.
+    """
+    from app.auth.session import get_current_user_async
+    from app.deps import get_consultant_async
+    from app.security.csrf import validate_csrf_token
+    from app.services.telegram_webapp_auth import validate_webapp_init_data
+
+    user = await get_current_user_async(request, db)
+    if not user:
+        return JSONResponse({"success": False, "error": "Требуется вход"}, status_code=401)
+
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+
+    csrf = request.headers.get("X-CSRF-Token") or data.get("csrf_token")
+    if not validate_csrf_token(request, csrf):
+        return JSONResponse({"success": False, "error": "CSRF"}, status_code=403)
+
+    init_data = (data.get("init_data") or data.get("initData") or "").strip()
+    parsed = validate_webapp_init_data(init_data)
+    if not parsed:
+        return JSONResponse(
+            {"success": False, "error": "Откройте кабинет внутри Telegram Mini App"},
+            status_code=400,
+        )
+    tg_user = parsed.get("user") or {}
+    try:
+        telegram_id = int(tg_user.get("id"))
+    except (TypeError, ValueError):
+        return JSONResponse({"success": False, "error": "Нет telegram id"}, status_code=400)
+
+    try:
+        consultant = await get_consultant_async(db, user)
+    except HTTPException:
+        return JSONResponse({"success": False, "error": "Нужен профиль специалиста"}, status_code=403)
+
+    integration = (
+        await db.execute(select(Integration).where(Integration.consultant_id == consultant.id))
+    ).scalar_one_or_none()
+    if not integration:
+        integration = Integration(consultant_id=consultant.id)
+        db.add(integration)
+        await db.flush()
+
+    ok, err = await claim_integration_telegram_chat_async(
+        db,
+        integration,
+        str(telegram_id),
+        source="webapp_connect",
+        actor_user_id=user.id,
+    )
+    if not ok:
+        return JSONResponse({"success": False, "error": err}, status_code=409)
+
+    integration.telegram_link_token = None
+    integration.telegram_link_token_created_at = None
+    await db.commit()
+    return {"success": True, "message": "Телеграм подключен", "chat_id": str(telegram_id)}
+
+
 @router.post("/telegram/client-bookings")
 async def api_telegram_client_bookings(request: Request, db: AsyncSession = Depends(get_async_db)):
     body = await request.body()

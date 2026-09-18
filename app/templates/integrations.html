@@ -194,7 +194,8 @@
             </div>
             {% elif integration.telegram_enabled %}
             <div class="integration-tile__actions">
-                <a href="/integrations/telegram/connect-app/" class="btn btn--primary">Привязать</a>
+                <a href="/integrations/telegram/connect-app/" class="btn btn--primary" id="tg-notify-connect-btn">Привязать</a>
+                <p class="text-body-sm text-muted mt-sm">В Mini App привязка происходит сразу. В браузере откроется бот — нажмите Start и «Подтвердить подключение».</p>
             </div>
             <details class="integration-tile__details">
                 <summary>Подключить вручную (токен и chat id)</summary>

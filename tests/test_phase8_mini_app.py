@@ -282,6 +282,7 @@ def test_tg_hub_serves_webapp_boot_v26(mini_app_client):
     assert "Создайте страницу специалиста" in r.text
     assert 'href="/statistics/"' in r.text
     assert "Фильтры, удаление и выгрузка Excel" in r.text
+    assert 'href="/integrations/"' in r.text
     assert 'href="/clients/"' in r.text
     assert "Статистика" in r.text
     assert "Клиенты" in r.text

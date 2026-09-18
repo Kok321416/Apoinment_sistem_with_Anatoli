@@ -1,0 +1,67 @@
+{% extends "layouts/app.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Подключение Телеграм — " ~ site_brand_name %}
+{% set meta_description = "Подтверждение уведомлений в Телеграм" %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/app.css?v=39">
+<style>
+.connect-bridge { max-width: 28rem; margin: 2rem auto; padding: 1.5rem; }
+.connect-bridge__actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; }
+</style>
+{% endblock %}
+
+{% block app_content %}
+<div class="connect-bridge card" id="connect-bridge"
+     data-bot-url="{{ bot_url }}"
+     data-pushed="{{ '1' if pushed else '0' }}">
+    <h1 class="text-h2">Подключение уведомлений</h1>
+    {% if pushed %}
+    <p class="text-body mt-lg">Мы отправили кнопку подтверждения в бот. Откройте чат с ботом и нажмите «Подтвердить подключение».</p>
+    {% else %}
+    <p class="text-body mt-lg">Откройте бота по кнопке ниже. В чате нажмите <b>Start</b> / «Запустить», затем «Подтвердить подключение».</p>
+    {% endif %}
+    <div class="connect-bridge__actions">
+        <a class="btn btn--primary" id="connect-bridge-open" href="{{ bot_url }}" rel="noopener">Открыть бота</a>
+        <a class="btn btn--ghost" href="/integrations/">Назад к интеграциям</a>
+    </div>
+    <p class="text-body-sm text-muted mt-lg" id="connect-bridge-hint" hidden>
+        Если бот открылся без кнопки подтверждения — вернитесь сюда и нажмите «Открыть бота» ещё раз.
+    </p>
+</div>
+<script>
+(function () {
+    var root = document.getElementById("connect-bridge");
+    if (!root) return;
+    var botUrl = root.getAttribute("data-bot-url") || "";
+    var openBtn = document.getElementById("connect-bridge-open");
+    var hint = document.getElementById("connect-bridge-hint");
+    function openBot() {
+        var tg = window.Telegram && window.Telegram.WebApp;
+        try {
+            if (tg && typeof tg.openTelegramLink === "function" && botUrl) {
+                tg.openTelegramLink(botUrl);
+                if (hint) hint.hidden = false;
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+    if (openBtn) {
+        openBtn.addEventListener("click", function (e) {
+            if (openBot()) {
+                e.preventDefault();
+            }
+        });
+    }
+    /* Auto-open once in Mini App so deep-link payload is not lost via WebView 302. */
+    if (document.documentElement.classList.contains("tg-webapp") ||
+        (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)) {
+        setTimeout(openBot, 80);
+    }
+})();
+</script>
+{% endblock %}

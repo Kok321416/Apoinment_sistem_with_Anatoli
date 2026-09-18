@@ -2688,6 +2688,8 @@ async def integrations_page(request: Request, db: AsyncSession = Depends(get_asy
         await db.refresh(integration)
     success = request.session.pop("integrations_success", None)
     error = request.session.pop("integrations_error", None)
+    if request.query_params.get("tg_connected") == "1":
+        success = success or "Телеграм для уведомлений подключён."
     email_pending = request.session.get("integrations_email_pending") or ""
     if request.method == "POST":
         form = await request.form()
@@ -2954,6 +2956,12 @@ async def integrations_page(request: Request, db: AsyncSession = Depends(get_asy
 
 @router.get("/integrations/telegram/connect-app/")
 async def connect_telegram_app(request: Request, db: AsyncSession = Depends(get_async_db)):
+    """Start specialist notify binding.
+
+    Never 302 straight into t.me from Mini App WebView — Telegram often drops the
+    ``start=`` payload and the user only sees bare /start. Serve a bridge page that
+    calls ``openTelegramLink``, and try to push a confirm button if login TG is known.
+    """
     user = await _require_user_async(request, db)
     if not user:
         return _login_redirect(request)
@@ -2965,16 +2973,51 @@ async def connect_telegram_app(request: Request, db: AsyncSession = Depends(get_
         integration = Integration(consultant_id=consultant.id)
         db.add(integration)
     integration.telegram_enabled = True
-    integration.telegram_link_token = uuid.uuid4().hex
+    token = uuid.uuid4().hex
+    integration.telegram_link_token = token
     integration.telegram_link_token_created_at = datetime.utcnow()
     await db.commit()
     bot_username = settings.telegram_bot_username.lstrip("@")
     if not bot_username:
         request.session["integrations_error"] = "TELEGRAM_BOT_USERNAME не настроен."
         return RedirectResponse("/integrations/", status_code=302)
-    return RedirectResponse(
-        f"https://t.me/{bot_username}?start=connect_spec_{integration.telegram_link_token}",
-        status_code=302,
+    bot_url = f"https://t.me/{bot_username}?start=connect_spec_{token}"
+
+    pushed = False
+    try:
+        from app.services.dual_role_backfill import resolve_telegram_id_for_user_async
+        from app.services.telegram import send_telegram_await
+
+        tg_id = await resolve_telegram_id_for_user_async(db, user.id)
+        if tg_id:
+            pushed = await send_telegram_await(
+                tg_id,
+                "👋 <b>Подключение Телеграм для уведомлений специалиста</b>\n\n"
+                "Нажмите кнопку ниже, чтобы подтвердить.",
+                reply_markup={
+                    "inline_keyboard": [
+                        [
+                            {
+                                "text": "✅ Подтвердить подключение",
+                                "callback_data": f"spec_confirm_{token}",
+                            }
+                        ]
+                    ]
+                },
+            )
+    except Exception:
+        logger.exception("connect-app push confirm failed")
+
+    return templates.TemplateResponse(
+        "connect_telegram_bridge.html",
+        await page_context_async(
+            request,
+            db,
+            user,
+            consultant=consultant,
+            bot_url=bot_url,
+            pushed=pushed,
+        ),
     )
 
 

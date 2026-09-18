@@ -751,6 +751,7 @@ body.tg-webapp .apps-shared {
 .tg-hub__card-icon[data-icon="bookings"] { --tg-hub-icon: url("/static/svg/icons/ui/bookings.svg?v=3"); }
 .tg-hub__card-icon[data-icon="clients"] { --tg-hub-icon: url("/static/svg/icons/ui/clients.svg?v=3"); }
 .tg-hub__card-icon[data-icon="telegram"] { --tg-hub-icon: url("/static/svg/icons/ui/telegram.svg?v=3"); }
+.tg-hub__card-icon[data-icon="integrations"] { --tg-hub-icon: url("/static/svg/icons/ui/integrations.svg?v=3"); }
 
 .tg-hub__card-link--primary .tg-hub__card-icon {
     background-color: #fafafa;
