@@ -1,11 +1,14 @@
 """Helpers for specialist Telegram Integration linking (Phase 4 + audit Phase 9)."""
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 from sqlalchemy.orm import Session
 
 from app.models import Integration, IntegrationTelegramAudit
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_telegram_chat_id(value) -> str | None:
@@ -59,6 +62,18 @@ def _log_chat_change(
     old_n = normalize_telegram_chat_id(old_chat_id)
     new_n = normalize_telegram_chat_id(new_chat_id)
     if old_n == new_n:
+        return
+    try:
+        from app.db_schema import ensure_integration_telegram_audit_schema
+
+        if not ensure_integration_telegram_audit_schema():
+            logger.error(
+                "integration_telegram_audit missing; skip audit row integration_id=%s",
+                getattr(integration, "id", None),
+            )
+            return
+    except Exception:
+        logger.exception("ensure integration_telegram_audit failed; skip audit row")
         return
     db.add(
         IntegrationTelegramAudit(

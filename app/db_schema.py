@@ -306,6 +306,11 @@ def _apply_app_schema_patches() -> None:
         logger.exception("calendar_blocks schema ensure failed")
 
     try:
+        ensure_integration_telegram_audit_schema()
+    except Exception:
+        logger.exception("integration_telegram_audit schema ensure failed")
+
+    try:
         from app.models import platform as platform_models
 
         Base.metadata.create_all(
@@ -488,6 +493,77 @@ def ensure_calendar_blocks_schema(bind=None) -> bool:
         return False
 
 
+def ensure_integration_telegram_audit_schema(bind=None) -> bool:
+    """Create integration_telegram_audit if missing (FK-free DDL for shared hosting)."""
+    bind = bind or engine
+    table = core_models.IntegrationTelegramAudit.__table__
+    try:
+        insp = inspect(bind)
+        if insp.has_table(table.name):
+            return True
+        try:
+            Base.metadata.create_all(bind=bind, tables=[table])
+        except Exception:
+            logger.exception("create_all failed for integration_telegram_audit")
+        insp = inspect(bind)
+        if insp.has_table(table.name):
+            logger.info("integration_telegram_audit ready via create_all")
+            return True
+        dialect = getattr(getattr(bind, "dialect", None), "name", "") or ""
+        ddl = """
+        CREATE TABLE IF NOT EXISTS integration_telegram_audit (
+            id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            integration_id INT NOT NULL,
+            consultant_id INT NULL,
+            old_chat_id VARCHAR(255) NULL,
+            new_chat_id VARCHAR(255) NULL,
+            source VARCHAR(64) NOT NULL DEFAULT 'unknown',
+            actor_user_id INT NULL,
+            created_at DATETIME NULL,
+            KEY ix_integration_telegram_audit_integration_id (integration_id),
+            KEY ix_integration_telegram_audit_consultant_id (consultant_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+        from sqlalchemy.engine import Engine
+
+        def _run(conn) -> None:
+            if dialect == "sqlite":
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS integration_telegram_audit (
+                            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                            integration_id INTEGER NOT NULL,
+                            consultant_id INTEGER NULL,
+                            old_chat_id VARCHAR(255) NULL,
+                            new_chat_id VARCHAR(255) NULL,
+                            source VARCHAR(64) NOT NULL DEFAULT 'unknown',
+                            actor_user_id INTEGER NULL,
+                            created_at DATETIME NULL
+                        )
+                        """
+                    )
+                )
+            else:
+                conn.execute(text(ddl))
+
+        if isinstance(bind, Engine):
+            with bind.begin() as conn:
+                _run(conn)
+        else:
+            _run(bind)
+        insp = inspect(bind)
+        ok = insp.has_table(table.name)
+        if ok:
+            logger.info("integration_telegram_audit ready via raw DDL")
+        else:
+            logger.error("integration_telegram_audit still missing after raw DDL")
+        return ok
+    except Exception:
+        logger.exception("ensure_integration_telegram_audit_schema failed")
+        return False
+
+
 def ensure_diagnostics_schema(bind=None) -> bool:
     """Create diagnostics tables if missing. Safe to call repeatedly.
 
@@ -648,6 +724,10 @@ def ensure_all_schema() -> None:
         ensure_calendar_blocks_schema()
     except Exception:
         logger.exception("calendar_blocks schema ensure failed")
+    try:
+        ensure_integration_telegram_audit_schema()
+    except Exception:
+        logger.exception("integration_telegram_audit schema ensure failed")
     # Deploy/migrate runs in a single process — no MySQL lock (avoids self-deadlock).
     ensure_schema_patches(use_lock=False)
     _refresh_schema_health()
