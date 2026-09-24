@@ -143,9 +143,15 @@
         var viewWeek = document.getElementById('viewWeek');
         var viewCalendar = document.getElementById('viewCalendar');
         var pageContainer = document.getElementById('bookingPageContainer');
-        if (viewList) viewList.classList.toggle('is-active', view === 'list');
-        if (viewWeek) viewWeek.classList.toggle('is-active', view === 'week');
-        if (viewCalendar) viewCalendar.classList.toggle('is-active', view === 'calendar');
+        function apply(panel, active) {
+            if (!panel) return;
+            panel.classList.toggle('is-active', active);
+            panel.hidden = !active;
+            panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+        }
+        apply(viewList, view === 'list');
+        apply(viewWeek, view === 'week');
+        apply(viewCalendar, view === 'calendar');
         if (pageContainer) {
             pageContainer.classList.toggle('is-calendar-view', view === 'calendar');
             pageContainer.classList.toggle('is-week-view', view === 'week');
@@ -283,6 +289,61 @@
         return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function telegramHref(raw) {
+        var tg = String(raw || '').trim();
+        if (!tg) return '';
+        tg = tg.replace(/^@/, '');
+        if (/^https?:\/\//i.test(tg)) return tg;
+        if (/^t\.me\//i.test(tg)) return 'https://' + tg;
+        return 'https://t.me/' + encodeURIComponent(tg);
+    }
+
+    function contactRowHtml(label, value, opts) {
+        opts = opts || {};
+        var safeVal = escapeAttr(value);
+        var html = ['<div class="event-popover__contact-row">'];
+        html.push('<span class="event-popover__contact-label">' + escapeAttr(label) + '</span>');
+        html.push('<div class="event-popover__contact-value">');
+        if (opts.href) {
+            html.push(
+                '<a class="event-popover__contact-link" href="' +
+                    escapeAttr(opts.href) +
+                    '"' +
+                    (opts.external ? ' target="_blank" rel="noopener noreferrer"' : '') +
+                    (opts.tg ? ' data-tg-link="1"' : '') +
+                    '>' +
+                    safeVal +
+                    '</a>'
+            );
+        } else {
+            html.push('<span class="event-popover__contact-text" tabindex="0">' + safeVal + '</span>');
+        }
+        html.push(
+            '<button type="button" class="event-popover__copy btn btn--ghost btn--sm" data-copy="' +
+                safeVal +
+                '" title="Скопировать" aria-label="Скопировать ' +
+                escapeAttr(label) +
+                '">Копировать</button>'
+        );
+        html.push('</div></div>');
+        return html.join('');
+    }
+
+    function positionPopover(pop) {
+        pop.style.position = 'fixed';
+        pop.style.right = 'auto';
+        var width = Math.min(320, window.innerWidth - 24);
+        pop.style.width = width + 'px';
+        pop.style.maxWidth = 'calc(100vw - 24px)';
+        // Slightly left of center for easier reach in Mini App.
+        var left = Math.round(window.innerWidth * 0.42 - width / 2);
+        left = Math.max(12, Math.min(left, window.innerWidth - width - 12));
+        var top = Math.round(window.innerHeight * 0.28);
+        top = Math.max(12, Math.min(top, window.innerHeight - 80));
+        pop.style.left = left + 'px';
+        pop.style.top = top + 'px';
+    }
+
     function showPopover(ev, el) {
         var name = el.getAttribute('data-client_name') || '';
         var phone = el.getAttribute('data-client_phone') || '';
@@ -296,9 +357,16 @@
         var pop = document.getElementById('eventPopover');
         if (!pop) return;
 
-        var parts = ['<h4>' + (kind === 'event' ? ('Мероприятие: ' + (name || '—')) : (name || '—')) + '</h4>'];
+        var parts = [
+            '<div class="event-popover__head">',
+            '<h4 class="event-popover__title">' +
+                (kind === 'event' ? ('Мероприятие: ' + escapeAttr(name || '—')) : escapeAttr(name || '—')) +
+                '</h4>',
+            '<button type="button" class="event-popover__close" id="eventPopoverClose" aria-label="Закрыть">×</button>',
+            '</div>',
+        ];
         if (dateStr) parts.push('<p class="event-popover__date">' + formatDayHeading(dateStr) + '</p>');
-        if (time) parts.push('<p class="time">' + time + '</p>');
+        if (time) parts.push('<p class="time">' + escapeAttr(time) + '</p>');
 
         var csrfEl = document.getElementById('csrfToken');
         var csrf = csrfEl ? csrfEl.value : '';
@@ -313,22 +381,26 @@
             pop.innerHTML = parts.join('');
             pop.hidden = false;
             pop.style.display = 'block';
-            var rectEv = el.getBoundingClientRect();
-            pop.style.left = (rectEv.left + window.scrollX) + 'px';
-            pop.style.top = (rectEv.bottom + 4 + window.scrollY) + 'px';
-            if (rectEv.left + 320 > window.innerWidth) pop.style.left = (rectEv.right - 320 + window.scrollX) + 'px';
+            positionPopover(pop);
             return;
         }
 
-        if (phone) parts.push('<p class="event-popover__contact">Телефон: ' + phone + '</p>');
-        if (email) parts.push('<p class="event-popover__contact">Почта: ' + email + '</p>');
+        parts.push('<div class="event-popover__contacts">');
+        if (phone) {
+            var telHref = 'tel:' + String(phone).replace(/[^\d+]/g, '');
+            parts.push(contactRowHtml('Телефон', phone, { href: telHref }));
+        }
+        if (email) {
+            parts.push(contactRowHtml('Почта', email, { href: 'mailto:' + email, external: true }));
+        }
         if (telegram) {
             var tgLabel = telegram.indexOf('@') === 0 ? telegram : '@' + telegram.replace(/^@/, '');
-            parts.push('<p class="event-popover__contact">Телеграм: ' + tgLabel + '</p>');
+            parts.push(contactRowHtml('Телеграм', tgLabel, { href: telegramHref(telegram), external: true, tg: true }));
         }
         if (!phone && !email && !telegram) {
             parts.push('<p class="event-popover__contact text-muted">Контакты не указаны</p>');
         }
+        parts.push('</div>');
 
         var actionUrl = window.location.pathname + (window.location.search || '');
         var actionsHtml = [];
@@ -354,10 +426,7 @@
         pop.innerHTML = parts.join('');
         pop.hidden = false;
         pop.style.display = 'block';
-        var rect = el.getBoundingClientRect();
-        pop.style.left = (rect.left + window.scrollX) + 'px';
-        pop.style.top = (rect.bottom + 4 + window.scrollY) + 'px';
-        if (rect.left + 320 > window.innerWidth) pop.style.left = (rect.right - 320 + window.scrollX) + 'px';
+        positionPopover(pop);
     }
 
     function hidePopover() {
@@ -404,6 +473,30 @@
         if (weekGridEl) weekGridEl.addEventListener('click', onWeekEventClick);
 
         document.addEventListener('click', function (e) {
+            var closeBtn = e.target.closest('#eventPopoverClose, .event-popover__close');
+            if (closeBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                hidePopover();
+                return;
+            }
+            var copyBtn = e.target.closest('.event-popover__copy');
+            if (copyBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                var text = copyBtn.getAttribute('data-copy') || '';
+                if (text && navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        if (typeof window.showToast === 'function') {
+                            window.showToast('Скопировано', 'success');
+                        } else {
+                            copyBtn.textContent = 'Готово';
+                            window.setTimeout(function () { copyBtn.textContent = 'Копировать'; }, 1200);
+                        }
+                    }).catch(function () {});
+                }
+                return;
+            }
             if (!e.target.closest('.cal-event') && !e.target.closest('#eventPopover')) hidePopover();
         });
 
@@ -425,6 +518,7 @@
         });
 
         loadEvents();
+        setActiveView('week');
 
         var rescheduleBookingId = null;
         var rescheduleCalendarId = null;

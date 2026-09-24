@@ -13,6 +13,135 @@
         return "";
     }
 
+    var _loadingDepth = 0;
+    var _loadingHideTimer = null;
+
+    function ensureLoadingEl() {
+        var el = document.getElementById("ayc-tg-loading");
+        if (el) return el;
+        el = document.createElement("div");
+        el.id = "ayc-tg-loading";
+        el.setAttribute("role", "status");
+        el.setAttribute("aria-live", "polite");
+        el.setAttribute("aria-busy", "true");
+        el.setAttribute("aria-hidden", "true");
+        el.hidden = true;
+        el.innerHTML =
+            '<div class="ayc-tg-spinner" aria-hidden="true"></div>' +
+            '<p class="ayc-tg-loading__text" id="ayc-tg-loading-text">Загрузка…</p>';
+        (document.body || document.documentElement).appendChild(el);
+        return el;
+    }
+
+    function showLoading(text) {
+        if (_loadingHideTimer) {
+            window.clearTimeout(_loadingHideTimer);
+            _loadingHideTimer = null;
+        }
+        _loadingDepth += 1;
+        var el = ensureLoadingEl();
+        var t = document.getElementById("ayc-tg-loading-text");
+        if (t) t.textContent = text || "Загрузка…";
+        el.hidden = false;
+        el.classList.add("is-on");
+        el.setAttribute("aria-hidden", "false");
+        try {
+            document.documentElement.classList.add("ayc-tg-loading-on");
+        } catch (e) {}
+    }
+
+    function hideLoading(force) {
+        if (force) {
+            _loadingDepth = 0;
+        } else {
+            _loadingDepth = Math.max(0, _loadingDepth - 1);
+            if (_loadingDepth > 0) return;
+        }
+        var el = document.getElementById("ayc-tg-loading");
+        if (!el) return;
+        el.classList.remove("is-on");
+        el.hidden = true;
+        el.setAttribute("aria-hidden", "true");
+        try {
+            document.documentElement.classList.remove("ayc-tg-loading-on");
+        } catch (e2) {}
+    }
+
+    function hideLoadingSoon() {
+        if (_loadingHideTimer) window.clearTimeout(_loadingHideTimer);
+        _loadingHideTimer = window.setTimeout(function () {
+            hideLoading(true);
+        }, 120);
+    }
+
+    window.__AYC_TG_LOADING__ = {
+        show: showLoading,
+        hide: function () {
+            hideLoading(true);
+        },
+    };
+
+    function isInternalNavHref(href) {
+        if (!href || href.charAt(0) === "#") return false;
+        if (/^(mailto:|tel:|javascript:|blob:|data:)/i.test(href)) return false;
+        if (/^https?:\/\/t\.me\//i.test(href)) return false;
+        try {
+            var abs = new URL(href, window.location.href);
+            if (abs.origin !== window.location.origin) return false;
+            if (abs.pathname === window.location.pathname && abs.search === window.location.search) {
+                return abs.hash !== "" ? false : false;
+            }
+            return true;
+        } catch (e) {
+            return href.charAt(0) === "/";
+        }
+    }
+
+    function wireNavigationLoading() {
+        if (window.__AYC_TG_NAV_LOADING__) return;
+        window.__AYC_TG_NAV_LOADING__ = true;
+        document.addEventListener(
+            "click",
+            function (e) {
+                if (e.defaultPrevented) return;
+                if (e.button != null && e.button !== 0) return;
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+                if (!a) return;
+                if (a.hasAttribute("download")) return;
+                if ((a.getAttribute("target") || "").toLowerCase() === "_blank") return;
+                var href = (a.getAttribute("href") || "").trim();
+                if (!isInternalNavHref(href)) return;
+                showLoading("Открываем…");
+            },
+            true
+        );
+
+        document.addEventListener(
+            "submit",
+            function (e) {
+                var form = e.target;
+                if (!form || form.tagName !== "FORM") return;
+                if (form.getAttribute("data-no-loading") === "1") return;
+                if (e.defaultPrevented) return;
+                var label = form.getAttribute("data-loading-text") || "Сохраняем…";
+                showLoading(label);
+                var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+                if (btn) {
+                    try {
+                        btn.disabled = true;
+                        btn.setAttribute("aria-busy", "true");
+                    } catch (err) {}
+                }
+            },
+            true
+        );
+
+        window.addEventListener("pageshow", function () {
+            hideLoading(true);
+        });
+    }
+
     function ensureScrollShell() {
         var body = document.body;
         if (!body) return null;
@@ -21,6 +150,7 @@
         if (existing) {
             Array.prototype.slice.call(body.children).forEach(function (el) {
                 if (el === existing || el.tagName === "SCRIPT") return;
+                if (el.id === "ayc-tg-loading" || el.id === "ayc-tg-loading-css") return;
                 existing.appendChild(el);
             });
             return existing;
@@ -34,6 +164,7 @@
         Array.prototype.forEach.call(body.children, function (el) {
             if (!el || el.id === "tg-scroll-root") return;
             if (el.tagName === "SCRIPT") return;
+            if (el.id === "ayc-tg-loading" || el.id === "ayc-tg-loading-css") return;
             move.push(el);
         });
         body.insertBefore(shell, body.firstChild);
@@ -376,6 +507,7 @@
                 ? "/accounts/telegram/complete/" + encodeURIComponent(token) + "/?stay=1"
                 : "/accounts/native-handoff/" + encodeURIComponent(token) + "/";
         window.location.replace(url);
+        showLoading("Входим…");
         return true;
     }
 
@@ -388,6 +520,7 @@
 
     function showAuthedHub(state) {
         hideHubPanels();
+        hideLoading(true);
         var authed = document.getElementById("tg-hub-authed");
         if (!authed) return;
         authed.hidden = false;
@@ -404,6 +537,7 @@
 
     function showGuestHub() {
         hideHubPanels();
+        hideLoading(true);
         var guest = document.getElementById("tg-hub-guest");
         if (guest) guest.hidden = false;
         document.body.classList.add("auth-page");
@@ -411,6 +545,7 @@
 
     function showBoot(text) {
         hideHubPanels();
+        showLoading(text || "Открываем приложение…");
         var boot = document.getElementById("tg-hub-boot");
         var t = document.getElementById("tg-hub-boot-text");
         if (t && text) t.textContent = text;
@@ -419,6 +554,7 @@
 
     function showHubError(text) {
         hideHubPanels();
+        hideLoading(true);
         var box = document.getElementById("tg-hub-error");
         var t = document.getElementById("tg-hub-error-text");
         if (t) t.textContent = text || "Попробуйте ещё раз.";
@@ -428,12 +564,14 @@
 
     function showClientDenied() {
         hideHubPanels();
+        hideLoading(true);
         var box = document.getElementById("tg-hub-client-denied");
         if (box) box.hidden = false;
     }
 
     function showBecomeSpecialist(state) {
         hideHubPanels();
+        hideLoading(true);
         var box = document.getElementById("tg-hub-become");
         if (!box) {
             showClientDenied();
@@ -524,6 +662,7 @@
         ).then(function (res) {
             if (res.ok && res.data && res.data.success) {
                 if (res.data.requires_2fa && res.data.redirect) {
+                    showLoading("Подтверждение входа…");
                     window.location.replace(res.data.redirect);
                     return true;
                 }
@@ -540,6 +679,7 @@
         // Cabinet pages (e.g. /clients/…) must not run hub boot/auth UI — it steals
         // the session and can blank the specialist CRM inside Mini App WebView.
         if (!isHub) {
+            hideLoadingSoon();
             return Promise.resolve(true);
         }
         var retry = document.getElementById("tg-hub-retry");
@@ -582,6 +722,8 @@
             document.documentElement.classList.add("tg-webapp");
             document.body.classList.add("tg-webapp");
             ensureScrollShell();
+            wireNavigationLoading();
+            hideLoading(true);
             window.__TG_WEBAPP__ = window.__TG_WEBAPP__ || {
                 initData: "",
                 initDataUnsafe: {},
@@ -622,6 +764,8 @@
             wireConnectTelegram(tg);
             wireHaptics();
             wireMainButton(tg);
+            wireNavigationLoading();
+            showLoading("Открываем…");
 
             setTimeout(function () {
                 applyViewport(tg);
@@ -707,6 +851,7 @@
             );
         } catch (e) {
             console.error("[tg-miniapp] boot", e);
+            hideLoading(true);
             showHubError("Не удалось запустить приложение. Нажмите «Повторить».");
         }
     }

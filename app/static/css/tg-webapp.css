@@ -1089,3 +1089,72 @@ html.tg-webapp .modal__panel {
         grid-template-columns: 1fr;
     }
 }
+
+/* ── Global loading overlay (Mini App) ───────────────────── */
+#ayc-tg-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 99990;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    padding: 24px;
+    padding-top: calc(24px + var(--tg-safe-top, env(safe-area-inset-top, 0px)));
+    padding-bottom: calc(24px + var(--tg-safe-bottom, env(safe-area-inset-bottom, 0px)));
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.92);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    pointer-events: all;
+}
+
+#ayc-tg-loading.is-on,
+#ayc-tg-loading[aria-hidden="false"] {
+    display: flex !important;
+}
+
+#ayc-tg-loading[hidden] {
+    display: none !important;
+}
+
+.ayc-tg-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #e5e5e5;
+    border-top-color: #111111;
+    border-radius: 50%;
+    animation: ayc-tg-spin 0.75s linear infinite;
+}
+
+.ayc-tg-loading__text {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.4;
+    color: #525252;
+    text-align: center;
+    max-width: 16rem;
+}
+
+.tg-hub-boot-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+}
+
+@keyframes ayc-tg-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ayc-tg-spinner {
+        animation: none;
+        border-top-color: #111111;
+        opacity: 0.7;
+    }
+}

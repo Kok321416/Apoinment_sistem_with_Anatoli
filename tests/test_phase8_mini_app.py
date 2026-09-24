@@ -278,6 +278,7 @@ def test_tg_hub_serves_webapp_boot_v26(mini_app_client):
     assert 'id="tg-hub-error"' in r.text
     assert 'id="tg-hub-become"' in r.text
     assert 'id="tg-hub-become-cta"' in r.text
+    assert 'id="ayc-tg-loading"' in r.text or "ayc-tg-loading" in r.text
     assert "/become-specialist/?client=tg" in r.text
     assert "Создайте страницу специалиста" in r.text
     assert 'href="/statistics/"' in r.text

@@ -1,7 +1,19 @@
+<style id="ayc-tg-loading-css">
+#ayc-tg-loading{position:fixed;inset:0;z-index:99990;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:24px;box-sizing:border-box;background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#ayc-tg-loading.is-on,#ayc-tg-loading[aria-hidden="false"]{display:flex!important}
+#ayc-tg-loading[hidden]{display:none!important}
+.ayc-tg-spinner{width:36px;height:36px;border:3px solid #e5e5e5;border-top-color:#111;border-radius:50%;animation:ayc-tg-spin .75s linear infinite}
+.ayc-tg-loading__text{margin:0;font-size:15px;line-height:1.4;color:#525252;text-align:center;max-width:16rem}
+@keyframes ayc-tg-spin{to{transform:rotate(360deg)}}
+</style>
+<div id="ayc-tg-loading" hidden aria-hidden="true" role="status" aria-live="polite" aria-busy="true">
+    <div class="ayc-tg-spinner" aria-hidden="true"></div>
+    <p class="ayc-tg-loading__text" id="ayc-tg-loading-text">Загрузка…</p>
+</div>
 <script>
 (function () {
     var SDK = "/static/js/vendor/telegram-web-app.js?v=1";
-    var BOOT = "/static/js/telegram-webapp.js?v=31";
+    var BOOT = "/static/js/telegram-webapp.js?v=32";
 
     function looksTelegram() {
         try {
@@ -12,6 +24,20 @@
             if (String(location.hash || "").indexOf("tgWebApp") >= 0) return true;
         } catch (e) {}
         return false;
+    }
+
+    function earlyShowLoading(text) {
+        var el = document.getElementById("ayc-tg-loading");
+        if (!el) return;
+        var t = document.getElementById("ayc-tg-loading-text");
+        if (t && text) t.textContent = text;
+        el.hidden = false;
+        el.classList.add("is-on");
+        el.setAttribute("aria-hidden", "false");
+    }
+
+    if (looksTelegram()) {
+        earlyShowLoading("Открываем…");
     }
 
     window.__AYC_TG_REPORT__ = function (kind, extra) {
@@ -82,4 +108,3 @@
     loadSdk();
 })();
 </script>
-

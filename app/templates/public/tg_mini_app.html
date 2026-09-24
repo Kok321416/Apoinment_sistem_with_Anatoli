@@ -9,7 +9,7 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/auth.css?v=24">
-<link rel="stylesheet" href="/static/css/tg-webapp.css?v=23">
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=24">
 <style>
   html, body.tg-hub-page {
     background: #ffffff !important;
@@ -86,7 +86,8 @@
 </div>
 
 <div id="tg-hub-boot" class="tg-hub-auth" hidden>
-    <div class="auth-card card card--static">
+    <div class="auth-card card card--static tg-hub-boot-card">
+        <div class="ayc-tg-spinner" aria-hidden="true"></div>
         <p class="text-body" id="tg-hub-boot-text">Открываем приложение…</p>
     </div>
 </div>

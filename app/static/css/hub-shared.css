@@ -231,6 +231,10 @@
     align-items: start;
 }
 
+.bookings-layout--no-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .calendars-layout > *,
 .bookings-layout > *,
 .clients-layout > * {

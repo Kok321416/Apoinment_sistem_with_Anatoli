@@ -640,6 +640,19 @@ def test_booking_page_renders_with_empty_calendars(monkeypatch):
         response = client.get("/booking/")
         assert response.status_code == 200
         assert "bookingPageContainer" in response.text
+        assert 'data-view="week"' in response.text
+        assert 'data-view="calendar"' in response.text
+        assert "Неделя" in response.text
+        assert "Месяц" in response.text
+        assert "По дням" not in response.text
+        assert "bookings-search" not in response.text
+        assert "Найти клиента" not in response.text
+        assert "bookings-status-pills" not in response.text
+        assert "bookings-sidebar" not in response.text
+        assert 'id="eventPopover"' in response.text
+        assert "bookings-layout--no-sidebar" in response.text
+        assert 'id="viewWeek"' in response.text and "is-active" in response.text
+        assert "specialist-bookings.js?v=28" in response.text
     finally:
         app.dependency_overrides.clear()
         asyncio.run(engine.dispose())

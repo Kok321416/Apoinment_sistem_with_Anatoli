@@ -323,13 +323,51 @@
     position: fixed;
     z-index: var(--z-popover, 1000);
     display: none;
-    max-width: 280px;
+    max-width: min(320px, calc(100vw - 24px));
     padding: var(--space-lg);
     border-radius: var(--radius-md);
     background: var(--glass-heavy);
     border: 1px solid var(--border-strong);
     box-shadow: var(--shadow-lg);
     font-size: var(--font-size-body-sm);
+}
+
+.event-popover__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.event-popover__title {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-size-body);
+    line-height: 1.3;
+}
+
+.event-popover__close {
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    margin: -0.25rem -0.25rem 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.event-popover__close:hover,
+.event-popover__close:focus-visible {
+    color: var(--text-primary);
+    background: var(--surface-hover, rgba(0, 0, 0, 0.06));
+    outline: none;
 }
 
 .event-popover h4 {
@@ -358,6 +396,55 @@
     margin: var(--space-2xs) 0;
     color: var(--text-secondary);
     word-break: break-word;
+}
+
+.event-popover__contacts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
+}
+
+.event-popover__contact-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.event-popover__contact-label {
+    font-size: var(--font-size-caption);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.event-popover__contact-value {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.event-popover__contact-link,
+.event-popover__contact-text {
+    flex: 1;
+    min-width: 0;
+    color: var(--accent-primary);
+    word-break: break-all;
+    user-select: all;
+    -webkit-user-select: all;
+}
+
+.event-popover__contact-text {
+    color: var(--text-primary);
+    cursor: text;
+}
+
+.event-popover__copy {
+    flex: 0 0 auto;
+    padding: 0.15rem 0.5rem;
+    font-size: var(--font-size-caption);
+    min-height: 1.75rem;
 }
 
 .event-popover .popover-actions {

@@ -10,14 +10,14 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/app.css?v=45">
-<link rel="stylesheet" href="/static/css/hub-shared.css?v=14">
-<link rel="stylesheet" href="/static/css/bookings-hub.css?v=9">
-<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=27">
+<link rel="stylesheet" href="/static/css/hub-shared.css?v=15">
+<link rel="stylesheet" href="/static/css/bookings-hub.css?v=10">
+<link rel="stylesheet" href="/static/css/specialist-bookings.css?v=28">
 <link rel="stylesheet" href="/static/css/specialist-book.css?v=7">
 {% endblock %}
 
 {% block app_content %}
-<div id="bookingPageContainer" class="bookings-page" data-csrf="{{ csrf_token }}">
+<div id="bookingPageContainer" class="bookings-page is-week-view" data-csrf="{{ csrf_token }}">
     <section class="bookings-hero card" id="bookings-hero">
         <div class="bookings-hero__glow bookings-hero__glow--purple" aria-hidden="true"></div>
         <div class="bookings-hero__glow bookings-hero__glow--cyan" aria-hidden="true"></div>
@@ -26,7 +26,7 @@
                 <span class="hub-hero__glyph" data-icon="bookings" aria-hidden="true"></span>
                 <div>
                     <h1 class="bookings-hero__title">Записи</h1>
-                    <p class="bookings-hero__desc">Встречи по дням, неделе и месяцу.</p>
+                    <p class="bookings-hero__desc">Встречи по неделе и месяцу.</p>
                 </div>
             </div>
             <div class="bookings-hero__actions">
@@ -43,36 +43,15 @@
     <div class="alert alert--error" role="alert">{{ error }}</div>
     {% endif %}
 
-    <section class="bookings-toolbar card">
-        <div class="bookings-toolbar__search">
-            <span class="bookings-toolbar__search-icon" aria-hidden="true">🔍</span>
-            <input class="input" type="search" id="bookings-search" placeholder="Найти клиента..." autocomplete="off">
-        </div>
-        <div class="bookings-toolbar__quick" role="group" aria-label="Быстрый фильтр по дате">
-            <button type="button" class="bookings-quick-pill is-active" data-date-filter="all">Все</button>
-            <button type="button" class="bookings-quick-pill" data-date-filter="today">Сегодня</button>
-            <button type="button" class="bookings-quick-pill" data-date-filter="tomorrow">Завтра</button>
-            <button type="button" class="bookings-quick-pill" data-date-filter="week">Неделя</button>
-        </div>
-    </section>
-
-    <nav class="bookings-status-pills" aria-label="Фильтр по статусу">
-        <a href="/booking/" class="bookings-status-pill bookings-status-pill--all {% if not status_filter or status_filter == 'all' %}is-active{% endif %}">Все</a>
-        <a href="/booking/?status=pending" class="bookings-status-pill bookings-status-pill--pending {% if status_filter == 'pending' %}is-active{% endif %}">Ожидают</a>
-        <a href="/booking/?status=confirmed" class="bookings-status-pill bookings-status-pill--confirmed {% if status_filter == 'confirmed' %}is-active{% endif %}">Подтверждены</a>
-        <a href="/booking/?status=completed" class="bookings-status-pill bookings-status-pill--completed {% if status_filter == 'completed' %}is-active{% endif %}">Завершены</a>
-        <a href="/booking/?status=cancelled" class="bookings-status-pill bookings-status-pill--cancelled {% if status_filter == 'cancelled' %}is-active{% endif %}">Отменены</a>
-    </nav>
-
     <div class="bookings-segment" role="tablist" aria-label="Вид отображения">
-        <button type="button" class="bookings-segment__btn is-active" data-view="list" role="tab" aria-selected="true">По дням</button>
-        <button type="button" class="bookings-segment__btn" data-view="week" role="tab" aria-selected="false">Неделя</button>
+        <button type="button" class="bookings-segment__btn is-active" data-view="week" role="tab" aria-selected="true">Неделя</button>
         <button type="button" class="bookings-segment__btn" data-view="calendar" role="tab" aria-selected="false">Месяц</button>
     </div>
 
-    <div class="bookings-layout">
+    <div class="bookings-layout bookings-layout--no-sidebar">
         <div class="bookings-main">
-            <div id="viewList" class="bookings-view is-active" role="tabpanel">
+            <div id="viewList" class="bookings-view" role="tabpanel" hidden aria-hidden="true">
+                {# Legacy day list kept in DOM for optional deep-links; UI tab removed. #}
                 <div class="booking-page-layout">
                     <div class="booking-list-col" id="bookingListCol">
                         {% if hub_upcoming_groups %}
@@ -94,45 +73,15 @@
                             </section>
                             {% endfor %}
                         </div>
-                        {% else %}
-                        <div class="hub-empty bookings-empty" id="bookings-empty-upcoming" role="status">
-                            <span class="hub-empty__glyph" data-icon="bookings" aria-hidden="true"></span>
-                            <h2 class="hub-empty__title">Нет запланированных записей</h2>
-                            <p class="hub-empty__text">Когда клиенты запишутся, встречи появятся здесь по дням.</p>
-                            <a href="/calendars/" class="btn btn--primary hub-empty__cta">Открыть календари</a>
-                        </div>
                         {% endif %}
-
-                        {% if hub_past_groups %}
-                        <section class="bookings-past-section" id="bookings-past-section">
-                            <h2 class="bookings-past-section__title">Прошедшие записи</h2>
-                            {% for group in hub_past_groups %}
-                            <section class="bookings-day-group bookings-day-group--past" data-group-date="{{ group.date }}">
-                                <h3 class="bookings-day-group__title">{{ group.label }}</h3>
-                                <div class="bookings-timeline-track">
-                                    {% for booking in group.bookings %}
-                                    <div class="bookings-timeline-item">
-                                        <div class="bookings-timeline-time">{{ booking.booking_time }}</div>
-                                        <div class="bookings-timeline-line" aria-hidden="true"><span class="bookings-timeline-dot"></span></div>
-                                        <div class="bookings-timeline-card">
-                                            {{ booking_card_crm(booking, true) }}
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </section>
-                            {% endfor %}
-                        </section>
-                        {% endif %}
-
                         <div class="bookings-filter-empty" id="bookings-filter-empty" hidden>
-                            <p>По вашему запросу записи не найдены. Измените поиск или фильтр.</p>
+                            <p>По вашему запросу записи не найдены.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div id="viewWeek" class="bookings-view" role="tabpanel">
+            <div id="viewWeek" class="bookings-view is-active" role="tabpanel">
                 <div class="booking-week-wrap card">
                     <div class="calendar-header">
                         <button type="button" class="calendar-nav-btn" id="weekPrev" aria-label="Предыдущая неделя">‹</button>
@@ -143,7 +92,7 @@
                 </div>
             </div>
 
-            <div id="viewCalendar" class="bookings-view" role="tabpanel">
+            <div id="viewCalendar" class="bookings-view" role="tabpanel" hidden aria-hidden="true">
                 <div class="booking-calendar-full-wrap card">
                     <div class="calendar-header">
                         <button type="button" class="calendar-nav-btn" id="calPrevFull" aria-label="Предыдущий месяц">‹</button>
@@ -165,46 +114,6 @@
                 </div>
             </div>
         </div>
-
-        <aside class="bookings-sidebar card" id="bookings-sidebar" aria-label="Сводка дня">
-            <section class="bookings-sidebar__block">
-                <h2 class="bookings-sidebar__title">Сегодня</h2>
-                <ul class="bookings-sidebar__schedule">
-                    {% for item in hub_sidebar.today_schedule %}
-                    <li class="bookings-sidebar__schedule-item">
-                        <span class="bookings-sidebar__time">{{ item.time }}</span>
-                        <span class="bookings-sidebar__name">{{ item.client_name }}</span>
-                    </li>
-                    {% else %}
-                    <li class="bookings-sidebar__empty">Записей на сегодня нет</li>
-                    {% endfor %}
-                </ul>
-            </section>
-
-            <section class="bookings-sidebar__block">
-                <h2 class="bookings-sidebar__title">Ближайшая запись</h2>
-                {% if hub_sidebar.next_booking %}
-                <div class="bookings-sidebar__next" id="bookings-next-card">
-                    <p class="bookings-sidebar__next-time">{{ hub_sidebar.next_booking.day_label }}, {{ hub_sidebar.next_booking.time }}</p>
-                    <p class="bookings-sidebar__next-name">{{ hub_sidebar.next_booking.client_name }}</p>
-                    <p class="bookings-sidebar__next-service">{{ hub_sidebar.next_booking.service_name }}</p>
-                    <p class="bookings-sidebar__next-countdown" id="bookings-next-countdown" data-minutes="{{ hub_sidebar.next_booking.minutes_until }}">—</p>
-                </div>
-                {% else %}
-                <p class="bookings-sidebar__empty">Нет предстоящих записей</p>
-                {% endif %}
-            </section>
-
-            <section class="bookings-sidebar__block bookings-sidebar__block--stub">
-                <h2 class="bookings-sidebar__title">Свободное время</h2>
-                <p class="bookings-sidebar__stub">{{ hub_sidebar.free_time_note }}</p>
-            </section>
-
-            <section class="bookings-sidebar__block bookings-sidebar__block--stub">
-                <h2 class="bookings-sidebar__title">Мини-календарь</h2>
-                <div class="bookings-sidebar__mini-cal" id="sidebarMiniCal" aria-hidden="true">Скоро</div>
-            </section>
-        </aside>
     </div>
 </div>
 
@@ -262,7 +171,7 @@
 
 {% block scripts %}
 <script src="/static/js/toast.js?v=1" defer></script>
-<script src="/static/js/specialist-bookings.js?v=27" defer></script>
+<script src="/static/js/specialist-bookings.js?v=28" defer></script>
 <script src="/static/js/specialist-book.js?v=7" defer></script>
 <script src="/static/js/specialist-event.js?v=1" defer></script>
 <script type="application/json" id="bookings-hub-data">{{ hub_payload | tojson }}</script>
