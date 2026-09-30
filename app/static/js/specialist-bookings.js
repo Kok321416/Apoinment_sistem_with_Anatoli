@@ -3,6 +3,7 @@
     var today = new Date();
     var current = { year: today.getFullYear(), month: today.getMonth() + 1 };
     var weekStart = getMonday(today);
+    var activeView = 'week';
     var eventsByDate = {};
 
     function getMonday(d) {
@@ -16,9 +17,29 @@
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
+    function monthGridRange(year, month) {
+        var first = new Date(year, month - 1, 1);
+        var startDay = (first.getDay() || 7) - 1;
+        var daysInMonth = new Date(year, month, 0).getDate();
+        var rest = (7 - ((startDay + daysInMonth) % 7)) % 7;
+        return [new Date(year, month - 1, 1 - startDay), new Date(year, month, rest)];
+    }
+
+    function renderedRange() {
+        // Fetch exactly what the active view draws: the week can straddle two months and the month
+        // grid pads with adjacent days, so a month-wide request leaves those days looking empty.
+        if (activeView === 'calendar') {
+            var grid = monthGridRange(current.year, current.month);
+            return { start: isoDate(grid[0]), end: isoDate(grid[1]) };
+        }
+        var weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6);
+        return { start: isoDate(weekStart), end: isoDate(weekEnd) };
+    }
+
     function loadEvents(done) {
+        var range = renderedRange();
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', '/api/booking/calendar-events/?year=' + current.year + '&month=' + current.month, true);
+        xhr.open('GET', '/api/booking/calendar-events/?start=' + range.start + '&end=' + range.end, true);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         xhr.onload = function () {
             if (xhr.status !== 200) return;
@@ -139,6 +160,7 @@
     }
 
     function setActiveView(view) {
+        activeView = view;
         var viewList = document.getElementById('viewList');
         var viewWeek = document.getElementById('viewWeek');
         var viewCalendar = document.getElementById('viewCalendar');
@@ -517,8 +539,8 @@
             };
         });
 
-        loadEvents();
         setActiveView('week');
+        loadEvents();
 
         var rescheduleBookingId = null;
         var rescheduleCalendarId = null;

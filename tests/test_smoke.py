@@ -1,4 +1,5 @@
 """Smoke tests — no live DB required for pure helpers."""
+import re
 from datetime import date, datetime, time, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -652,7 +653,8 @@ def test_booking_page_renders_with_empty_calendars(monkeypatch):
         assert 'id="eventPopover"' in response.text
         assert "bookings-layout--no-sidebar" in response.text
         assert 'id="viewWeek"' in response.text and "is-active" in response.text
-        assert "specialist-bookings.js?v=28" in response.text
+        # Version only has to be cache-busted, not a specific number.
+        assert re.search(r"specialist-bookings\.js\?v=\d+", response.text)
     finally:
         app.dependency_overrides.clear()
         asyncio.run(engine.dispose())

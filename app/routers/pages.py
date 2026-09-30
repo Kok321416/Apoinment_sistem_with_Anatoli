@@ -1866,6 +1866,9 @@ async def specialist_bookings(request: Request, db: AsyncSession = Depends(get_a
         ),
     )
 
+CALENDAR_EVENTS_MAX_DAYS = 92
+
+
 @router.get("/api/booking/calendar-events/")
 async def calendar_events(request: Request, db: AsyncSession = Depends(get_async_db)):
     from app.auth.session import get_current_user_async
@@ -1879,21 +1882,34 @@ async def calendar_events(request: Request, db: AsyncSession = Depends(get_async
     ).scalar_one_or_none()
     if not consultant:
         return {"success": False, "events": []}
-    try:
-        year = int(request.query_params.get("year", 0))
-        month = int(request.query_params.get("month", 0))
-    except (TypeError, ValueError):
-        return {"success": False, "events": []}
-    if not year or not (1 <= month <= 12):
-        return {"success": False, "events": []}
-    from calendar import monthrange
+    # start/end cover exactly what the client renders; a week or month grid may cross month bounds.
+    # year/month stay supported for cached clients that still request a whole month.
+    raw_start = (request.query_params.get("start") or "").strip()
+    raw_end = (request.query_params.get("end") or "").strip()
+    if raw_start or raw_end:
+        try:
+            start_date = date.fromisoformat(raw_start)
+            end_date = date.fromisoformat(raw_end)
+        except ValueError:
+            return {"success": False, "events": []}
+        if end_date < start_date or (end_date - start_date).days > CALENDAR_EVENTS_MAX_DAYS:
+            return {"success": False, "events": []}
+    else:
+        try:
+            year = int(request.query_params.get("year", 0))
+            month = int(request.query_params.get("month", 0))
+        except (TypeError, ValueError):
+            return {"success": False, "events": []}
+        if not year or not (1 <= month <= 12):
+            return {"success": False, "events": []}
+        from calendar import monthrange
 
-    try:
-        _, last_day = monthrange(year, month)
-    except ValueError:
-        return {"success": False, "events": []}
-    start_date = date(year, month, 1)
-    end_date = date(year, month, last_day)
+        try:
+            _, last_day = monthrange(year, month)
+        except ValueError:
+            return {"success": False, "events": []}
+        start_date = date(year, month, 1)
+        end_date = date(year, month, last_day)
     cal_ids = list(
         (
             await db.execute(select(Calendar.id).where(Calendar.consultant_id == consultant.id))
