@@ -548,8 +548,8 @@
 }
 
 .slots-grid .slot-btn.is-selected {
-    border-color: var(--text-primary);
-    background: var(--text-primary);
+    border-color: #0a0a0a;
+    background: #0a0a0a;
     color: #fff;
 }
 
