@@ -3,6 +3,28 @@
     min-height: var(--app-vh);
     display: flex;
     flex-direction: column;
+    font-family: var(--font-family-base);
+}
+
+.booking-page,
+.booking-page h1,
+.booking-page h2,
+.booking-page h3,
+.booking-page h4,
+.booking-page .text-h1,
+.booking-page .text-h2,
+.booking-page .text-h3,
+.booking-page .text-display,
+.booking-page .text-display-xl,
+.booking-page .ps-hero__name,
+.booking-page .ps-section-title,
+.booking-page .book-cal-scene__title,
+.booking-page .book-step-page__title,
+.booking-page .slots-empty-message,
+.booking-page .btn,
+.booking-page .input,
+.booking-page button {
+    font-family: var(--font-family-base);
 }
 
 .booking-page__main {
@@ -508,7 +530,7 @@
     margin: var(--space-md) 0;
     padding: var(--space-xl) var(--space-lg);
     text-align: center;
-    font-family: var(--font-family-display);
+    font-family: var(--font-family-base);
     font-size: clamp(1.125rem, 4vw, 1.5rem);
     font-weight: 600;
     line-height: 1.35;
