@@ -214,7 +214,7 @@ def build_calendars_payload(db: Session, calendars: list[Calendar], public_url: 
     cal_ids = _calendar_ids(calendars)
     stats_map = per_calendar_stats(db, cal_ids)
     serialized = [
-        serialize_calendar(cal, f"{public_url}c/{cal.id}/", stats_map.get(cal.id, {}))
+        serialize_calendar(cal, f"{public_url}book/", stats_map.get(cal.id, {}))
         for cal in calendars
     ]
     return {
@@ -228,7 +228,7 @@ async def build_calendars_payload_async(db, calendars: list[Calendar], public_ur
     cal_ids = _calendar_ids(calendars)
     stats_map = await per_calendar_stats_async(db, cal_ids)
     serialized = [
-        serialize_calendar(cal, f"{public_url}c/{cal.id}/", stats_map.get(cal.id, {}))
+        serialize_calendar(cal, f"{public_url}book/", stats_map.get(cal.id, {}))
         for cal in calendars
     ]
     return {

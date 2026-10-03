@@ -1038,7 +1038,7 @@ async def admin_calendars(request: Request, db: AsyncSession = Depends(get_async
     for row in rows:
         row["public_url"] = specialist_public_url(settings.site_url, row["public_slug"])
         if row["calendar"]:
-            row["booking_url"] = f"{row['public_url']}c/{row['calendar'].id}/"
+            row["booking_url"] = f"{row['public_url']}book/"
     return templates.TemplateResponse(
         "platform_admin/calendars.html",
         await _ctx(

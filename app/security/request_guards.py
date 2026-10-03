@@ -64,5 +64,5 @@ def is_public_booking_write(path: str, method: str) -> bool:
         return False
     if not path.startswith("/s/"):
         return False
-    # Slots JSON is GET; book form is POST on /s/.../c/.../
-    return "/c/" in path or path.rstrip("/").endswith("/welcome")
+    # Slots JSON is GET; book form is POST on /s/.../c/.../ or /s/.../book/s/.../
+    return "/c/" in path or "/book/" in path or path.rstrip("/").endswith("/welcome")

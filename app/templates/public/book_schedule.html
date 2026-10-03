@@ -1,57 +1,49 @@
 {% extends "layouts/booking.html" %}
 
 {% block meta_tags %}
-{% set page_title = calendar.name ~ " — запись к " ~ consultant.first_name %}
-{% set meta_description = "Выберите услугу и время" %}
+{% set page_title = service.name ~ " — запись к " ~ consultant.first_name %}
+{% set meta_description = "Выберите дату и время" %}
 {% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/booking.css?v=28">
 {% endblock %}
 
 {% block booking_content %}
 <div
-    class="book-cal-scene"
+    class="book-cal-scene book-step-page"
     id="bookingRoot"
     data-slots-url="/s/{{ slug }}/c/{{ calendar.id }}/slots/"
     data-weekly-windows='{{ weekly_windows_json|safe }}'
     data-today="{{ today }}"
     data-calendar-tz="{{ calendar_timezone }}"
     data-calendar-tz-label="{{ calendar_timezone_label }}"
+    data-fixed-service="1"
 >
-    <p class="text-caption"><a class="link-accent" href="/s/{{ slug }}/">← К профилю специалиста</a></p>
-    <h1 class="book-cal-scene__title">{{ calendar.name }}</h1>
-    <p class="book-cal-scene__meta">Специалист: {{ consultant.first_name }} {{ consultant.last_name }} · клиент: {{ client_name }}</p>
+    <p class="text-caption"><a class="link-accent" href="/s/{{ slug }}/book/">← К выбору услуги</a></p>
+    <h1 class="book-cal-scene__title">{{ service.name }}</h1>
+    <p class="book-cal-scene__meta">
+        {{ service.duration_minutes }} мин{% if service.price %} · {{ service.price }} ₽{% endif %}
+        · {{ consultant.first_name }} {{ consultant.last_name }}
+    </p>
 
     {% if error %}
     <div class="alert alert--error mt-lg" role="alert">{{ error }}</div>
     {% endif %}
 
-    {% if not services %}
-    <div class="booking-empty mt-3xl">В этом календаре пока нет активных услуг.</div>
-    {% else %}
-    <form method="POST" action="/s/{{ slug }}/c/{{ calendar.id }}/" class="book-cal-layout" id="publicBookForm">
+    <form method="POST" action="/s/{{ slug }}/book/s/{{ service.id }}/" class="book-cal-layout book-cal-layout--schedule" id="publicBookForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <nav class="book-cal-progress" id="bookCalProgress" aria-label="Шаги записи">
-            <button type="button" class="book-cal-progress__item is-active" data-step="1" aria-label="Шаг 1: Услуга"><span class="book-cal-progress__num">1</span><span class="book-cal-progress__label">Услуга</span></button>
-            <button type="button" class="book-cal-progress__item" data-step="2" aria-label="Шаг 2: Дата"><span class="book-cal-progress__num">2</span><span class="book-cal-progress__label">Дата</span></button>
-            <button type="button" class="book-cal-progress__item" data-step="3" aria-label="Шаг 3: Время"><span class="book-cal-progress__num">3</span><span class="book-cal-progress__label">Время</span></button>
-            <button type="button" class="book-cal-progress__item" data-step="4" aria-label="Шаг 4: Подтверждение"><span class="book-cal-progress__num">4</span><span class="book-cal-progress__label">Итог</span></button>
-        </nav>
-        <section class="book-cal-panel book-cal-panel--service is-step-active" data-book-step="1" id="bookStepService">
-            <h2 class="book-cal-step"><span class="book-cal-step__num">1</span> Услуга</h2>
-            <div class="form-field">
-                <label class="form-field__label book-cal-service-label" for="service_id">Выберите услугу</label>
-                <select class="input" id="service_id" name="service_id" required>
-                    <option value="">Выберите услугу</option>
-                    {% for service in services %}
-                    <option value="{{ service.id }}" data-duration="{{ service.duration_minutes }}">
-                        {{ service.name }} · {{ service.duration_minutes }} мин{% if service.price %} · {{ service.price }} ₽{% endif %}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-        </section>
+        <input type="hidden" name="service_id" id="service_id" value="{{ service.id }}" data-duration="{{ service.duration_minutes }}">
 
-        <section class="book-cal-panel book-cal-panel--month" aria-label="Календарь" data-book-step="2" id="bookStepDate">
-            <h2 class="book-cal-step"><span class="book-cal-step__num">2</span> Выберите дату</h2>
+        <nav class="book-cal-progress" id="bookCalProgress" aria-label="Шаги записи">
+            <button type="button" class="book-cal-progress__item is-active" data-step="2" aria-label="Шаг: Дата"><span class="book-cal-progress__num">1</span><span class="book-cal-progress__label">Дата</span></button>
+            <button type="button" class="book-cal-progress__item" data-step="3" aria-label="Шаг: Время"><span class="book-cal-progress__num">2</span><span class="book-cal-progress__label">Время</span></button>
+            <button type="button" class="book-cal-progress__item" data-step="4" aria-label="Шаг: Подтверждение"><span class="book-cal-progress__num">3</span><span class="book-cal-progress__label">Итог</span></button>
+        </nav>
+
+        <section class="book-cal-panel book-cal-panel--month is-step-active" aria-label="Календарь" data-book-step="2" id="bookStepDate">
+            <h2 class="book-cal-step"><span class="book-cal-step__num">1</span> Выберите дату</h2>
             <div class="booking-cal">
                 <div class="booking-cal__header">
                     <button type="button" class="booking-cal__nav" id="calPrev" aria-label="Предыдущий месяц">‹</button>
@@ -76,7 +68,7 @@
         </section>
 
         <section class="book-cal-panel book-cal-panel--day" data-book-step="3" id="bookStepTime">
-            <h2 class="book-cal-step"><span class="book-cal-step__num">3</span> Выберите время</h2>
+            <h2 class="book-cal-step"><span class="book-cal-step__num">2</span> Выберите время</h2>
             <p class="book-cal-day-sub" id="dayPanelTitle">Сначала выберите дату в календаре</p>
             <div id="windowsBlock" class="book-windows" hidden>
                 <p class="book-windows__label">Окна приёма</p>
@@ -91,12 +83,17 @@
                 <p class="form-field__hint">{{ calendar_timezone_hint }}</p>
                 <p class="form-field__hint" id="viewerTzHint" hidden></p>
                 <div id="slotsGrid" class="slots-grid slots-grid--bricks" aria-live="polite"></div>
-                <p class="form-field__hint" id="slotsHint">Выберите услугу и день в календаре.</p>
+                <p class="form-field__hint" id="slotsHint">Выберите день в календаре.</p>
             </div>
             <div id="bookReview" class="book-cal-review" hidden>
-                <h3 class="book-cal-step"><span class="book-cal-step__num">4</span> Проверка</h3>
-                <p class="text-body-sm text-muted" id="bookReviewText">Проверьте услугу, дату и время перед подтверждением.</p>
+                <h3 class="book-cal-step"><span class="book-cal-step__num">3</span> Проверка</h3>
+                <p class="text-body-sm text-muted" id="bookReviewText">Проверьте дату и время перед подтверждением.</p>
             </div>
+
+            {% if phone_known %}
+            <input type="hidden" name="client_phone" id="client_phone" value="{{ client_phone }}">
+            <p class="form-field__hint mt-lg">Телефон: {{ client_phone }}</p>
+            {% else %}
             <div class="form-field mt-lg">
                 <label class="form-field__label" for="client_phone">Телефон</label>
                 <input
@@ -114,6 +111,8 @@
                 >
                 <p class="form-field__hint">Обязательно. Только номер в формате +7.</p>
             </div>
+            {% endif %}
+
             <div class="form-field mt-lg">
                 <label class="checkbox-row">
                     <input type="checkbox" name="accept_privacy" id="accept_privacy" value="1" required>
@@ -123,7 +122,6 @@
             <button type="submit" class="btn btn--primary mt-3xl" id="bookSubmit" data-tg-main-button="Записаться" disabled>Подтвердить запись</button>
         </section>
     </form>
-    {% endif %}
 </div>
 {% endblock %}
 

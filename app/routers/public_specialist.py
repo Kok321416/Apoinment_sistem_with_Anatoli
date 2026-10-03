@@ -1,11 +1,12 @@
-"""Public specialist pages: share link → client gate → calendars → services → book."""
+"""Public specialist pages: share link → client gate → services → schedule → book."""
 from datetime import date, datetime
 from urllib.parse import quote, urlencode
+import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.session import get_current_user_async
@@ -43,6 +44,21 @@ def _sync_booking_session(request: Request) -> None:
     sync_booking_session_from_gate(request.session)
 
 
+def _client_channel(request: Request) -> str:
+    from app.services.client_channel import resolve_client_channel
+
+    return resolve_client_channel(
+        query_client=request.query_params.get("client"),
+        session=request.session,
+    )
+
+
+def _channel_redirect(url: str, request: Request) -> RedirectResponse:
+    from app.services.client_channel import with_client_query
+
+    return RedirectResponse(with_client_query(url, _client_channel(request)), status_code=302)
+
+
 async def _require_gate(request: Request, consultant: Consultant, next_path: str, db):
     auth_user = await get_current_user_async(request, db)
     if auth_user:
@@ -57,7 +73,8 @@ async def _require_gate(request: Request, consultant: Consultant, next_path: str
     if client_gate_ok(request.session, consultant.id):
         return None
     slug = getattr(consultant, "public_slug", None) or f"id-{consultant.id}"
-    return RedirectResponse(f"/s/{slug}/welcome/?{urlencode({'next': next_path})}", status_code=302)
+    welcome = f"/s/{slug}/welcome/?{urlencode({'next': next_path})}"
+    return _channel_redirect(welcome, request)
 
 
 @router.get("/s/{slug}/")
@@ -97,33 +114,13 @@ async def specialist_public_home(request: Request, slug: str, db: AsyncSession =
         # rollback()/commit() can expire ORM state — always reload for the template.
         consultant = await _get_consultant_by_slug_async(db, slug)
 
-    calendars = list(
-        (
-            await db.execute(
-                select(Calendar)
-                .where(Calendar.consultant_id == consultant.id, Calendar.is_active.is_(True))
-                .order_by(Calendar.name)
-            )
-        )
-        .scalars()
-        .all()
-    )
-    calendars_data = []
-    for cal in calendars:
-        svc_count = (
-            await db.execute(
-                select(func.count(Service.id)).where(
-                    Service.calendar_id == cal.id,
-                    Service.is_active.is_(True),
-                )
-            )
-        ).scalar_one()
-        calendars_data.append({"calendar": cal, "services_count": svc_count})
-
     gated = client_gate_ok(request.session, consultant.id)
     from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
 
     show_diagnostics = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
+    from app.services.client_channel import with_client_query
+
+    channel = _client_channel(request)
     return templates.TemplateResponse(
         "public/specialist.html",
         await page_context_async(
@@ -131,14 +128,13 @@ async def specialist_public_home(request: Request, slug: str, db: AsyncSession =
             db,
             auth_user,
             consultant=consultant,
-            calendars_data=calendars_data,
             client_name=request.session.get("pc_name", "") if gated else "",
             client_email=request.session.get("pc_email", "") if gated else "",
             client_telegram=request.session.get("pc_telegram", "") if gated else "",
             client_gated=gated,
-            welcome_url=f"/s/{slug}/welcome/?next=/s/{slug}/",
+            book_url=with_client_query(f"/s/{slug}/book/", channel),
             show_diagnostics=show_diagnostics,
-            diagnostics_url=f"/s/{slug}/diagnostics/",
+            diagnostics_url=with_client_query(f"/s/{slug}/diagnostics/", channel),
         ),
     )
 
@@ -344,6 +340,230 @@ async def specialist_client_logout(request: Request, slug: str, db: AsyncSession
     return RedirectResponse(f"/s/{slug}/welcome/", status_code=302)
 
 
+async def _list_bookable_services(db: AsyncSession, consultant: Consultant) -> list[Service]:
+    return list(
+        (
+            await db.execute(
+                select(Service)
+                .join(Calendar, Calendar.id == Service.calendar_id)
+                .where(
+                    Service.consultant_id == consultant.id,
+                    Service.is_active.is_(True),
+                    Service.calendar_id.is_not(None),
+                    Calendar.is_active.is_(True),
+                )
+                .order_by(Service.sort_order, Service.name)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+
+async def _weekly_windows_json(db: AsyncSession, calendar_id: int) -> str:
+    weekly: dict[str, list] = {str(i): [] for i in range(7)}
+    for slot in (
+        await db.execute(
+            select(TimeSlot)
+            .where(TimeSlot.calendar_id == calendar_id, TimeSlot.is_available.is_(True))
+            .order_by(TimeSlot.day_of_week, TimeSlot.start_time)
+        )
+    ).scalars().all():
+        weekly[str(slot.day_of_week)].append(
+            {
+                "start_time": slot.start_time.strftime("%H:%M"),
+                "end_time": slot.end_time.strftime("%H:%M"),
+            }
+        )
+    return json.dumps(weekly, ensure_ascii=False)
+
+
+def _session_phone(request: Request, auth_user=None) -> str:
+    phone = (
+        (request.session.get("pc_phone") or "")
+        or (request.session.get("booking_client_phone") or "")
+        or (request.session.get("register_phone") or "")
+        or (getattr(auth_user, "register_phone", None) or "")
+    )
+    return str(phone).strip()
+
+
+@router.get("/s/{slug}/book/")
+async def specialist_book_services(request: Request, slug: str, db: AsyncSession = Depends(get_async_db)):
+    """Step 1: pick a service (radio cards). Single service auto-continues."""
+    consultant = await _get_consultant_by_slug_async(db, slug)
+    gate = await _require_gate(request, consultant, f"/s/{slug}/book/", db)
+    if gate:
+        return gate
+    _sync_booking_session(request)
+
+    services = await _list_bookable_services(db, consultant)
+    if len(services) == 1:
+        return _channel_redirect(f"/s/{slug}/book/s/{services[0].id}/", request)
+
+    return templates.TemplateResponse(
+        "public/book_services.html",
+        await page_context_async(
+            request,
+            db,
+            None,
+            consultant=consultant,
+            services=services,
+            slug=slug,
+        ),
+    )
+
+
+@router.get("/s/{slug}/book/s/{service_id}/")
+@router.post("/s/{slug}/book/s/{service_id}/")
+async def specialist_book_schedule(
+    request: Request,
+    slug: str,
+    service_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Step 2: date + time for a chosen service."""
+    consultant = await _get_consultant_by_slug_async(db, slug)
+    gate = await _require_gate(request, consultant, f"/s/{slug}/book/s/{service_id}/", db)
+    if gate:
+        return gate
+    _sync_booking_session(request)
+
+    service = (
+        await db.execute(
+            select(Service).where(
+                Service.id == service_id,
+                Service.consultant_id == consultant.id,
+                Service.is_active.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not service or not service.calendar_id:
+        raise HTTPException(status_code=404, detail="Услуга не найдена")
+
+    calendar = (
+        await db.execute(
+            select(Calendar).where(
+                Calendar.id == service.calendar_id,
+                Calendar.consultant_id == consultant.id,
+                Calendar.is_active.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not calendar:
+        raise HTTPException(status_code=404, detail="Календарь не найден")
+
+    auth_user = await get_current_user_async(request, db)
+    client_phone = _session_phone(request, auth_user)
+    phone_known = bool(client_phone)
+
+    error = None
+    if request.method == "POST":
+        form = await request.form()
+        from app.security.csrf import validate_csrf_token
+
+        csrf = form.get("csrf_token") or form.get("csrfmiddlewaretoken")
+        if not validate_csrf_token(request, csrf):
+            error = "Ошибка безопасности. Обновите страницу и попробуйте снова."
+            booking_date = None
+        else:
+            try:
+                booking_date = datetime.strptime(form.get("booking_date") or "", "%Y-%m-%d").date()
+            except (TypeError, ValueError):
+                error = "Выберите дату"
+                booking_date = None
+        booking_time = (form.get("booking_time") or "").strip()
+        booking_end = (form.get("booking_end_time") or "").strip()
+        client_timezone = (form.get("client_timezone") or "").strip()
+        posted_phone = (form.get("client_phone") or form.get("phone") or "").strip()
+        if posted_phone:
+            client_phone = posted_phone
+            request.session["pc_phone"] = client_phone
+            request.session["booking_client_phone"] = client_phone
+        elif not client_phone:
+            client_phone = request.session.get("pc_phone", "")
+        if not error and form.get("accept_privacy") != "1":
+            error = "Нужно согласие на обработку персональных данных"
+        if not error and not client_phone:
+            error = "Укажите телефон"
+        if not error:
+            booking, err = await create_public_booking_async(
+                db,
+                calendar,
+                service.id,
+                booking_date,
+                booking_time,
+                booking_end,
+                request.session.get("pc_name", ""),
+                client_phone,
+                request.session.get("pc_email", ""),
+                request.session.get("pc_telegram", ""),
+                client_user_id=(auth_user.id if auth_user else None),
+                consultant=consultant,
+                client_timezone=client_timezone or None,
+            )
+            if err:
+                error = err
+            else:
+                from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
+                from app.services.diagnostics_service import touch_client_specialist_link
+                from app.services.site_timezone import format_dual_slot
+
+                booked_service = booking.service
+                show_diag = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
+                diag_url = f"/s/{slug}/diagnostics/"
+                if auth_user:
+                    try:
+                        await touch_client_specialist_link(
+                            db,
+                            client_user_id=auth_user.id,
+                            consultant_id=consultant.id,
+                            source="booking",
+                        )
+                        await db.commit()
+                    except Exception:
+                        await db.rollback()
+                dual = format_dual_slot(booking)
+                viewer_line = ""
+                if dual.get("dual_line"):
+                    viewer_line = dual["dual_line"][0].upper() + dual["dual_line"][1:]
+                return templates.TemplateResponse(
+                    "booking_success.html",
+                    await page_context_async(
+                        request,
+                        db,
+                        auth_user,
+                        booking=booking,
+                        calendar=calendar,
+                        service=booked_service,
+                        consultant=consultant,
+                        back_url=f"/s/{slug}/",
+                        show_diagnostics_cta=show_diag,
+                        diagnostics_url=diag_url,
+                        booking_viewer_time_line=viewer_line,
+                    ),
+                )
+
+    return templates.TemplateResponse(
+        "public/book_schedule.html",
+        await page_context_async(
+            request,
+            db,
+            auth_user,
+            consultant=consultant,
+            calendar=calendar,
+            service=service,
+            error=error,
+            client_name=request.session.get("pc_name", ""),
+            client_phone=client_phone,
+            phone_known=phone_known and bool(client_phone),
+            slug=slug,
+            today=date.today().isoformat(),
+            weekly_windows_json=await _weekly_windows_json(db, calendar.id),
+        ),
+    )
+
+
 @router.get("/s/{slug}/c/{calendar_id}/")
 @router.post("/s/{slug}/c/{calendar_id}/")
 async def specialist_calendar_book(
@@ -352,6 +572,10 @@ async def specialist_calendar_book(
     calendar_id: int,
     db: AsyncSession = Depends(get_async_db),
 ):
+    """Legacy calendar booking URL → new service-first book flow (site + TG mini app)."""
+    if request.method == "GET":
+        return _channel_redirect(f"/s/{slug}/book/", request)
+
     consultant = await _get_consultant_by_slug_async(db, slug)
     calendar = (
         await db.execute(
@@ -365,7 +589,7 @@ async def specialist_calendar_book(
     if not calendar:
         raise HTTPException(status_code=404, detail="Календарь не найден")
 
-    gate = await _require_gate(request, consultant, f"/s/{slug}/c/{calendar_id}/", db)
+    gate = await _require_gate(request, consultant, f"/s/{slug}/book/", db)
     if gate:
         return gate
     _sync_booking_session(request)
@@ -474,23 +698,6 @@ async def specialist_calendar_book(
                     ),
                 )
 
-    import json
-
-    weekly: dict[str, list] = {str(i): [] for i in range(7)}
-    for slot in (
-        await db.execute(
-            select(TimeSlot)
-            .where(TimeSlot.calendar_id == calendar.id, TimeSlot.is_available.is_(True))
-            .order_by(TimeSlot.day_of_week, TimeSlot.start_time)
-        )
-    ).scalars().all():
-        weekly[str(slot.day_of_week)].append(
-            {
-                "start_time": slot.start_time.strftime("%H:%M"),
-                "end_time": slot.end_time.strftime("%H:%M"),
-            }
-        )
-
     return templates.TemplateResponse(
         "public/calendar_book.html",
         await page_context_async(
@@ -505,7 +712,7 @@ async def specialist_calendar_book(
             client_phone=request.session.get("pc_phone", ""),
             slug=slug,
             today=date.today().isoformat(),
-            weekly_windows_json=json.dumps(weekly, ensure_ascii=False),
+            weekly_windows_json=await _weekly_windows_json(db, calendar.id),
         ),
     )
 

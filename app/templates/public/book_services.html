@@ -1,0 +1,52 @@
+{% extends "layouts/booking.html" %}
+
+{% block meta_tags %}
+{% set page_title = "Выбор услуги — " ~ consultant.first_name %}
+{% set meta_description = "Выберите услугу для записи" %}
+{% include "components/meta.html" %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="/static/css/booking.css?v=28">
+{% endblock %}
+
+{% block booking_content %}
+<div class="book-step-page">
+    <p class="text-caption"><a class="link-accent" href="/s/{{ slug }}/">← К профилю специалиста</a></p>
+    <h1 class="book-step-page__title">Выберите услугу</h1>
+    <p class="book-step-page__meta">{{ consultant.first_name }} {{ consultant.last_name }}</p>
+
+    {% if not services %}
+    <div class="booking-empty mt-3xl">Пока нет доступных услуг для записи.</div>
+    {% else %}
+    <form id="bookServiceForm" class="book-service-pick mt-3xl" action="#" method="get">
+        <div class="book-service-pick__list" role="radiogroup" aria-label="Услуги">
+            {% for service in services %}
+            <label class="booking-service book-service-card{% if services|length == 1 %} is-selected{% endif %}">
+                <input
+                    type="radio"
+                    name="service_id"
+                    value="{{ service.id }}"
+                    class="book-service-card__radio"
+                    {% if services|length == 1 %}checked{% endif %}
+                    required
+                >
+                <span class="booking-service__name">{{ service.name }}</span>
+                <span class="booking-service__meta">
+                    {{ service.duration_minutes }} мин{% if service.price %} · {{ service.price }} ₽{% endif %}
+                </span>
+                {% if service.description %}
+                <span class="booking-service__desc">{{ service.description }}</span>
+                {% endif %}
+            </label>
+            {% endfor %}
+        </div>
+        <button type="submit" class="btn btn--primary mt-3xl" id="bookServiceNext" disabled data-tg-main-button="Далее">Далее</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/public-book-services.js?v=1" defer></script>
+{% endblock %}

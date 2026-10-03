@@ -23,8 +23,10 @@ def test_auth_abuse_paths():
 
 def test_public_booking_write_paths():
     assert is_public_booking_write("/s/demo/c/1/", "POST")
+    assert is_public_booking_write("/s/demo/book/s/3/", "POST")
     assert is_public_booking_write("/s/demo/welcome/", "POST")
     assert not is_public_booking_write("/s/demo/c/1/slots/", "GET")
+    assert not is_public_booking_write("/s/demo/book/", "GET")
 
 
 def test_rate_limit_blocks_after_max():

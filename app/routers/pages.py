@@ -1234,7 +1234,7 @@ async def calendar_detail(request: Request, calendar_id: int, db: AsyncSession =
     from app.services.public_client import ensure_public_slug_async, specialist_public_url
 
     slug = await ensure_public_slug_async(db, consultant)
-    booking_url = f"{specialist_public_url(settings.site_url, slug)}c/{calendar.id}/"
+    booking_url = f"{specialist_public_url(settings.site_url, slug)}book/"
     return templates.TemplateResponse(
         "calendar_detail.html",
         await page_context_async(
@@ -1469,7 +1469,7 @@ async def public_booking(request: Request, calendar_id: int, db: AsyncSession = 
     from app.services.public_client import ensure_public_slug_async
 
     slug = await ensure_public_slug_async(db, consultant)
-    return RedirectResponse(f"/s/{slug}/c/{calendar.id}/", status_code=302)
+    return RedirectResponse(f"/s/{slug}/book/", status_code=302)
 
 
 @router.get("/book/{calendar_id}/slots/")

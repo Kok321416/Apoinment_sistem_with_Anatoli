@@ -19,6 +19,7 @@
     var todayStr = root.dataset.today || "";
     var calendarTz = root.dataset.calendarTz || "Asia/Irkutsk";
     var calendarTzLabel = root.dataset.calendarTzLabel || calendarTz;
+    var fixedService = root.dataset.fixedService === "1";
     var clientTzEl = document.getElementById("client_timezone");
     var viewerTzHint = document.getElementById("viewerTzHint");
     var viewerTz = "";
@@ -263,7 +264,9 @@
         var sid = serviceEl.value;
         var date = dateEl.value;
         if (!sid || !date) {
-            slotsHint.textContent = "Выберите услугу и день в календаре.";
+            slotsHint.textContent = fixedService
+                ? "Выберите день в календаре."
+                : "Выберите услугу и день в календаре.";
             return;
         }
         slotsHint.textContent = "Загрузка слотов...";
@@ -324,13 +327,15 @@
         currentCalDate.setMonth(currentCalDate.getMonth() + 1);
         renderCalendar();
     });
-    serviceEl.addEventListener("change", function () {
-        loadSlots();
-        if (serviceEl.value) {
-            scrollToStep(2);
-            setProgressStep(2);
-        }
-    });
+    if (serviceEl && serviceEl.tagName === "SELECT") {
+        serviceEl.addEventListener("change", function () {
+            loadSlots();
+            if (serviceEl.value) {
+                scrollToStep(2);
+                setProgressStep(2);
+            }
+        });
+    }
 
     function isWizard() {
         return (
@@ -372,7 +377,7 @@
         bar.querySelectorAll(".book-cal-progress__item").forEach(function (btn) {
             btn.addEventListener("click", function () {
                 var step = parseInt(btn.getAttribute("data-step"), 10);
-                if (step === 2 && !serviceEl.value) {
+                if (!fixedService && step === 2 && !serviceEl.value) {
                     slotsHint.textContent = "Сначала выберите услугу.";
                     setWizardStep(1);
                     return;
@@ -385,7 +390,7 @@
                 setWizardStep(step);
             });
         });
-        setWizardStep(1);
+        setWizardStep(fixedService ? 2 : 1);
         if (!("IntersectionObserver" in window) || isWizard()) return;
         var panels = [
             document.getElementById("bookStepService"),
@@ -415,7 +420,9 @@
         }
         if (!timeEl.value || !dateEl.value || !serviceEl.value) {
             event.preventDefault();
-            slotsHint.textContent = "Выберите услугу, дату и время перед записью.";
+            slotsHint.textContent = fixedService
+                ? "Выберите дату и время перед записью."
+                : "Выберите услугу, дату и время перед записью.";
             return;
         }
         submitting = true;

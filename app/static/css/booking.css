@@ -497,6 +497,12 @@
     gap: var(--space-sm);
 }
 
+.slots-grid--bricks {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-sm);
+}
+
 .slots-empty-message {
     width: 100%;
     margin: var(--space-md) 0;
@@ -509,23 +515,84 @@
     color: var(--text-primary);
 }
 
-.slots-grid .slots-empty-message {
+.slots-grid .slots-empty-message,
+.slots-grid--bricks .slots-empty-message {
+    grid-column: 1 / -1;
     flex: 1 1 100%;
 }
 
 .slots-grid .slot-btn {
     border: 1px solid var(--border-default);
-    background: var(--surface-200);
+    background: #fff;
     color: var(--text-primary);
     border-radius: var(--radius-md);
     padding: var(--space-sm) var(--space-lg);
     cursor: pointer;
+    min-height: 44px;
+    box-shadow: var(--shadow-xs);
+    transition: background var(--duration-fast) var(--ease-out),
+        color var(--duration-fast) var(--ease-out),
+        border-color var(--duration-fast) var(--ease-out);
 }
 
-.slots-grid .slot-btn.is-selected,
+.slots-grid--bricks .slot-btn {
+    width: 100%;
+    padding: var(--space-md) var(--space-sm);
+    font-weight: var(--font-weight-semibold);
+    font-variant-numeric: tabular-nums;
+}
+
 .slots-grid .slot-btn:hover {
-    border-color: var(--accent-secondary);
-    background: var(--glass-medium);
+    border-color: var(--border-strong);
+    background: #fff;
+}
+
+.slots-grid .slot-btn.is-selected {
+    border-color: var(--text-primary);
+    background: var(--text-primary);
+    color: #fff;
+}
+
+.book-step-page {
+    max-width: 40rem;
+    margin: 0 auto;
+}
+
+.book-step-page__title {
+    margin: var(--space-lg) 0 0;
+    font-size: var(--font-size-h1);
+    color: var(--text-primary);
+}
+
+.book-step-page__meta {
+    margin-top: var(--space-sm);
+    color: var(--text-secondary);
+}
+
+.book-service-pick__list {
+    display: grid;
+    gap: var(--space-md);
+}
+
+.book-service-card {
+    position: relative;
+}
+
+.book-service-card__radio {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.book-service-card .booking-service__desc {
+    display: block;
+    margin-top: var(--space-sm);
+    color: var(--text-secondary);
+    font-size: var(--font-size-body-sm);
+}
+
+.book-cal-layout--schedule {
+    grid-template-columns: minmax(260px, 1.1fr) minmax(240px, 1fr);
 }
 
 /* Dark booking calendar scene (client) */
@@ -631,7 +698,8 @@
 }
 
 @media (max-width: 1024px) {
-    .book-cal-layout {
+    .book-cal-layout,
+    .book-cal-layout--schedule {
         grid-template-columns: 1fr;
     }
 

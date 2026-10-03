@@ -554,6 +554,41 @@ body.tg-webapp .time-slot {
     min-height: 40px;
 }
 
+body.tg-webapp .book-step-page {
+    max-width: none;
+}
+
+body.tg-webapp .book-service-pick__list {
+    gap: 10px;
+}
+
+body.tg-webapp .book-service-card {
+    padding: 14px;
+    min-height: var(--tg-touch, 44px);
+}
+
+body.tg-webapp .slots-grid--bricks {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+body.tg-webapp .slots-grid--bricks .slot-btn {
+    min-height: 44px;
+    background: #fff;
+    color: var(--tg-text, #0a0a0a);
+    border: 1px solid var(--border-default);
+}
+
+body.tg-webapp .slots-grid--bricks .slot-btn.is-selected {
+    background: var(--tg-text, #0a0a0a);
+    color: #fff;
+    border-color: var(--tg-text, #0a0a0a);
+}
+
+body.tg-webapp .book-cal-layout--schedule {
+    grid-template-columns: 1fr !important;
+}
+
 /* Dashboard cards */
 body.tg-webapp .app-nav-card,
 body.tg-webapp .dashboard-grid {

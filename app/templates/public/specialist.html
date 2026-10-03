@@ -25,9 +25,9 @@
 {% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="/static/css/booking.css?v=27">
+<link rel="stylesheet" href="/static/css/booking.css?v=28">
 <link rel="stylesheet" href="/static/css/site-chrome.css?v=1">
-<link rel="stylesheet" href="/static/css/public-specialist.css?v=3">
+<link rel="stylesheet" href="/static/css/public-specialist.css?v=4">
 {% endblock %}
 
 {% block booking_content %}
@@ -60,19 +60,16 @@
         <div class="ps-hero__badges">
             <span class="ps-badge">{{ spec_category }}</span>
             <span class="ps-badge ps-badge--soft">Онлайн</span>
-            <span class="ps-badge ps-badge--ok">Принимает новых клиентов</span>
         </div>
         <h1 class="ps-hero__name">{{ spec_name or 'Специалист' }}</h1>
         {% if consultant.profile_description %}
         <p class="ps-hero__about">{{ consultant.profile_description }}</p>
         {% endif %}
         <div class="ps-hero__cta">
-            <a class="btn btn--primary ps-btn-book" href="#psCalendars">Записаться</a>
-            <div class="ps-trust-mini">
-                <span>Проверенный специалист</span>
-                <span>Онлайн запись</span>
-                <span>Конфиденциально</span>
-            </div>
+            <a class="btn btn--primary ps-btn-book" href="{{ book_url }}">Записаться</a>
+            {% if show_diagnostics %}
+            <a class="btn btn--secondary ps-btn-book" href="{{ diagnostics_url }}">Диагностика</a>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -84,7 +81,7 @@
     </div>
     <div class="ps-welcome__text">
         <p class="ps-welcome__eyebrow">Добро пожаловать</p>
-        <h2 class="ps-welcome__title">Вы записываетесь как</h2>
+        <h2 class="ps-welcome__title">Вы вошли как</h2>
         <p class="ps-welcome__name">{{ client_name }}</p>
         <p class="ps-welcome__meta">
             {% if client_email %}<span>{{ client_email }}</span>{% endif %}
@@ -93,22 +90,7 @@
     </div>
     <a class="btn btn--ghost btn--sm" href="/s/{{ consultant.public_slug }}/logout-client/">Изменить данные</a>
 </section>
-{% elif not client_gated %}
-<section class="ps-welcome ps-welcome--guest" aria-label="Вход для записи">
-    <div class="ps-welcome__text">
-        <p class="ps-welcome__eyebrow">Запись</p>
-        <h2 class="ps-welcome__title">Профиль открыт без входа</h2>
-        <p class="ps-welcome__meta">Чтобы выбрать время, войдите или зарегистрируйтесь - займёт минуту.</p>
-    </div>
-    <a class="btn btn--primary btn--sm" href="{{ welcome_url }}">Войти для записи</a>
-</section>
 {% endif %}
-
-<ol class="ps-steps" aria-label="Этапы записи">
-    <li class="ps-steps__item is-active"><span>1</span> Услуга</li>
-    <li class="ps-steps__item"><span>2</span> Выберите дату</li>
-    <li class="ps-steps__item"><span>3</span> Выберите время</li>
-</ol>
 
 {% if has_video %}
 <section class="ps-video" aria-labelledby="psVideoTitle">
@@ -160,77 +142,6 @@
     </div>
 </section>
 {% endif %}
-
-{% if show_diagnostics %}
-<section class="ps-diagnostics" aria-labelledby="psDiagTitle">
-    <h2 class="ps-section-title" id="psDiagTitle">Диагностика</h2>
-    <p class="ps-section-sub">Пройдите опросники и сохраните результаты. Можно проходить повторно — история сохраняется.</p>
-    <a class="btn btn--secondary" href="{{ diagnostics_url }}">Перейти к диагностике</a>
-</section>
-{% endif %}
-
-<section class="ps-calendars" id="psCalendars" aria-labelledby="psCalTitle">
-    <div class="ps-calendars__head">
-        <div>
-            <h2 class="ps-section-title" id="psCalTitle">Календари</h2>
-            <p class="ps-section-sub">Выберите календарь, затем услугу и время. Обычно есть свободные места на этой неделе.</p>
-        </div>
-        {% if calendars_data and calendars_data|length > 1 %}
-        <div class="ps-calendars__tools">
-            <label class="ps-search">
-                <span class="sr-only">Поиск календаря</span>
-                <input type="search" id="psCalSearch" class="input" placeholder="Поиск…" autocomplete="off">
-            </label>
-            <label class="ps-sort">
-                <span class="sr-only">Сортировка</span>
-                <select id="psCalSort" class="input">
-                    <option value="name">По названию</option>
-                    <option value="services">По числу услуг</option>
-                </select>
-            </label>
-        </div>
-        {% endif %}
-    </div>
-
-    {% if calendars_data %}
-    <div class="ps-cal-grid" id="psCalGrid">
-        {% for item in calendars_data %}
-        {% set calendar = item.calendar %}
-        <article
-            class="ps-cal-card"
-            style="--cal-color: {{ calendar.color or '#7D5CFF' }};"
-            data-name="{{ calendar.name|lower }}"
-            data-services="{{ item.services_count }}"
-        >
-            <div class="ps-cal-card__stripe" aria-hidden="true"></div>
-            <div class="ps-cal-card__body">
-                <h3 class="ps-cal-card__title">{{ calendar.name }}</h3>
-                <p class="ps-cal-card__meta">{{ item.services_count }} {{ 'услуга' if item.services_count == 1 else ('услуги' if item.services_count in [2,3,4] else 'услуг') }}</p>
-                <p class="ps-cal-card__hint">Есть свободные окна для записи</p>
-                <a class="btn btn--secondary btn--sm ps-cal-card__btn" href="/s/{{ consultant.public_slug }}/c/{{ calendar.id }}/">Выбрать</a>
-            </div>
-        </article>
-        {% endfor %}
-    </div>
-    <p class="ps-cal-empty" id="psCalEmpty" hidden>Ничего не найдено. Измените поиск.</p>
-    {% else %}
-    <div class="ps-empty" role="status">
-        <div class="ps-empty__art" aria-hidden="true"></div>
-        <h3>Пока нет доступных календарей</h3>
-        <p>Попробуйте позже или свяжитесь со специалистом.</p>
-    </div>
-    {% endif %}
-</section>
-
-<aside class="ps-sticky" id="psSticky" hidden>
-    <div class="ps-sticky__inner">
-        <div>
-            <p class="ps-sticky__label">Запись</p>
-            <p class="ps-sticky__name">{{ spec_name }}</p>
-        </div>
-        <a class="btn btn--primary btn--sm" href="#psCalendars">Выбрать календарь</a>
-    </div>
-</aside>
 {% endblock %}
 
 {% block scripts %}

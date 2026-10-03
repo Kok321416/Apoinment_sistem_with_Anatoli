@@ -102,18 +102,31 @@ def test_public_specialist_page_open_without_login(public_client):
     r = client.get("/s/spec/", follow_redirects=False)
     assert r.status_code == 200, r.text[:500]
     assert "Артем" in r.text
-    assert "Календари" in r.text or "календар" in r.text.lower()
-    assert "Войти для записи" in r.text or "welcome" in r.text.lower()
+    assert "Записаться" in r.text
+    assert "/s/spec/book/" in r.text
     assert "Почему выбирают" not in r.text
+    assert "Календари" not in r.text
     assert "/s/spec/welcome/" not in (r.headers.get("location") or "")
 
 
 def test_public_specialist_booking_still_requires_gate(public_client):
     client, _cid, cal_id = public_client
-    r = client.get(f"/s/spec/c/{cal_id}/", follow_redirects=False)
+    r = client.get("/s/spec/book/", follow_redirects=False)
     assert r.status_code in (302, 303)
     loc = r.headers.get("location") or ""
     assert "/s/spec/welcome/" in loc
+    assert "next=" in loc
+
+    r_old = client.get(f"/s/spec/c/{cal_id}/", follow_redirects=False)
+    assert r_old.status_code in (302, 303)
+    loc_old = r_old.headers.get("location") or ""
+    assert "/s/spec/book/" in loc_old
+
+    r_tg = client.get("/s/spec/book/?client=tg", follow_redirects=False)
+    assert r_tg.status_code in (302, 303)
+    loc_tg = r_tg.headers.get("location") or ""
+    assert "/s/spec/welcome/" in loc_tg
+    assert "client=tg" in loc_tg or "next=" in loc_tg
 
 
 def test_cabinet_routes_redirect_anonymous_to_login():
