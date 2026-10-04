@@ -62,3 +62,17 @@ def test_require_platform_admin_async_owner_only(monkeypatch):
     with pytest.raises(HTTPException) as ei:
         asyncio.run(_run(other))
     assert ei.value.status_code == 403
+
+
+def test_platform_admin_disabled_returns_404(monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "platform_admin_enabled", False)
+    monkeypatch.setattr(settings, "platform_admin_owner_emails", "kok321416x@yandex.ru")
+
+    async def fake_get(_request, _db):
+        return _user()
+
+    monkeypatch.setattr("app.auth.session.get_current_user_async", fake_get)
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(require_platform_admin_async(MagicMock(), MagicMock()))
+    assert ei.value.status_code == 404

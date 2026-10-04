@@ -119,7 +119,8 @@ jobs:
           SITE_BRAND_NAME=${{ secrets.SITE_BRAND_NAME || 'Все клиенты здесь' }}
           SMTP_USE_SSL=${{ secrets.SMTP_USE_SSL || 'true' }}
           NOTIFY_DEDUP=${{ secrets.NOTIFY_DEDUP || 'true' }}
-          PLATFORM_ADMIN_ENABLED=${{ secrets.PLATFORM_ADMIN_ENABLED || 'true' }}
+          # Platform admin UI is parked (code kept). Flip to true only when needed again.
+          PLATFORM_ADMIN_ENABLED=false
           PLATFORM_ADMIN_OWNER_EMAILS=${{ secrets.PLATFORM_ADMIN_OWNER_EMAILS || 'kok321416x@yandex.ru' }}
           BROADCAST_REQUIRE_DRY_RUN=${{ secrets.BROADCAST_REQUIRE_DRY_RUN || 'true' }}
           EOF

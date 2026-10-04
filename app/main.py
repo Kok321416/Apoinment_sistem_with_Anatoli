@@ -73,8 +73,9 @@ app.include_router(public_specialist.router)
 app.include_router(api.router)
 app.include_router(specialist_booking.router)
 app.include_router(oauth.router)
-# Platform admin DB work runs only inside /platform-admin/ handlers.
-# Mount routes when enabled; in DEBUG also mount so tests can toggle the flag.
+# Platform admin is optional and currently parked via PLATFORM_ADMIN_ENABLED=false.
+# Code stays in app/routers/platform_admin.py; mount only when enabled (DEBUG also
+# mounts so tests can flip the flag without reimporting the app).
 if settings.platform_admin_enabled or settings.debug:
     from app.routers import platform_admin as platform_admin_router
 

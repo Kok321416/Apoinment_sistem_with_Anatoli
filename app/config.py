@@ -89,14 +89,14 @@ class Settings:
         "true",
         "yes",
     )
-    # Admin A0: platform admin UI under /platform-admin/
+    # Admin A0: /platform-admin/ (parked; keep code, enable only when needed).
     platform_admin_enabled: bool = (os.getenv("PLATFORM_ADMIN_ENABLED", "") or "").strip().lower() in (
         "1",
         "true",
         "yes",
     )
     # Owner-only allowlist (emails and/or usernames, comma-separated).
-    # When non-empty, only these accounts can open /platform-admin/ (staff alone is not enough).
+    # Used only when platform_admin_enabled=true.
     platform_admin_owner_emails: str = (
         os.getenv("PLATFORM_ADMIN_OWNER_EMAILS") or os.getenv("PLATFORM_ADMIN_OWNER_EMAIL") or ""
     ).strip()
