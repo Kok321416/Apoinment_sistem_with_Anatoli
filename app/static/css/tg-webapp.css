@@ -366,9 +366,75 @@ body.tg-webapp .text-h1 {
 body.tg-webapp .hub-grid,
 body.tg-webapp .stats-grid,
 body.tg-webapp .features-grid,
-body.tg-webapp [class*="__grid"]:not(.tg-hub__switch):not(.booking-cal__grid):not(.stats-table__grid) {
+body.tg-webapp [class*="__grid"]:not(.tg-hub__switch):not(.booking-cal__grid):not(.stats-table__grid):not(.lp-windows__grid):not(.lp-month__grid):not(.hero__grid):not(.lp-cal-views) {
     grid-template-columns: 1fr !important;
     gap: var(--tg-gap) !important;
+}
+
+/* Landing calendar/windows demo inside Mini App hub */
+body.tg-webapp .tg-hub-demo {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 4px var(--tg-pad-x) 28px;
+}
+
+body.tg-webapp .tg-hub-demo .section-sm {
+    padding-top: 12px;
+    padding-bottom: 0;
+}
+
+body.tg-webapp .tg-hub-demo .container {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+body.tg-webapp .tg-hub-demo .lp-cal-views {
+    grid-template-columns: 1fr !important;
+}
+
+body.tg-webapp .tg-hub-demo .lp-week {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(4.2rem, 1fr)) !important;
+    gap: 4px !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+}
+
+body.tg-webapp .tg-hub-demo .lp-week__day:nth-child(n + 5) {
+    display: flex;
+}
+
+body.tg-webapp .tg-hub-demo .lp-month__head,
+body.tg-webapp .tg-hub-demo .lp-month__grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    gap: 3px !important;
+}
+
+body.tg-webapp .tg-hub-demo .lp-windows {
+    grid-template-columns: 1fr !important;
+}
+
+body.tg-webapp .tg-hub-demo .lp-windows__hours {
+    display: none;
+}
+
+body.tg-webapp .tg-hub-demo .lp-windows__grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(3.4rem, 1fr)) !important;
+    gap: 4px !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+}
+
+body.tg-webapp .tg-hub-demo .lp-window:active,
+body.tg-webapp .tg-hub-demo .lp-cal-slot:active {
+    transform: scale(1.04);
+    filter: brightness(1.08);
 }
 
 /* Statistics hub in Mini App: keep table layout, enlarge touch targets */

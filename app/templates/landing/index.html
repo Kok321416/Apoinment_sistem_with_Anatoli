@@ -62,198 +62,30 @@
         </div>
     </section>
 
-    <section class="section-sm" id="calendar-preview">
-        <div class="container stack-lg">
-            <div class="text-center">
-                <h2 class="text-display">Календарь записей</h2>
-                <p class="text-body-lg text-muted max-w-lead mx-auto">Неделя и месяц с консультациями и семинарами - как в кабинете специалиста.</p>
-            </div>
-
-            <div class="lp-func">
-                <p class="lp-func__lead">Кратко, что умеет сервис:</p>
-                <ul class="lp-func__list">
-                    <li>Окна приёма в календаре - клиент видит только свободное время</li>
-                    <li>Консультации и события (семинары, тренинги, мастер-классы) в одном расписании</li>
-                    <li>Публичная ссылка на запись и уведомления в Telegram</li>
-                    <li>Карточки клиентов, переносы и статусы записей</li>
-                </ul>
-            </div>
-
-            <div class="lp-cal-views">
-                <article class="lp-cal-card">
-                    <div class="lp-cal-card__head">
-                        <p class="text-h3">Неделя</p>
-                        <p class="text-caption text-muted">29 сен - 5 окт</p>
-                    </div>
-                    <div class="lp-week" aria-hidden="true">
-                        <div class="lp-week__day">
-                            <p class="lp-week__label">Пн</p>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">09:00 Мария</div>
-                            <div class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--sm">11:00 Игорь</div>
-                            <div class="lp-cal-slot lp-cal-slot--event lp-cal-slot--sm">13:00 Семинар</div>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">16:00 Елена</div>
-                            <div class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--sm">18:30 Павел</div>
-                        </div>
-                        <div class="lp-week__day">
-                            <p class="lp-week__label">Вт</p>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">10:00 София</div>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">12:30 Дарья</div>
-                            <div class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--sm">15:00 Кирилл</div>
-                            <div class="lp-cal-slot lp-cal-slot--event lp-cal-slot--sm">17:00 Тренинг</div>
-                        </div>
-                        <div class="lp-week__day">
-                            <p class="lp-week__label">Ср</p>
-                            <div class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--sm">09:30 Анна</div>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">11:00 Олег</div>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">14:00 Виктория</div>
-                            <div class="lp-cal-slot lp-cal-slot--event lp-cal-slot--sm">16:30 Вебинар</div>
-                            <div class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--sm">19:00 Роман</div>
-                        </div>
-                        <div class="lp-week__day">
-                            <p class="lp-week__label">Чт</p>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">08:30 Юлия</div>
-                            <div class="lp-cal-slot lp-cal-slot--event lp-cal-slot--sm">10:00 Мастер-класс</div>
-                            <div class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--sm">13:00 Никита</div>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">15:30 Татьяна</div>
-                        </div>
-                        <div class="lp-week__day">
-                            <p class="lp-week__label">Пт</p>
-                            <div class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--sm">09:00 Алина</div>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">11:30 Сергей</div>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">14:00 Полина</div>
-                            <div class="lp-cal-slot lp-cal-slot--event lp-cal-slot--sm">16:00 Группа</div>
-                            <div class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--sm">18:00 Максим</div>
-                        </div>
-                        <div class="lp-week__day">
-                            <p class="lp-week__label">Сб</p>
-                            <div class="lp-cal-slot lp-cal-slot--event lp-cal-slot--sm">11:00 Семинар</div>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">14:00 Карина</div>
-                            <div class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--sm">16:30 Денис</div>
-                        </div>
-                        <div class="lp-week__day">
-                            <p class="lp-week__label">Вс</p>
-                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">12:00 Ольга</div>
-                            <div class="lp-cal-slot lp-cal-slot--event lp-cal-slot--sm">15:00 Лекция</div>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="lp-cal-card">
-                    <div class="lp-cal-card__head">
-                        <p class="text-h3">Месяц</p>
-                        <p class="text-caption text-muted">Октябрь 2026</p>
-                    </div>
-                    <div class="lp-month" aria-hidden="true">
-                        <div class="lp-month__head">
-                            <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
-                        </div>
-                        <div class="lp-month__grid">
-                            <div class="lp-month__cell lp-month__cell--muted"><span>29</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Мария</span><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Семинар</span></div></div>
-                            <div class="lp-month__cell lp-month__cell--muted"><span>30</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">София</span><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Тренинг</span></div></div>
-                            <div class="lp-month__cell"><span>1</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Анна</span><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Вебинар</span></div></div>
-                            <div class="lp-month__cell"><span>2</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Мастер-класс</span><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Юлия</span></div></div>
-                            <div class="lp-month__cell"><span>3</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Сергей</span><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Группа</span></div></div>
-                            <div class="lp-month__cell"><span>4</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Семинар</span><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Денис</span></div></div>
-                            <div class="lp-month__cell lp-month__cell--today"><span>5</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Ольга</span><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Лекция</span></div></div>
-                            <div class="lp-month__cell"><span>6</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Игорь</span><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Елена</span></div></div>
-                            <div class="lp-month__cell"><span>7</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Семинар</span></div></div>
-                            <div class="lp-month__cell"><span>8</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Дарья</span><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Кирилл</span></div></div>
-                            <div class="lp-month__cell"><span>9</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Роман</span><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Тренинг</span></div></div>
-                            <div class="lp-month__cell"><span>10</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Полина</span></div></div>
-                            <div class="lp-month__cell"><span>11</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Вебинар</span><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Карина</span></div></div>
-                            <div class="lp-month__cell"><span>12</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Никита</span></div></div>
-                            <div class="lp-month__cell"><span>13</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Алина</span><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Олег</span></div></div>
-                            <div class="lp-month__cell"><span>14</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Мастер-класс</span></div></div>
-                            <div class="lp-month__cell"><span>15</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Татьяна</span><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Максим</span></div></div>
-                            <div class="lp-month__cell"><span>16</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Виктория</span></div></div>
-                            <div class="lp-month__cell"><span>17</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Группа</span><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Павел</span></div></div>
-                            <div class="lp-month__cell"><span>18</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Мария</span></div></div>
-                            <div class="lp-month__cell"><span>19</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Семинар</span><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">София</span></div></div>
-                            <div class="lp-month__cell"><span>20</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Игорь</span></div></div>
-                            <div class="lp-month__cell"><span>21</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Лекция</span><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Елена</span></div></div>
-                            <div class="lp-month__cell"><span>22</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Дарья</span></div></div>
-                            <div class="lp-month__cell"><span>23</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Кирилл</span><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Тренинг</span></div></div>
-                            <div class="lp-month__cell"><span>24</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Анна</span></div></div>
-                            <div class="lp-month__cell"><span>25</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Семинар</span></div></div>
-                            <div class="lp-month__cell"><span>26</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Олег</span><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Юлия</span></div></div>
-                            <div class="lp-month__cell"><span>27</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Полина</span></div></div>
-                            <div class="lp-month__cell"><span>28</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Вебинар</span><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Роман</span></div></div>
-                            <div class="lp-month__cell"><span>29</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Карина</span></div></div>
-                            <div class="lp-month__cell"><span>30</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Сергей</span><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">Группа</span></div></div>
-                            <div class="lp-month__cell"><span>31</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">Татьяна</span><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">Максим</span></div></div>
-                        </div>
-                    </div>
-                    <div class="lp-cal-legend mt-lg">
-                        <span><i class="lp-dot lp-dot--confirmed"></i>Консультация</span>
-                        <span><i class="lp-dot lp-dot--pending"></i>Ожидает</span>
-                        <span><i class="lp-dot lp-dot--event"></i>Семинар / тренинг</span>
-                    </div>
-                </article>
-            </div>
-
-            <article class="lp-cal-card lp-windows-card" id="lp-windows-demo">
-                <div class="lp-cal-card__head">
-                    <div>
-                        <p class="text-h3">Окна приёма</p>
-                        <p class="text-body-sm text-muted mt-xs">Как в редакторе календаря: наведите или нажмите на окно - оно подсветится, как в кабинете.</p>
-                    </div>
-                    <p class="text-caption text-muted">Пример недели</p>
-                </div>
-                <div class="lp-windows">
-                    <div class="lp-windows__hours" aria-hidden="true">
-                        <span>09:00</span><span>11:00</span><span>13:00</span><span>15:00</span><span>17:00</span><span>19:00</span>
-                    </div>
-                    <div class="lp-windows__grid" role="group" aria-label="Пример окон приёма">
-                        <div class="lp-windows__col">
-                            <p class="lp-windows__day">Пн</p>
-                            <div class="lp-windows__track">
-                                <button type="button" class="lp-window" style="top:8%;height:28%" aria-label="Понедельник, окно 10:00-12:45"><span class="lp-window__time">10:00-12:45</span></button>
-                                <button type="button" class="lp-window" style="top:48%;height:34%" aria-label="Понедельник, окно 13:50-17:15"><span class="lp-window__time">13:50-17:15</span></button>
-                            </div>
-                        </div>
-                        <div class="lp-windows__col">
-                            <p class="lp-windows__day">Вт</p>
-                            <div class="lp-windows__track">
-                                <button type="button" class="lp-window" style="top:14%;height:42%" aria-label="Вторник, окно 10:25-14:35"><span class="lp-window__time">10:25-14:35</span></button>
-                            </div>
-                        </div>
-                        <div class="lp-windows__col">
-                            <p class="lp-windows__day">Ср</p>
-                            <div class="lp-windows__track">
-                                <button type="button" class="lp-window" style="top:6%;height:22%" aria-label="Среда, окно 09:35-11:45"><span class="lp-window__time">09:35-11:45</span></button>
-                                <button type="button" class="lp-window" style="top:40%;height:20%" aria-label="Среда, окно 13:00-15:00"><span class="lp-window__time">13:00-15:00</span></button>
-                                <button type="button" class="lp-window" style="top:68%;height:22%" aria-label="Среда, окно 15:50-18:00"><span class="lp-window__time">15:50-18:00</span></button>
-                            </div>
-                        </div>
-                        <div class="lp-windows__col">
-                            <p class="lp-windows__day">Чт</p>
-                            <div class="lp-windows__track">
-                                <button type="button" class="lp-window" style="top:18%;height:50%" aria-label="Четверг, окно 10:50-15:50"><span class="lp-window__time">10:50-15:50</span></button>
-                            </div>
-                        </div>
-                        <div class="lp-windows__col">
-                            <p class="lp-windows__day">Пт</p>
-                            <div class="lp-windows__track">
-                                <button type="button" class="lp-window" style="top:10%;height:26%" aria-label="Пятница, окно 10:00-12:35"><span class="lp-window__time">10:00-12:35</span></button>
-                                <button type="button" class="lp-window" style="top:52%;height:30%" aria-label="Пятница, окно 14:10-17:10"><span class="lp-window__time">14:10-17:10</span></button>
-                            </div>
-                        </div>
-                        <div class="lp-windows__col">
-                            <p class="lp-windows__day">Сб</p>
-                            <div class="lp-windows__track">
-                                <button type="button" class="lp-window" style="top:22%;height:36%" aria-label="Суббота, окно 11:10-14:45"><span class="lp-window__time">11:10-14:45</span></button>
-                            </div>
-                        </div>
-                        <div class="lp-windows__col">
-                            <p class="lp-windows__day">Вс</p>
-                            <div class="lp-windows__track" aria-label="Воскресенье без окон"></div>
-                        </div>
-                    </div>
-                </div>
-                <p class="text-caption text-muted mt-lg">Чёрные блоки - окна, когда вы принимаете. Между ними перерывы и личные дела.</p>
-            </article>
+    <section class="section-sm" id="start-telegram" aria-label="Начать работу в Telegram">
+        <div class="container">
+            <a
+                class="lp-tg-start focus-ring"
+                href="{{ telegram_mini_app_launch_url }}"
+                target="_blank"
+                rel="noopener"
+            >
+                <span class="lp-tg-start__icon-wrap" aria-hidden="true">
+                    <img class="lp-tg-start__icon" src="/static/svg/icons/telegram.svg?v=4" alt="" width="28" height="28" decoding="async">
+                </span>
+                <span class="lp-tg-start__copy">
+                    <span class="lp-tg-start__title">Начать работу специалисту в Telegram</span>
+                    <span class="lp-tg-start__text">
+                        Открыть бота{% if telegram_bot_username %} @{{ telegram_bot_username|replace('@', '') }}{% endif %}
+                        - кабинет, записи и уведомления
+                    </span>
+                </span>
+                <span class="lp-tg-start__cta">Открыть бота</span>
+            </a>
         </div>
     </section>
+
+    {% include "components/landing_calendar_demo.html" %}
 
     <section class="section-sm" id="value">
         <div class="container">
@@ -310,43 +142,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-(function () {
-  function bindToggle(root, selector) {
-    if (!root) return;
-    root.addEventListener("click", function (event) {
-      var target = event.target.closest(selector);
-      if (!target || !root.contains(target)) return;
-      root.querySelectorAll(selector + ".is-active").forEach(function (el) {
-        if (el !== target) el.classList.remove("is-active");
-      });
-      target.classList.toggle("is-active");
-    });
-  }
-
-  var windows = document.getElementById("lp-windows-demo");
-  bindToggle(windows, ".lp-window");
-  if (windows) {
-    windows.addEventListener("pointerover", function (event) {
-      var col = event.target.closest(".lp-windows__col");
-      if (!col || !windows.contains(col)) return;
-      windows.querySelectorAll(".lp-windows__col.is-hot").forEach(function (el) {
-        if (el !== col) el.classList.remove("is-hot");
-      });
-      col.classList.add("is-hot");
-    });
-    windows.addEventListener("pointerout", function (event) {
-      var col = event.target.closest(".lp-windows__col");
-      if (!col || !windows.contains(col)) return;
-      if (col.contains(event.relatedTarget)) return;
-      col.classList.remove("is-hot");
-    });
-  }
-
-  bindToggle(document.querySelector(".hero__preview"), ".lp-cal-slot");
-  document.querySelectorAll("#calendar-preview .lp-week, #calendar-preview .lp-month").forEach(function (root) {
-    bindToggle(root, ".lp-cal-slot");
-  });
-})();
-</script>
+<script src="/static/js/landing-calendar-demo.js?v=1" defer></script>
 {% endblock %}

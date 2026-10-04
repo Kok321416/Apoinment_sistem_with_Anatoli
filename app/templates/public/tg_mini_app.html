@@ -9,7 +9,7 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="/static/css/auth.css?v=24">
-<link rel="stylesheet" href="/static/css/tg-webapp.css?v=25">
+<link rel="stylesheet" href="/static/css/tg-webapp.css?v=26">
 <style>
   html, body.tg-hub-page {
     background: #ffffff !important;
@@ -21,7 +21,8 @@
   #tg-hub-boot[hidden],
   #tg-hub-error[hidden],
   #tg-hub-client-denied[hidden],
-  #tg-hub-become[hidden] { display: none !important; }
+  #tg-hub-become[hidden],
+  #tg-hub-demo[hidden] { display: none !important; }
   #tg-hub-actions-specialist[hidden],
   #tg-hub-become-specialist[hidden] { display: none !important; }
 </style>
@@ -171,5 +172,14 @@
     </div>
 </div>
 
+
+<div id="tg-hub-demo" class="tg-hub-demo">
+{% include "components/landing_calendar_demo.html" %}
 </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/landing-calendar-demo.js?v=1" defer></script>
 {% endblock %}

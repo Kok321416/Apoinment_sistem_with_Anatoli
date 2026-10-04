@@ -512,10 +512,15 @@
     }
 
     function hideHubPanels() {
-        ["tg-hub-guest", "tg-hub-authed", "tg-hub-boot", "tg-hub-error", "tg-hub-client-denied", "tg-hub-become"].forEach(function (id) {
+        ["tg-hub-guest", "tg-hub-authed", "tg-hub-boot", "tg-hub-error", "tg-hub-client-denied", "tg-hub-become", "tg-hub-demo"].forEach(function (id) {
             var el = document.getElementById(id);
             if (el) el.hidden = true;
         });
+    }
+
+    function showHubDemo() {
+        var demo = document.getElementById("tg-hub-demo");
+        if (demo) demo.hidden = false;
     }
 
     function showAuthedHub(state) {
@@ -533,6 +538,7 @@
         var become = document.getElementById("tg-hub-become-specialist");
         if (specActions) specActions.hidden = false;
         if (become) become.hidden = hasC;
+        showHubDemo();
     }
 
     function showGuestHub() {
@@ -540,6 +546,7 @@
         hideLoading(true);
         var guest = document.getElementById("tg-hub-guest");
         if (guest) guest.hidden = false;
+        showHubDemo();
         document.body.classList.add("auth-page");
     }
 
