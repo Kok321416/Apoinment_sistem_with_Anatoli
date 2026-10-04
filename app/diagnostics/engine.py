@@ -1,4 +1,4 @@
-"""Diagnostic Engine — scoring and result enrichment (no UI)."""
+"""Diagnostic Engine - scoring and result enrichment (no UI)."""
 from __future__ import annotations
 
 from typing import Any

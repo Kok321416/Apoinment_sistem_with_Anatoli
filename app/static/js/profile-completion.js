@@ -69,7 +69,7 @@
     function completionMessage(percent) {
         if (percent >= 90) return 'Профиль готов для клиентов';
         if (percent >= 70) return 'Профиль почти готов';
-        if (percent >= 40) return 'Хороший старт — добавьте ещё несколько блоков';
+        if (percent >= 40) return 'Хороший старт - добавьте ещё несколько блоков';
         return 'Заполните профиль, чтобы клиентам было проще записаться';
     }
 

@@ -95,7 +95,7 @@ async def test_ensure_diagnostics_tables_concurrent_calls_are_idempotent():
 
 @pytest.mark.asyncio
 async def test_ensure_diagnostics_tables_skips_ddl_when_probe_ok():
-    """Process-wide ready flag alone is not enough — request bind is probed."""
+    """Process-wide ready flag alone is not enough - request bind is probed."""
     from app.services import diagnostics_service as ds
 
     ds.reset_diagnostics_ddl_ready_for_tests()

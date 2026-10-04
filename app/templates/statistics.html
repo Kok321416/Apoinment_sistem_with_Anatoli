@@ -1,8 +1,8 @@
 {% extends "layouts/app.html" %}
 
 {% block meta_tags %}
-{% set page_title = "Статистика — " ~ site_brand_name %}
-{% set meta_description = "Статистика консультаций — " ~ site_brand_name %}
+{% set page_title = "Статистика - " ~ site_brand_name %}
+{% set meta_description = "Статистика консультаций - " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
@@ -82,7 +82,7 @@
         </form>
         <p class="stats-filters__hint text-muted text-body-sm">
             Показано: <strong>{{ booking_count }}</strong>
-            ({{ date_from }} — {{ date_to }})
+            ({{ date_from }} - {{ date_to }})
             {% if status_filters %}
             · фильтр:
             {% for s in status_filters %}

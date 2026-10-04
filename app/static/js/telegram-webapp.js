@@ -676,7 +676,7 @@
     function ensureHubAuth(tg) {
         var path = window.location.pathname || "/";
         var isHub = path === "/tg/" || path === "/tg";
-        // Cabinet pages (e.g. /clients/…) must not run hub boot/auth UI — it steals
+        // Cabinet pages (e.g. /clients/…) must not run hub boot/auth UI - it steals
         // the session and can blank the specialist CRM inside Mini App WebView.
         if (!isHub) {
             hideLoadingSoon();
@@ -818,7 +818,7 @@
                 return;
             }
             ensureHubAuth(tg);
-            // Site/native links point to t.me — inside Mini App stay on the hub.
+            // Site/native links point to t.me - inside Mini App stay on the hub.
             try {
                 document.querySelectorAll("a[data-tg-internal]").forEach(function (a) {
                     var internal = (a.getAttribute("data-tg-internal") || "").trim();

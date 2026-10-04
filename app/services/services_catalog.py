@@ -99,7 +99,7 @@ def serialize_service(
         "description": service.description or "",
         "duration_minutes": service.duration_minutes,
         "price": _price_value(service.price),
-        "price_display": f"{_price_value(service.price):.0f} ₽" if service.price else "—",
+        "price_display": f"{_price_value(service.price):.0f} ₽" if service.price else "-",
         "calendar_id": service.calendar_id,
         "calendar_name": calendar_name,
         "color": service.color or "#7d5cff",
@@ -157,7 +157,7 @@ def dashboard_stats(services: list[Service], calendars: list[Calendar]) -> dict:
 def analytics_panel(db: Session, services: list[Service], consultant_id: int) -> dict:
     service_ids = [s.id for s in services]
     total_bookings = 0
-    popular_name = "—"
+    popular_name = "-"
     popular_count = 0
     if service_ids:
         total_bookings = (
@@ -175,7 +175,7 @@ def analytics_panel(db: Session, services: list[Service], consultant_id: int) ->
         if popular:
             popular_count = popular.cnt
             svc = next((s for s in services if s.id == popular.service_id), None)
-            popular_name = svc.name if svc else "—"
+            popular_name = svc.name if svc else "-"
 
     prices = [_price_value(s.price) for s in services if s.price is not None]
     avg_price = round(sum(prices) / len(prices)) if prices else 0
@@ -216,7 +216,7 @@ async def analytics_panel_async(db, services: list[Service], consultant_id: int)
 
     service_ids = [s.id for s in services]
     total_bookings = 0
-    popular_name = "—"
+    popular_name = "-"
     popular_count = 0
     if service_ids:
         total_bookings = (
@@ -236,7 +236,7 @@ async def analytics_panel_async(db, services: list[Service], consultant_id: int)
         if popular:
             popular_count = popular.cnt
             svc = next((s for s in services if s.id == popular.service_id), None)
-            popular_name = svc.name if svc else "—"
+            popular_name = svc.name if svc else "-"
 
     prices = [_price_value(s.price) for s in services if s.price is not None]
     avg_price = round(sum(prices) / len(prices)) if prices else 0

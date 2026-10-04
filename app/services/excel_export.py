@@ -67,7 +67,7 @@ def consultations_workbook(
     ws["A1"] = "Статистика консультаций"
     ws["A1"].font = _TITLE_FONT
     ws.merge_cells("A1:K1")
-    ws["A2"] = f"Период: {date_from} — {date_to}"
+    ws["A2"] = f"Период: {date_from} - {date_to}"
     if specialist_name:
         ws["A3"] = f"Специалист: {specialist_name}"
 
@@ -154,7 +154,7 @@ def client_diagnostics_workbook(
     _autosize(ws, min_width=14, max_width=60)
 
     # --- Summary sheet ---
-    summary = wb.create_sheet("Диагностика — сводка")
+    summary = wb.create_sheet("Диагностика - сводка")
     summary["A1"] = "Результаты диагностики"
     summary["A1"].font = _TITLE_FONT
     summary.merge_cells("A1:F1")
@@ -220,7 +220,7 @@ def client_diagnostics_workbook(
                 completed or "",
                 r.get("title") or "",
                 r.get("test_code") or "",
-                "—",
+                "-",
                 "",
                 "",
                 "",
@@ -238,7 +238,7 @@ def client_diagnostics_workbook(
             mn, mx = s.get("min"), s.get("max")
             rng = ""
             if mn is not None or mx is not None:
-                rng = f"{mn if mn is not None else '—'}–{mx if mx is not None else '—'}"
+                rng = f"{mn if mn is not None else '-'}-{mx if mx is not None else '-'}"
             values = [
                 completed or "",
                 r.get("title") or "",

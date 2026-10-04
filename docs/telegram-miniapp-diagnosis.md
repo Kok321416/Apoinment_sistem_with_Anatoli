@@ -1,13 +1,13 @@
-# Telegram Mini App — diagnosis (Android)
+# Telegram Mini App - diagnosis (Android)
 
 Date: 2026-09-01. Repo HEAD at time of audit: current `main`.
 
 ## What caused timeouts
 
-1. **`1f3db67`** — Mini App return path used `client=tg` + `/accounts/open-tg-app/` which then auto-navigated to `https://t.me/<bot>?startapp=…`. Android WebView UA often has **no** substring `Telegram`, so the server treated the WebView as an external browser and bounced it to `t.me` → **ERR_TIMED_OUT**.
-2. **Passenger cold start** — first byte of `/tg/` after idle can exceed Telegram’s ~10s WebView budget. Browser waits longer, so the same URL “works” outside Telegram.
-3. **`46b2342` + hub-state** — HTML shell is DB-free, but boot **waited on** `GET /api/telegram/hub-state` (MySQL) **before** `webapp-auth`. Slow/failed hub-state left a guest “Вход для специалиста” screen or a hung load.
-4. **`sessionStorage` `tg_webapp_auth_done`** — flagged auth complete before cookie/session was proven; Android WebView often drops `SameSite` cookies, then flags blocked a second `webapp-auth` (`5dd43a9` tried to unwind this).
+1. **`1f3db67`** - Mini App return path used `client=tg` + `/accounts/open-tg-app/` which then auto-navigated to `https://t.me/<bot>?startapp=…`. Android WebView UA often has **no** substring `Telegram`, so the server treated the WebView as an external browser and bounced it to `t.me` → **ERR_TIMED_OUT**.
+2. **Passenger cold start** - first byte of `/tg/` after idle can exceed Telegram’s ~10s WebView budget. Browser waits longer, so the same URL “works” outside Telegram.
+3. **`46b2342` + hub-state** - HTML shell is DB-free, but boot **waited on** `GET /api/telegram/hub-state` (MySQL) **before** `webapp-auth`. Slow/failed hub-state left a guest “Вход для специалиста” screen or a hung load.
+4. **`sessionStorage` `tg_webapp_auth_done`** - flagged auth complete before cookie/session was proven; Android WebView often drops `SameSite` cookies, then flags blocked a second `webapp-auth` (`5dd43a9` tried to unwind this).
 
 ## Redirects to `t.me`
 
@@ -20,7 +20,7 @@ Date: 2026-09-01. Repo HEAD at time of audit: current `main`.
 
 ## Telegram via User-Agent
 
-`app/services/telegram_webview.py` still checks `"telegram" in UA`. Used for CSS/SDK load (`load_telegram_webapp`) and ops alerts — **not** for `/tg/` (that route forces `load_telegram_webapp=True`). Must **not** be used to redirect to `t.me`.
+`app/services/telegram_webview.py` still checks `"telegram" in UA`. Used for CSS/SDK load (`load_telegram_webapp`) and ops alerts - **not** for `/tg/` (that route forces `load_telegram_webapp=True`). Must **not** be used to redirect to `t.me`.
 
 Client must treat Mini App as `Telegram.WebApp.initData` present, not UA.
 

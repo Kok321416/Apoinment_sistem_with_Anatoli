@@ -1,4 +1,4 @@
-# Brand pack — «Все клиенты здесь» (light)
+# Brand pack - «Все клиенты здесь» (light)
 
 Mark: календарь + человек + галочка.
 Мастер: `logo-mark-master.png`.

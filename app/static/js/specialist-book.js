@@ -331,7 +331,7 @@
                                       esc(end) +
                                       '">' +
                                       esc(start) +
-                                      (end ? "–" + esc(end) : "") +
+                                      (end ? "-" + esc(end) : "") +
                                       "</button>"
                                   );
                               })
@@ -344,17 +344,17 @@
                 body.innerHTML =
                     '<dl class="sb-summary">' +
                     "<div><dt>Клиент</dt><dd>" +
-                    esc(state.client_name || "—") +
+                    esc(state.client_name || "-") +
                     (state.client_card_id ? ' <span class="text-muted">(карточка #' + state.client_card_id + ")</span>" : "") +
                     "</dd></div>" +
                     "<div><dt>Контакты</dt><dd>" +
-                    esc([state.client_phone, state.client_email, state.client_telegram].filter(Boolean).join(" · ") || "—") +
+                    esc([state.client_phone, state.client_email, state.client_telegram].filter(Boolean).join(" · ") || "-") +
                     "</dd></div>" +
                     "<div><dt>Дата и время</dt><dd>" +
                     esc(state.booking_date) +
                     " " +
                     esc(state.booking_time) +
-                    (state.booking_end_time ? "–" + esc(state.booking_end_time) : "") +
+                    (state.booking_end_time ? "-" + esc(state.booking_end_time) : "") +
                     "</dd></div>" +
                     "</dl>";
             }

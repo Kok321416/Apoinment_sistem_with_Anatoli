@@ -363,14 +363,14 @@ async def api_telegram_client_bookings(request: Request, db: AsyncSession = Depe
     now = datetime.utcnow().date()
     items = []
     for b in bookings:
-        consultant_name = "—"
+        consultant_name = "-"
         if b.calendar and b.calendar.consultant:
             c = b.calendar.consultant
             consultant_name = f"{c.first_name or ''} {c.last_name or ''}".strip() or c.email
         items.append({
             "id": b.id,
             "date": b.booking_date.isoformat(),
-            "time": b.booking_time.strftime("%H:%M") if b.booking_time else "—",
+            "time": b.booking_time.strftime("%H:%M") if b.booking_time else "-",
             "service_name": b.service.name if b.service else "Консультация",
             "consultant_name": consultant_name,
             "calendar_id": b.calendar_id,
@@ -419,7 +419,7 @@ async def api_telegram_specialist_bookings(request: Request, db: AsyncSession = 
         items.append({
             "id": b.id,
             "date": b.booking_date.isoformat(),
-            "time": b.booking_time.strftime("%H:%M") if b.booking_time else "—",
+            "time": b.booking_time.strftime("%H:%M") if b.booking_time else "-",
             "client_name": b.client_name,
             "service_name": b.service.name if b.service else "Консультация",
             "status": b.status,
@@ -521,7 +521,7 @@ async def api_specialist_booking_cancel(request: Request, db: AsyncSession = Dep
     )
     if not ok:
         return {"success": False, "error": message}
-    # Do not touch booking.* here — cancel already committed; keep response idempotent/simple.
+    # Do not touch booking.* here - cancel already committed; keep response idempotent/simple.
     already = message == "Запись уже отменена"
     return {
         "success": True,

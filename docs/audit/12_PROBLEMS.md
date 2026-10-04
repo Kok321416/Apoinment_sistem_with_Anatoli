@@ -1,11 +1,11 @@
 # Problem Register
 
-## P0 — Critical
+## P0 - Critical
 
 ### P0-1 MissingGreenlet on diagnostics hub
 - **Status:** Fixed locally (pending deploy)
 - **Component:** diagnostics / SQLAlchemy
-- **File:** `app/services/diagnostics_service.py` — `ensure_diagnostics_tables`
+- **File:** `app/services/diagnostics_service.py` - `ensure_diagnostics_tables`
 - **Root cause:** `ensure_diagnostics_schema(bind=async_conn)` called `inspect().has_table()` on asyncmy-adapted connection → `pool_pre_ping` → `await_only()` outside greenlet
 - **Impact:** 500 on `GET /s/{slug}/diagnostics/`
 - **Fix:** Remove inspect on async bind; sync ensure in thread; async `create_all` only inside `run_sync`
@@ -30,7 +30,7 @@
 - **Impact:** Empty audit log
 - **Status:** Fixed (await added)
 
-## P1 — High
+## P1 - High
 
 ### P1-1 Telegram Mini App session not sticking
 - **Hypothesis:** `SESSION_SAME_SITE` not `none` on HTTPS, or cookie blocked in WebView
@@ -50,20 +50,20 @@
 
 ### P1-5 Lazy load `service.calendar` in catalog API
 - **File:** `app/services/services_catalog.py`
-- **Status:** Fixed — calendar_name from preloaded map
+- **Status:** Fixed - calendar_name from preloaded map
 
 ### P1-6 Dead `/book/` bot link
 - **File:** `bot/keyboards.py`, `bot/bot.py`, `bot/handlers/commands.py`
-- **Status:** Fixed — points to `/tg/?mode=client`
+- **Status:** Fixed - points to `/tg/?mode=client`
 
-## P2 — Medium
+## P2 - Medium
 
 - Sync OAuth HTTP in async callbacks (`oauth.py`)
 - Duplicate `list_errors_async` in `platform_errors.py`
 - Stale tests: `test_phase8_mini_app.py` expects removed UI
 - `appointment_system/` Django scaffold untracked, unrelated
 
-## P3 — Low
+## P3 - Low
 
 - `datetime.utcnow()` deprecation warnings
 - FastAPI `on_event` deprecated → lifespan

@@ -1,5 +1,5 @@
 /**
- * Light theme only — clears legacy preference and keeps data-theme=light.
+ * Light theme only - clears legacy preference and keeps data-theme=light.
  */
 (function (global) {
     "use strict";

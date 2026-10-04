@@ -33,9 +33,11 @@ def _booking():
 
 def test_tg_escape_and_dashes():
     assert tg_escape("a <b> & c") == "a &lt;b&gt; &amp; c"
-    assert normalize_dashes("a—b–c") == "a-b-c"
+    # Em/en dashes via escapes so source files stay free of long-dash glyphs.
+    sample = "a\u2014b\u2013c"
+    assert normalize_dashes(sample) == "a-b-c"
     assert assert_no_long_dashes("a-b")
-    assert not assert_no_long_dashes("a—b")
+    assert not assert_no_long_dashes(sample)
 
 
 def test_transactional_templates_escape_and_role_titles():

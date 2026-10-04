@@ -124,7 +124,7 @@
             dateEl.value +
             " " +
             timeEl.value +
-            (endEl.value ? "–" + endEl.value : "") +
+            (endEl.value ? "-" + endEl.value : "") +
             " (" +
             calendarTzLabel +
             ")";
@@ -135,7 +135,7 @@
                 base +=
                     ". У вас: " +
                     localStart +
-                    (localEnd ? "–" + localEnd : "") +
+                    (localEnd ? "-" + localEnd : "") +
                     " (" +
                     viewerTz +
                     ")";
@@ -245,7 +245,7 @@
         windowsBlock.hidden = false;
         list.forEach(function (w) {
             var li = document.createElement("li");
-            li.textContent = (w.start_time || "") + " – " + (w.end_time || "");
+            li.textContent = (w.start_time || "") + " - " + (w.end_time || "");
             windowsList.appendChild(li);
         });
     }
@@ -283,7 +283,7 @@
                     windowsList.innerHTML = "";
                     windows.forEach(function (w) {
                         var li = document.createElement("li");
-                        li.textContent = (w.start_time || "") + " – " + (w.end_time || "");
+                        li.textContent = (w.start_time || "") + " - " + (w.end_time || "");
                         windowsList.appendChild(li);
                     });
                 }
@@ -297,7 +297,7 @@
                     var btn = document.createElement("button");
                     btn.type = "button";
                     btn.className = "slot-btn";
-                    btn.textContent = s.start_time + (s.end_time ? " – " + s.end_time : "");
+                    btn.textContent = s.start_time + (s.end_time ? " - " + s.end_time : "");
                     btn.addEventListener("click", function () {
                         slotsGrid.querySelectorAll(".slot-btn").forEach(function (b) {
                             b.classList.remove("is-selected");

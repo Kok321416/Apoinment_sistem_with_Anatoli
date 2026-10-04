@@ -25,16 +25,16 @@ fails if a module goes back to the private names.
 ## Settings
 
 `get_settings()` returns one object per process (`app/config.py`), because modules capture it at
-import: a second instance would leave them reading stale config. Override it in place — via
-`settings_overrides(...)` or monkeypatch — and never rely on `cache_clear()` producing a fresh object.
+import: a second instance would leave them reading stale config. Override it in place - via
+`settings_overrides(...)` or monkeypatch - and never rely on `cache_clear()` producing a fresh object.
 Overrides set on the object shadow class defaults, so tests restore instance state after each test
 (`tests/conftest.py`); `tests/test_settings_identity_contract.py` pins the invariant.
 
 ## AsyncSession settings
 
 ```python
-expire_on_commit=False  # app/database.py — reduces post-commit attribute access issues
-pool_pre_ping=True      # both engines — OK with SQLAlchemy 2.x + asyncmy
+expire_on_commit=False  # app/database.py - reduces post-commit attribute access issues
+pool_pre_ping=True      # both engines - OK with SQLAlchemy 2.x + asyncmy
 ```
 
 ## MissingGreenlet prevention
@@ -48,7 +48,7 @@ pool_pre_ping=True      # both engines — OK with SQLAlchemy 2.x + asyncmy
 
 - **Deploy:** `ensure_all_schema()` on startup + `bootstrap_on_import()`
 - **Safety net:** `ensure_diagnostics_schema()` via sync engine in thread pool
-- **Runtime:** `ensure_diagnostics_tables(db)` — sync thread + async `create_all` in `run_sync` (no inspect on async bind)
+- **Runtime:** `ensure_diagnostics_tables(db)` - sync thread + async `create_all` in `run_sync` (no inspect on async bind)
 
 ## Migrations
 

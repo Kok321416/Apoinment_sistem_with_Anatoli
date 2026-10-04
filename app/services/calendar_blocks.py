@@ -1,4 +1,4 @@
-"""Calendar blocks (мероприятия) — occupy time so nobody can book."""
+"""Calendar blocks (мероприятия) - occupy time so nobody can book."""
 
 from __future__ import annotations
 

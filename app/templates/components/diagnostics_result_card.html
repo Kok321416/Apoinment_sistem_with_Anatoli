@@ -28,7 +28,7 @@
         {% for row in answer_rows %}
         <div class="diag-answers__row">
             <p class="diag-answers__q">{{ row.question }}</p>
-            <p class="diag-answers__a text-body">{{ row.answer or '—' }}</p>
+            <p class="diag-answers__a text-body">{{ row.answer or '-' }}</p>
             {% if row.note %}<p class="diag-answers__note text-body-sm text-muted">{{ row.note }}</p>{% endif %}
         </div>
         {% endfor %}

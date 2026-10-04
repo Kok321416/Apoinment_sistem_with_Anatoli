@@ -55,17 +55,17 @@ def serialize_booking(booking: Booking, today: date, now: time) -> dict:
     is_past = _is_past(booking, today, now)
     start = _format_time(booking.booking_time)
     end = _format_time(booking.booking_end_time)
-    time_range = f"{start}–{end}" if end else start
+    time_range = f"{start}-{end}" if end else start
     return {
         "id": booking.id,
         "client_name": booking.client_name,
         "client_phone": booking.client_phone or "",
         "client_email": booking.client_email or "",
         "client_telegram": booking.client_telegram or "",
-        "service_name": service.name if service else "—",
+        "service_name": service.name if service else "-",
         "service_duration": service.duration_minutes if service else None,
         "service_price": float(_booking_price(booking)) if _booking_price(booking) else None,
-        "calendar_name": calendar.name if calendar else "—",
+        "calendar_name": calendar.name if calendar else "-",
         "calendar_color": calendar.color if calendar else "#6C63FF",
         "calendar_id": calendar.id if calendar else None,
         "service_id": service.id if service else None,
@@ -154,7 +154,7 @@ def sidebar_data(upcoming: list[Booking], today: date, now: time) -> dict:
             "time": _format_time(nb.booking_time),
             "day_label": _day_label(nb.booking_date, today),
             "minutes_until": minutes_until,
-            "service_name": nb.service.name if nb.service else "—",
+            "service_name": nb.service.name if nb.service else "-",
         }
 
     revenue_today = float(sum(
@@ -230,7 +230,7 @@ async def build_bookings_payload_async(
     *,
     include_dashboard: bool = False,
 ) -> dict:
-    # Dashboard KPIs live on /statistics/ — skip extra query on the bookings hub.
+    # Dashboard KPIs live on /statistics/ - skip extra query on the bookings hub.
     dashboard = (
         dashboard_stats(await stats_bookings_async(db, cal_ids), today)
         if include_dashboard

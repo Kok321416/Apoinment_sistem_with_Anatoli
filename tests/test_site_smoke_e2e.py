@@ -149,7 +149,7 @@ def test_cabinet_routes_redirect_anonymous_to_login():
         loc = (r.headers.get("location") or "").lower()
         assert "login" in loc or "accounts" in loc, f"{path} -> {loc}"
 
-    # Client cabinet removed — legacy routes redirect home.
+    # Client cabinet removed - legacy routes redirect home.
     for path in ("/my-bookings/", "/diagnostics/"):
         r = client.get(path, follow_redirects=False)
         assert r.status_code in (302, 303)

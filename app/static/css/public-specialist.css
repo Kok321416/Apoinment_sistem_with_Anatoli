@@ -1,4 +1,4 @@
-/* Public specialist landing — light monochrome (design tokens) */
+/* Public specialist landing - light monochrome (design tokens) */
 .booking-page:has(.ps-hero) {
     background:
         radial-gradient(ellipse 70% 45% at 8% -5%, rgba(0, 0, 0, 0.04), transparent 55%),

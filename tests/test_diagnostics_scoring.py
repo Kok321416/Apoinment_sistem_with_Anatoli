@@ -44,7 +44,7 @@ def test_bai_scoring_bands_and_interpretation_lead():
     test = get_test("bai")
     assert test and test.runnable
     assert len(test.items) == 21
-    # All mild (1) → total 21 → moderate (16–25) per BAI Manual 1993
+    # All mild (1) → total 21 → moderate (16-25) per BAI Manual 1993
     answers = {f"i{i}": 1 for i in range(1, 22)}
     result = engine.score("bai", answers)
     assert result["scores"]["total"] == 21

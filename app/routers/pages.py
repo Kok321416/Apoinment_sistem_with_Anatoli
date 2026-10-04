@@ -215,7 +215,7 @@ async def telegram_mini_app_entry(request: Request):
 
 @router.get("/tg/diag/")
 async def telegram_mini_app_diag(request: Request, db: AsyncSession = Depends(get_async_db)):
-    """Public Mini App checklist — open in Safari if Telegram shows ERR_TIMED_OUT."""
+    """Public Mini App checklist - open in Safari if Telegram shows ERR_TIMED_OUT."""
     from app.auth.session import get_current_user_async
     from app.db_schema import get_schema_health
 
@@ -376,7 +376,7 @@ async def dashboard_page(request: Request, db: AsyncSession = Depends(get_async_
 
 @router.post("/account/mode/")
 async def set_account_mode(request: Request, db: AsyncSession = Depends(get_async_db)):
-    """Legacy dual-role switch — client cabinet removed; always specialist dashboard."""
+    """Legacy dual-role switch - client cabinet removed; always specialist dashboard."""
     user = await _require_user_async(request, db)
     if not user:
         return _login_redirect(request)
@@ -389,7 +389,7 @@ async def set_account_mode(request: Request, db: AsyncSession = Depends(get_asyn
 
 @router.get("/my-bookings/")
 async def my_bookings_page(request: Request):
-    """Client cabinet removed — bookings are on specialist public profiles."""
+    """Client cabinet removed - bookings are on specialist public profiles."""
     return RedirectResponse("/", status_code=302)
 
 
@@ -1446,7 +1446,7 @@ async def services_page(request: Request, db: AsyncSession = Depends(get_async_d
 
 @router.get("/book/")
 async def book_redirect():
-    """Generic booking browse removed — clients use specialist profile links (/s/{slug}/)."""
+    """Generic booking browse removed - clients use specialist profile links (/s/{slug}/)."""
     return RedirectResponse("/", status_code=302)
 
 
@@ -1578,7 +1578,7 @@ async def specialist_statistics(request: Request, db: AsyncSession = Depends(get
                     parts.append(f"записей: {deleted_b}")
                 if deleted_e:
                     parts.append(f"мероприятий: {deleted_e}")
-                flash_success = "Удалено — " + ", ".join(parts) if parts else "Нечего удалять."
+                flash_success = "Удалено - " + ", ".join(parts) if parts else "Нечего удалять."
         q = {}
         if form.get("from"):
             q["from"] = str(form.get("from"))
@@ -2409,7 +2409,7 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
     from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
     from sqlalchemy.orm import selectinload
 
-    # Reload consultant with category — avoids async lazy-load 500 on feature checks.
+    # Reload consultant with category - avoids async lazy-load 500 on feature checks.
     consultant = (
         await db.execute(
             select(Consultant)
@@ -2447,7 +2447,7 @@ async def client_card_detail(request: Request, card_id: int, db: AsyncSession = 
             pass
         diagnostic_results = []
         try:
-            # Re-load consultant after rollback — do not touch expired instance.
+            # Re-load consultant after rollback - do not touch expired instance.
             consultant = (
                 await db.execute(
                     select(Consultant)
@@ -2957,7 +2957,7 @@ async def integrations_page(request: Request, db: AsyncSession = Depends(get_asy
 async def connect_telegram_app(request: Request, db: AsyncSession = Depends(get_async_db)):
     """Start specialist notify binding.
 
-    Never 302 straight into t.me from Mini App WebView — Telegram often drops the
+    Never 302 straight into t.me from Mini App WebView - Telegram often drops the
     ``start=`` payload and the user only sees bare /start. Serve a bridge page that
     calls ``openTelegramLink``, and try to push a confirm button if login TG is known.
     """

@@ -141,7 +141,7 @@
                 this.statsEl.hidden = false;
                 this.statsEl.innerHTML =
                     '<p><strong>Записей:</strong> ' + st.booking_count + '</p>' +
-                    '<p><strong>Последняя запись:</strong> ' + (st.last_booking || '—') + '</p>' +
+                    '<p><strong>Последняя запись:</strong> ' + (st.last_booking || '-') + '</p>' +
                     '<p><strong>Доход за запись:</strong> ' + st.avg_revenue + ' ₽</p>';
             } catch (e) {
                 this.statsEl.hidden = true;

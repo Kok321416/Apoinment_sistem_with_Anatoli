@@ -1,4 +1,4 @@
-# Test Failure Matrix — QA Stabilization (2026-09-01)
+# Test Failure Matrix - QA Stabilization (2026-09-01)
 
 Base commit: `a385f14`  
 Full pytest after fixes: **203 passed, 0 failed**
@@ -36,7 +36,7 @@ Full pytest after fixes: **203 passed, 0 failed**
 
 | Item | Status |
 |------|--------|
-| Playwright Mini App E2E | Not added — no existing Playwright infra |
+| Playwright Mini App E2E | Not added - no existing Playwright infra |
 | Production cookie WebView trace | **UNKNOWN** |
-| Production logged-in diagnostics | **BLOCKED** — requires user session |
+| Production logged-in diagnostics | **BLOCKED** - requires user session |
 | `auth_done` + re-auth JS E2E | Covered by unit/API tests; browser E2E deferred |

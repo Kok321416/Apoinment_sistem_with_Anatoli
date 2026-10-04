@@ -86,7 +86,7 @@ class Calendar(Base):
 
 
 class CalendarBlock(Base):
-    """One-off busy interval (мероприятие) — blocks client/specialist bookings."""
+    """One-off busy interval (мероприятие) - blocks client/specialist bookings."""
 
     __tablename__ = "calendar_blocks"
 

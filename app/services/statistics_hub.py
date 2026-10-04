@@ -211,7 +211,7 @@ def export_block_rows(blocks: list[CalendarBlock]) -> list[dict[str, Any]]:
     for block in blocks:
         start = block.start_time.strftime("%H:%M") if block.start_time else ""
         end = block.end_time.strftime("%H:%M") if block.end_time else ""
-        time_range = f"{start}–{end}" if start and end else start
+        time_range = f"{start}-{end}" if start and end else start
         status = block.status or "active"
         status_label = "Отменена" if status == "cancelled" else "Мероприятие"
         rows.append(

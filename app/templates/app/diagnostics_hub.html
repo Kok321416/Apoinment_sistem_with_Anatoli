@@ -1,7 +1,7 @@
 {% extends "layouts/app.html" %}
 
 {% block meta_tags %}
-{% set page_title = "Диагностика — " ~ site_brand_name %}
+{% set page_title = "Диагностика - " ~ site_brand_name %}
 {% set meta_description = "Психологические опросники и история результатов" %}
 {% include "components/meta.html" %}
 {% endblock %}
@@ -21,7 +21,7 @@
 
     {% if not psychologists %}
     <div class="card card--static">
-        <p class="text-body">Пока нет сохранённых психологов. Откройте профиль специалиста по ссылке или запишитесь на консультацию — он появится здесь.</p>
+        <p class="text-body">Пока нет сохранённых психологов. Откройте профиль специалиста по ссылке или запишитесь на консультацию - он появится здесь.</p>
         <a class="btn btn--primary mt-lg" href="/tg/?mode=client">Записаться</a>
     </div>
     {% else %}

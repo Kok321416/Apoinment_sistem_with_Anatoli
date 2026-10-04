@@ -2,9 +2,9 @@
 
 How to get an async session:
 
-* inside a request handler — ``db: AsyncSession = Depends(get_async_db)``
-* outside a request (SSE, background threads, CLI) — ``async with async_session() as db``
-* in tests and scripts — ``configure_async_sessionmaker(factory)`` / ``reset_async_sessionmaker()``
+* inside a request handler - ``db: AsyncSession = Depends(get_async_db)``
+* outside a request (SSE, background threads, CLI) - ``async with async_session() as db``
+* in tests and scripts - ``configure_async_sessionmaker(factory)`` / ``reset_async_sessionmaker()``
 
 The engine and the session factory are module-private on purpose: the lazy bootstrap, the
 override seam and session cleanup all live behind the functions above, so renaming an internal
@@ -41,7 +41,7 @@ _engine_kwargs: dict = {
     "pool_recycle": 3600,
 }
 if not _is_sqlite:
-    # Sync engine is for schema/CLI/background — keep smaller than async request pool.
+    # Sync engine is for schema/CLI/background - keep smaller than async request pool.
     _engine_kwargs["pool_size"] = settings.db_sync_pool_size
     _engine_kwargs["max_overflow"] = settings.db_sync_max_overflow
 
@@ -98,7 +98,7 @@ def get_async_engine():
 
 
 def configure_async_sessionmaker(session_factory, *, async_engine=None) -> None:
-    """Point async sessions at a different database — the supported seam for tests and scripts."""
+    """Point async sessions at a different database - the supported seam for tests and scripts."""
     global _async_engine, _async_sessionmaker
 
     with _async_init_lock:

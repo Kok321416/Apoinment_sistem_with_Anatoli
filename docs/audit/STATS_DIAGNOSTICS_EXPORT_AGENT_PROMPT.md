@@ -24,10 +24,10 @@ Do not rewrite unrelated booking/Telegram flows. After push, re-verify live unti
 
 ### Diagnostics (client card)
 - Each result card: **Удалить** (confirm). Deletes only that specialist’s `DiagnosticAttempt`; hard delete OK.
-- On client profile (CRM card): **Выгрузить Excel** — visible whenever the profile is open (diagnostics tab or header actions).
+- On client profile (CRM card): **Выгрузить Excel** - visible whenever the profile is open (diagnostics tab or header actions).
 - Workbook contents:
   - Sheet or top block: brief client profile (name, phone, email, telegram, notes if present).
-  - Diagnostics: one row/block per attempt — test title, date, summary, scales (score/band) in separate cells; readable columns, header styling, reasonable column widths.
+  - Diagnostics: one row/block per attempt - test title, date, summary, scales (score/band) in separate cells; readable columns, header styling, reasonable column widths.
 - Ownership: only the card’s consultant may delete/export.
 
 ## Technical constraints

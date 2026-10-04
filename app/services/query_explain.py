@@ -39,7 +39,7 @@ HOT_QUERIES: dict[str, str] = {
 
 
 def explain_hot_queries(db: Session) -> dict:
-    """Run EXPLAIN on hot queries; never raises — returns per-query rows or error."""
+    """Run EXPLAIN on hot queries; never raises - returns per-query rows or error."""
     out: dict[str, dict] = {}
     for name, sql in HOT_QUERIES.items():
         try:

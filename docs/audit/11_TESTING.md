@@ -11,7 +11,7 @@
 
 | Test | Purpose |
 |------|---------|
-| `test_diagnostics_schema_async.py` | MissingGreenlet regression — schema ensure on async session |
+| `test_diagnostics_schema_async.py` | MissingGreenlet regression - schema ensure on async session |
 
 ## Gaps (priority)
 

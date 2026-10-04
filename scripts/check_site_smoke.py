@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live smoke for allyourclients.ru — public pages + key redirects."""
+"""Live smoke for allyourclients.ru - public pages + key redirects."""
 from __future__ import annotations
 
 import ssl

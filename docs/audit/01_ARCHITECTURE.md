@@ -62,4 +62,4 @@ GET /tg/ (no DB)
 
 ## Dual-stack note
 
-HTTP layer is **fully async**. Notifications, schema patches, error logging, password middleware still use **sync** `SessionLocal` — intentional but risky under load.
+HTTP layer is **fully async**. Notifications, schema patches, error logging, password middleware still use **sync** `SessionLocal` - intentional but risky under load.

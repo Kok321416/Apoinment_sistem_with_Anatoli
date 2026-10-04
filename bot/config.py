@@ -12,7 +12,7 @@ if _site and not _site.startswith("http"):
     _site = "https://" + _site
 
 _internal = (os.getenv("SITE_INTERNAL_URL", "") or "").strip().rstrip("/")
-# Do not default to localhost:8000 — on reg.ru Passenger serves via domain, not :8000
+# Do not default to localhost:8000 - on reg.ru Passenger serves via domain, not :8000
 
 
 class BotSettings:

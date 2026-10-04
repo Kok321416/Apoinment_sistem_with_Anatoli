@@ -1,4 +1,4 @@
-"""Alembic environment — uses app Settings for DB URL."""
+"""Alembic environment - uses app Settings for DB URL."""
 from __future__ import annotations
 
 from logging.config import fileConfig
@@ -8,7 +8,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.config import get_settings
 from app.database import Base
-import app.models  # noqa: F401 — register metadata
+import app.models  # noqa: F401 - register metadata
 
 config = context.config
 if config.config_file_name is not None:

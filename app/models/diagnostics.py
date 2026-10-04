@@ -62,7 +62,7 @@ class DiagnosticInvitation(Base):
 
 
 class DiagnosticAttempt(Base):
-    """One completed (or in-progress) test run — never overwritten on retest."""
+    """One completed (or in-progress) test run - never overwritten on retest."""
 
     __tablename__ = "diagnostic_attempts"
 

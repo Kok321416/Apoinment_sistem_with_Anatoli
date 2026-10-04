@@ -114,7 +114,7 @@
             days.push(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i));
         }
         if (titleEl) {
-            titleEl.textContent = formatDayHeading(isoDate(days[0])) + ' — ' + formatDayHeading(isoDate(days[6]));
+            titleEl.textContent = formatDayHeading(isoDate(days[0])) + ' - ' + formatDayHeading(isoDate(days[6]));
         }
         var todayStr = isoDate(today);
         var html = [];
@@ -190,7 +190,7 @@
 
     function formatTimeRange(ev) {
         var timeStr = ev.time || '';
-        if (ev.end_time) timeStr += ' – ' + ev.end_time;
+        if (ev.end_time) timeStr += ' - ' + ev.end_time;
         return timeStr;
     }
 
@@ -216,7 +216,7 @@
         var contact = primaryContact(ev);
         var html = [];
         html.push('<span class="week-event__time">' + escapeAttr(timeStr) + '</span>');
-        var nameLabel = ev.kind === 'event' ? ('Мероприятие: ' + (ev.client_name || '—')) : (ev.client_name || '—');
+        var nameLabel = ev.kind === 'event' ? ('Мероприятие: ' + (ev.client_name || '-')) : (ev.client_name || '-');
         html.push('<span class="week-event__name">' + escapeAttr(nameLabel) + '</span>');
         if (contact) {
             html.push('<span class="week-event__contact">' + escapeAttr(contact) + '</span>');
@@ -235,7 +235,7 @@
         }
         if (name) label += (label ? ' ' : '') + name;
         if (contact && !name) label += (label ? ' · ' : '') + contact;
-        return label.trim() || '—';
+        return label.trim() || '-';
     }
 
     function mobileEventInnerHtml(ev) {
@@ -244,7 +244,7 @@
         var html = [];
         html.push('<span class="cal-mobile-event__time">' + escapeAttr(timeStr) + '</span>');
         html.push('<span class="cal-mobile-event__main">');
-        html.push('<span class="cal-mobile-event__name">' + escapeAttr(ev.client_name || '—') + '</span>');
+        html.push('<span class="cal-mobile-event__name">' + escapeAttr(ev.client_name || '-') + '</span>');
         if (contact) {
             html.push('<span class="cal-mobile-event__contact">' + escapeAttr(contact) + '</span>');
         }
@@ -382,7 +382,7 @@
         var parts = [
             '<div class="event-popover__head">',
             '<h4 class="event-popover__title">' +
-                (kind === 'event' ? ('Мероприятие: ' + escapeAttr(name || '—')) : escapeAttr(name || '—')) +
+                (kind === 'event' ? ('Мероприятие: ' + escapeAttr(name || '-')) : escapeAttr(name || '-')) +
                 '</h4>',
             '<button type="button" class="event-popover__close" id="eventPopoverClose" aria-label="Закрыть">×</button>',
             '</div>',
@@ -394,7 +394,7 @@
         var csrf = csrfEl ? csrfEl.value : '';
 
         if (kind === 'event') {
-            parts.push('<p class="event-popover__contact text-muted">Время занято — запись недоступна</p>');
+            parts.push('<p class="event-popover__contact text-muted">Время занято - запись недоступна</p>');
             if (bookingId && csrf && status === 'active') {
                 parts.push('<div class="popover-actions">');
                 parts.push('<button type="button" class="btn btn--danger btn--sm btn-cancel-event" data-event-id="' + escapeAttr(bookingId) + '">Снять блок</button>');
@@ -767,7 +767,7 @@
                             var slotBtn = document.createElement('button');
                             slotBtn.type = 'button';
                             slotBtn.className = 'slot-btn';
-                            slotBtn.textContent = s.start_time + (s.end_time ? ' – ' + s.end_time : '');
+                            slotBtn.textContent = s.start_time + (s.end_time ? ' - ' + s.end_time : '');
                             slotBtn.dataset.time = s.start_time || '';
                             slotBtn.onclick = function () {
                                 document.querySelectorAll('#rescheduleSlots .slot-btn').forEach(function (b) { b.classList.remove('is-selected'); });

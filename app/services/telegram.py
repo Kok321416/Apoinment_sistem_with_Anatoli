@@ -97,7 +97,7 @@ def send_telegram_message(
     booking_id: int | None = None,
     recipient_type: str | None = None,
 ) -> bool:
-    """Blocking transport for outgoing messages — the single seam every notify path goes through."""
+    """Blocking transport for outgoing messages - the single seam every notify path goes through."""
     request = _send_message_request(chat_id, text, bot_token, reply_markup)
     if request is None:
         if recipient_type:

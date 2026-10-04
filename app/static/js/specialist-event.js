@@ -38,7 +38,7 @@
                 '<h2 class="sb-modal__title" id="se-title">Добавить мероприятие</h2>' +
                 '<button type="button" class="btn btn--ghost btn--sm" data-se-close aria-label="Закрыть">Закрыть</button>' +
                 "</header>" +
-                '<p class="sb-modal__note">Займёт время в календаре — клиенты не смогут записаться на этот интервал.</p>' +
+                '<p class="sb-modal__note">Займёт время в календаре - клиенты не смогут записаться на этот интервал.</p>' +
                 '<div class="sb-modal__body" id="se-body"></div>' +
                 '<div class="sb-modal__status" id="se-status" role="status" hidden></div>' +
                 '<footer class="sb-modal__foot">' +

@@ -1,7 +1,7 @@
 {% extends "layouts/booking.html" %}
 
 {% block meta_tags %}
-{% set page_title = "Диагностика — " ~ consultant.first_name ~ " " ~ consultant.last_name %}
+{% set page_title = "Диагностика - " ~ consultant.first_name ~ " " ~ consultant.last_name %}
 {% set meta_description = "Психологические опросники и история результатов" %}
 {% include "components/meta.html" %}
 {% endblock %}
@@ -29,7 +29,7 @@
     {% elif request.query_params.get('error') == 'test' %}
     <div class="alert alert--error mb-lg" role="alert">Тест недоступен или данные неполные. Выберите другой тест.</div>
     {% elif request.query_params.get('error') == 'save' %}
-    <div class="alert alert--error mb-lg" role="alert">Не удалось сохранить результат. Попробуйте ещё раз. Если ошибка повторяется — обновите страницу или войдите заново.</div>
+    <div class="alert alert--error mb-lg" role="alert">Не удалось сохранить результат. Попробуйте ещё раз. Если ошибка повторяется - обновите страницу или войдите заново.</div>
     {% endif %}
 
     <section class="diag-section" aria-labelledby="diag-tests-title">
@@ -70,7 +70,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="text-body-sm text-muted">Пока нет прохождений. Выберите тест выше — можно проходить повторно.</p>
+        <p class="text-body-sm text-muted">Пока нет прохождений. Выберите тест выше - можно проходить повторно.</p>
         {% endif %}
     </section>
 </div>

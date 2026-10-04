@@ -84,15 +84,15 @@
 <div class="booking-card__info">
     <h3 class="booking-card__title">{{ booking.client_name }}</h3>
     <div class="booking-card__details">
-        <p><strong>Услуга:</strong> {{ booking.service.name if booking.service else '—' }}</p>
+        <p><strong>Услуга:</strong> {{ booking.service.name if booking.service else '-' }}</p>
         <p><strong>Дата:</strong> {{ booking.booking_date|date('d.m.Y') }}</p>
         <p><strong>Время:</strong>
             {{ booking.booking_time|time('H:i') }}
-            {% if booking.booking_end_time %} – {{ booking.booking_end_time|time('H:i') }}{% endif %}
+            {% if booking.booking_end_time %} - {{ booking.booking_end_time|time('H:i') }}{% endif %}
         </p>
         <p><strong>Телефон:</strong> {{ booking.client_phone }}</p>
         {% if booking.client_email %}<p><strong>Почта:</strong> {{ booking.client_email }}</p>{% endif %}
-        <p><strong>Календарь:</strong> {{ booking.calendar.name if booking.calendar else '—' }}</p>
+        <p><strong>Календарь:</strong> {{ booking.calendar.name if booking.calendar else '-' }}</p>
     </div>
     {% if booking.notes %}<p class="booking-card__notes"><strong>Примечания:</strong> {{ booking.notes }}</p>{% endif %}
     {{ booking_status_badge(booking.status) }}

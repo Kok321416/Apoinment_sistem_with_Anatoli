@@ -670,7 +670,7 @@ def ensure_diagnostics_schema(bind=None) -> bool:
         still_missing = [t.name for t in _DIAGNOSTICS_TABLES if not insp.has_table(t.name)]
         if still_missing:
             logger.warning(
-                "diagnostics create_all left missing tables %s — trying raw DDL",
+                "diagnostics create_all left missing tables %s - trying raw DDL",
                 still_missing,
             )
             _create_diagnostics_tables_raw_mysql(bind)
@@ -687,7 +687,7 @@ def ensure_diagnostics_schema(bind=None) -> bool:
 
 
 def _create_diagnostics_tables_raw_mysql(bind) -> None:
-    """FK-free DDL — enough for app INSERT/SELECT when hosting blocks FK DDL."""
+    """FK-free DDL - enough for app INSERT/SELECT when hosting blocks FK DDL."""
     statements = (
         """
         CREATE TABLE IF NOT EXISTS client_specialist_links (
@@ -816,14 +816,14 @@ def ensure_all_schema() -> None:
         ensure_notify_outbox_schema()
     except Exception:
         logger.exception("notify_outbox schema ensure failed")
-    # Deploy/migrate runs in a single process — no MySQL lock (avoids self-deadlock).
+    # Deploy/migrate runs in a single process - no MySQL lock (avoids self-deadlock).
     ensure_schema_patches(use_lock=False)
     _refresh_schema_health()
     _SCHEMA_FULL_ATTEMPTED = True
 
 
 def bootstrap_on_import() -> None:
-    """Passenger WSGI may skip FastAPI startup — patch schema when the app module loads."""
+    """Passenger WSGI may skip FastAPI startup - patch schema when the app module loads."""
     try:
         ensure_schema_patches()
     except Exception:

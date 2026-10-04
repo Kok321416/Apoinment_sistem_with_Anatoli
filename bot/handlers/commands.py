@@ -195,7 +195,7 @@ async def cmd_alerts(message: Message) -> None:
 
 
 async def prompt_login_page(message: Message) -> None:
-    from bot.copy import LOGIN_OPEN_SITE  # noqa: F401 — label unused, keep site button
+    from bot.copy import LOGIN_OPEN_SITE  # noqa: F401 - label unused, keep site button
 
     kb = InlineKeyboardMarkup(
         inline_keyboard=[[url_button("🔐 Войти на сайт", f"{site_url()}/login/")]]

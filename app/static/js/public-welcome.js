@@ -181,7 +181,7 @@
                     telegramInput,
                     data.telegram ? "@" + data.telegram.replace(/^@/, "") : ""
                 );
-                showNote(data.message || "Вы уже заходили — данные подставлены.");
+                showNote(data.message || "Вы уже заходили - данные подставлены.");
             })
             .catch(function () {
                 /* lookup is optional UX */

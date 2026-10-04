@@ -56,7 +56,7 @@ async def require_specialist_mode_async(request: Request, db, user: AuthUser) ->
 
 
 def _platform_admin_allowed(user: AuthUser) -> bool:
-    """Staff/superuser, and when OWNER allowlist is set — only those identities."""
+    """Staff/superuser, and when OWNER allowlist is set - only those identities."""
     from app.config import get_settings
 
     if not user.is_platform_admin:

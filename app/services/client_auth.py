@@ -71,7 +71,7 @@ async def lookup_returning_client_async(
                     "name": name,
                     "phone": phone_n,
                     "telegram": tg,
-                    "message": "Вы уже заходили — данные подставлены автоматически.",
+                    "message": "Вы уже заходили - данные подставлены автоматически.",
                 }
 
         if consultant_id:
@@ -82,7 +82,7 @@ async def lookup_returning_client_async(
                     "name": (card.name or "").strip(),
                     "phone": (card.phone or phone_n).strip(),
                     "telegram": _card_telegram_username(card.telegram),
-                    "message": "Вы уже записывались к этому специалисту — данные подставлены.",
+                    "message": "Вы уже записывались к этому специалисту - данные подставлены.",
                 }
 
     if tg_n:
@@ -94,7 +94,7 @@ async def lookup_returning_client_async(
                     "name": (card.name or "").strip(),
                     "phone": (card.phone or "").strip(),
                     "telegram": tg_n,
-                    "message": "Вы уже записывались к этому специалисту — данные подставлены.",
+                    "message": "Вы уже записывались к этому специалисту - данные подставлены.",
                 }
 
         user_id = await _user_id_by_telegram_username_async(db, tg_n)
@@ -110,7 +110,7 @@ async def lookup_returning_client_async(
                         "name": _user_display_name(user),
                         "phone": normalize_phone(user.username) or "",
                         "telegram": tg_n,
-                        "message": "Вы уже заходили — данные подставлены автоматически.",
+                        "message": "Вы уже заходили - данные подставлены автоматически.",
                     }
 
     return None

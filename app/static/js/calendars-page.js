@@ -2,7 +2,7 @@
     "use strict";
 
     function formatRelative(iso) {
-        if (!iso) return "—";
+        if (!iso) return "-";
         try {
             var d = new Date(iso);
             var diff = Date.now() - d.getTime();

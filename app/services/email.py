@@ -128,7 +128,7 @@ def send_verification_email(to_email: str, code: str) -> bool:
     brand = settings.site_brand_name
     hours = settings.email_verify_hours
     site = settings.site_url.rstrip("/")
-    subject = f"Код подтверждения — {brand}"
+    subject = f"Код подтверждения - {brand}"
     spaced = f"{code[:3]} {code[3:]}" if len(code) == 6 else code
     html = f"""
     <div style="margin:0;padding:0;background:#0b1020;font-family:Inter,Segoe UI,Arial,sans-serif;">
@@ -182,7 +182,7 @@ def send_verification_email(to_email: str, code: str) -> bool:
 def send_email_link_success_email(to_email: str, *, needs_password: bool = False) -> bool:
     brand = settings.site_brand_name
     site = settings.site_url.rstrip("/")
-    subject = f"Почта привязана — {brand}"
+    subject = f"Почта привязана - {brand}"
     password_hint = (
         "<br><br>Если пароль ещё не задан, создайте его в кабинете: "
         f'<a href="{site}/accounts/password/set/" style="color:#49d1ff;text-decoration:none;">Задать пароль</a>.'

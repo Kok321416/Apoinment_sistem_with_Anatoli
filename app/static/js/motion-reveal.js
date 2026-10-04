@@ -1,5 +1,5 @@
 /**
- * Scroll reveal — Intersection Observer.
+ * Scroll reveal - Intersection Observer.
  * Progressive: content stays visible until we mark near-viewport items,
  * then enable hide-until-visible only for off-screen blocks (no black flash).
  */

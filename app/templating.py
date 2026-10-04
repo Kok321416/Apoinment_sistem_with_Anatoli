@@ -155,7 +155,7 @@ def url_for(name: str, *args, **kwargs) -> str:
 class CompatJinja2Templates(Jinja2Templates):
     """Accept legacy ``TemplateResponse(name, context)`` where *context* includes ``request``."""
 
-    def TemplateResponse(self, *args, **kwargs):  # noqa: N802 — Starlette API name
+    def TemplateResponse(self, *args, **kwargs):  # noqa: N802 - Starlette API name
         if args and not isinstance(args[0], Request):
             name = args[0]
             context = args[1] if len(args) > 1 else kwargs.pop("context", {})
@@ -535,7 +535,7 @@ async def guide_context_async(request, db, user=None, **extra):
 
 def apps_context(request, db, user=None, **extra):
     ctx = landing_context(request, db, user, **extra)
-    # Use apps_page (not apps) — avoids clashing with URL_MAP key "apps".
+    # Use apps_page (not apps) - avoids clashing with URL_MAP key "apps".
     ctx.update({"apps_meta": APPS_META, "apps_page": APPS_PAGE})
     return ctx
 

@@ -39,7 +39,7 @@ class Settings:
     db_host: str = (os.getenv("DB_HOST", "") or "").strip() or "localhost"
     db_port: str = os.getenv("DB_PORT", "3306")
     db_connect_timeout: int = _env_int("DB_CONNECT_TIMEOUT", 10)
-    # Async request path (primary). Sync pool is smaller — background / legacy only.
+    # Async request path (primary). Sync pool is smaller - background / legacy only.
     db_pool_size: int = _env_int("DB_POOL_SIZE", 5)
     db_max_overflow: int = _env_int("DB_MAX_OVERFLOW", 10)
     db_sync_pool_size: int = _env_int("DB_SYNC_POOL_SIZE", 2)

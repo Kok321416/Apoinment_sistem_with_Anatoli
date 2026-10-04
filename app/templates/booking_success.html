@@ -1,7 +1,7 @@
 {% extends "layouts/booking.html" %}
 
 {% block meta_tags %}
-{% set page_title = "Запись создана — " ~ site_brand_name %}
+{% set page_title = "Запись создана - " ~ site_brand_name %}
 {% set meta_description = "Запись успешно оформлена" %}
 {% include "components/meta.html" %}
 {% endblock %}
@@ -37,7 +37,7 @@
 
 <section class="booking-panel booking-panel--narrow">
     <div class="alert alert--success" role="status">
-        Ожидайте подтверждения от специалиста. Детали записи — ниже.
+        Ожидайте подтверждения от специалиста. Детали записи - ниже.
     </div>
 
     <table class="booking-summary mt-3xl">
@@ -54,7 +54,7 @@
                 <td class="text-body-sm text-muted">Время</td>
                 <td class="text-body">
                     {% if booking.booking_end_time %}
-                        {{ booking.booking_time|time('H:i') }} – {{ booking.booking_end_time|time('H:i') }}
+                        {{ booking.booking_time|time('H:i') }} - {{ booking.booking_end_time|time('H:i') }}
                     {% else %}
                         {{ booking.booking_time|time('H:i') }}
                     {% endif %}
@@ -86,7 +86,7 @@
     </table>
 
     {% if booking.telegram_id %}
-    <p class="booking-notice booking-notice--success mt-3xl">Запись сохранена. Уведомление уходит в Телеграм — если сообщение не пришло, откройте бота и нажмите «Старт».</p>
+    <p class="booking-notice booking-notice--success mt-3xl">Запись сохранена. Уведомление уходит в Телеграм - если сообщение не пришло, откройте бота и нажмите «Старт».</p>
     {% if telegram_bot_username %}
     <p class="mt-lg"><a class="btn btn--secondary btn--sm" href="https://t.me/{{ telegram_bot_username }}" target="_blank" rel="noopener">Открыть бота</a></p>
     {% endif %}
@@ -125,7 +125,7 @@
     {% if show_diagnostics_cta %}
     <div class="card card--static mt-3xl diag-cta">
         <h3 class="text-h3">Диагностика (по желанию)</h3>
-        <p class="text-body-sm text-muted">Можете пройти опросники до консультации. Это добровольно — результаты сохранятся у вас и у специалиста.</p>
+        <p class="text-body-sm text-muted">Можете пройти опросники до консультации. Это добровольно - результаты сохранятся у вас и у специалиста.</p>
         <div class="stack mt-lg">
             <a class="btn btn--primary" href="{{ diagnostics_url }}">Перейти к диагностике</a>
             <a class="btn btn--ghost" href="{{ back_url or '/' }}">Пропустить</a>

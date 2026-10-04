@@ -263,12 +263,12 @@ def test_diagnostics_delete_and_export_xlsx(stats_client):
     assert "spreadsheetml" in export.headers.get("content-type", "")
     wb = load_workbook(io.BytesIO(export.content))
     assert "Профиль" in wb.sheetnames
-    assert "Диагностика — сводка" in wb.sheetnames
+    assert "Диагностика - сводка" in wb.sheetnames
     assert "Шкалы" in wb.sheetnames
     assert "Анамнез" in wb.sheetnames
     profile = wb["Профиль"]
     assert profile["B4"].value == "Иван Клиентов"
-    summary = wb["Диагностика — сводка"]
+    summary = wb["Диагностика - сводка"]
     assert summary.cell(row=4, column=3).value == BHS.code
 
     page = client.get(f"/clients/{card_id}/", follow_redirects=True)

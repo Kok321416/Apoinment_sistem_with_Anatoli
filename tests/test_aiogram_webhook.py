@@ -18,7 +18,7 @@ def webhook_secret(monkeypatch):
 
     get_settings.cache_clear()
     get_bot_settings.cache_clear()
-    # Settings fields are class attrs evaluated at import — patch instances too.
+    # Settings fields are class attrs evaluated at import - patch instances too.
     monkeypatch.setattr(get_settings(), "telegram_webhook_secret", secret, raising=False)
     monkeypatch.setattr(get_bot_settings(), "telegram_webhook_secret", secret, raising=False)
     monkeypatch.setattr(get_bot_settings(), "telegram_bot_token", "123456:TESTTOKEN", raising=False)

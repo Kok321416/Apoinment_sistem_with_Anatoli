@@ -1,4 +1,4 @@
-# Design Audit — Все клиенты здесь
+# Design Audit - Все клиенты здесь
 
 Дата: 2026-08-01  
 Стек: FastAPI + Jinja2 + CSS/JS (не React). Framer Motion / shadcn не подключаем как runtime - паттерны переносим в CSS + vanilla JS.
@@ -30,7 +30,7 @@
 
 ## Проблемы адаптивности
 
-- 320–390: workspace padding ок, bottom actions иногда пересекаются с footer
+- 320-390: workspace padding ок, bottom actions иногда пересекаются с footer
 - TG Mini App: cabinet frame учтён, но denser list cells ещё не везде
 - Capacitor = тот же CSS; bottom nav критичен для большого пальца
 
@@ -51,9 +51,9 @@
 
 ### Фаза C (сделано 2026-08-01)
 - Soft fade workspace + bookings view  
-- Sheet/drawer: service, client, reschedule - slide/fade 150–250ms + exit delay  
+- Sheet/drawer: service, client, reschedule - slide/fade 150-250ms + exit delay  
 - TG denser cabinet + safe-area bottom nav  
-- prefers-reduced-motion / 320–390 padding guards  
+- prefers-reduced-motion / 320-390 padding guards  
 
 ## Ограничения
 

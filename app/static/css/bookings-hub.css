@@ -1,6 +1,6 @@
-/* bookings-hub.css — shared shell in hub-shared.css */
+/* bookings-hub.css - shared shell in hub-shared.css */
 
-/* Bookings hub — hero, timeline, sidebar, CRM cards */.bookings-toolbar__quick {
+/* Bookings hub - hero, timeline, sidebar, CRM cards */.bookings-toolbar__quick {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-xs);

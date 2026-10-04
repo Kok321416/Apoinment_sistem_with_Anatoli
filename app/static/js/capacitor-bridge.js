@@ -155,7 +155,7 @@
                     return;
                 }
 
-                // /tg/ in native app is the site hub, not Telegram Mini App — open bot instead.
+                // /tg/ in native app is the site hub, not Telegram Mini App - open bot instead.
                 if (isInAppTgHubHref(href)) {
                     var launch = launchTelegramFromMeta() || href;
                     if (isTelegramExternalHref(launch)) {

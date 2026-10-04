@@ -111,7 +111,7 @@ async def specialist_public_home(request: Request, slug: str, db: AsyncSession =
                 await db.rollback()
                 logger.exception("touch_client_specialist_link failed for /s/%s/", slug)
 
-        # rollback()/commit() can expire ORM state — always reload for the template.
+        # rollback()/commit() can expire ORM state - always reload for the template.
         consultant = await _get_consultant_by_slug_async(db, slug)
 
     gated = client_gate_ok(request.session, consultant.id)
@@ -856,7 +856,7 @@ async def specialist_diagnostics_hub(
         except Exception:
             pass
 
-    # Rollback/commit above can expire ORM — reload before template (MissingGreenlet).
+    # Rollback/commit above can expire ORM - reload before template (MissingGreenlet).
     if session_may_be_dirty:
         consultant = (
             await db.execute(

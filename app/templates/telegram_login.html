@@ -1,7 +1,7 @@
 {% extends "layouts/auth.html" %}
 
 {% block meta_tags %}
-{% set page_title = ("Запись через Телеграм — " if is_booking_flow else "Вход через Телеграм — ") ~ site_brand_name %}
+{% set page_title = ("Запись через Телеграм - " if is_booking_flow else "Вход через Телеграм - ") ~ site_brand_name %}
 {% set meta_description = page_title %}
 {% include "components/meta.html" %}
 {% endblock %}
@@ -27,10 +27,10 @@
     >
         {% if is_booking_flow %}
         <p class="text-body"><strong>Шаг 1.</strong> Откройте бота и нажмите «Подтвердить вход».</p>
-        <p class="text-body text-muted"><strong>Шаг 2.</strong> Вернитесь в браузер — запись продолжится автоматически.</p>
+        <p class="text-body text-muted"><strong>Шаг 2.</strong> Вернитесь в браузер - запись продолжится автоматически.</p>
         {% else %}
         <p class="text-body"><strong>Шаг 1.</strong> Откройте бота и нажмите «Подтвердить вход».</p>
-        <p class="text-body text-muted"><strong>Шаг 2.</strong> Вернём вас автоматически — на сайт, в приложение или в Mini App.</p>
+        <p class="text-body text-muted"><strong>Шаг 2.</strong> Вернём вас автоматически - на сайт, в приложение или в Mini App.</p>
         {% endif %}
         <a id="btnOpenBot" href="{{ bot_url }}" class="btn btn--primary" data-tg="{{ tg_app_url }}">Открыть Telegram</a>
         <div class="tg-status tg-status--waiting" id="loginStatus" role="status" aria-live="polite">

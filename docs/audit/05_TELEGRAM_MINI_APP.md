@@ -30,12 +30,12 @@ Telegram WebView
 | initData HMAC implemented | **FACT** |
 | Self-hosted SDK (no CDN) | **FACT** |
 | Specialist-only hub UI | **FACT** (client mode removed) |
-| initData creates client-only user | **FACT** — specialist may see guest UI after silent auth |
-| Cookie not persisting in WebView | **HYPOTHESIS** — needs prod Set-Cookie check |
-| IPv6/AAAA DNS hang | **HYPOTHESIS** — `/health/mini-app` warns |
-| Cold start >10s | **HYPOTHESIS** — Passenger+MySQL |
+| initData creates client-only user | **FACT** - specialist may see guest UI after silent auth |
+| Cookie not persisting in WebView | **HYPOTHESIS** - needs prod Set-Cookie check |
+| IPv6/AAAA DNS hang | **HYPOTHESIS** - `/health/mini-app` warns |
+| Cold start >10s | **HYPOTHESIS** - Passenger+MySQL |
 | sessionStorage blocks re-auth | **HYPOTHESIS** |
-| Password middleware redirects TG users | **FACT** — `/accounts/password/set/` |
+| Password middleware redirects TG users | **FACT** - `/accounts/password/set/` |
 
 ## Fixes applied (this session)
 
@@ -43,7 +43,7 @@ Telegram WebView
 
 ## Health
 
-- `GET /health/mini-app` — cookie config, SDK path, frame-ancestors
+- `GET /health/mini-app` - cookie config, SDK path, frame-ancestors
 - `scripts/check_mini_app_health.py`
 
 ## Recommended next steps

@@ -1,4 +1,4 @@
-"""Client–specialist links and diagnostic attempt persistence."""
+"""Client-specialist links and diagnostic attempt persistence."""
 from __future__ import annotations
 
 import asyncio
@@ -34,7 +34,7 @@ def reset_diagnostics_ddl_ready_for_tests() -> None:
 
 
 async def _probe_diagnostics_tables(db: AsyncSession) -> bool:
-    """Fast check on the request bind — SAVEPOINT so missing tables do not poison the session."""
+    """Fast check on the request bind - SAVEPOINT so missing tables do not poison the session."""
     from sqlalchemy import text
 
     try:
@@ -60,7 +60,7 @@ async def ensure_diagnostics_tables(db: AsyncSession | None = None) -> bool:
     """Create diagnostics tables on first use if deploy patches missed them.
 
     Prefer verifying/creating on the request AsyncSession bind. Sync engine ensure is a
-    fallback only — sync/async URLs can diverge and a process-wide ready flag must not
+    fallback only - sync/async URLs can diverge and a process-wide ready flag must not
     skip creating tables on the DB the request actually uses.
     """
     global _DIAGNOSTICS_DDL_READY
@@ -98,7 +98,7 @@ async def ensure_diagnostics_tables(db: AsyncSession | None = None) -> bool:
             if await _probe_diagnostics_tables(db):
                 _mark_diagnostics_ddl_ready()
                 return True
-            # Sync create succeeded on another bind — still missing on request DB.
+            # Sync create succeeded on another bind - still missing on request DB.
             logger.error(
                 "diagnostics tables exist on sync engine but not on async session bind"
             )
@@ -118,7 +118,7 @@ async def ensure_diagnostics_write_ready(db: AsyncSession) -> bool:
 
 
 async def _ensure_diagnostics_tables_on_session(db: AsyncSession) -> bool:
-    """Create diagnostics tables on the async session bind (no inspect — avoids MissingGreenlet)."""
+    """Create diagnostics tables on the async session bind (no inspect - avoids MissingGreenlet)."""
     from sqlalchemy import inspect as sa_inspect
 
     from app.database import Base
@@ -148,7 +148,7 @@ def _is_missing_diagnostics_table(exc: BaseException) -> bool:
 
 
 def _skip_diagnostics_read_on_missing_table(exc: BaseException) -> bool:
-    """Never run DDL during GET/hub reads — avoids MySQL metadata locks and 500/timeouts."""
+    """Never run DDL during GET/hub reads - avoids MySQL metadata locks and 500/timeouts."""
     if not _is_missing_diagnostics_table(exc):
         return False
     if _DIAGNOSTICS_DDL_READY:
@@ -369,7 +369,7 @@ async def ensure_client_card_for_diagnostics_async(
     consultant_id: int,
     client_user_id: int,
 ) -> int | None:
-    """Ensure CRM card exists and is linked to the user — results stay visible to specialist."""
+    """Ensure CRM card exists and is linked to the user - results stay visible to specialist."""
     from sqlalchemy import select
 
     from app.deps import normalize_phone

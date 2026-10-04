@@ -8,10 +8,10 @@ Make client take → save → view and specialist CRM view fully functional. Do 
 ## Client path (must work)
 1. Open specialist public profile `/s/{slug}/` → «Перейти к диагностике».
 2. If not logged in → welcome `/s/{slug}/welcome/?next=.../diagnostics/` → Telegram or contact form, then **real login** (gate alone is NOT enough).
-3. Hub `/s/{slug}/diagnostics/` — list runnable tests + «История результатов».
+3. Hub `/s/{slug}/diagnostics/` - list runnable tests + «История результатов».
 4. Intro `/s/{slug}/diagnostics/tests/{code}/` → Run `/run/` wizard → Submit POST.
-5. Result `/s/{slug}/diagnostics/results/{id}/` — scales visible; **not** preview/`unsaved` banner.
-6. Return to hub — new attempt in history; open «Подробнее».
+5. Result `/s/{slug}/diagnostics/results/{id}/` - scales visible; **not** preview/`unsaved` banner.
+6. Return to hub - new attempt in history; open «Подробнее».
 
 Invite alternate: `/d/{token}/` → login → `/d/{token}/start/` → test/hub.
 
@@ -20,7 +20,7 @@ Runnable codes: `bhs`, `bdi`, `wcq`, `schmischek`, `osop`, `eyes`.
 ## Specialist path (must work)
 1. Login as specialist → `/clients/` → button «Диагностика» → `/clients/{id}/#diagnostics`.
 2. Card tab «Диагностика»: history, scale cards, «Ссылка на диагностику» (invite API).
-3. Open result (CRM `/diagnostics/results/{id}/` or card panel) — dual-role must **not** bounce away from CRM results.
+3. Open result (CRM `/diagnostics/results/{id}/` or card panel) - dual-role must **not** bounce away from CRM results.
 
 ## Pass criteria
 - Submit commits `DiagnosticAttempt` with `status=completed`, linked `client_card_id`.

@@ -4,7 +4,7 @@
 name: Deploy Telegram Bot
 
 # Бот перезапускается в основном workflow "Deploy to VPS".
-# Этот workflow — только ручной перезапуск бота без полного деплоя.
+# Этот workflow - только ручной перезапуск бота без полного деплоя.
 on:
   workflow_dispatch:
 
@@ -50,7 +50,7 @@ jobs:
           cd "$APP_DIR"
           chmod +x scripts/migrate.sh scripts/run_bot.sh scripts/run_reminders.sh scripts/stop_bot.sh 2>/dev/null || true
 
-          # Код на сервер попадает через основной workflow (deploy.yml, SCP). git pull не делаем — без учётки даёт "could not read Username".
+          # Код на сервер попадает через основной workflow (deploy.yml, SCP). git pull не делаем - без учётки даёт "could not read Username".
           # Env берём только из серверного .env (load_dotenv). Не экспортируем пустые TELEGRAM_BOT_TOKEN/SITE_URL из Actions.
 
           export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin:$PATH"

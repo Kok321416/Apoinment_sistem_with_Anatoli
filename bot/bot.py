@@ -683,7 +683,7 @@ def verify_bot_identity() -> None:
             logger.info("Telegram bot identity: @%s", actual)
         if expected and actual and expected != actual:
             logger.error(
-                "TELEGRAM_BOT_USERNAME=%s but token belongs to @%s — update GitHub Secret TELEGRAM_BOT_USERNAME",
+                "TELEGRAM_BOT_USERNAME=%s but token belongs to @%s - update GitHub Secret TELEGRAM_BOT_USERNAME",
                 settings.telegram_bot_username,
                 actual,
             )
@@ -759,7 +759,7 @@ def _setup_menu_button() -> None:
 def _warn_security_config() -> None:
     if not settings.bot_api_secret:
         logger.warning(
-            "BOT_API_SECRET is empty — bot falls back to X-Bot-Token. "
+            "BOT_API_SECRET is empty - bot falls back to X-Bot-Token. "
             "Set BOT_API_SECRET on server and in GitHub secrets for production."
         )
 
@@ -795,7 +795,7 @@ def run_long_polling() -> None:
                     "Run: ./scripts/stop_bot.sh && ./scripts/run_bot.sh"
                 )
                 if conflict_count >= 6:
-                    logger.critical("Too many 409 errors — exiting so deploy can start a single instance")
+                    logger.critical("Too many 409 errors - exiting so deploy can start a single instance")
                     raise SystemExit(1)
                 time.sleep(15)
                 continue

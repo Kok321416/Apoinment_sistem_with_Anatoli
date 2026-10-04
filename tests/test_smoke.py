@@ -1,4 +1,4 @@
-"""Smoke tests — no live DB required for pure helpers."""
+"""Smoke tests - no live DB required for pure helpers."""
 import re
 from datetime import date, datetime, time, timedelta
 from types import SimpleNamespace
@@ -156,7 +156,7 @@ def test_yandex_signup_creates_consultant():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    import app.models  # noqa: F401 — register metadata
+    import app.models  # noqa: F401 - register metadata
     from app.database import Base
     from app.models import Consultant, SocialAccount, User
     from app.services.yandex_auth import complete_yandex_oauth

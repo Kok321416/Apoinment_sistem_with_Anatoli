@@ -2,8 +2,8 @@
 {% from "components/app_page_head.html" import app_page_head %}
 
 {% block meta_tags %}
-{% set page_title = calendar.name ~ " — расписание — " ~ site_brand_name %}
-{% set meta_description = "Редактор расписания календаря — " ~ site_brand_name %}
+{% set page_title = calendar.name ~ " - расписание - " ~ site_brand_name %}
+{% set meta_description = "Редактор расписания календаря - " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
@@ -126,7 +126,7 @@
                         <option value="{{ tz_value }}"{% if (calendar.timezone or site_timezone) == tz_value %} selected{% endif %}>{{ tz_label }}</option>
                         {% endfor %}
                     </select>
-                    <p class="form-field__hint">Время слотов и напоминаний — в этом поясе.</p>
+                    <p class="form-field__hint">Время слотов и напоминаний - в этом поясе.</p>
                 </div>
             </div>
             <button type="submit" class="btn btn--primary btn--lg calendar-settings-form__save" id="settings-save-btn">Сохранить изменения</button>

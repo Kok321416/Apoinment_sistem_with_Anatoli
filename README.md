@@ -1,4 +1,4 @@
-# Система онлайн записи — Все клиенты здесь
+# Система онлайн записи - Все клиенты здесь
 
 FastAPI + Jinja2 + MySQL + Telegram bot + Capacitor (Android / RuStore).
 
@@ -55,9 +55,9 @@ scripts/       # migrate / bot / reminders
 
 ## Документация
 
-- `docs/DESIGN_SYSTEM.md` — UI-токены
-- `docs/TELEGRAM_MINI_APP_SETUP.md` — Mini App
-- `mobile/README.md` — Android shell
+- `docs/DESIGN_SYSTEM.md` - UI-токены
+- `docs/TELEGRAM_MINI_APP_SETUP.md` - Mini App
+- `mobile/README.md` - Android shell
 
 ## Деплой
 

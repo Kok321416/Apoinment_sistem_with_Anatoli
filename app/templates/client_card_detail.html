@@ -2,8 +2,8 @@
 {% from "components/booking_card.html" import booking_status_badge %}
 
 {% block meta_tags %}
-{% set page_title = (crm_client.name|default(card.name|default('Клиент'))) ~ " — " ~ site_brand_name %}
-{% set meta_description = "Карточка клиента — " ~ site_brand_name %}
+{% set page_title = (crm_client.name|default(card.name|default('Клиент'))) ~ " - " ~ site_brand_name %}
+{% set meta_description = "Карточка клиента - " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
@@ -241,7 +241,7 @@
             {% else %}
             <div class="client-diag__empty">
                 <p>Клиент ещё не проходил опросники.</p>
-                <p class="text-muted text-body-sm">Отправьте ссылку — результаты появятся здесь.</p>
+                <p class="text-muted text-body-sm">Отправьте ссылку - результаты появятся здесь.</p>
             </div>
             {% endif %}
         </div>

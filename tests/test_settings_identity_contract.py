@@ -2,7 +2,7 @@
 
 Most modules do `settings = get_settings()` at import. While get_settings() built a fresh Settings on
 every cache_clear(), one test clearing the cache silently detached every imported module from the
-object later callers patched — /internal/cron/reminders/ answered 503 instead of reading the patched
+object later callers patched - /internal/cron/reminders/ answered 503 instead of reading the patched
 secrets. These tests pin the identity invariant that keeps import-time captures valid.
 """
 from __future__ import annotations

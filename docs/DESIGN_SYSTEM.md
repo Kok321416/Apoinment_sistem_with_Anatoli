@@ -1,4 +1,4 @@
-# Design System — Все клиенты здесь
+# Design System - Все клиенты здесь
 
 Референсы: Linear, Notion, Stripe, Cal.com, Vercel. Стек: CSS tokens + Jinja components (не React `components/ui`).
 
@@ -7,7 +7,7 @@
 1. Одна нейтральная гамма (light/dark)  
 2. Sidebar + Workspace  
 3. Touch ≥ 44px  
-4. Motion 150–250ms, без прыжков  
+4. Motion 150-250ms, без прыжков  
 5. Иконки монохром `currentColor`  
 
 ## Цвета (токены)
@@ -29,11 +29,11 @@
 
 ## Типографика
 
-- Display / H1 / H2: **Onest** (600–700), tighter tracking  
-- H3 / body / UI: **Inter** (400–600)  
-- Fluid clamp: Display XL → H1 → H2 → H3 с шагом ~1.25–1.35×  
+- Display / H1 / H2: **Onest** (600-700), tighter tracking  
+- H3 / body / UI: **Inter** (400-600)  
+- Fluid clamp: Display XL → H1 → H2 → H3 с шагом ~1.25-1.35×  
 - Токены: `--font-family-display`, `--font-family-base` в `tokens.css`  
-- Короткие тексты; empty state: title + 1–2 строки + hint  
+- Короткие тексты; empty state: title + 1-2 строки + hint  
 
 ## Радиусы и тени
 

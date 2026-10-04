@@ -1,7 +1,7 @@
 {% extends "layouts/base.html" %}
 
 {% block meta_tags %}
-{% set page_title = "Диагностика Mini App — " ~ site_brand_name %}
+{% set page_title = "Диагностика Mini App - " ~ site_brand_name %}
 {% set meta_description = "Проверка, открывается ли мини-приложение" %}
 {% include "components/meta.html" %}
 {% endblock %}
@@ -20,7 +20,7 @@
     <p class="text-body-sm text-muted">Откройте эту страницу в Safari или Chrome, если в Telegram белый экран или ERR_TIMED_OUT. Сделайте скрин и пришлите.</p>
     <ul class="text-body" style="margin:1rem 0;padding-left:1.2rem;line-height:1.6">
         <li>Сайт: <code>{{ diag_site_url }}</code></li>
-        <li>Бот: <code>@{{ diag_bot or '—' }}</code></li>
+        <li>Бот: <code>@{{ diag_bot or '-' }}</code></li>
         <li>Cookie SameSite: <code>{{ diag_same_site }}</code> {% if diag_same_site == 'none' %}(ок){% else %}(для Mini App лучше none){% endif %}</li>
         <li>SDK: {% if diag_sdk_ok %}на месте{% else %}нет файла{% endif %}</li>
         <li>Boot JS: {% if diag_boot_ok %}на месте{% else %}нет файла{% endif %}</li>
@@ -28,9 +28,9 @@
     </ul>
     <p class="text-body-sm" id="diag-client">Проверяем браузер…</p>
     <p class="text-body-sm text-muted">В Telegram ошибка почти всегда такая:<br>
-    <strong>ERR_TIMED_OUT</strong> — страница даже не загрузилась (сеть / WebView ушёл на t.me).<br>
-    <strong>Белый экран</strong> — HTML есть, сломался JS.<br>
-    <strong>Крутится и вход</strong> — приложение открылось, не прошёл автологин.</p>
+    <strong>ERR_TIMED_OUT</strong> - страница даже не загрузилась (сеть / WebView ушёл на t.me).<br>
+    <strong>Белый экран</strong> - HTML есть, сломался JS.<br>
+    <strong>Крутится и вход</strong> - приложение открылось, не прошёл автологин.</p>
     <p><a class="btn btn--primary" href="/tg/">Открыть /tg/</a></p>
 </div>
 </div>
@@ -42,9 +42,9 @@
     lines.push("UA: " + (navigator.userAgent || "").slice(0, 180));
     lines.push("Telegram.WebApp: " + (tg ? "да" : "нет"));
     if (tg) {
-        lines.push("platform: " + (tg.platform || "—"));
+        lines.push("platform: " + (tg.platform || "-"));
         lines.push("initData: " + (tg.initData ? "есть (" + tg.initData.length + " симв.)" : "пусто"));
-        lines.push("version: " + (tg.version || "—"));
+        lines.push("version: " + (tg.version || "-"));
     }
     lines.push("URL: " + location.href);
     if (el) el.textContent = lines.join(" | ");

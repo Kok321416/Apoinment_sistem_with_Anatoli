@@ -38,7 +38,7 @@
                 node.setAttribute('aria-disabled', 'true');
             }
             node.className = 'pp-social__btn pp-social__btn--' + slug + (url ? ' is-active' : ' is-inactive');
-            node.title = url ? item.label : item.label + ' — ссылка не указана';
+            node.title = url ? item.label : item.label + ' - ссылка не указана';
             node.innerHTML = item.icon;
             container.appendChild(node);
         });

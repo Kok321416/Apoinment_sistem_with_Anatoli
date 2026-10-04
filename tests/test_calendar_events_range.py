@@ -134,14 +134,14 @@ def _dates(client: TestClient, **params) -> list[str]:
 
 
 def test_week_crossing_month_boundary_returns_both_months(spec_client):
-    """Week of Mon 28.09 — Sun 04.10: the October days must come back too."""
+    """Week of Mon 28.09 - Sun 04.10: the October days must come back too."""
     dates = _dates(spec_client, start="2026-09-28", end="2026-10-04")
 
     assert dates == ["2026-09-30", "2026-10-01", "2026-10-02"]
 
 
 def test_month_grid_padding_days_are_included(spec_client):
-    """September grid renders 31.08 and 01–04.10 as adjacent-month cells."""
+    """September grid renders 31.08 and 01-04.10 as adjacent-month cells."""
     dates = _dates(spec_client, start="2026-08-31", end="2026-10-04")
 
     assert "2026-08-31" in dates

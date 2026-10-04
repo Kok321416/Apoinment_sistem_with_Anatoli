@@ -165,7 +165,7 @@ def schedule_status_changed(booking_id: int, old_status: str | None) -> None:
 def run_status_changed_blocking(
     booking_id: int, old_status: str | None, *, timeout: float = 20.0
 ) -> None:
-    """Cancel/status notify with wait — same reliability class as create-notify."""
+    """Cancel/status notify with wait - same reliability class as create-notify."""
     from app.services.notify_outbox import enqueue_status_changed
 
     outbox_id = _enqueue(enqueue_status_changed, int(booking_id), old_status)

@@ -104,11 +104,11 @@
                         '</button>' +
                         '<button type="button" class="quick-action" data-action="workweek">' +
                             '<span class="quick-action__title">Рабочая неделя</span>' +
-                            '<span class="quick-action__desc">Пн–Пт как этот день</span>' +
+                            '<span class="quick-action__desc">Пн-Пт как этот день</span>' +
                         '</button>' +
                         '<button type="button" class="quick-action" data-action="fulltime">' +
                             '<span class="quick-action__title">24/7</span>' +
-                            '<span class="quick-action__desc">Окно 00:00–23:59</span>' +
+                            '<span class="quick-action__desc">Окно 00:00-23:59</span>' +
                         '</button>' +
                         '<button type="button" class="quick-action" data-action="clear">' +
                             '<span class="quick-action__title">Очистить день</span>' +
@@ -143,7 +143,7 @@
             }
             return (
                 '<div class="slot-card' + (editing ? ' slot-card--editing' : '') + '" data-slot-id="' + slot.id + '">' +
-                    '<span class="slot-card__time">' + slot.start + ' — ' + slot.end + '</span>' +
+                    '<span class="slot-card__time">' + slot.start + ' - ' + slot.end + '</span>' +
                     '<div class="slot-card__actions">' +
                         '<button type="button" class="slot-card__action edit-slot-btn" data-slot-id="' + slot.id + '">' +
                             '<span class="slot-card__action-icon" aria-hidden="true">✏</span>' +
@@ -259,12 +259,12 @@
                     return;
                 }
                 if (action === 'workweek') {
-                    if (!window.confirm('Заменить расписание Пн–Пт расписанием этого дня?')) {
+                    if (!window.confirm('Заменить расписание Пн-Пт расписанием этого дня?')) {
                         return;
                     }
                     data = await this.api.presetWorkweek(this.selectedDay);
                 } else if (action === 'fulltime') {
-                    if (!window.confirm('Создать окно 00:00–23:59 для этого дня?')) {
+                    if (!window.confirm('Создать окно 00:00-23:59 для этого дня?')) {
                         return;
                     }
                     data = await this.api.presetFulltime([this.selectedDay]);

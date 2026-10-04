@@ -8,7 +8,7 @@
 #
 # Telegram webhook (aiogram inside FastAPI):
 #   1. Generate TELEGRAM_WEBHOOK_SECRET (long random) in .env
-#   2. Restart web app — startup calls setWebhook to
+#   2. Restart web app - startup calls setWebhook to
 #      https://<SITE_URL>/telegram/webhook/<secret>
 #   3. Stop and disable separate bot polling unit (systemctl stop/disable ...),
 #      otherwise Telegram returns 409 Conflict.

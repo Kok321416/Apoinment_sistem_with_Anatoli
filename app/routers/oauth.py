@@ -156,7 +156,7 @@ async def open_tg_app_bridge(request: Request):
     else:
         in_app = f"/accounts/native-handoff/{quote(token)}/"
 
-    # Never auto-navigate to t.me — inside Mini App that is ERR_TIMED_OUT.
+    # Never auto-navigate to t.me - inside Mini App that is ERR_TIMED_OUT.
     return RedirectResponse(in_app, status_code=302)
 
 

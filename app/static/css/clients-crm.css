@@ -1,4 +1,4 @@
-/* clients-crm.css — shared shell in hub-shared.css */
+/* clients-crm.css - shared shell in hub-shared.css */
 
 /* Clients CRM page */.clients-hero__stat {
     margin: 0 0 var(--space-xs);
@@ -588,7 +588,7 @@
     margin-top: var(--space-lg);
 }
 
-/* Diagnostics block — specialist only, visually distinct */
+/* Diagnostics block - specialist only, visually distinct */
 .client-detail__diag-panel {
     padding: 0;
     overflow: hidden;

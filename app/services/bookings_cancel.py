@@ -62,7 +62,7 @@ async def specialist_cancel_booking_async(
 
         run_status_changed_blocking(booking_pk, old_status)
     except Exception:
-        # Cancel already persisted — never fail the API after commit.
+        # Cancel already persisted - never fail the API after commit.
         import logging
 
         logging.getLogger(__name__).exception(

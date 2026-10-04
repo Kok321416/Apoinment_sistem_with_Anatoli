@@ -3,11 +3,11 @@
 {% block meta_tags %}
 {% set spec_name_meta = ((consultant.first_name or '') ~ ' ' ~ (consultant.last_name or '')).strip() %}
 {% set og_description = (consultant.profile_description or ('Онлайн-запись к специалисту ' ~ (consultant.first_name or '')))[:180] %}
-{% set page_title = spec_name_meta ~ " — запись" %}
+{% set page_title = spec_name_meta ~ " - запись" %}
 {% set meta_description = consultant.profile_description or ("Онлайн-запись к специалисту " ~ (consultant.first_name or "")) %}
 {% include "components/meta.html" %}
 <meta property="og:type" content="profile">
-<meta property="og:title" content="{{ spec_name_meta }} — запись">
+<meta property="og:title" content="{{ spec_name_meta }} - запись">
 <meta property="og:description" content="{{ og_description }}">
 {% if consultant.profile_photo %}
 <meta property="og:image" content="{{ site_url }}{{ consultant.profile_photo|profile_photo_src }}">

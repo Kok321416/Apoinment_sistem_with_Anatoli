@@ -2,8 +2,8 @@
 {% from "components/icon.html" import auth_provider_icon %}
 
 {% block meta_tags %}
-{% set page_title = "Вход — " ~ site_brand_name %}
-{% set meta_description = "Вход в личный кабинет — " ~ site_brand_name %}
+{% set page_title = "Вход - " ~ site_brand_name %}
+{% set meta_description = "Вход в личный кабинет - " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
@@ -16,7 +16,7 @@
         {% if next_url and next_url.startswith('/s/') %}
         Войдите, чтобы продолжить запись. После входа вернём вас к календарю.
         {% elif next_url and next_url.startswith('/tg/') %}
-        Войдите в мини-приложение — после подтверждения вернём вас сюда.
+        Войдите в мини-приложение - после подтверждения вернём вас сюда.
         {% else %}
         Войдите, чтобы открыть кабинет или продолжить работу.
         {% endif %}

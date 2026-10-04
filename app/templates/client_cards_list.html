@@ -1,8 +1,8 @@
 {% extends "layouts/app.html" %}
 
 {% block meta_tags %}
-{% set page_title = "База клиентов — " ~ site_brand_name %}
-{% set meta_description = "CRM специалиста — база клиентов — " ~ site_brand_name %}
+{% set page_title = "База клиентов - " ~ site_brand_name %}
+{% set meta_description = "CRM специалиста - база клиентов - " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
@@ -24,7 +24,7 @@
                 <div>
                     <h1 class="clients-hero__title">Клиенты</h1>
                     <p class="clients-hero__stat"><strong id="hero-total">{{ crm_dashboard.total }}</strong> в базе</p>
-                    <p class="clients-hero__meta" id="hero-updated">Последнее изменение: —</p>
+                    <p class="clients-hero__meta" id="hero-updated">Последнее изменение: -</p>
                 </div>
             </div>
             <div class="clients-hero__actions">
@@ -156,7 +156,7 @@
                         <div class="client-card__footer">
                             <div class="client-card__meta">
                                 <span class="client-card__meta-label">Последняя запись</span>
-                                <span class="client-card__meta-value" data-relative="{{ client.last_booking or '' }}">{% if client.last_booking %}—{% else %}Нет записей{% endif %}</span>
+                                <span class="client-card__meta-value" data-relative="{{ client.last_booking or '' }}">{% if client.last_booking %}-{% else %}Нет записей{% endif %}</span>
                             </div>
                             <div class="client-card__meta">
                                 <span class="client-card__meta-label">Записей</span>
@@ -193,7 +193,7 @@
                 <li class="clients-activity__item">
                     <span class="clients-activity__name">{{ item.name }}</span>
                     <span class="clients-activity__action">{{ item.action }}</span>
-                    <time class="clients-activity__time" datetime="{{ item.at or '' }}" data-relative="{{ item.at or '' }}">—</time>
+                    <time class="clients-activity__time" datetime="{{ item.at or '' }}" data-relative="{{ item.at or '' }}">-</time>
                 </li>
                 {% else %}
                 <li class="clients-activity__empty">Действий пока нет</li>

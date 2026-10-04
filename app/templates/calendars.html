@@ -1,8 +1,8 @@
 {% extends "layouts/app.html" %}
 
 {% block meta_tags %}
-{% set page_title = "Календари записи — " ~ site_brand_name %}
-{% set meta_description = "Центр управления календарями и расписанием — " ~ site_brand_name %}
+{% set page_title = "Календари записи - " ~ site_brand_name %}
+{% set meta_description = "Центр управления календарями и расписанием - " ~ site_brand_name %}
 {% include "components/meta.html" %}
 {% endblock %}
 
@@ -25,7 +25,7 @@
                     <h1 class="calendars-hero__title">Календари</h1>
                     <p class="calendars-hero__desc">Окна записи, ссылки и расписание.</p>
                     <p class="calendars-hero__stat"><strong id="hero-total">{{ hub_dashboard.total }}</strong> календарей</p>
-                    <p class="calendars-hero__meta" id="calendars-hero-updated">Последнее изменение: —</p>
+                    <p class="calendars-hero__meta" id="calendars-hero-updated">Последнее изменение: -</p>
                 </div>
             </div>
             <div class="calendars-hero__actions">
@@ -137,11 +137,11 @@
                         <div class="cal-card__meta-row">
                             <div class="cal-card__meta">
                                 <span class="cal-card__meta-label">Последняя запись</span>
-                                <span class="cal-card__meta-value cal-card__meta-value--booking" data-relative="{{ cal.last_booking or '' }}">{% if cal.last_booking %}—{% else %}Нет записей{% endif %}</span>
+                                <span class="cal-card__meta-value cal-card__meta-value--booking" data-relative="{{ cal.last_booking or '' }}">{% if cal.last_booking %}-{% else %}Нет записей{% endif %}</span>
                             </div>
                             <div class="cal-card__meta">
                                 <span class="cal-card__meta-label">Изменён</span>
-                                <span class="cal-card__meta-value" data-relative="{{ cal.updated_at or cal.created_at or '' }}">—</span>
+                                <span class="cal-card__meta-value" data-relative="{{ cal.updated_at or cal.created_at or '' }}">-</span>
                             </div>
                         </div>
 

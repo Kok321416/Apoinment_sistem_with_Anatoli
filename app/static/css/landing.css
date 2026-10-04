@@ -1,4 +1,4 @@
-/* Landing — Cal.com–inspired: clean header, flat surfaces, no neon orbs */
+/* Landing - Cal.com-inspired: clean header, flat surfaces, no neon orbs */
 .site-header {
     position: sticky;
     top: 0;
@@ -108,7 +108,7 @@
     margin: 0;
 }
 
-/* Landing calendar mocks — colors match specialist bookings calendar */
+/* Landing calendar mocks - colors match specialist bookings calendar */
 .lp-cal-card {
     padding: var(--space-xl);
     border-radius: var(--radius-md);

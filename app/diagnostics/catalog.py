@@ -310,7 +310,7 @@ def _score_yes_no_scales(
 # ── Beck Hopelessness Scale (BHS) ──────────────────────────────────────────
 # Structure: 20 true/false items; keyed true/false per Beck (1974).
 # Cutoffs commonly cited in clinical literature (Beck & Steer):
-# 0–3 minimal, 4–8 mild, 9–14 moderate, 15–20 severe.
+# 0-3 minimal, 4-8 mild, 9-14 moderate, 15-20 severe.
 # Russian educational adaptations follow the same keying.
 # Item wording: Russian educational paraphrase set (not a licensed Pearson pack).
 
@@ -331,7 +331,7 @@ _BHS_ITEMS_RU = [
     "Я рассчитываю получить в жизни больше хорошего, чем средний человек.",
     "У меня просто нет удачи, и нет причин верить, что она появится в будущем.",
     "Мой прошлый опыт хорошо подготовил меня к будущему.",
-    "Всё, что я вижу впереди — скорее неприятности, чем радости.",
+    "Всё, что я вижу впереди - скорее неприятности, чем радости.",
     "Я не рассчитываю получить то, чего действительно хочу.",
     "Когда я смотрю в будущее, я ожидаю быть счастливее, чем сейчас.",
     "Дела складываются не так, как я хочу.",
@@ -414,14 +414,14 @@ BHS = TestDefinition(
     short_description="20 утверждений о взгляде на будущее. Оценка уровня безнадёжности.",
     instruction=(
         "Прочитайте каждое утверждение. Отметьте «Верно», если оно в целом соответствует "
-        "тому, как вы думаете и чувствуете в последнее время, и «Неверно» — если не соответствует. "
+        "тому, как вы думаете и чувствуете в последнее время, и «Неверно» - если не соответствует. "
         "Отвечайте честно, правильных или неправильных ответов нет."
     ),
     duration_minutes=8,
     source_citation=(
         "Beck A.T. et al. (1974). The measurement of pessimism: The Hopelessness Scale. "
         "J Consult Clin Psychol. Cutoffs: Beck & Steer manuals / clinical literature "
-        "(0–3 / 4–8 / 9–14 / 15–20). Russian educational adaptations use the same keys."
+        "(0-3 / 4-8 / 9-14 / 15-20). Russian educational adaptations use the same keys."
     ),
     source_urls=("https://psytests.org/depr/bhi-run.html",),
     scoring_status="ready",
@@ -442,8 +442,8 @@ BHS = TestDefinition(
 
 
 # ── Beck Depression Inventory (BDI) classic 21-item structure ──────────────
-# Scoring: sum 0–63. Common bands (Beck et al.): 0–9 minimal, 10–18 mild,
-# 19–29 moderate, 30–63 severe (classic BDI; BDI-II cutoffs differ).
+# Scoring: sum 0-63. Common bands (Beck et al.): 0-9 minimal, 10-18 mild,
+# 19-29 moderate, 30-63 severe (classic BDI; BDI-II cutoffs differ).
 # We use classic BDI bands and label version clearly.
 # Items: condensed Russian educational stems (operator should replace with licensed text if required).
 
@@ -496,9 +496,9 @@ BDI = TestDefinition(
     ),
     duration_minutes=12,
     source_citation=(
-        "Beck A.T. et al. Depression inventory. Classic BDI total 0–63; "
-        "bands often cited: 0–9 minimal, 10–18 mild, 19–29 moderate, 30–63 severe. "
-        "Item stems here are condensed thematic prompts for product MVP — "
+        "Beck A.T. et al. Depression inventory. Classic BDI total 0-63; "
+        "bands often cited: 0-9 minimal, 10-18 mild, 19-29 moderate, 30-63 severe. "
+        "Item stems here are condensed thematic prompts for product MVP - "
         "replace with a licensed full-text pack for clinical use."
     ),
     source_urls=("https://psytests.org/depr/bdi.html",),
@@ -520,9 +520,9 @@ BDI = TestDefinition(
 
 
 # ── Beck Anxiety Inventory (BAI) 21 items ───────────────────────────────────
-# Official cutoffs (Beck & Steer BAI Manual, 1993): 0–7 minimal, 8–15 mild,
-# 16–25 moderate, 26–63 severe. Some educational sites (e.g. psytests.org) use
-# coarser bands 0–21 / 22–35 / 36–63 — we follow the manual.
+# Official cutoffs (Beck & Steer BAI Manual, 1993): 0-7 minimal, 8-15 mild,
+# 16-25 moderate, 26-63 severe. Some educational sites (e.g. psytests.org) use
+# coarser bands 0-21 / 22-35 / 36-63 - we follow the manual.
 # Stems: condensed Russian thematic prompts (MVP; replace with licensed text for clinical use).
 
 _BAI_STEMS = [
@@ -576,7 +576,7 @@ BAI = TestDefinition(
     source_citation=(
         "Beck A.T., Epstein N., Brown G., Steer R.A. (1988). An inventory for measuring clinical anxiety: "
         "the Beck Anxiety Inventory. J Consult Clin Psychol. Cutoffs per BAI Manual (1993): "
-        "0–7 minimal, 8–15 mild, 16–25 moderate, 26–63 severe. "
+        "0-7 minimal, 8-15 mild, 16-25 moderate, 26-63 severe. "
         "Reference page: https://psytests.org/result?v=depT1u (BAI). "
         "Item stems are condensed thematic prompts for product MVP."
     ),
@@ -781,7 +781,7 @@ SCHMISCHEK = TestDefinition(
     short_description="40 утверждений, 10 шкал акцентуаций.",
     instruction=(
         "Прочитайте каждое утверждение о чертах характера. Отметьте «Да, характерно», "
-        "если это в целом про вас, и «Нет, не характерно» — если не про вас."
+        "если это в целом про вас, и «Нет, не характерно» - если не про вас."
     ),
     duration_minutes=15,
     source_citation="Leonhard K. / Schmischek accentuation questionnaire. Краткая адаптация для скрининга.",
@@ -794,12 +794,12 @@ SCHMISCHEK = TestDefinition(
 )
 
 
-# ── СОП / OSOP (А. Н. Орел) — gender variants in tests/sop.py ───────────────
+# ── СОП / OSOP (А. Н. Орел) - gender variants in tests/sop.py ───────────────
 
 from app.diagnostics.tests.sop import OSOP, build_osop_test, score_sop  # noqa: E402
 from app.diagnostics.tests.client_status import CLIENT_STATUS  # noqa: E402
 
-# Pending tests — catalog only until assets/keys are supplied.
+# Pending tests - catalog only until assets/keys are supplied.
 PENDING_TESTS: tuple = ()
 
 _REGISTRY: dict[str, TestDefinition] = {

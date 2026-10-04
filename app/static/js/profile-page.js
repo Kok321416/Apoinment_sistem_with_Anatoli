@@ -1,6 +1,6 @@
 (function () {
     function formatDate(iso) {
-        if (!iso) return '—';
+        if (!iso) return '-';
         try {
             var d = new Date(iso);
             return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -10,7 +10,7 @@
     }
 
     function formatRelative(iso) {
-        if (!iso) return '—';
+        if (!iso) return '-';
         try {
             var d = new Date(iso);
             var diff = Date.now() - d.getTime();
@@ -101,9 +101,9 @@
         var map = {
             'footer-created': formatDate(footer.created_at),
             'footer-updated': formatRelative(footer.updated_at),
-            'footer-id': footer.consultant_id ? '#' + footer.consultant_id : '—',
-            'footer-tz': footer.timezone || '—',
-            'footer-version': footer.profile_version || '—',
+            'footer-id': footer.consultant_id ? '#' + footer.consultant_id : '-',
+            'footer-tz': footer.timezone || '-',
+            'footer-version': footer.profile_version || '-',
         };
         Object.keys(map).forEach(function (id) {
             var el = document.getElementById(id);

@@ -276,16 +276,16 @@ async def _startup():
             logger.info("Diagnostics tables ready")
         else:
             logger.error(
-                "Diagnostics tables are missing — run ensure_diagnostics_schema on deploy; "
+                "Diagnostics tables are missing - run ensure_diagnostics_schema on deploy; "
                 "hub will open but saves may fail until tables exist"
             )
     except Exception:
         logger.exception("diagnostics ddl ready flag init failed")
     if not settings.debug:
         if settings.secret_key in ("", "change-me-in-production"):
-            logger.critical("SECRET_KEY is weak or default — set a long random value in production")
+            logger.critical("SECRET_KEY is weak or default - set a long random value in production")
         if not settings.bot_api_secret:
-            logger.warning("BOT_API_SECRET is not set — bot API uses TELEGRAM_BOT_TOKEN header only")
+            logger.warning("BOT_API_SECRET is not set - bot API uses TELEGRAM_BOT_TOKEN header only")
     if settings.telegram_webhook_secret and settings.telegram_bot_token:
         try:
             from bot.aiogram_app import get_bot, setup_bot_meta, verify_bot_identity

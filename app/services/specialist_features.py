@@ -8,7 +8,7 @@ FEATURE_DIAGNOSTICS = "diagnostics"
 
 SPECIALTY_FEATURES: dict[str, frozenset[str]] = {
     "psychologist": frozenset({FEATURE_DIAGNOSTICS}),
-    # MVP: existing accounts use category «Общая» — keep diagnostics available until specialty is assigned in profile.
+    # MVP: existing accounts use category «Общая» - keep diagnostics available until specialty is assigned in profile.
     "general": frozenset({FEATURE_DIAGNOSTICS}),
     "coach": frozenset(),
     "tutor": frozenset(),
@@ -47,7 +47,7 @@ def specialty_code_for_consultant(consultant) -> str:
     except Exception:
         cat = None
     if cat is None:
-        # Relationship not loaded (common on AsyncSession) — safe default.
+        # Relationship not loaded (common on AsyncSession) - safe default.
         return "general"
     code = normalize_specialty_code(getattr(cat, "code", None) or "")
     if code != "general":

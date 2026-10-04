@@ -15,7 +15,7 @@ _SKIP_PREFIXES = (
     "/favicon.ico",
 )
 
-# Sensitive auth / signup / reset — stricter buckets.
+# Sensitive auth / signup / reset - stricter buckets.
 _AUTH_PREFIXES = (
     "/login/",
     "/register/",

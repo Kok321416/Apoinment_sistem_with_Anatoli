@@ -34,7 +34,7 @@
             '</ul></section>' +
             (client.notes ? '<section class="drawer-section"><h4 class="drawer-section__title">Заметки</h4><p>' + client.notes.replace(/</g, '&lt;') + '</p></section>' : '') +
             '<section class="drawer-section drawer-completeness">' +
-            '<h4 class="drawer-section__title">Заполненность карточки — ' + comp.percent + '%</h4>' +
+            '<h4 class="drawer-section__title">Заполненность карточки - ' + comp.percent + '%</h4>' +
             '<div class="drawer-completeness__bar"><div class="drawer-completeness__fill" style="width:' + comp.percent + '%"></div></div>' +
             (missingHtml ? '<ul class="drawer-completeness__missing">' + missingHtml + '</ul>' : '<p class="text-muted text-body-sm">Карточка заполнена полностью</p>') +
             '</section>' +

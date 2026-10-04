@@ -1,7 +1,7 @@
 {% extends "layouts/booking.html" %}
 
 {% block meta_tags %}
-{% set page_title = result.title ~ " — результат" %}
+{% set page_title = result.title ~ " - результат" %}
 {% include "components/meta.html" %}
 {% endblock %}
 
@@ -42,7 +42,7 @@
             {% for row in result.interpretation.answers %}
             <li>
                 <p class="diag-answers__q">{{ row.question }}</p>
-                <p class="diag-answers__a">{{ row.answer or '—' }}</p>
+                <p class="diag-answers__a">{{ row.answer or '-' }}</p>
                 {% if row.note %}<p class="diag-answers__note text-body-sm text-muted">{{ row.note }}</p>{% endif %}
             </li>
             {% endfor %}

@@ -1,12 +1,12 @@
-# Executive Summary — Project Audit (2026-09-01)
+# Executive Summary - Project Audit (2026-09-01)
 
 ## Project
 
-**allyourclients.ru** — FastAPI appointment/cabinet platform for specialists (psychologists, coaches). Clients access specialists via public profiles `/s/{slug}/`. Telegram Mini App at `/tg/`.
+**allyourclients.ru** - FastAPI appointment/cabinet platform for specialists (psychologists, coaches). Clients access specialists via public profiles `/s/{slug}/`. Telegram Mini App at `/tg/`.
 
 **Stack:** FastAPI + Jinja2 + SQLAlchemy 2 async (asyncmy/MySQL prod, aiosqlite tests) + sync pymysql for schema/CLI + aiogram bot.
 
-**State: 6/10** — core specialist cabinet works; diagnostics and Mini App have production incidents; dual sync/async stack creates recurring SQLAlchemy issues.
+**State: 6/10** - core specialist cabinet works; diagnostics and Mini App have production incidents; dual sync/async stack creates recurring SQLAlchemy issues.
 
 ## What works
 
@@ -21,10 +21,10 @@
 
 | ID | Issue |
 |----|-------|
-| P0-1 | `GET /s/{slug}/diagnostics/` — MissingGreenlet (fixed locally, not deployed) |
+| P0-1 | `GET /s/{slug}/diagnostics/` - MissingGreenlet (fixed locally, not deployed) |
 | P0-2 | Diagnostic tables may be missing on prod MySQL until schema ensure runs |
 | P0-3 | `platform_client_detail_async` missing `await` in platform admin |
-| P0-4 | `write_admin_audit_async` never awaited — audit log empty |
+| P0-4 | `write_admin_audit_async` never awaited - audit log empty |
 
 ## High (P1)
 
@@ -36,7 +36,7 @@
 
 ## Latest production error (fixed in working tree)
 
-**MissingGreenlet** on `GET /s/spec/diagnostics/` — root cause: `inspect().has_table()` called on async-adapted MySQL connection inside `ensure_diagnostics_tables()`. Fix: sync schema via pymysql in thread pool; async DDL via `create_all` only inside `run_sync` without `inspect`.
+**MissingGreenlet** on `GET /s/spec/diagnostics/` - root cause: `inspect().has_table()` called on async-adapted MySQL connection inside `ensure_diagnostics_tables()`. Fix: sync schema via pymysql in thread pool; async DDL via `create_all` only inside `run_sync` without `inspect`.
 
 ## Next steps
 

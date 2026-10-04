@@ -1,4 +1,4 @@
-"""HTTP hardening middleware — rate limits + extra headers without changing UX."""
+"""HTTP hardening middleware - rate limits + extra headers without changing UX."""
 from __future__ import annotations
 
 import logging
@@ -18,7 +18,7 @@ from app.services.rate_limit import check_rate_limit
 logger = logging.getLogger(__name__)
 
 # Generous global cap: normal browsing / SPA-like page loads stay fine.
-# Shared NAT may share an IP — keep headroom high.
+# Shared NAT may share an IP - keep headroom high.
 _GLOBAL_MAX = 240
 _GLOBAL_WINDOW = 60
 

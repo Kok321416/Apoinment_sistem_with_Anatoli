@@ -37,7 +37,7 @@
         function renderBadges(settings) {
             const limit = settings.max_services_per_day
                 ? settings.max_services_per_day
-                : '—';
+                : '-';
             const reminders = [];
             if (settings.reminder_hours_first) {
                 reminders.push('за ' + settings.reminder_hours_first + ' ч');
@@ -50,7 +50,7 @@
                 '<span class="calendar-badge"><strong>Лимит в день:</strong> ' + limit + '</span>' +
                 '<span class="calendar-badge"><strong>Запись за:</strong> ' + settings.book_ahead_hours + ' ч</span>' +
                 '<span class="calendar-badge"><strong>Напоминания:</strong> ' + (reminders.length ? reminders.join(' и ') : 'выкл') + '</span>' +
-                '<span class="calendar-badge"><strong>Пояс:</strong> ' + (settings.timezone || '—') + '</span>';
+                '<span class="calendar-badge"><strong>Пояс:</strong> ' + (settings.timezone || '-') + '</span>';
         }
 
         function syncSettingsForm(settings) {

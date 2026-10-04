@@ -78,7 +78,7 @@
             if (!d || !total) return;
             total.textContent = d.total;
             active.textContent = d.active;
-            avg.textContent = d.avg_duration ? d.avg_duration + ' мин' : '—';
+            avg.textContent = d.avg_duration ? d.avg_duration + ' мин' : '-';
             cals.textContent = d.calendars_used;
         }
 
@@ -187,8 +187,8 @@
                 '</div>' +
                 '<div class="service-card__badges">' +
                     '<span class="service-card__badge">⏱ ' + service.duration_minutes + ' мин</span>' +
-                    '<span class="service-card__badge">💳 ' + (service.price != null ? Math.round(service.price) + ' ₽' : '—') + '</span>' +
-                    '<span class="service-card__badge">📅 ' + escapeHtml(service.calendar_name || '—') + '</span>' +
+                    '<span class="service-card__badge">💳 ' + (service.price != null ? Math.round(service.price) + ' ₽' : '-') + '</span>' +
+                    '<span class="service-card__badge">📅 ' + escapeHtml(service.calendar_name || '-') + '</span>' +
                 '</div>';
 
             card.querySelector('[data-select]').addEventListener('change', (e) => {

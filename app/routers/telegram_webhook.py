@@ -1,4 +1,4 @@
-"""Telegram webhook endpoint (aiogram 3) — mounted on FastAPI."""
+"""Telegram webhook endpoint (aiogram 3) - mounted on FastAPI."""
 from __future__ import annotations
 
 import logging

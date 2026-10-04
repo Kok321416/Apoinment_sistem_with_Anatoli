@@ -18,7 +18,7 @@ def test_ensure_integration_telegram_audit_creates_table():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    # Create only integrations deps — not audit table
+    # Create only integrations deps - not audit table
     Base.metadata.create_all(
         engine,
         tables=[

@@ -59,7 +59,7 @@ async def _redirect_diagnostics_to_profile(db, consultant_id: int, suffix: str =
 
 @router.get("/diagnostics/")
 async def diagnostics_hub(request: Request, db: AsyncSession = Depends(get_async_db)):
-    """Legacy client cabinet hub — redirect to specialist profile diagnostics."""
+    """Legacy client cabinet hub - redirect to specialist profile diagnostics."""
     selected_id = request.query_params.get("consultant_id")
     if selected_id:
         try:
