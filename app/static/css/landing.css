@@ -307,11 +307,23 @@
     }
 }
 
+#start-telegram.section-sm {
+    padding-block: var(--space-xl);
+}
+
+#calendar-preview.section-sm {
+    padding-top: var(--space-2xl);
+}
+
 .lp-tg-card {
     display: block;
     text-decoration: none;
     color: inherit;
     max-width: 28rem;
+}
+
+.lp-tg-card .stat-card__value--text {
+    margin-bottom: var(--space-xs);
 }
 
 .lp-tg-card:hover,
