@@ -169,6 +169,7 @@ def test_platform_admin_gate(monkeypatch):
 
     settings = get_settings()
     monkeypatch.setattr(settings, "platform_admin_enabled", True)
+    monkeypatch.setattr(settings, "platform_admin_owner_emails", "staff@t.c")
 
     engine = create_async_engine(
         "sqlite+aiosqlite://",

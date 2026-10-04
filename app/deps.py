@@ -55,8 +55,22 @@ async def require_specialist_mode_async(request: Request, db, user: AuthUser) ->
     return consultant
 
 
+def _platform_admin_allowed(user: AuthUser) -> bool:
+    """Staff/superuser, and when OWNER allowlist is set — only those identities."""
+    from app.config import get_settings
+
+    if not user.is_platform_admin:
+        return False
+    owners = get_settings().platform_admin_owners()
+    if not owners:
+        return False
+    email = (user.email or "").strip().lower()
+    username = (user.username or "").strip().lower()
+    return email in owners or username in owners
+
+
 def require_platform_admin(request: Request, db: Session) -> AuthUser:
-    """Admin A0 gate: feature flag + is_staff/is_superuser."""
+    """Admin A0 gate: feature flag + owner allowlist + is_staff/is_superuser."""
     from app.config import get_settings
 
     settings = get_settings()
@@ -65,7 +79,7 @@ def require_platform_admin(request: Request, db: Session) -> AuthUser:
     user = get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=302, headers={"Location": "/login/?next=/platform-admin/"})
-    if not user.is_platform_admin:
+    if not _platform_admin_allowed(user):
         raise HTTPException(status_code=403, detail="Forbidden")
     return user
 
@@ -81,7 +95,7 @@ async def require_platform_admin_async(request: Request, db) -> AuthUser:
     user = await get_current_user_async(request, db)
     if not user:
         raise HTTPException(status_code=302, headers={"Location": "/login/?next=/platform-admin/"})
-    if not user.is_platform_admin:
+    if not _platform_admin_allowed(user):
         raise HTTPException(status_code=403, detail="Forbidden")
     return user
 

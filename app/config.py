@@ -95,6 +95,15 @@ class Settings:
         "true",
         "yes",
     )
+    # Owner-only allowlist (emails and/or usernames, comma-separated).
+    # When non-empty, only these accounts can open /platform-admin/ (staff alone is not enough).
+    platform_admin_owner_emails: str = (
+        os.getenv("PLATFORM_ADMIN_OWNER_EMAILS") or os.getenv("PLATFORM_ADMIN_OWNER_EMAIL") or ""
+    ).strip()
+
+    def platform_admin_owners(self) -> frozenset[str]:
+        raw = (self.platform_admin_owner_emails or "").replace(";", ",")
+        return frozenset(part.strip().lower() for part in raw.split(",") if part.strip())
 
     # SMTP для писем подтверждения email
     smtp_host: str = os.getenv("SMTP_HOST", "")

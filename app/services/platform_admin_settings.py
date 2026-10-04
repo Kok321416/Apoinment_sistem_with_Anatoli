@@ -57,6 +57,11 @@ def platform_flags(settings: Settings | None = None) -> list[dict[str, Any]]:
     s = settings or get_settings()
     return [
         {"key": "PLATFORM_ADMIN_ENABLED", "value": s.platform_admin_enabled, "secret": False},
+        {
+            "key": "PLATFORM_ADMIN_OWNER_EMAILS",
+            "value": ",".join(sorted(s.platform_admin_owners())) or "-",
+            "secret": False,
+        },
         {"key": "NOTIFY_DEDUP", "value": s.notify_dedup, "secret": False},
         {"key": "FORCE_CONSULTANT_ON_SIGNUP", "value": s.force_consultant_on_signup, "secret": False},
         {"key": "DEBUG", "value": s.debug, "secret": False},

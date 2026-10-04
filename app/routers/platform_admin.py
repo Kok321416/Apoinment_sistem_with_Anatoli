@@ -332,7 +332,7 @@ async def admin_telegram_job(request: Request, job_id: int, db: AsyncSession = D
 @router.get("/users/")
 async def admin_users(request: Request, db: AsyncSession = Depends(get_async_db)):
     user = await _admin(request, db, PERM_USERS_READ)
-    from app.services.platform_admin_users import search_users
+    from app.services.platform_admin_users import search_users_async
 
     q = (request.query_params.get("q") or "").strip()
     rows = await search_users_async(db, q, limit=50)
@@ -1317,7 +1317,7 @@ async def admin_notify_outbox(request: Request, db: AsyncSession = Depends(get_a
 @router.get("/analytics/")
 async def admin_analytics(request: Request, db: AsyncSession = Depends(get_async_db)):
     user = await _admin(request, db, PERM_USERS_READ)
-    from app.services.platform_admin_analytics import analytics_snapshot
+    from app.services.platform_admin_analytics import analytics_snapshot_async
 
     return templates.TemplateResponse(
         "platform_admin/analytics.html",
@@ -1348,7 +1348,7 @@ async def admin_settings(request: Request, db: AsyncSession = Depends(get_async_
 @router.get("/audit/")
 async def admin_audit(request: Request, db: AsyncSession = Depends(get_async_db)):
     user = await _admin(request, db, PERM_AUDIT)
-    from app.services.platform_admin_audit import audit_action_choices, list_admin_audit
+    from app.services.platform_admin_audit import audit_action_choices_async, list_admin_audit_async
 
     action_filter = (request.query_params.get("action") or "").strip() or None
     q = (request.query_params.get("q") or "").strip()
@@ -1373,7 +1373,7 @@ async def admin_audit(request: Request, db: AsyncSession = Depends(get_async_db)
 async def admin_ops(request: Request, db: AsyncSession = Depends(get_async_db)):
     user = await _admin(request, db, PERM_OPS)
     from app.config import get_settings
-    from app.services.platform_admin_ops import create_platform_backup, system_snapshot
+    from app.services.platform_admin_ops import create_platform_backup, system_snapshot_async
 
     settings = get_settings()
     success = error = None
@@ -1454,7 +1454,7 @@ async def admin_support_detail(request: Request, ticket_id: int, db: AsyncSessio
         else:
             action = (form.get("action") or "").strip()
             if action == "reply":
-                _, err = reply_support_ticket(
+                _, err = await reply_support_ticket_async(
                     db,
                     ticket_id,
                     author_user_id=user.id,
@@ -1519,10 +1519,10 @@ async def admin_support_detail(request: Request, ticket_id: int, db: AsyncSessio
 async def admin_billing(request: Request, db: AsyncSession = Depends(get_async_db)):
     user = await _admin(request, db, PERM_BILLING)
     from app.services.platform_billing import (
-        billing_snapshot,
-        create_billing_plan,
-        list_billing_plans,
-        toggle_plan_active,
+        billing_snapshot_async,
+        create_billing_plan_async,
+        list_billing_plans_async,
+        toggle_plan_active_async,
     )
 
     success = error = None
@@ -1539,7 +1539,7 @@ async def admin_billing(request: Request, db: AsyncSession = Depends(get_async_d
                     price = int(form.get("price_rub") or 0)
                 except (TypeError, ValueError):
                     price = -1
-                plan, err = create_billing_plan(
+                plan, err = await create_billing_plan_async(
                     db,
                     code=form.get("code") or "",
                     name=form.get("name") or "",
@@ -1600,7 +1600,7 @@ async def admin_billing(request: Request, db: AsyncSession = Depends(get_async_d
 @router.get("/export/users.csv")
 async def admin_export_users(request: Request, db: AsyncSession = Depends(get_async_db)):
     await _admin(request, db, PERM_USERS_READ)
-    from app.services.platform_admin_export import export_filename, export_users_csv
+    from app.services.platform_admin_export import export_filename, export_users_csv_async
 
     content = await export_users_csv_async(db)
     return Response(
@@ -1613,7 +1613,7 @@ async def admin_export_users(request: Request, db: AsyncSession = Depends(get_as
 @router.get("/export/bookings.csv")
 async def admin_export_bookings(request: Request, db: AsyncSession = Depends(get_async_db)):
     await _admin(request, db, PERM_USERS_READ)
-    from app.services.platform_admin_export import export_filename, export_bookings_csv
+    from app.services.platform_admin_export import export_bookings_csv_async, export_filename
 
     content = await export_bookings_csv_async(db)
     return Response(

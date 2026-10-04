@@ -97,7 +97,21 @@ def run_prod_readiness(db: Session, settings: Settings | None = None) -> dict[st
         _add(checks, "client_user_id_column", "ok", "client_user_id column present")
 
     if s.platform_admin_enabled:
-        _add(checks, "platform_admin", "ok", "PLATFORM_ADMIN_ENABLED=true")
+        owners = s.platform_admin_owners()
+        if not owners:
+            _add(
+                checks,
+                "platform_admin",
+                "fail",
+                "PLATFORM_ADMIN_ENABLED=true but PLATFORM_ADMIN_OWNER_EMAILS is empty",
+            )
+        else:
+            _add(
+                checks,
+                "platform_admin",
+                "ok",
+                f"PLATFORM_ADMIN_ENABLED=true, owner allowlist={len(owners)}",
+            )
     else:
         _add(checks, "platform_admin", "warn", "PLATFORM_ADMIN_ENABLED=false - admin UI hidden")
 

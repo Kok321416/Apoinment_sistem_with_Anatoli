@@ -31,6 +31,10 @@ class _FakeSettings:
     smtp_password = "p"
     site_url = "https://example.com"
     platform_admin_enabled = True
+    platform_admin_owner_emails = "owner@example.com"
+
+    def platform_admin_owners(self):
+        return frozenset({"owner@example.com"})
 
 
 def test_prod_readiness_passes_with_good_config():

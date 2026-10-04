@@ -15,7 +15,6 @@ from app.routers import (
     diagnostics,
     oauth,
     pages,
-    platform_admin,
     profile_api,
     public_specialist,
     services_api,
@@ -74,7 +73,12 @@ app.include_router(public_specialist.router)
 app.include_router(api.router)
 app.include_router(specialist_booking.router)
 app.include_router(oauth.router)
-app.include_router(platform_admin.router)
+# Platform admin DB work runs only inside /platform-admin/ handlers.
+# Mount routes when enabled; in DEBUG also mount so tests can toggle the flag.
+if settings.platform_admin_enabled or settings.debug:
+    from app.routers import platform_admin as platform_admin_router
+
+    app.include_router(platform_admin_router.router)
 app.include_router(telegram_webhook.router)
 
 
