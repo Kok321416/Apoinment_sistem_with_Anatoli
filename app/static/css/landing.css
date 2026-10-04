@@ -316,10 +316,39 @@
 }
 
 .lp-tg-card {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    width: 100%;
+    max-width: none;
     text-decoration: none;
     color: inherit;
-    max-width: 28rem;
+}
+
+.lp-tg-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--radius-full);
+    background: #111111;
+    border: 1px solid #111111;
+    flex-shrink: 0;
+}
+
+.lp-tg-card__icon img {
+    width: 24px;
+    height: 24px;
+    display: block;
+    filter: invert(1);
+}
+
+.lp-tg-card__copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
 }
 
 .lp-tg-card .stat-card__value--text {
