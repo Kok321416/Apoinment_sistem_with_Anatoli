@@ -654,7 +654,7 @@ async def admin_specialist_detail(request: Request, consultant_id: int, db: Asyn
 @router.get("/clients/")
 async def admin_clients(request: Request, db: AsyncSession = Depends(get_async_db)):
     user = await _admin(request, db, PERM_USERS_READ)
-    from app.services.platform_admin_domain import search_platform_clients
+    from app.services.platform_admin_domain import search_platform_clients_async
 
     q = (request.query_params.get("q") or "").strip()
     rows = await search_platform_clients_async(db, q, limit=50)
