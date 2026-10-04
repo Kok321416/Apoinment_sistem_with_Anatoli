@@ -24,33 +24,33 @@
                     <a href="{{ hero.cta_secondary_href }}" class="btn btn--secondary focus-ring">{{ hero.cta_secondary_label }}</a>
                 </div>
             </div>
-            <div class="hero__preview animate-fade-in-up animate-delay-3" aria-hidden="true">
+            <div class="hero__preview animate-fade-in-up animate-delay-3">
                 <div class="lp-cal-card">
                     <div class="lp-cal-card__head">
                         <p class="text-caption">Сегодня</p>
                         <p class="text-body-sm text-muted">5 записей</p>
                     </div>
-                    <div class="lp-cal-slots">
-                        <div class="lp-cal-slot lp-cal-slot--confirmed">
+                    <div class="lp-cal-slots" role="group" aria-label="Пример записей на сегодня">
+                        <button type="button" class="lp-cal-slot lp-cal-slot--confirmed">
                             <span class="lp-cal-slot__time">09:00-10:00</span>
                             <span class="lp-cal-slot__name">Мария Соколова</span>
-                        </div>
-                        <div class="lp-cal-slot lp-cal-slot--pending">
+                        </button>
+                        <button type="button" class="lp-cal-slot lp-cal-slot--pending">
                             <span class="lp-cal-slot__time">11:00-12:00</span>
                             <span class="lp-cal-slot__name">Игорь Волков</span>
-                        </div>
-                        <div class="lp-cal-slot lp-cal-slot--event">
+                        </button>
+                        <button type="button" class="lp-cal-slot lp-cal-slot--event">
                             <span class="lp-cal-slot__time">13:00-15:00</span>
                             <span class="lp-cal-slot__name">Семинар: навыки общения</span>
-                        </div>
-                        <div class="lp-cal-slot lp-cal-slot--confirmed">
+                        </button>
+                        <button type="button" class="lp-cal-slot lp-cal-slot--confirmed">
                             <span class="lp-cal-slot__time">16:00-17:00</span>
                             <span class="lp-cal-slot__name">Елена Ким</span>
-                        </div>
-                        <div class="lp-cal-slot lp-cal-slot--pending">
+                        </button>
+                        <button type="button" class="lp-cal-slot lp-cal-slot--pending">
                             <span class="lp-cal-slot__time">18:30-19:30</span>
                             <span class="lp-cal-slot__name">Павел Орлов</span>
-                        </div>
+                        </button>
                     </div>
                     <div class="lp-cal-legend">
                         <span><i class="lp-dot lp-dot--confirmed"></i>Консультация</span>
@@ -191,11 +191,11 @@
                 </article>
             </div>
 
-            <article class="lp-cal-card lp-windows-card" aria-hidden="true">
+            <article class="lp-cal-card lp-windows-card" id="lp-windows-demo">
                 <div class="lp-cal-card__head">
                     <div>
                         <p class="text-h3">Окна приёма</p>
-                        <p class="text-body-sm text-muted mt-xs">Как в редакторе календаря: задаёте рабочие окна - клиенты записываются только в свободные слоты.</p>
+                        <p class="text-body-sm text-muted mt-xs">Как в редакторе календаря: наведите или нажмите на окно - оно подсветится, как в кабинете.</p>
                     </div>
                     <p class="text-caption text-muted">Пример недели</p>
                 </div>
@@ -203,52 +203,50 @@
                     <div class="lp-windows__hours" aria-hidden="true">
                         <span>09:00</span><span>11:00</span><span>13:00</span><span>15:00</span><span>17:00</span><span>19:00</span>
                     </div>
-                    <div class="lp-windows__grid">
+                    <div class="lp-windows__grid" role="group" aria-label="Пример окон приёма">
                         <div class="lp-windows__col">
                             <p class="lp-windows__day">Пн</p>
                             <div class="lp-windows__track">
-                                <span class="lp-window" style="top:8%;height:28%"></span>
-                                <span class="lp-window" style="top:48%;height:34%"></span>
+                                <button type="button" class="lp-window" style="top:8%;height:28%" aria-label="Понедельник, окно 10:00-12:45"><span class="lp-window__time">10:00-12:45</span></button>
+                                <button type="button" class="lp-window" style="top:48%;height:34%" aria-label="Понедельник, окно 13:50-17:15"><span class="lp-window__time">13:50-17:15</span></button>
                             </div>
                         </div>
                         <div class="lp-windows__col">
                             <p class="lp-windows__day">Вт</p>
                             <div class="lp-windows__track">
-                                <span class="lp-window" style="top:14%;height:42%"></span>
+                                <button type="button" class="lp-window" style="top:14%;height:42%" aria-label="Вторник, окно 10:25-14:35"><span class="lp-window__time">10:25-14:35</span></button>
                             </div>
                         </div>
                         <div class="lp-windows__col">
                             <p class="lp-windows__day">Ср</p>
                             <div class="lp-windows__track">
-                                <span class="lp-window" style="top:6%;height:22%"></span>
-                                <span class="lp-window" style="top:40%;height:20%"></span>
-                                <span class="lp-window" style="top:68%;height:22%"></span>
+                                <button type="button" class="lp-window" style="top:6%;height:22%" aria-label="Среда, окно 09:35-11:45"><span class="lp-window__time">09:35-11:45</span></button>
+                                <button type="button" class="lp-window" style="top:40%;height:20%" aria-label="Среда, окно 13:00-15:00"><span class="lp-window__time">13:00-15:00</span></button>
+                                <button type="button" class="lp-window" style="top:68%;height:22%" aria-label="Среда, окно 15:50-18:00"><span class="lp-window__time">15:50-18:00</span></button>
                             </div>
                         </div>
                         <div class="lp-windows__col">
                             <p class="lp-windows__day">Чт</p>
                             <div class="lp-windows__track">
-                                <span class="lp-window" style="top:18%;height:50%"></span>
+                                <button type="button" class="lp-window" style="top:18%;height:50%" aria-label="Четверг, окно 10:50-15:50"><span class="lp-window__time">10:50-15:50</span></button>
                             </div>
                         </div>
                         <div class="lp-windows__col">
                             <p class="lp-windows__day">Пт</p>
                             <div class="lp-windows__track">
-                                <span class="lp-window" style="top:10%;height:26%"></span>
-                                <span class="lp-window" style="top:52%;height:30%"></span>
+                                <button type="button" class="lp-window" style="top:10%;height:26%" aria-label="Пятница, окно 10:00-12:35"><span class="lp-window__time">10:00-12:35</span></button>
+                                <button type="button" class="lp-window" style="top:52%;height:30%" aria-label="Пятница, окно 14:10-17:10"><span class="lp-window__time">14:10-17:10</span></button>
                             </div>
                         </div>
                         <div class="lp-windows__col">
                             <p class="lp-windows__day">Сб</p>
                             <div class="lp-windows__track">
-                                <span class="lp-window" style="top:22%;height:36%"></span>
+                                <button type="button" class="lp-window" style="top:22%;height:36%" aria-label="Суббота, окно 11:10-14:45"><span class="lp-window__time">11:10-14:45</span></button>
                             </div>
                         </div>
                         <div class="lp-windows__col">
                             <p class="lp-windows__day">Вс</p>
-                            <div class="lp-windows__track">
-                                <span class="lp-window lp-window--empty"></span>
-                            </div>
+                            <div class="lp-windows__track" aria-label="Воскресенье без окон"></div>
                         </div>
                     </div>
                 </div>
@@ -309,4 +307,46 @@
 </main>
 
 {% include "components/landing_footer.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  function bindToggle(root, selector) {
+    if (!root) return;
+    root.addEventListener("click", function (event) {
+      var target = event.target.closest(selector);
+      if (!target || !root.contains(target)) return;
+      root.querySelectorAll(selector + ".is-active").forEach(function (el) {
+        if (el !== target) el.classList.remove("is-active");
+      });
+      target.classList.toggle("is-active");
+    });
+  }
+
+  var windows = document.getElementById("lp-windows-demo");
+  bindToggle(windows, ".lp-window");
+  if (windows) {
+    windows.addEventListener("pointerover", function (event) {
+      var col = event.target.closest(".lp-windows__col");
+      if (!col || !windows.contains(col)) return;
+      windows.querySelectorAll(".lp-windows__col.is-hot").forEach(function (el) {
+        if (el !== col) el.classList.remove("is-hot");
+      });
+      col.classList.add("is-hot");
+    });
+    windows.addEventListener("pointerout", function (event) {
+      var col = event.target.closest(".lp-windows__col");
+      if (!col || !windows.contains(col)) return;
+      if (col.contains(event.relatedTarget)) return;
+      col.classList.remove("is-hot");
+    });
+  }
+
+  bindToggle(document.querySelector(".hero__preview"), ".lp-cal-slot");
+  document.querySelectorAll("#calendar-preview .lp-week, #calendar-preview .lp-month").forEach(function (root) {
+    bindToggle(root, ".lp-cal-slot");
+  });
+})();
+</script>
 {% endblock %}
