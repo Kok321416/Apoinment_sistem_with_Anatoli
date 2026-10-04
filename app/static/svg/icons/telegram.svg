@@ -1,3 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-  <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M21.854 3.353a1.25 1.25 0 0 0-1.32-.24L2.78 10.25c-1.06.42-1.02 1.94.07 2.29l4.7 1.5 1.84 5.55c.28.85 1.4 1.05 1.95.34l2.62-3.35 4.55 3.28c.9.65 2.17.18 2.4-.9L22.48 4.6a1.25 1.25 0 0 0-.626-1.247ZM9.92 13.35l-.92 4.62-.02.06-1.35-4.07 9.6-6.55-7.31 5.94Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path
+    d="M20.8 4.4 3.9 11.05c-.85.33-.82 1.55.05 1.83l4.55 1.45 1.7 5.15c.25.76 1.22.92 1.7.28l2.35-3.1 4.15 2.95c.8.57 1.9.16 2.1-.78L21.55 5.45a1 1 0 0 0-.75-1.05Z"
+    stroke="#F4F6FA"
+    stroke-width="1.75"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M9.35 13.55 17.9 7.7"
+    stroke="#F4F6FA"
+    stroke-width="1.75"
+    stroke-linecap="round"
+  />
 </svg>
