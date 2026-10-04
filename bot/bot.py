@@ -243,13 +243,12 @@ def handle_open_mini_app(chat_id):
     """Deep link from site/native app: t.me/bot?start=open → Mini App button."""
     keyboard = {
         "inline_keyboard": [[
-            _web_app_button("Открыть Mini App", _mini_app_url("/tg/")),
-            _web_app_button("Записаться", _mini_app_url("/tg/", mode="client")),
+            _web_app_button("Открыть Mini App", _mini_app_url("/tg/", mode="specialist")),
         ]]
     }
     send_telegram_message(
         chat_id,
-        "Откройте сервис внутри Telegram - так работает Mini App:",
+        "Откройте кабинет специалиста внутри Telegram:",
         keyboard,
     )
 
