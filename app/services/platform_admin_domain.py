@@ -106,11 +106,17 @@ def specialist_admin_card(db: Session, consultant_id: int) -> dict[str, Any] | N
     return {"consultant": consultant, "stats": stats, "public_slug": slug}
 
 
+def _group_count_map(db: Session, column, ids: list[int]) -> dict[int, int]:
+    """COUNT(*) GROUP BY column for a bounded id list (avoids per-row count queries)."""
+    if not ids:
+        return {}
+    rows = db.query(column, func.count()).filter(column.in_(ids)).group_by(column).all()
+    return {int(key): int(cnt or 0) for key, cnt in rows if key is not None}
+
+
 def search_platform_clients(db: Session, q: str, *, limit: int = 50) -> list[dict[str, Any]]:
     """Aggregate platform clients by client_user_id; orphan cards listed separately."""
     q = (q or "").strip()
-    rows: list[dict[str, Any]] = []
-    seen_user_ids: set[int] = set()
 
     user_query = (
         db.query(User)
@@ -129,29 +135,7 @@ def search_platform_clients(db: Session, q: str, *, limit: int = 50) -> list[dic
         if q.isdigit():
             filters.append(User.id == int(q))
         user_query = user_query.filter(or_(*filters))
-    for user in user_query.order_by(User.id.desc()).limit(limit).all():
-        seen_user_ids.add(user.id)
-        cards_count = (
-            db.query(func.count(ClientCard.id))
-            .filter(ClientCard.client_user_id == user.id)
-            .scalar()
-            or 0
-        )
-        bookings_count = (
-            db.query(func.count(Booking.id)).filter(Booking.client_user_id == user.id).scalar() or 0
-        )
-        rows.append(
-            {
-                "key": f"user-{user.id}",
-                "client_user_id": user.id,
-                "name": f"{user.first_name} {user.last_name}".strip() or user.email or user.username,
-                "email": user.email,
-                "phone": None,
-                "cards_count": int(cards_count),
-                "bookings_count": int(bookings_count),
-                "user": user,
-            }
-        )
+    users = user_query.order_by(User.id.desc()).limit(limit).all()
 
     card_query = db.query(ClientCard).options(joinedload(ClientCard.consultant))
     if q:
@@ -165,58 +149,77 @@ def search_platform_clients(db: Session, q: str, *, limit: int = 50) -> list[dic
         if q.isdigit():
             filters.append(ClientCard.id == int(q))
         card_query = card_query.filter(or_(*filters))
-    for card in card_query.order_by(ClientCard.id.desc()).limit(limit * 2).all():
-        if card.client_user_id and card.client_user_id in seen_user_ids:
-            continue
-        if card.client_user_id:
-            user = db.get(User, card.client_user_id)
-            bookings_count = (
-                db.query(func.count(Booking.id))
-                .filter(Booking.client_user_id == card.client_user_id)
-                .scalar()
-                or 0
-            )
-            rows.append(
-                {
-                    "key": f"user-{card.client_user_id}",
-                    "client_user_id": card.client_user_id,
-                    "name": card.name or (user and (user.email or user.username)) or "-",
-                    "email": card.email or (user.email if user else None),
-                    "phone": card.phone,
-                    "cards_count": (
-                        db.query(func.count(ClientCard.id))
-                        .filter(ClientCard.client_user_id == card.client_user_id)
-                        .scalar()
-                        or 1
-                    ),
-                    "bookings_count": int(bookings_count),
-                    "user": user,
-                }
-            )
-            seen_user_ids.add(card.client_user_id)
-        else:
-            bookings_count = (
-                db.query(func.count(Booking.id))
-                .filter(Booking.client_card_id == card.id)
-                .scalar()
-                or 0
-            )
-            rows.append(
-                {
-                    "key": f"card-{card.id}",
-                    "client_user_id": None,
-                    "client_card_id": card.id,
-                    "name": card.name or card.phone or card.email or f"Карточка #{card.id}",
-                    "email": card.email,
-                    "phone": card.phone,
-                    "cards_count": 1,
-                    "bookings_count": int(bookings_count),
-                    "user": None,
-                    "consultant": card.consultant,
-                }
-            )
-        if len(rows) >= limit:
+    cards = card_query.order_by(ClientCard.id.desc()).limit(limit * 2).all()
+
+    seen_user_ids = {u.id for u in users}
+    pending_card_users: list[ClientCard] = []
+    orphan_cards: list[ClientCard] = []
+    for card in cards:
+        if len(users) + len(pending_card_users) + len(orphan_cards) >= limit:
             break
+        if card.client_user_id:
+            if card.client_user_id in seen_user_ids:
+                continue
+            seen_user_ids.add(card.client_user_id)
+            pending_card_users.append(card)
+        else:
+            orphan_cards.append(card)
+
+    all_user_ids = [u.id for u in users] + [c.client_user_id for c in pending_card_users]
+    cards_by_user = _group_count_map(db, ClientCard.client_user_id, all_user_ids)
+    bookings_by_user = _group_count_map(db, Booking.client_user_id, all_user_ids)
+    bookings_by_card = _group_count_map(db, Booking.client_card_id, [c.id for c in orphan_cards])
+
+    missing_uids = [c.client_user_id for c in pending_card_users]
+    users_by_id: dict[int, User] = {}
+    if missing_uids:
+        users_by_id = {
+            u.id: u for u in db.query(User).filter(User.id.in_(missing_uids)).all()
+        }
+
+    rows: list[dict[str, Any]] = []
+    for user in users:
+        rows.append(
+            {
+                "key": f"user-{user.id}",
+                "client_user_id": user.id,
+                "name": f"{user.first_name} {user.last_name}".strip() or user.email or user.username,
+                "email": user.email,
+                "phone": None,
+                "cards_count": cards_by_user.get(user.id, 0),
+                "bookings_count": bookings_by_user.get(user.id, 0),
+                "user": user,
+            }
+        )
+    for card in pending_card_users:
+        user = users_by_id.get(card.client_user_id)
+        rows.append(
+            {
+                "key": f"user-{card.client_user_id}",
+                "client_user_id": card.client_user_id,
+                "name": card.name or (user and (user.email or user.username)) or "-",
+                "email": card.email or (user.email if user else None),
+                "phone": card.phone,
+                "cards_count": cards_by_user.get(card.client_user_id, 0) or 1,
+                "bookings_count": bookings_by_user.get(card.client_user_id, 0),
+                "user": user,
+            }
+        )
+    for card in orphan_cards:
+        rows.append(
+            {
+                "key": f"card-{card.id}",
+                "client_user_id": None,
+                "client_card_id": card.id,
+                "name": card.name or card.phone or card.email or f"Карточка #{card.id}",
+                "email": card.email,
+                "phone": card.phone,
+                "cards_count": 1,
+                "bookings_count": bookings_by_card.get(card.id, 0),
+                "user": None,
+                "consultant": card.consultant,
+            }
+        )
     return rows[:limit]
 
 
@@ -379,18 +382,28 @@ def list_calendars(
             filters.append(Calendar.id == int(q))
         query = query.filter(or_(*filters))
     calendars = query.limit(limit).all()
+    prepared = [(cal, cal.id, cal.consultant, cal.consultant_id) for cal in calendars]
+    bookings_by_cal = _group_count_map(db, Booking.calendar_id, [cal_id for _, cal_id, _, _ in prepared])
+    slug_by_consultant: dict[int, str] = {}
+    for _cal, _cal_id, consultant, consultant_id in prepared:
+        if not consultant:
+            continue
+        # Capture id before ensure_public_slug (it may commit/rollback and expire attrs).
+        cid = int(consultant_id)
+        if cid not in slug_by_consultant:
+            slug_by_consultant[cid] = ensure_public_slug(db, consultant)
     rows = []
-    for cal in calendars:
-        slug = ensure_public_slug(db, cal.consultant) if cal.consultant else f"id-{cal.consultant_id}"
-        bookings_count = (
-            db.query(func.count(Booking.id)).filter(Booking.calendar_id == cal.id).scalar() or 0
-        )
+    for cal, cal_id, consultant, consultant_id in prepared:
+        if consultant:
+            slug = slug_by_consultant[int(consultant_id)]
+        else:
+            slug = f"id-{consultant_id}"
         rows.append(
             {
                 "calendar": cal,
-                "consultant": cal.consultant,
+                "consultant": consultant,
                 "public_slug": slug,
-                "bookings_count": int(bookings_count),
+                "bookings_count": bookings_by_cal.get(cal_id, 0),
             }
         )
     return rows
@@ -532,13 +545,22 @@ async def specialist_admin_card_async(db, consultant_id: int) -> dict[str, Any] 
     return {"consultant": consultant, "stats": stats, "public_slug": slug}
 
 
+async def _group_count_map_async(db, column, ids: list[int]) -> dict[int, int]:
+    from sqlalchemy import func, select
+
+    if not ids:
+        return {}
+    rows = (
+        await db.execute(select(column, func.count()).where(column.in_(ids)).group_by(column))
+    ).all()
+    return {int(key): int(cnt or 0) for key, cnt in rows if key is not None}
+
+
 async def search_platform_clients_async(db, q: str, *, limit: int = 50) -> list[dict[str, Any]]:
-    from sqlalchemy import func, or_, select
+    from sqlalchemy import or_, select
     from sqlalchemy.orm import selectinload
 
     q = (q or "").strip()
-    rows: list[dict[str, Any]] = []
-    seen_user_ids: set[int] = set()
     user_stmt = (
         select(User)
         .join(Booking, Booking.client_user_id == User.id)
@@ -557,26 +579,7 @@ async def search_platform_clients_async(db, q: str, *, limit: int = 50) -> list[
             filters.append(User.id == int(q))
         user_stmt = user_stmt.where(or_(*filters))
     users = list((await db.execute(user_stmt.order_by(User.id.desc()).limit(limit))).scalars().unique().all())
-    for user in users:
-        seen_user_ids.add(user.id)
-        cards_count = (
-            await db.execute(select(func.count(ClientCard.id)).where(ClientCard.client_user_id == user.id))
-        ).scalar() or 0
-        bookings_count = (
-            await db.execute(select(func.count(Booking.id)).where(Booking.client_user_id == user.id))
-        ).scalar() or 0
-        rows.append(
-            {
-                "key": f"user-{user.id}",
-                "client_user_id": user.id,
-                "name": f"{user.first_name} {user.last_name}".strip() or user.email or user.username,
-                "email": user.email,
-                "phone": None,
-                "cards_count": int(cards_count),
-                "bookings_count": int(bookings_count),
-                "user": user,
-            }
-        )
+
     card_stmt = select(ClientCard).options(selectinload(ClientCard.consultant))
     if q:
         like = _like(q)
@@ -589,53 +592,78 @@ async def search_platform_clients_async(db, q: str, *, limit: int = 50) -> list[
         if q.isdigit():
             filters.append(ClientCard.id == int(q))
         card_stmt = card_stmt.where(or_(*filters))
-    cards = list((await db.execute(card_stmt.order_by(ClientCard.id.desc()).limit(limit * 2))).scalars().unique().all())
+    cards = list(
+        (await db.execute(card_stmt.order_by(ClientCard.id.desc()).limit(limit * 2))).scalars().unique().all()
+    )
+
+    seen_user_ids = {u.id for u in users}
+    pending_card_users: list[ClientCard] = []
+    orphan_cards: list[ClientCard] = []
     for card in cards:
-        if card.client_user_id and card.client_user_id in seen_user_ids:
-            continue
-        if card.client_user_id:
-            user = await db.get(User, card.client_user_id)
-            bookings_count = (
-                await db.execute(select(func.count(Booking.id)).where(Booking.client_user_id == card.client_user_id))
-            ).scalar() or 0
-            cards_n = (
-                await db.execute(
-                    select(func.count(ClientCard.id)).where(ClientCard.client_user_id == card.client_user_id)
-                )
-            ).scalar() or 1
-            rows.append(
-                {
-                    "key": f"user-{card.client_user_id}",
-                    "client_user_id": card.client_user_id,
-                    "name": card.name or (user and (user.email or user.username)) or "-",
-                    "email": card.email or (user.email if user else None),
-                    "phone": card.phone,
-                    "cards_count": int(cards_n),
-                    "bookings_count": int(bookings_count),
-                    "user": user,
-                }
-            )
-            seen_user_ids.add(card.client_user_id)
-        else:
-            bookings_count = (
-                await db.execute(select(func.count(Booking.id)).where(Booking.client_card_id == card.id))
-            ).scalar() or 0
-            rows.append(
-                {
-                    "key": f"card-{card.id}",
-                    "client_user_id": None,
-                    "client_card_id": card.id,
-                    "name": card.name or card.phone or card.email or f"Карточка #{card.id}",
-                    "email": card.email,
-                    "phone": card.phone,
-                    "cards_count": 1,
-                    "bookings_count": int(bookings_count),
-                    "user": None,
-                    "consultant": card.consultant,
-                }
-            )
-        if len(rows) >= limit:
+        if len(users) + len(pending_card_users) + len(orphan_cards) >= limit:
             break
+        if card.client_user_id:
+            if card.client_user_id in seen_user_ids:
+                continue
+            seen_user_ids.add(card.client_user_id)
+            pending_card_users.append(card)
+        else:
+            orphan_cards.append(card)
+
+    all_user_ids = [u.id for u in users] + [c.client_user_id for c in pending_card_users]
+    cards_by_user = await _group_count_map_async(db, ClientCard.client_user_id, all_user_ids)
+    bookings_by_user = await _group_count_map_async(db, Booking.client_user_id, all_user_ids)
+    bookings_by_card = await _group_count_map_async(db, Booking.client_card_id, [c.id for c in orphan_cards])
+
+    missing_uids = [c.client_user_id for c in pending_card_users]
+    users_by_id: dict[int, User] = {}
+    if missing_uids:
+        loaded = list((await db.execute(select(User).where(User.id.in_(missing_uids)))).scalars().all())
+        users_by_id = {u.id: u for u in loaded}
+
+    rows: list[dict[str, Any]] = []
+    for user in users:
+        rows.append(
+            {
+                "key": f"user-{user.id}",
+                "client_user_id": user.id,
+                "name": f"{user.first_name} {user.last_name}".strip() or user.email or user.username,
+                "email": user.email,
+                "phone": None,
+                "cards_count": cards_by_user.get(user.id, 0),
+                "bookings_count": bookings_by_user.get(user.id, 0),
+                "user": user,
+            }
+        )
+    for card in pending_card_users:
+        user = users_by_id.get(card.client_user_id)
+        rows.append(
+            {
+                "key": f"user-{card.client_user_id}",
+                "client_user_id": card.client_user_id,
+                "name": card.name or (user and (user.email or user.username)) or "-",
+                "email": card.email or (user.email if user else None),
+                "phone": card.phone,
+                "cards_count": cards_by_user.get(card.client_user_id, 0) or 1,
+                "bookings_count": bookings_by_user.get(card.client_user_id, 0),
+                "user": user,
+            }
+        )
+    for card in orphan_cards:
+        rows.append(
+            {
+                "key": f"card-{card.id}",
+                "client_user_id": None,
+                "client_card_id": card.id,
+                "name": card.name or card.phone or card.email or f"Карточка #{card.id}",
+                "email": card.email,
+                "phone": card.phone,
+                "cards_count": 1,
+                "bookings_count": bookings_by_card.get(card.id, 0),
+                "user": None,
+                "consultant": card.consultant,
+            }
+        )
     return rows[:limit]
 
 
@@ -803,7 +831,7 @@ async def list_calendars_async(
     q: str = "",
     limit: int = 50,
 ) -> list[dict[str, Any]]:
-    from sqlalchemy import func, or_, select
+    from sqlalchemy import or_, select
     from sqlalchemy.orm import selectinload
     from app.services.public_client import ensure_public_slug_async
 
@@ -822,18 +850,30 @@ async def list_calendars_async(
             filters.append(Calendar.id == int(q))
         stmt = stmt.where(or_(*filters))
     calendars = list((await db.execute(stmt.limit(limit))).scalars().unique().all())
+    prepared = [(cal, cal.id, cal.consultant, cal.consultant_id) for cal in calendars]
+    bookings_by_cal = await _group_count_map_async(
+        db, Booking.calendar_id, [cal_id for _, cal_id, _, _ in prepared]
+    )
+    slug_by_consultant: dict[int, str] = {}
+    for _cal, _cal_id, consultant, consultant_id in prepared:
+        if not consultant:
+            continue
+        # Capture id before ensure_public_slug_async (it may commit/rollback and expire attrs).
+        cid = int(consultant_id)
+        if cid not in slug_by_consultant:
+            slug_by_consultant[cid] = await ensure_public_slug_async(db, consultant)
     rows = []
-    for cal in calendars:
-        slug = await ensure_public_slug_async(db, cal.consultant) if cal.consultant else f"id-{cal.consultant_id}"
-        bookings_count = (
-            await db.execute(select(func.count(Booking.id)).where(Booking.calendar_id == cal.id))
-        ).scalar() or 0
+    for cal, cal_id, consultant, consultant_id in prepared:
+        if consultant:
+            slug = slug_by_consultant[int(consultant_id)]
+        else:
+            slug = f"id-{consultant_id}"
         rows.append(
             {
                 "calendar": cal,
-                "consultant": cal.consultant,
+                "consultant": consultant,
                 "public_slug": slug,
-                "bookings_count": int(bookings_count),
+                "bookings_count": bookings_by_cal.get(cal_id, 0),
             }
         )
     return rows

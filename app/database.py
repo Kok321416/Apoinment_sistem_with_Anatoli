@@ -41,8 +41,9 @@ _engine_kwargs: dict = {
     "pool_recycle": 3600,
 }
 if not _is_sqlite:
-    _engine_kwargs["pool_size"] = settings.db_pool_size
-    _engine_kwargs["max_overflow"] = settings.db_max_overflow
+    # Sync engine is for schema/CLI/background — keep smaller than async request pool.
+    _engine_kwargs["pool_size"] = settings.db_sync_pool_size
+    _engine_kwargs["max_overflow"] = settings.db_sync_max_overflow
 
 engine = create_engine(settings.database_url, **_engine_kwargs)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)

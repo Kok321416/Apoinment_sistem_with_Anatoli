@@ -1,13 +1,16 @@
 """Admin A3: specialists, clients, bookings, calendars, security."""
 from datetime import date, datetime, time
 
+import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import app.models  # noqa: F401
+from app.config import Settings
 from app.database import Base
-from app.models import AdminAuditLog, Booking, Calendar, Category, ClientCard, Consultant, Service, User
+from app.models import Booking, Calendar, Category, ClientCard, Consultant, Service, User
 from app.services.admin_audit import write_admin_audit
 from app.services.platform_admin_domain import (
     admin_set_booking_status,
@@ -16,6 +19,7 @@ from app.services.platform_admin_domain import (
     list_failed_logins,
     platform_client_detail,
     search_platform_clients,
+    search_platform_clients_async,
     search_specialists,
     set_calendar_active,
     specialist_admin_card,
@@ -91,6 +95,17 @@ def _seed_consultant(db):
     return c, cal, u, card, b1
 
 
+def test_db_pool_defaults_prefer_smaller_sync_pool(monkeypatch):
+    for key in ("DB_POOL_SIZE", "DB_MAX_OVERFLOW", "DB_SYNC_POOL_SIZE", "DB_SYNC_MAX_OVERFLOW"):
+        monkeypatch.delenv(key, raising=False)
+    s = Settings()
+    assert s.db_pool_size == 5
+    assert s.db_max_overflow == 10
+    assert s.db_sync_pool_size == 2
+    assert s.db_sync_max_overflow == 3
+    assert s.db_sync_pool_size + s.db_sync_max_overflow < s.db_pool_size + s.db_max_overflow
+
+
 def test_specialist_stats_and_search():
     db = _session()
     c, _cal, _u, _card, _b1 = _seed_consultant(db)
@@ -108,11 +123,40 @@ def test_platform_clients_search_and_detail():
     db = _session()
     _c, _cal, u, card, _b1 = _seed_consultant(db)
     rows = search_platform_clients(db, "client@")
-    assert any(r.get("client_user_id") == u.id for r in rows)
+    hit = next(r for r in rows if r.get("client_user_id") == u.id)
+    assert hit["cards_count"] == 1
+    assert hit["bookings_count"] == 2
     detail = platform_client_detail(db, user_id=u.id)
     assert detail and len(detail["bookings"]) >= 1
     detail_card = platform_client_detail(db, card_id=card.id)
     assert detail_card and detail_card["card"].id == card.id
+    db.close()
+
+
+def test_platform_clients_orphan_card_batched_counts():
+    db = _session()
+    c, cal, _u, _card, _b1 = _seed_consultant(db)
+    orphan = ClientCard(consultant_id=c.id, name="Orphan Guest", phone="+7222", email="orphan@t.c")
+    db.add(orphan)
+    db.flush()
+    svc = db.query(Service).filter(Service.calendar_id == cal.id).first()
+    db.add(
+        Booking(
+            service_id=svc.id,
+            calendar_id=cal.id,
+            client_card_id=orphan.id,
+            client_name="Orphan Guest",
+            client_phone="+7222",
+            booking_date=date.today(),
+            booking_time=time(15, 0),
+            status="pending",
+        )
+    )
+    db.commit()
+    rows = search_platform_clients(db, "Orphan")
+    hit = next(r for r in rows if r.get("client_card_id") == orphan.id)
+    assert hit["cards_count"] == 1
+    assert hit["bookings_count"] == 1
     db.close()
 
 
@@ -127,11 +171,94 @@ def test_booking_status_change():
     db.close()
 
 
+@pytest.mark.asyncio
+async def test_platform_clients_async_batched_counts():
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    Session = async_sessionmaker(bind=engine, expire_on_commit=False)
+    async with Session() as db:
+        cat = Category(name_category="Общая")
+        db.add(cat)
+        await db.flush()
+        cons = Consultant(
+            first_name="Ann",
+            last_name="Spec",
+            email="spec@t.c",
+            phone="+7999",
+            category_of_specialist_id=cat.id,
+        )
+        db.add(cons)
+        await db.flush()
+        calendar = Calendar(consultant_id=cons.id, name="Main", color="#7d5cff", is_active=True)
+        db.add(calendar)
+        await db.flush()
+        svc = Service(
+            consultant_id=cons.id,
+            calendar_id=calendar.id,
+            name="Услуга",
+            duration_minutes=60,
+            price=100,
+        )
+        db.add(svc)
+        await db.flush()
+        user = User(username="client@t.c", password="x", email="client@t.c", date_joined=datetime.now())
+        db.add(user)
+        await db.flush()
+        card = ClientCard(
+            consultant_id=cons.id,
+            name="Client One",
+            phone="+7111",
+            email="c@t.c",
+            client_user_id=user.id,
+        )
+        db.add(card)
+        await db.flush()
+        db.add_all(
+            [
+                Booking(
+                    service_id=svc.id,
+                    calendar_id=calendar.id,
+                    client_card_id=card.id,
+                    client_user_id=user.id,
+                    client_name="Client One",
+                    client_phone="+7111",
+                    booking_date=date.today(),
+                    booking_time=time(10, 0),
+                    status="pending",
+                ),
+                Booking(
+                    service_id=svc.id,
+                    calendar_id=calendar.id,
+                    client_card_id=card.id,
+                    client_user_id=user.id,
+                    client_name="Client One",
+                    client_phone="+7111",
+                    booking_date=date.today(),
+                    booking_time=time(12, 0),
+                    status="cancelled",
+                ),
+            ]
+        )
+        await db.commit()
+
+        client_rows = await search_platform_clients_async(db, "client@")
+        hit = next(r for r in client_rows if r.get("client_user_id") == user.id)
+        assert hit["cards_count"] == 1
+        assert hit["bookings_count"] == 2
+    await engine.dispose()
+
+
 def test_calendar_disable_and_security_logins():
     db = _session()
     c, cal, _u, _card, _b1 = _seed_consultant(db)
     rows = list_calendars(db, consultant_id=c.id)
-    assert any(r["calendar"].id == cal.id for r in rows)
+    hit = next(r for r in rows if r["calendar"].id == cal.id)
+    assert hit["bookings_count"] == 2
     updated = set_calendar_active(db, cal.id, is_active=False)
     assert updated and updated.is_active is False
     write_admin_audit(
