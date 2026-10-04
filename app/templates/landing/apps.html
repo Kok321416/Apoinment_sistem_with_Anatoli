@@ -20,24 +20,20 @@
         </div>
 
         <div class="apps-grid">
-            <article class="apps-card card card--static" id="android">
+            <article class="apps-card card card--static" id="site">
                 <p class="text-eyebrow"><span class="badge badge--secondary">{{ apps_page.android.eyebrow }}</span></p>
                 <h2 class="text-h2">{{ apps_page.android.title }}</h2>
                 <p class="text-body text-muted">{{ apps_page.android.body }}</p>
-                {% if apps_page.android.cta_disabled %}
-                <span class="btn btn--secondary apps-card__cta is-disabled" aria-disabled="true">{{ apps_page.android.cta_label }}</span>
-                {% else %}
                 <a href="{{ apps_page.android.cta_href }}" class="btn btn--primary focus-ring apps-card__cta">{{ apps_page.android.cta_label }}</a>
-                {% endif %}
                 <p class="text-caption text-muted mt-lg">{{ apps_page.android.note }}</p>
             </article>
 
-            <article class="apps-card card card--static" id="iphone">
+            <article class="apps-card card card--static" id="mini-app">
                 <p class="text-eyebrow"><span class="badge badge--secondary">{{ apps_page.iphone.eyebrow }}</span></p>
                 <h2 class="text-h2">{{ apps_page.iphone.title }}</h2>
                 <p class="text-body text-muted">{{ apps_page.iphone.body }}</p>
 
-                <div class="apps-pwa" id="iphone-pwa">
+                <div class="apps-pwa">
                     <h3 class="text-h3">{{ apps_page.iphone.pwa.title }}</h3>
                     <p class="text-body-sm text-muted">{{ apps_page.iphone.pwa.intro }}</p>
                     <ol class="apps-steps">
@@ -45,12 +41,12 @@
                         <li>{{ step }}</li>
                         {% endfor %}
                     </ol>
-                    <a href="{{ apps_page.iphone.pwa.cta_href }}" class="btn btn--primary focus-ring apps-card__cta">{{ apps_page.iphone.pwa.cta_label }}</a>
+                    <a href="{{ telegram_mini_app_launch_url }}" class="btn btn--primary focus-ring apps-card__cta" target="_blank" rel="noopener" data-tg-internal="/tg/">{{ apps_page.iphone.pwa.cta_label }}</a>
                 </div>
             </article>
         </div>
 
-        <div class="apps-grid apps-grid--half" id="iphone-steps">
+        <div class="apps-grid apps-grid--half">
             <section class="apps-shared card card--static" aria-labelledby="apps-shared-title">
                 <h2 class="text-h2" id="apps-shared-title">{{ apps_page.shared.title }}</h2>
                 <ul class="apps-shared__list">
@@ -63,7 +59,7 @@
                 </div>
             </section>
 
-            <article class="apps-option card card--static" id="mini-app">
+            <article class="apps-option card card--static">
                 <h2 class="text-h2">{{ apps_page.mini_app.title }}</h2>
                 <ol class="apps-steps">
                     {% for step in apps_page.mini_app.steps %}

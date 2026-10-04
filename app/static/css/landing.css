@@ -108,6 +108,197 @@
     margin: 0;
 }
 
+/* Landing calendar mocks — colors match specialist bookings calendar */
+.lp-cal-card {
+    padding: var(--space-xl);
+    border-radius: var(--radius-md);
+    background: var(--surface-100);
+    border: 1px solid var(--border-subtle);
+}
+
+.lp-cal-card__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.lp-cal-slots {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.lp-cal-slot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-xs);
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-on-accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lp-cal-slot--sm {
+    justify-content: flex-start;
+    font-size: 11px;
+    padding: 3px var(--space-xs);
+}
+
+.lp-cal-slot--xs {
+    display: block;
+    font-size: 10px;
+    padding: 2px 4px;
+    margin-top: 2px;
+}
+
+.lp-cal-slot--confirmed { background: var(--accent-success); }
+.lp-cal-slot--pending { background: var(--accent-warning); }
+.lp-cal-slot--event { background: #5b6abf; color: #fff; }
+.lp-cal-slot--completed { background: var(--text-muted); }
+.lp-cal-slot--cancelled { background: var(--accent-danger); }
+
+.lp-cal-slot__time { opacity: 0.95; }
+.lp-cal-slot__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lp-cal-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+    font-size: var(--font-size-caption);
+    color: var(--text-muted);
+}
+
+.lp-cal-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.lp-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+}
+
+.lp-dot--confirmed { background: var(--accent-success); }
+.lp-dot--pending { background: var(--accent-warning); }
+.lp-dot--event { background: #5b6abf; }
+
+.lp-cal-views {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: var(--space-2xl);
+    align-items: start;
+}
+
+.lp-week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--space-xs);
+}
+
+.lp-week__day {
+    min-height: 7.5rem;
+    padding: var(--space-xs);
+    border-radius: var(--radius-sm);
+    background: var(--surface-200);
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.lp-week__label {
+    font-size: var(--font-size-caption);
+    color: var(--text-muted);
+    margin: 0 0 var(--space-xs);
+    font-weight: var(--font-weight-medium);
+}
+
+.lp-week__empty {
+    margin: auto 0;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.lp-month__head,
+.lp-month__grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+}
+
+.lp-month__head {
+    margin-bottom: var(--space-xs);
+}
+
+.lp-month__head span {
+    text-align: center;
+    font-size: var(--font-size-caption);
+    color: var(--text-muted);
+}
+
+.lp-month__cell {
+    min-height: 3.4rem;
+    padding: 4px;
+    border-radius: var(--radius-xs);
+    background: var(--surface-200);
+    border: 1px solid var(--border-subtle);
+}
+
+.lp-month__cell > span {
+    display: block;
+    font-size: 11px;
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+}
+
+.lp-month__cell--muted > span { color: var(--text-muted); }
+.lp-month__cell--today {
+    border-color: var(--accent-primary);
+    box-shadow: inset 0 0 0 1px var(--accent-primary);
+}
+
+.lp-month__dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 4px;
+}
+
+.lp-month__bars {
+    margin-top: 2px;
+}
+
+@media (max-width: 1024px) {
+    .lp-cal-views {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .lp-week {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .lp-week__day:nth-child(n + 5) {
+        display: none;
+    }
+}
+
 .stats-grid,
 .features-grid {
     display: grid;

@@ -25,18 +25,130 @@
                 </div>
             </div>
             <div class="hero__preview animate-fade-in-up animate-delay-3" aria-hidden="true">
-                <div class="preview-card">
-                    <p class="text-caption">Сегодня</p>
-                    <p class="text-h3">+3 новые записи</p>
+                <div class="lp-cal-card">
+                    <div class="lp-cal-card__head">
+                        <p class="text-caption">Сегодня</p>
+                        <p class="text-body-sm text-muted">3 записи</p>
+                    </div>
+                    <div class="lp-cal-slots">
+                        <div class="lp-cal-slot lp-cal-slot--confirmed">
+                            <span class="lp-cal-slot__time">12:00–13:00</span>
+                            <span class="lp-cal-slot__name">Алёна</span>
+                        </div>
+                        <div class="lp-cal-slot lp-cal-slot--pending">
+                            <span class="lp-cal-slot__time">13:30–14:30</span>
+                            <span class="lp-cal-slot__name">Diana</span>
+                        </div>
+                        <div class="lp-cal-slot lp-cal-slot--event">
+                            <span class="lp-cal-slot__time">16:00–17:00</span>
+                            <span class="lp-cal-slot__name">Мероприятие: СПТ</span>
+                        </div>
+                    </div>
+                    <div class="lp-cal-legend">
+                        <span><i class="lp-dot lp-dot--confirmed"></i>Подтверждена</span>
+                        <span><i class="lp-dot lp-dot--pending"></i>Ожидает</span>
+                        <span><i class="lp-dot lp-dot--event"></i>Мероприятие</span>
+                    </div>
                 </div>
-                <div class="preview-card">
-                    <p class="text-caption">Ближайшая запись</p>
-                    <p class="text-h3">14:30 · Консультация</p>
-                </div>
-                <div class="preview-card">
-                    <p class="text-caption">Календарь</p>
-                    <p class="text-body-sm text-muted">15:00 · 16:00 · 17:30</p>
-                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-sm" id="calendar-preview">
+        <div class="container stack-lg">
+            <div class="text-center">
+                <h2 class="text-display">Календарь записей</h2>
+                <p class="text-body-lg text-muted max-w-lead mx-auto">Так выглядит расписание в кабинете — неделя и месяц с цветами статусов.</p>
+            </div>
+            <div class="lp-cal-views">
+                <article class="lp-cal-card">
+                    <div class="lp-cal-card__head">
+                        <p class="text-h3">Неделя</p>
+                        <p class="text-caption text-muted">28 сен — 4 окт</p>
+                    </div>
+                    <div class="lp-week" aria-hidden="true">
+                        <div class="lp-week__day">
+                            <p class="lp-week__label">Пн</p>
+                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">12:00 Алёна</div>
+                            <div class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--sm">13:30 Diana</div>
+                        </div>
+                        <div class="lp-week__day">
+                            <p class="lp-week__label">Вт</p>
+                            <p class="lp-week__empty">Нет записей</p>
+                        </div>
+                        <div class="lp-week__day">
+                            <p class="lp-week__label">Ср</p>
+                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">09:00 Артем</div>
+                            <div class="lp-cal-slot lp-cal-slot--event lp-cal-slot--sm">11:00 СПТ</div>
+                            <div class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--sm">14:30 Наталья</div>
+                        </div>
+                        <div class="lp-week__day">
+                            <p class="lp-week__label">Чт</p>
+                            <div class="lp-cal-slot lp-cal-slot--event lp-cal-slot--sm">11:10 СПТ</div>
+                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">13:00 Наталья</div>
+                        </div>
+                        <div class="lp-week__day">
+                            <p class="lp-week__label">Пт</p>
+                            <div class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--sm">14:15 Анастасия</div>
+                        </div>
+                        <div class="lp-week__day">
+                            <p class="lp-week__label">Сб</p>
+                            <p class="lp-week__empty">Нет записей</p>
+                        </div>
+                        <div class="lp-week__day">
+                            <p class="lp-week__label">Вс</p>
+                            <p class="lp-week__empty">Нет записей</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="lp-cal-card">
+                    <div class="lp-cal-card__head">
+                        <p class="text-h3">Месяц</p>
+                        <p class="text-caption text-muted">Октябрь 2026</p>
+                    </div>
+                    <div class="lp-month" aria-hidden="true">
+                        <div class="lp-month__head">
+                            <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+                        </div>
+                        <div class="lp-month__grid">
+                            <div class="lp-month__cell lp-month__cell--muted"><span>28</span></div>
+                            <div class="lp-month__cell lp-month__cell--muted"><span>29</span></div>
+                            <div class="lp-month__cell lp-month__cell--muted"><span>30</span></div>
+                            <div class="lp-month__cell"><span>1</span><div class="lp-month__dots"><i class="lp-dot lp-dot--event"></i><i class="lp-dot lp-dot--confirmed"></i></div></div>
+                            <div class="lp-month__cell"><span>2</span><div class="lp-month__dots"><i class="lp-dot lp-dot--confirmed"></i></div></div>
+                            <div class="lp-month__cell"><span>3</span></div>
+                            <div class="lp-month__cell"><span>4</span></div>
+                            <div class="lp-month__cell lp-month__cell--today"><span>5</span><div class="lp-month__dots"><i class="lp-dot lp-dot--confirmed"></i><i class="lp-dot lp-dot--pending"></i><i class="lp-dot lp-dot--event"></i></div></div>
+                            <div class="lp-month__cell"><span>6</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">09:00</span></div></div>
+                            <div class="lp-month__cell"><span>7</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--pending lp-cal-slot--xs">13:30</span></div></div>
+                            <div class="lp-month__cell"><span>8</span></div>
+                            <div class="lp-month__cell"><span>9</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--event lp-cal-slot--xs">СПТ</span></div></div>
+                            <div class="lp-month__cell"><span>10</span></div>
+                            <div class="lp-month__cell"><span>11</span></div>
+                            <div class="lp-month__cell"><span>12</span><div class="lp-month__dots"><i class="lp-dot lp-dot--confirmed"></i></div></div>
+                            <div class="lp-month__cell"><span>13</span></div>
+                            <div class="lp-month__cell"><span>14</span><div class="lp-month__dots"><i class="lp-dot lp-dot--pending"></i></div></div>
+                            <div class="lp-month__cell"><span>15</span></div>
+                            <div class="lp-month__cell"><span>16</span></div>
+                            <div class="lp-month__cell"><span>17</span></div>
+                            <div class="lp-month__cell"><span>18</span></div>
+                            <div class="lp-month__cell"><span>19</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">11:00</span></div></div>
+                            <div class="lp-month__cell"><span>20</span></div>
+                            <div class="lp-month__cell"><span>21</span><div class="lp-month__dots"><i class="lp-dot lp-dot--event"></i></div></div>
+                            <div class="lp-month__cell"><span>22</span></div>
+                            <div class="lp-month__cell"><span>23</span></div>
+                            <div class="lp-month__cell"><span>24</span></div>
+                            <div class="lp-month__cell"><span>25</span></div>
+                            <div class="lp-month__cell"><span>26</span><div class="lp-month__bars"><span class="lp-cal-slot lp-cal-slot--confirmed lp-cal-slot--xs">09:00</span></div></div>
+                            <div class="lp-month__cell"><span>27</span></div>
+                            <div class="lp-month__cell"><span>28</span></div>
+                            <div class="lp-month__cell"><span>29</span></div>
+                            <div class="lp-month__cell"><span>30</span></div>
+                            <div class="lp-month__cell"><span>31</span></div>
+                        </div>
+                    </div>
+                </article>
             </div>
         </div>
     </section>
@@ -74,52 +186,11 @@
         </div>
     </section>
 
-    <section class="section" id="how">
-        <div class="container stack-lg">
-            <div class="text-center">
-                <h2 class="text-display">Как это работает</h2>
-                <p class="text-body-lg text-muted max-w-lead mx-auto">От регистрации до телефона: сайт, Telegram и приложение на Android / iPhone.</p>
-            </div>
-            <div class="timeline">
-                {% for item in how_it_works %}
-                <article class="card card--static">
-                    <div class="timeline__step-num">{{ item.step }}</div>
-                    <h3 class="text-h3">{{ item.title }}</h3>
-                    <p class="text-body-sm text-muted">{{ item.description }}</p>
-                    {% if item.link_href %}
-                    <a href="{{ item.link_href }}" class="link-accent text-body-sm">{{ item.link_label }}</a>
-                    {% endif %}
-                </article>
-                {% endfor %}
-            </div>
-        </div>
-    </section>
-
-    <section class="section" id="apps">
-        <div class="container">
-            <div class="cta-panel card card--static">
-                <h2 class="text-h1">{{ apps_teaser.title }}</h2>
-                <p class="text-body-lg text-muted mt-lg">{{ apps_teaser.subtitle }}</p>
-                <a href="{{ apps_teaser.cta_href }}" class="btn btn--primary focus-ring mt-3xl">{{ apps_teaser.cta_label }}</a>
-            </div>
-        </div>
-    </section>
-
-    <section class="section-sm" id="cta">
-        <div class="container">
-            <div class="cta-panel card card--static">
-                <h2 class="text-h1">{{ cta_block.title }}</h2>
-                <p class="text-body-lg text-muted mt-lg">{{ cta_block.subtitle }}</p>
-                <a href="{{ cta_block.button_href }}" class="btn btn--primary focus-ring mt-3xl">{{ cta_block.button_label }}</a>
-            </div>
-        </div>
-    </section>
-
     <section class="section" id="faq">
         <div class="container stack-lg">
             <div class="text-center">
                 <h2 class="text-display">Частые вопросы</h2>
-                <p class="text-body-lg text-muted max-w-lead mx-auto">В том числе про приложение на Android и iPhone. Полная инструкция: <a class="link-accent" href="/apps/">Приложение</a>.</p>
+                <p class="text-body-lg text-muted max-w-lead mx-auto">Про сайт и Telegram Mini App. Подробнее: <a class="link-accent" href="/apps/">Telegram и сайт</a>.</p>
             </div>
             <div class="accordion" role="list">
                 {% for item in faq_items %}
@@ -135,4 +206,3 @@
 
 {% include "components/landing_footer.html" %}
 {% endblock %}
-
