@@ -168,13 +168,10 @@ async def cmd_start(message: Message, command: CommandObject | None = None) -> N
     if arg in ("open", "miniapp", "app", "tg"):
         kb = InlineKeyboardMarkup(
             inline_keyboard=[
-                [
-                    web_app_button("Открыть Mini App", mini_app_url("/tg/")),
-                    web_app_button("Записаться", mini_app_url("/tg/", mode="client")),
-                ]
+                [web_app_button("Открыть Mini App", mini_app_url("/tg/", mode="specialist"))]
             ]
         )
-        await message.answer("Откройте сервис внутри Telegram - так работает Mini App:", reply_markup=kb)
+        await message.answer("Откройте кабинет специалиста внутри Telegram:", reply_markup=kb)
         return
 
     await start_for_user(message)
@@ -221,7 +218,6 @@ async def cmd_help(message: Message) -> None:
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [web_app_button("Открыть Mini App", mini_app_url("/tg/"))],
-            [web_app_button("Записаться", mini_app_url("/tg/", mode="client"))],
         ]
     )
     await message.answer(HELP_TEXT.format(site_url=site_url()), reply_markup=kb)
