@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from fastapi import Request
 from sqlalchemy.orm import Session
@@ -6,6 +7,45 @@ from sqlalchemy.orm import Session
 from app.auth.passwords import has_usable_password
 from app.models.auth import User
 
+# OAuth / connect flash keys cleared on logout (exact names + prefixes).
+_OAUTH_SESSION_KEYS = (
+    "google_calendar_oauth_state",
+    "yandex_oauth_state",
+    "yandex_oauth_process",
+    "yandex_oauth_next",
+    "yandex_connect_user_id",
+    "vk_oauth_state",
+    "vk_oauth_process",
+    "vk_oauth_next",
+    "vk_connect_user_id",
+    "vk_code_verifier",
+    "vk_link_booking_token",
+    "vk_allow_messages_hint",
+    "integrations_success",
+    "integrations_error",
+)
+_OAUTH_SESSION_PREFIXES = (
+    "yandex_oauth_",
+    "vk_oauth_",
+    "google_calendar_oauth",
+)
+
+
+def _utc_now_naive() -> datetime:
+    """UTC timestamp stored naive for MySQL DATETIME columns."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def clear_oauth_state(request: Request) -> None:
+    """Drop OAuth handshake / connect flash keys from the session."""
+    if "session" not in request.scope:
+        return
+    session = request.session
+    for key in _OAUTH_SESSION_KEYS:
+        session.pop(key, None)
+    for key in list(session.keys()):
+        if any(str(key).startswith(prefix) for prefix in _OAUTH_SESSION_PREFIXES):
+            session.pop(key, None)
 
 @dataclass
 class AuthUser:
@@ -71,11 +111,9 @@ def login_user(request: Request, user: User, db: Session | None = None) -> None:
             )
     clear_request_user_cache(request)
     if db is not None:
-        from datetime import datetime
-
         from app.services.platform_activity import record_user_activity
 
-        user.last_login = datetime.utcnow()
+        user.last_login = _utc_now_naive()
         record_user_activity(db, user.id, source="login")
         db.commit()
 
@@ -98,11 +136,9 @@ async def login_user_async(request: Request, user: User, db=None) -> None:
             request.session["has_consultant"] = has_c is not None
     clear_request_user_cache(request)
     if db is not None:
-        from datetime import datetime
-
         from app.services.platform_activity import record_user_activity_async
 
-        user.last_login = datetime.utcnow()
+        user.last_login = _utc_now_naive()
         await record_user_activity_async(db, user.id, source="login")
         await db.commit()
 
@@ -148,22 +184,9 @@ def logout_user(request: Request) -> None:
     request.session.pop("header_account_display", None)
     request.session.pop("register_fio", None)
     request.session.pop("register_phone", None)
-    request.session.pop("google_calendar_oauth_state", None)
-    request.session.pop("yandex_oauth_state", None)
-    request.session.pop("yandex_oauth_process", None)
-    request.session.pop("yandex_oauth_next", None)
-    request.session.pop("yandex_connect_user_id", None)
-    request.session.pop("vk_oauth_state", None)
-    request.session.pop("vk_oauth_process", None)
-    request.session.pop("vk_oauth_next", None)
-    request.session.pop("vk_connect_user_id", None)
-    request.session.pop("vk_code_verifier", None)
-    request.session.pop("vk_link_booking_token", None)
-    request.session.pop("vk_allow_messages_hint", None)
-    request.session.pop("integrations_success", None)
-    request.session.pop("integrations_error", None)
     request.session.pop("pending_2fa_user_id", None)
     request.session.pop("pending_2fa_next", None)
+    clear_oauth_state(request)
     clear_request_user_cache(request)
 
 

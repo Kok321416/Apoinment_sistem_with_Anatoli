@@ -1,4 +1,12 @@
-"""Unified login completion with optional 2FA challenge."""
+"""Unified login completion with optional 2FA challenge.
+
+Cabinet / Mini App login uses specialist TOTP only (UserTwoFactor).
+Admin TOTP (AdminTwoFactor) is parked with platform-admin; a separate
+/login/2fa/admin/ path can return later without OR-mixing factors.
+
+Public client booking (/book/...) is a different auth world: specialist
+public link, not this cabinet login flow.
+"""
 from __future__ import annotations
 
 from urllib.parse import urlencode
@@ -9,7 +17,6 @@ from sqlalchemy.orm import Session
 
 from app.auth.session import login_user, login_user_async
 from app.models import User
-from app.services.admin_totp import needs_admin_2fa, needs_admin_2fa_async, verify_admin_2fa_login, verify_admin_2fa_login_async
 from app.services.specialist_totp import (
     needs_specialist_2fa,
     needs_specialist_2fa_async,
@@ -20,38 +27,26 @@ from app.utils.safe_redirect import safe_next_url
 
 
 def needs_login_2fa(db: Session, user: User) -> bool:
-    return needs_admin_2fa(db, user) or needs_specialist_2fa(db, user)
+    """Cabinet login challenge: specialist 2FA only (site + Mini App)."""
+    return needs_specialist_2fa(db, user)
 
 
 async def needs_login_2fa_async(db, user: User) -> bool:
-    return (await needs_admin_2fa_async(db, user)) or (await needs_specialist_2fa_async(db, user))
+    """Async twin — same specialist-only rule for Mini App webapp-auth."""
+    return await needs_specialist_2fa_async(db, user)
 
 
 def verify_login_2fa(db: Session, user: User, code: str) -> bool:
-    """Accept code against whichever 2FA factors are enabled for this user."""
-    admin_on = needs_admin_2fa(db, user)
-    spec_on = needs_specialist_2fa(db, user)
-    if not admin_on and not spec_on:
+    """Verify specialist TOTP for cabinet / Mini App login."""
+    if not needs_specialist_2fa(db, user):
         return True
-    ok = False
-    if admin_on:
-        ok = ok or verify_admin_2fa_login(db, user.id, code)
-    if spec_on:
-        ok = ok or verify_specialist_2fa_login(db, user.id, code)
-    return ok
+    return verify_specialist_2fa_login(db, user.id, code)
 
 
 async def verify_login_2fa_async(db, user: User, code: str) -> bool:
-    admin_on = await needs_admin_2fa_async(db, user)
-    spec_on = await needs_specialist_2fa_async(db, user)
-    if not admin_on and not spec_on:
+    if not await needs_specialist_2fa_async(db, user):
         return True
-    ok = False
-    if admin_on:
-        ok = ok or await verify_admin_2fa_login_async(db, user.id, code)
-    if spec_on:
-        ok = ok or await verify_specialist_2fa_login_async(db, user.id, code)
-    return ok
+    return await verify_specialist_2fa_login_async(db, user.id, code)
 
 
 def start_2fa_challenge(request: Request, user: User, next_url: str | None) -> RedirectResponse:
@@ -131,6 +126,7 @@ async def finish_login_json_async(
     skip_2fa: bool = False,
     extra: dict | None = None,
 ) -> dict:
+    """Mini App / API twin of finish_login_json (specialist 2FA only)."""
     safe = safe_next_url(next_url)
     payload = dict(extra or {})
     if not skip_2fa and await needs_login_2fa_async(db, user):
