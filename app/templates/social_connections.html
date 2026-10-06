@@ -25,6 +25,7 @@
             {% if has_telegram %}
             <span class="badge badge--success mt-sm">Привязан</span>
             <form method="POST" action="/accounts/social/connections/" class="mt-lg" onsubmit="return confirm('Отвязать Телеграм?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="disconnect_telegram">
                 <button type="submit" class="btn btn--ghost btn--sm">Отвязать</button>
             </form>
@@ -71,6 +72,7 @@
             {% if email_verified %}
             <span class="badge badge--success mt-sm">Привязана</span>
             <form method="POST" action="/accounts/social/connections/" class="mt-lg" onsubmit="return confirm('Отвязать почту?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="disconnect_email">
                 <button type="submit" class="btn btn--ghost btn--sm">Отвязать</button>
             </form>

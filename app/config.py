@@ -131,6 +131,9 @@ class Settings:
         os.getenv("SESSION_SAME_SITE")
         or ("none" if (os.getenv("SITE_URL") or "").strip().lower().startswith("https://") else "lax")
     ).strip().lower()
+    # Phase 3 HTML CSRF middleware: off | log (dry-run, default) | enforce.
+    # Flip to enforce only after reviewing csrf_html_* logs and form audit is clean.
+    csrf_html_mode: str = (os.getenv("CSRF_HTML_MODE", "log") or "log").strip().lower()
 
     @property
     def database_url(self) -> str:

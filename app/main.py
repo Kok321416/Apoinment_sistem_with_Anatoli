@@ -21,6 +21,7 @@ from app.routers import (
     specialist_booking,
     telegram_webhook,
 )
+from app.security.csrf import HtmlCsrfMiddleware
 from app.security.hardening import AbuseProtectionMiddleware
 
 settings = get_settings()
@@ -46,6 +47,8 @@ _session_same_site = settings.session_same_site if settings.session_same_site in
 _https_only = settings.site_url.startswith("https://") or _session_same_site == "none"
 
 # add_middleware: last added = outermost on the request path.
+# Order must be Abuse → Session → HtmlCsrf → routes so CSRF sees the session.
+app.add_middleware(HtmlCsrfMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.secret_key,

@@ -17,6 +17,7 @@
     {% if success %}<div class="alert alert--success mb-lg" role="status">{{ success }}</div>{% endif %}
 
     <form method="POST" action="/s/{{ consultant.public_slug }}/verify-email/?next={{ next_url|urlencode }}" class="stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="form-field">
             <label class="form-field__label" for="email">Почта</label>
             <input class="input" id="email" name="email" type="email" value="{{ email or '' }}" required>
@@ -28,6 +29,7 @@
         <button type="submit" class="btn btn--primary btn--block">Подтвердить</button>
     </form>
     <form method="POST" action="/s/{{ consultant.public_slug }}/verify-email/?next={{ next_url|urlencode }}" class="mt-lg">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="action" value="resend">
         <input type="hidden" name="email" value="{{ email or '' }}">
         <button type="submit" class="btn btn--ghost btn--block">Отправить код ещё раз</button>
