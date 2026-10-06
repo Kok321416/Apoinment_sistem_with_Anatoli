@@ -1,4 +1,11 @@
-"""Public specialist pages: share link → client gate → services → schedule → book."""
+"""Public specialist pages: share link → client gate → services → schedule → book.
+
+Auth note (#9): public /s/{slug}/ booking is NOT cabinet login.
+Guests may browse a specialist profile and complete booking via the client gate /
+welcome flow (session gate or optional logged-in User). Cabinet Depends
+(require_user_*) apply only to specialist/client cabinet routes, not these
+public share links.
+"""
 from datetime import date, datetime
 from urllib.parse import quote, urlencode
 import json

@@ -1001,10 +1001,11 @@ async def logout_page(request: Request):
 
 
 @router.get("/manage/")
-async def manage_hub_page(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
+async def manage_hub_page(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     consultant = await require_specialist_mode_async(request, db, user)
     from app.services.calendars_hub import build_calendars_payload_async
     from app.services.public_client import ensure_public_slug_async, specialist_public_url
@@ -1532,11 +1533,14 @@ async def available_slots(
 
 @router.get("/statistics/")
 @router.post("/statistics/")
-async def specialist_statistics(request: Request, db: AsyncSession = Depends(get_async_db)):
+async def specialist_statistics(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     from zoneinfo import ZoneInfo
     from urllib.parse import urlencode
 
-    from app.auth.session import get_current_user_async
     from app.deps import require_specialist_mode_async
     from app.services.statistics_hub import (
         build_statistics_payload,
@@ -1546,9 +1550,6 @@ async def specialist_statistics(request: Request, db: AsyncSession = Depends(get
         status_filter_query,
     )
 
-    user = await get_current_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
     consultant = await require_specialist_mode_async(request, db, user)
 
     tz = ZoneInfo(get_settings().timezone or "Asia/Irkutsk")
@@ -1703,16 +1704,16 @@ async def specialist_statistics_export_xlsx(
 
 @router.get("/booking/")
 @router.post("/booking/")
-async def specialist_bookings(request: Request, db: AsyncSession = Depends(get_async_db)):
-    from app.auth.session import get_current_user_async
+async def specialist_bookings(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     from app.deps import require_specialist_mode_async
     from app.services.bookings import mark_past_bookings_completed_async
     from app.services.bookings_hub import build_bookings_payload_async
     from sqlalchemy.orm import selectinload
 
-    user = await get_current_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
     consultant = await require_specialist_mode_async(request, db, user)
     calendars = list(
         (await db.execute(select(Calendar).where(Calendar.consultant_id == consultant.id))).scalars().all()
@@ -1972,12 +1973,13 @@ async def calendar_events(request: Request, db: AsyncSession = Depends(get_async
 
 @router.get("/profile/")
 @router.post("/profile/")
-async def profile_page(request: Request, db: AsyncSession = Depends(get_async_db)):
+async def profile_page(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     from sqlalchemy.orm import selectinload
 
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
     consultant = await require_specialist_mode_async(request, db, user)
     # Reload with category for specialization() without lazy IO
     consultant = (
@@ -2206,10 +2208,11 @@ async def profile_page(request: Request, db: AsyncSession = Depends(get_async_db
 
 @router.get("/clients/")
 @router.post("/clients/")
-async def client_cards_list(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
+async def client_cards_list(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     consultant = await require_specialist_mode_async(request, db, user)
     success = error = None
     if request.method == "POST":

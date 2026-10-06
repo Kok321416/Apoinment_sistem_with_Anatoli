@@ -11,10 +11,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.session import get_current_user_async
+from app.auth.session import AuthUser
 from app.config import get_settings
 from app.database import get_async_db
-from app.deps import get_consultant_async, normalize_url, require_specialist_mode_async
+from app.deps import get_consultant_async, normalize_url, require_specialist_mode_async, require_user_api_async
 from app.models import EmailAddress, SocialAccount
 from app.security.csrf import validate_csrf_token
 from app.services.profile_hub import apply_profile_fields, build_profile_payload_async
@@ -79,10 +79,11 @@ class ProfileUpdateBody(BaseModel):
 
 
 @router.get("/profile/data")
-async def get_profile_data(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await get_current_user_async(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def get_profile_data(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
+):
     return JSONResponse(await _profile_context(request, db, user))
 
 
@@ -91,13 +92,11 @@ async def update_profile_data(
     body: ProfileUpdateBody,
     request: Request,
     db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
 ):
     token = request.headers.get("X-CSRF-Token") or body.csrf_token
     if not _csrf_ok(request, token):
         raise HTTPException(status_code=403, detail="CSRF")
-    user = await get_current_user_async(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     consultant = await get_consultant_async(db, user)
     apply_profile_fields(consultant, body.model_dump(exclude={"csrf_token"}), normalize_url)
     try:
@@ -119,14 +118,12 @@ async def update_profile_data(
 async def upload_avatar(
     request: Request,
     db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
     profile_photo: UploadFile = File(...),
 ):
     token = request.headers.get("X-CSRF-Token")
     if not _csrf_ok(request, token):
         raise HTTPException(status_code=403, detail="CSRF")
-    user = await get_current_user_async(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     consultant = await get_consultant_async(db, user)
     from app.routers.pages import _save_profile_photo
 
@@ -144,28 +141,31 @@ async def upload_avatar(
 
 
 @router.get("/profile/preview")
-async def get_profile_preview(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await get_current_user_async(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def get_profile_preview(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
+):
     data = await _profile_context(request, db, user)
     return JSONResponse(data["preview"])
 
 
 @router.get("/profile/completion")
-async def get_profile_completion(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await get_current_user_async(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def get_profile_completion(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
+):
     data = await _profile_context(request, db, user)
     return JSONResponse(data["completeness"])
 
 
 @router.get("/profile/qrcode")
-async def profile_qrcode(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await get_current_user_async(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def profile_qrcode(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
+):
     data = await _profile_context(request, db, user)
     url = data["profile"]["public_url"]
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={quote(url, safe='')}"

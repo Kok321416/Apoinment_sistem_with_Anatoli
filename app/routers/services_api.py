@@ -10,10 +10,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.session import get_current_user_async
+from app.auth.session import AuthUser
 from app.database import get_async_db
-from app.deps import require_specialist_mode_async
-from app.models import Booking, Calendar, Service, User
+from app.deps import require_specialist_mode_async, require_user_api_async
+from app.models import Booking, Calendar, Service
 from app.security.csrf import validate_csrf_token
 from app.services.entity_delete import delete_service_async
 from app.services.services_catalog import (
@@ -41,12 +41,14 @@ def _csrf_token(request: Request, data: dict | None = None) -> str | None:
     return None
 
 
-async def _require_consultant(request: Request, db: AsyncSession) -> tuple[User, int]:
-    user = await get_current_user_async(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def require_services_consultant_id(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
+) -> int:
+    """Cabinet services API: cookie or Mini App Bearer + specialist profile."""
     consultant = await require_specialist_mode_async(request, db, user)
-    return user, consultant.id
+    return consultant.id
 
 
 async def _get_service(db: AsyncSession, consultant_id: int, service_id: int) -> Service:
@@ -119,24 +121,30 @@ class ReorderBody(BaseModel):
 
 
 @router.get("/services/catalog")
-async def get_catalog(request: Request, db: AsyncSession = Depends(get_async_db)):
-    _, consultant_id = await _require_consultant(request, db)
+async def get_catalog(consultant_id: int = Depends(require_services_consultant_id), db: AsyncSession = Depends(get_async_db)):
     return JSONResponse(await _catalog(db, consultant_id))
 
 
 @router.get("/services/{service_id}")
-async def get_service(service_id: int, request: Request, db: AsyncSession = Depends(get_async_db)):
-    _, consultant_id = await _require_consultant(request, db)
+async def get_service(
+    service_id: int,
+    consultant_id: int = Depends(require_services_consultant_id),
+    db: AsyncSession = Depends(get_async_db),
+):
     service = await _get_service(db, consultant_id, service_id)
     counts = await booking_counts_async(db, [service.id])
     return JSONResponse(serialize_service(service, counts.get(service.id, 0)))
 
 
 @router.post("/services/new")
-async def create_service(body: ServiceCreateBody, request: Request, db: AsyncSession = Depends(get_async_db)):
+async def create_service(
+    body: ServiceCreateBody,
+    request: Request,
+    consultant_id: int = Depends(require_services_consultant_id),
+    db: AsyncSession = Depends(get_async_db),
+):
     if not _csrf_ok(request, _csrf_token(request, body.model_dump())):
         raise HTTPException(status_code=403, detail="CSRF")
-    _, consultant_id = await _require_consultant(request, db)
     name = (body.name or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="Укажите название услуги")
@@ -174,11 +182,14 @@ async def create_service(body: ServiceCreateBody, request: Request, db: AsyncSes
 
 @router.put("/services/{service_id}")
 async def update_service(
-    service_id: int, body: ServiceUpdateBody, request: Request, db: AsyncSession = Depends(get_async_db)
+    service_id: int,
+    body: ServiceUpdateBody,
+    request: Request,
+    consultant_id: int = Depends(require_services_consultant_id),
+    db: AsyncSession = Depends(get_async_db),
 ):
     if not _csrf_ok(request, _csrf_token(request, body.model_dump())):
         raise HTTPException(status_code=403, detail="CSRF")
-    _, consultant_id = await _require_consultant(request, db)
     service = await _get_service(db, consultant_id, service_id)
     if body.name is not None:
         name = body.name.strip()
@@ -220,10 +231,14 @@ async def update_service(
 
 
 @router.delete("/services/{service_id}")
-async def remove_service(service_id: int, request: Request, db: AsyncSession = Depends(get_async_db)):
+async def remove_service(
+    service_id: int,
+    request: Request,
+    consultant_id: int = Depends(require_services_consultant_id),
+    db: AsyncSession = Depends(get_async_db),
+):
     if not _csrf_ok(request, _csrf_token(request)):
         raise HTTPException(status_code=403, detail="CSRF")
-    _, consultant_id = await _require_consultant(request, db)
     service = await _get_service(db, consultant_id, service_id)
     ok, msg = await delete_service_async(db, service)
     if not ok:
@@ -235,10 +250,14 @@ async def remove_service(service_id: int, request: Request, db: AsyncSession = D
 
 
 @router.post("/services/{service_id}/duplicate")
-async def duplicate_service(service_id: int, request: Request, db: AsyncSession = Depends(get_async_db)):
+async def duplicate_service(
+    service_id: int,
+    request: Request,
+    consultant_id: int = Depends(require_services_consultant_id),
+    db: AsyncSession = Depends(get_async_db),
+):
     if not _csrf_ok(request, _csrf_token(request)):
         raise HTTPException(status_code=403, detail="CSRF")
-    _, consultant_id = await _require_consultant(request, db)
     source = await _get_service(db, consultant_id, service_id)
     copy_name = f"{source.name} (копия)"
     existing = (
@@ -275,9 +294,10 @@ async def duplicate_service(service_id: int, request: Request, db: AsyncSession 
 
 @router.get("/services/{service_id}/statistics")
 async def get_service_statistics(
-    service_id: int, request: Request, db: AsyncSession = Depends(get_async_db)
+    service_id: int,
+    consultant_id: int = Depends(require_services_consultant_id),
+    db: AsyncSession = Depends(get_async_db),
 ):
-    _, consultant_id = await _require_consultant(request, db)
     service = await _get_service(db, consultant_id, service_id)
     return JSONResponse({
         "service": serialize_service(service, 0),
@@ -286,10 +306,14 @@ async def get_service_statistics(
 
 
 @router.post("/services/bulk")
-async def bulk_action(body: BulkBody, request: Request, db: AsyncSession = Depends(get_async_db)):
+async def bulk_action(
+    body: BulkBody,
+    request: Request,
+    consultant_id: int = Depends(require_services_consultant_id),
+    db: AsyncSession = Depends(get_async_db),
+):
     if not _csrf_ok(request, _csrf_token(request, body.model_dump())):
         raise HTTPException(status_code=403, detail="CSRF")
-    _, consultant_id = await _require_consultant(request, db)
     if not body.service_ids:
         raise HTTPException(status_code=400, detail="Выберите услуги")
     services = list(
@@ -360,10 +384,14 @@ async def bulk_action(body: BulkBody, request: Request, db: AsyncSession = Depen
 
 
 @router.put("/services/reorder")
-async def reorder_services(body: ReorderBody, request: Request, db: AsyncSession = Depends(get_async_db)):
+async def reorder_services(
+    body: ReorderBody,
+    request: Request,
+    consultant_id: int = Depends(require_services_consultant_id),
+    db: AsyncSession = Depends(get_async_db),
+):
     if not _csrf_ok(request, _csrf_token(request, body.model_dump())):
         raise HTTPException(status_code=403, detail="CSRF")
-    _, consultant_id = await _require_consultant(request, db)
     for index, service_id in enumerate(body.order):
         service = await _get_service(db, consultant_id, service_id)
         service.sort_order = index
