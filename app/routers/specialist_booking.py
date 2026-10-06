@@ -7,8 +7,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.session import AuthUser
 from app.database import get_async_db
-from app.deps import require_specialist_mode_async
+from app.deps import require_specialist_mode_async, require_user_api_async
 from app.models import Calendar, Service
 from app.security.csrf import validate_csrf_token
 from app.services.bookings import (
@@ -26,32 +27,23 @@ from app.services.slots import get_available_slots_async
 router = APIRouter(prefix="/api/specialist", tags=["specialist-booking"])
 
 
-async def _require_user(request: Request, db: AsyncSession):
-    from app.auth.session import get_current_user_async
-
-    return await get_current_user_async(request, db)
-
-
 @router.get("/clients/")
 async def search_clients(
     request: Request,
     q: str = "",
     db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
 ):
     """Search specialist CRM cards by name, telegram, phone or email."""
-    user = await _require_user(request, db)
-    if not user:
-        return JSONResponse({"error": "Требуется вход"}, status_code=401)
     consultant = await require_specialist_mode_async(request, db, user)
     cards = await search_client_cards_async(db, consultant.id, q)
     return {"clients": [serialize_client_card_match(c) for c in cards]}
 
 
 @router.get("/calendars/")
-async def list_calendars(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user(request, db)
-    if not user:
-        return JSONResponse({"error": "Требуется вход"}, status_code=401)
+async def list_calendars(request: Request, db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
+):
     consultant = await require_specialist_mode_async(request, db, user)
     rows = list(
         (
@@ -82,10 +74,8 @@ async def list_services(
     request: Request,
     calendar_id: int | None = None,
     db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
 ):
-    user = await _require_user(request, db)
-    if not user:
-        return JSONResponse({"error": "Требуется вход"}, status_code=401)
     consultant = await require_specialist_mode_async(request, db, user)
     q = select(Service).where(
         Service.consultant_id == consultant.id,
@@ -116,10 +106,8 @@ async def specialist_slots(
     booking_date: str,
     exclude_booking_id: int | None = None,
     db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
 ):
-    user = await _require_user(request, db)
-    if not user:
-        return JSONResponse({"error": "Требуется вход"}, status_code=401)
     consultant = await require_specialist_mode_async(request, db, user)
     try:
         day = date.fromisoformat(booking_date)
@@ -154,10 +142,9 @@ async def specialist_slots(
 
 
 @router.post("/bookings/")
-async def create_booking(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user(request, db)
-    if not user:
-        return JSONResponse({"error": "Требуется вход"}, status_code=401)
+async def create_booking(request: Request, db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
+):
     consultant = await require_specialist_mode_async(request, db, user)
     data = await request.json()
     csrf = data.get("csrf_token") or request.headers.get("X-CSRF-Token")
@@ -225,11 +212,10 @@ async def create_booking(request: Request, db: AsyncSession = Depends(get_async_
 
 
 @router.post("/events/")
-async def create_calendar_event(request: Request, db: AsyncSession = Depends(get_async_db)):
+async def create_calendar_event(request: Request, db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
+):
     """Create a calendar block (мероприятие) that occupies time."""
-    user = await _require_user(request, db)
-    if not user:
-        return JSONResponse({"error": "Требуется вход"}, status_code=401)
     consultant = await require_specialist_mode_async(request, db, user)
     data = await request.json()
     csrf = data.get("csrf_token") or request.headers.get("X-CSRF-Token")
@@ -274,10 +260,8 @@ async def cancel_calendar_event(
     block_id: int,
     request: Request,
     db: AsyncSession = Depends(get_async_db),
+    user: AuthUser = Depends(require_user_api_async),
 ):
-    user = await _require_user(request, db)
-    if not user:
-        return JSONResponse({"error": "Требуется вход"}, status_code=401)
     consultant = await require_specialist_mode_async(request, db, user)
     data = {}
     try:

@@ -601,6 +601,7 @@
 
     function fetchJson(url, options, timeoutMs) {
         var opts = options || {};
+        var alreadyRetried = !!opts._authRetry;
         var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
         var timer = ctrl ? window.setTimeout(function () { ctrl.abort(); }, timeoutMs || 8000) : null;
         var headers = authHeaders(opts.headers || {});
@@ -622,6 +623,24 @@
             });
         }).finally(function () {
             if (timer) window.clearTimeout(timer);
+        }).then(function (res) {
+            // Mini App: expired/missing Bearer → re-auth via initData once, then retry.
+            if (res.status === 401 && !alreadyRetried) {
+                var tg = window.Telegram && window.Telegram.WebApp;
+                if (tg && tg.initData) {
+                    _accessToken = "";
+                    return tryWebappAuth(tg).then(function (ok) {
+                        if (!ok) return res;
+                        var retryOpts = {};
+                        for (var k in opts) {
+                            if (Object.prototype.hasOwnProperty.call(opts, k)) retryOpts[k] = opts[k];
+                        }
+                        retryOpts._authRetry = true;
+                        return fetchJson(url, retryOpts, timeoutMs);
+                    });
+                }
+            }
+            return res;
         });
     }
 

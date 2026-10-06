@@ -1,4 +1,13 @@
-"""Short-lived signed token for Mini App API if WebView drops session cookies."""
+"""Short-lived signed token for Mini App API if WebView drops session cookies.
+
+Auth model (site + Telegram Mini App):
+- Primary: signed session cookie (SessionMiddleware).
+- Fallback: Authorization Bearer minted here after /api/telegram/webapp-auth.
+
+TTL is 15 minutes (_MAX_AGE). On 401, telegram-webapp.js re-runs webapp-auth
+(initData) and retries the request once with a fresh token. Do not treat Bearer
+as a long-lived login credential.
+"""
 from __future__ import annotations
 
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer

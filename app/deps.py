@@ -1,9 +1,10 @@
 from fastapi import Depends, HTTPException, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.auth.session import AuthUser, get_current_user
-from app.database import get_db
-from app.models import Consultant
+from app.database import get_async_db, get_db
+from app.models import Consultant, User
 
 
 def get_db_session(db: Session = Depends(get_db)) -> Session:
@@ -18,6 +19,59 @@ def require_user(request: Request, db: Session = Depends(get_db)) -> AuthUser:
     user = get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=302, headers={"Location": "/login/"})
+    return user
+
+
+async def resolve_request_user_async(request: Request, db: AsyncSession) -> AuthUser | None:
+    """Resolve cabinet user from session cookie, else Mini App Bearer fallback.
+
+    Cookie session is primary for site + Mini App.
+    Bearer (from /api/telegram/webapp-auth, TTL 15 min) is WebView fallback only.
+    """
+    from app.auth.session import get_current_user_async, user_from_model
+    from app.services.miniapp_token import bearer_user_id
+
+    user = await get_current_user_async(request, db)
+    if user:
+        return user
+    uid = bearer_user_id(request.headers.get("authorization"))
+    if not uid:
+        return None
+    return user_from_model(await db.get(User, uid))
+
+
+async def get_optional_user_async(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+) -> AuthUser | None:
+    return await resolve_request_user_async(request, db)
+
+
+async def require_user_html_async(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+) -> AuthUser:
+    """HTML cabinet pages: session user or redirect to /login/?next=…"""
+    from app.auth.session import get_current_user_async
+    from app.utils.safe_redirect import login_url_with_next
+
+    user = await get_current_user_async(request, db)
+    if not user:
+        raise HTTPException(
+            status_code=302,
+            headers={"Location": login_url_with_next(request.url.path)},
+        )
+    return user
+
+
+async def require_user_api_async(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+) -> AuthUser:
+    """JSON/API cabinet routes for site + Mini App (cookie or Bearer)."""
+    user = await resolve_request_user_async(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Требуется вход")
     return user
 
 

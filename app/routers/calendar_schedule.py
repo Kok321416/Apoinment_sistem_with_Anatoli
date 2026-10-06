@@ -47,7 +47,9 @@ def _csrf_from_request(request: Request, data: dict | None = None) -> str | None
 
 
 async def _require_calendar(request: Request, db: AsyncSession, calendar_id: int) -> tuple[User, Calendar]:
-    user = await get_current_user_async(request, db)
+    from app.deps import resolve_request_user_async
+
+    user = await resolve_request_user_async(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     consultant = await require_specialist_mode_async(request, db, user)

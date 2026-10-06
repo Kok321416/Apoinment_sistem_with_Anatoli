@@ -273,12 +273,11 @@ async def connect_telegram_webapp(request: Request, db: AsyncSession = Depends(g
 
     Bypasses t.me deep links that Telegram WebView often drops to bare /start.
     """
-    from app.auth.session import get_current_user_async
-    from app.deps import get_consultant_async
+    from app.deps import get_consultant_async, resolve_request_user_async
     from app.security.csrf import validate_csrf_token
     from app.services.telegram_webapp_auth import validate_webapp_init_data
 
-    user = await get_current_user_async(request, db)
+    user = await resolve_request_user_async(request, db)
     if not user:
         return JSONResponse({"success": False, "error": "Требуется вход"}, status_code=401)
 
@@ -643,16 +642,9 @@ async def api_telegram_webapp_auth(request: Request, db: AsyncSession = Depends(
 
 
 async def _user_from_request(request: Request, db: AsyncSession):
-    from app.auth.session import get_current_user_async, user_from_model
-    from app.services.miniapp_token import bearer_user_id
+    from app.deps import resolve_request_user_async
 
-    user = await get_current_user_async(request, db)
-    if user:
-        return user
-    uid = bearer_user_id(request.headers.get("authorization"))
-    if not uid:
-        return None
-    return user_from_model(await db.get(User, uid))
+    return await resolve_request_user_async(request, db)
 
 
 @router.get("/me")

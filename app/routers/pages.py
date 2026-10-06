@@ -18,7 +18,14 @@ from app.auth.passwords import hash_password, verify_password
 from app.auth.session import logout_user
 from app.config import get_settings
 from app.database import get_async_db
-from app.deps import get_consultant, normalize_phone, normalize_url, require_specialist_mode, require_specialist_mode_async
+from app.deps import (
+    get_consultant,
+    normalize_phone,
+    normalize_url,
+    require_specialist_mode,
+    require_specialist_mode_async,
+    require_user_html_async,
+)
 from app.models import (
     Booking,
     Calendar,
@@ -322,10 +329,11 @@ async def apps_page(request: Request):
 
 
 @router.get("/dashboard/")
-async def dashboard_page(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
+async def dashboard_page(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     from app.services.active_mode import MODE_SPECIALIST, set_active_mode, user_has_consultant_async
 
     has_c = await user_has_consultant_async(db, user.id)
