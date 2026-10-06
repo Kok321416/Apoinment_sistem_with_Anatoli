@@ -507,6 +507,7 @@ def test_services_page_renders_without_db_catalog_query(monkeypatch):
 
     from app.auth.session import AuthUser
     from app.database import Base, get_async_db
+    from app.deps import require_user_html_async
     from app.main import app
     from app.routers import pages as pages_router
 
@@ -540,13 +541,13 @@ def test_services_page_renders_without_db_catalog_query(monkeypatch):
     )
     consultant = SimpleNamespace(id=10)
 
-    async def _fake_user(_request, _db):
+    async def _fake_user():
         return user
 
     async def _fake_specialist(_request, _db, _user):
         return consultant
 
-    monkeypatch.setattr(pages_router, "_require_user_async", _fake_user)
+    app.dependency_overrides[require_user_html_async] = _fake_user
     monkeypatch.setattr(pages_router, "require_specialist_mode_async", _fake_specialist)
 
     client = TestClient(app)

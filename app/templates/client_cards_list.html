@@ -25,6 +25,9 @@
                     <h1 class="clients-hero__title">Клиенты</h1>
                     <p class="clients-hero__stat"><strong id="hero-total">{{ crm_dashboard.total }}</strong> в базе</p>
                     <p class="clients-hero__meta" id="hero-updated">Последнее изменение: -</p>
+                    {% if clients_list_capped %}
+                    <p class="clients-hero__meta">Показаны {{ clients_list_limit }} последних карточек (всего {{ crm_dashboard.total }}).</p>
+                    {% endif %}
                 </div>
             </div>
             <div class="clients-hero__actions">

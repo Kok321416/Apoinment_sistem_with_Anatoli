@@ -72,6 +72,12 @@ DAYS_NAMES = ["Понедельник", "Вторник", "Среда", "Чет�
 DAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 ALLOWED_PHOTO_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
+# Cap list payloads so /booking/ and /clients/ stay fast with large histories.
+BOOKINGS_UPCOMING_LIMIT = 150
+BOOKINGS_PAST_LIMIT = 100
+CLIENT_CARDS_LIST_LIMIT = 200
+CLIENT_CARDS_DASH_LIMIT = 48
+CALENDAR_EVENTS_MAX_DAYS = 92
 
 
 def _form_csrf_ok(request: Request, form) -> bool:
@@ -347,18 +353,25 @@ async def dashboard_page(
     ).scalar_one_or_none()
     ctx = await page_context_async(request, db, user)
     if consultant:
+        total_cards = (
+            await db.execute(
+                select(func.count()).select_from(ClientCard).where(ClientCard.consultant_id == consultant.id)
+            )
+        ).scalar_one()
         cards = list(
             (
                 await db.execute(
                     select(ClientCard)
                     .where(ClientCard.consultant_id == consultant.id)
                     .order_by(ClientCard.updated_at.desc(), ClientCard.id.desc())
+                    .limit(CLIENT_CARDS_DASH_LIMIT)
                 )
             )
             .scalars()
             .all()
         )
-        crm = await build_crm_payload_async(db, consultant.id, cards)
+        crm = await build_crm_payload_async(db, consultant.id, cards, include_booking_stats=True)
+        crm["dashboard"]["total"] = int(total_cards or 0)
         ctx.update(
             {
                 "dash_kpi": crm["dashboard"],
@@ -383,11 +396,12 @@ async def dashboard_page(
 
 
 @router.post("/account/mode/")
-async def set_account_mode(request: Request, db: AsyncSession = Depends(get_async_db)):
+async def set_account_mode(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     """Legacy dual-role switch - client cabinet removed; always specialist dashboard."""
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
     from app.services.active_mode import user_has_consultant_async
 
     if await user_has_consultant_async(db, user.id):
@@ -1057,10 +1071,11 @@ async def manage_hub_page(
 
 @router.get("/calendars/")
 @router.post("/calendars/")
-async def calendars_page(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
+async def calendars_page(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     if request.method == "GET":
         return RedirectResponse("/manage/#calendars", status_code=302)
     consultant = await require_specialist_mode_async(request, db, user)
@@ -1157,10 +1172,12 @@ async def calendars_page(request: Request, db: AsyncSession = Depends(get_async_
 
 @router.get("/calendars/{calendar_id}/")
 @router.post("/calendars/{calendar_id}/")
-async def calendar_detail(request: Request, calendar_id: int, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
+async def calendar_detail(
+    request: Request,
+    calendar_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     consultant = await require_specialist_mode_async(request, db, user)
     calendar = (
         await db.execute(
@@ -1262,10 +1279,12 @@ async def calendar_detail(request: Request, calendar_id: int, db: AsyncSession =
 
 @router.get("/calendars/{calendar_id}/settings/")
 @router.post("/calendars/{calendar_id}/settings/")
-async def calendar_settings(request: Request, calendar_id: int, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
+async def calendar_settings(
+    request: Request,
+    calendar_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     consultant = await require_specialist_mode_async(request, db, user)
     calendar = (
         await db.execute(
@@ -1313,11 +1332,12 @@ async def calendar_settings(request: Request, calendar_id: int, db: AsyncSession
 
 @router.get("/services/")
 @router.post("/services/")
-async def services_page(request: Request, db: AsyncSession = Depends(get_async_db)):
+async def services_page(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     if request.method == "GET":
-        user = await _require_user_async(request, db)
-        if not user:
-            return _login_redirect(request)
         if request.query_params.get("legacy") == "1":
             await require_specialist_mode_async(request, db, user)
             return templates.TemplateResponse(
@@ -1325,9 +1345,6 @@ async def services_page(request: Request, db: AsyncSession = Depends(get_async_d
                 await page_context_async(request, db, user),
             )
         return RedirectResponse("/manage/#services", status_code=302)
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
     consultant = await require_specialist_mode_async(request, db, user)
     success = error = None
     if request.method == "POST":
@@ -1806,6 +1823,7 @@ async def specialist_bookings(
                     .options(*booking_opts)
                     .where(Booking.calendar_id.in_(cal_ids), Booking.status == "cancelled")
                     .order_by(Booking.booking_date.desc())
+                    .limit(BOOKINGS_PAST_LIMIT)
                 )
             ).scalars().unique().all()
         )
@@ -1826,6 +1844,7 @@ async def specialist_bookings(
                         ),
                     )
                     .order_by(Booking.booking_date, Booking.booking_time)
+                    .limit(BOOKINGS_UPCOMING_LIMIT)
                 )
             ).scalars().unique().all()
         )
@@ -1846,6 +1865,7 @@ async def specialist_bookings(
                         ),
                     )
                     .order_by(Booking.booking_date.desc())
+                    .limit(BOOKINGS_PAST_LIMIT)
                 )
             ).scalars().unique().all()
         )
@@ -1875,15 +1895,14 @@ async def specialist_bookings(
         ),
     )
 
-CALENDAR_EVENTS_MAX_DAYS = 92
-
 
 @router.get("/api/booking/calendar-events/")
 async def calendar_events(request: Request, db: AsyncSession = Depends(get_async_db)):
-    from app.auth.session import get_current_user_async
+    from app.deps import resolve_request_user_async
     from sqlalchemy.orm import selectinload
 
-    user = await get_current_user_async(request, db)
+    # Cookie session (site) or Mini App Bearer — same as other cabinet APIs.
+    user = await resolve_request_user_async(request, db)
     if not user:
         return {"success": False, "events": []}
     consultant = (
@@ -2259,12 +2278,18 @@ async def client_cards_list(
             await db.execute(
                 select(ClientCard)
                 .where(ClientCard.consultant_id == consultant.id)
-                .order_by(ClientCard.updated_at.desc())
+                .order_by(ClientCard.updated_at.desc(), ClientCard.id.desc())
+                .limit(CLIENT_CARDS_LIST_LIMIT)
             )
         )
         .scalars()
         .all()
     )
+    total_cards = (
+        await db.execute(
+            select(func.count()).select_from(ClientCard).where(ClientCard.consultant_id == consultant.id)
+        )
+    ).scalar_one()
     from app.services.clients_crm import build_crm_payload_async
     from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
     from sqlalchemy.orm import selectinload
@@ -2279,6 +2304,7 @@ async def client_cards_list(
     show_diagnostics = consultant_has_feature(consultant, FEATURE_DIAGNOSTICS)
 
     crm_payload = await build_crm_payload_async(db, consultant.id, cards)
+    crm_payload["dashboard"]["total"] = int(total_cards or 0)
     return templates.TemplateResponse(
         "client_cards_list.html",
         await page_context_async(
@@ -2293,6 +2319,8 @@ async def client_cards_list(
             crm_clients=crm_payload["clients"],
             crm_activity=crm_payload["activity"],
             crm_payload=crm_payload,
+            clients_list_capped=int(total_cards or 0) > len(cards),
+            clients_list_limit=CLIENT_CARDS_LIST_LIMIT,
             show_diagnostics=show_diagnostics,
         ),
     )
@@ -2300,12 +2328,14 @@ async def client_cards_list(
 
 @router.get("/clients/{card_id}/")
 @router.post("/clients/{card_id}/")
-async def client_card_detail(request: Request, card_id: int, db: AsyncSession = Depends(get_async_db)):
+async def client_card_detail(
+    request: Request,
+    card_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     from sqlalchemy import func
 
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
     consultant = await require_specialist_mode_async(request, db, user)
     card = (
         await db.execute(
@@ -2587,12 +2617,10 @@ async def client_card_diagnostics_delete(
     card_id: int,
     attempt_id: int,
     db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
 ):
     from app.services.diagnostics_service import delete_attempt_for_consultant
 
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
     consultant = await require_specialist_mode_async(request, db, user)
     form = await request.form()
     if not _form_csrf_ok(request, form):
@@ -2628,15 +2656,13 @@ async def client_card_diagnostics_export_xlsx(
     request: Request,
     card_id: int,
     db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
 ):
     from app.services.diagnostics_service import attempt_to_view, list_attempts_for_card
     from app.services.excel_export import client_diagnostics_workbook
     from app.services.specialist_features import FEATURE_DIAGNOSTICS, consultant_has_feature
     from sqlalchemy.orm import selectinload
 
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
     consultant = await require_specialist_mode_async(request, db, user)
     consultant = (
         await db.execute(
@@ -2683,10 +2709,11 @@ async def client_card_diagnostics_export_xlsx(
 
 @router.get("/integrations/")
 @router.post("/integrations/")
-async def integrations_page(request: Request, db: AsyncSession = Depends(get_async_db)):
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
+async def integrations_page(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     consultant = await require_specialist_mode_async(request, db, user)
     integration = (
         await db.execute(select(Integration).where(Integration.consultant_id == consultant.id))
@@ -2965,16 +2992,17 @@ async def integrations_page(request: Request, db: AsyncSession = Depends(get_asy
 
 
 @router.get("/integrations/telegram/connect-app/")
-async def connect_telegram_app(request: Request, db: AsyncSession = Depends(get_async_db)):
+async def connect_telegram_app(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    user=Depends(require_user_html_async),
+):
     """Start specialist notify binding.
 
     Never 302 straight into t.me from Mini App WebView - Telegram often drops the
     ``start=`` payload and the user only sees bare /start. Serve a bridge page that
     calls ``openTelegramLink``, and try to push a confirm button if login TG is known.
     """
-    user = await _require_user_async(request, db)
-    if not user:
-        return _login_redirect(request)
     consultant = await require_specialist_mode_async(request, db, user)
     integration = (
         await db.execute(select(Integration).where(Integration.consultant_id == consultant.id))
