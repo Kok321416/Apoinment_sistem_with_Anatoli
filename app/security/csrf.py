@@ -5,8 +5,8 @@ This middleware only covers browser HTML form POSTs (urlencoded / multipart).
 
 Modes (CSRF_HTML_MODE):
   off     — disabled
-  log     — dry-run: log missing/invalid tokens, never block (default)
-  enforce — reject with 403
+  log     — dry-run: log missing/invalid tokens, never block (local/tests default)
+  enforce — reject with 403 (production via deploy .env)
 """
 from __future__ import annotations
 
