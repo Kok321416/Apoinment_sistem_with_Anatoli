@@ -175,6 +175,7 @@ async def on_booklink(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data.startswith("spec_book_confirm_"))
 async def on_spec_book_confirm(callback: CallbackQuery) -> None:
+    """Ack instantly so TG spinner stops; API + notify run after."""
     booking_id = (callback.data or "").replace("spec_book_confirm_", "", 1)
     if not callback.message:
         await callback.answer()
@@ -182,6 +183,22 @@ async def on_spec_book_confirm(callback: CallbackQuery) -> None:
     if not booking_id.isdigit():
         await callback.answer("Некорректный запрос", show_alert=True)
         return
+
+    # Instant UX: stop loading spinner before slow site/API work.
+    await callback.answer("✅ Принято")
+    from app.services.telegram import (
+        specialist_new_booking_inline_keyboard,
+        specialist_new_booking_keyboard_after_confirm,
+    )
+
+    bid = int(booking_id)
+    try:
+        await callback.message.edit_reply_markup(
+            reply_markup=_inline_kb_from_dict(specialist_new_booking_keyboard_after_confirm(bid))
+        )
+    except Exception:
+        logger.debug("spec_book_confirm optimistic markup failed", exc_info=True)
+
     status, data = await post_site_api(
         "/api/telegram/specialist-booking-confirm",
         {
@@ -190,15 +207,18 @@ async def on_spec_book_confirm(callback: CallbackQuery) -> None:
         },
     )
     if status == 200 and data and data.get("success"):
-        msg = data.get("message") or "Запись подтверждена"
-        await callback.answer(f"✅ {msg}")
-        from app.services.telegram import specialist_new_booking_keyboard_after_confirm
-
-        after = specialist_new_booking_keyboard_after_confirm(int(booking_id))
-        await callback.message.edit_reply_markup(reply_markup=_inline_kb_from_dict(after))
         return
     err = (data or {}).get("error") or "Не удалось подтвердить запись"
-    await callback.answer(f"❌ {err}", show_alert=True)
+    try:
+        await callback.message.edit_reply_markup(
+            reply_markup=_inline_kb_from_dict(specialist_new_booking_inline_keyboard(bid))
+        )
+    except Exception:
+        logger.debug("spec_book_confirm revert markup failed", exc_info=True)
+    try:
+        await callback.message.answer(f"❌ {err}")
+    except Exception:
+        logger.warning("spec_book_confirm error reply failed: %s", err)
 
 
 @router.callback_query(F.data.startswith("spec_book_cancel_abort"))

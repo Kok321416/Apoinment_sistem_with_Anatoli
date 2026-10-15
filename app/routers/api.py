@@ -706,6 +706,8 @@ _WEBAPP_DIAG_KINDS = frozenset({
     "watchdog",
     "boot",
 })
+# Persist all; only these page Telegram ops channel (real Mini App breakage).
+_WEBAPP_DIAG_OPS_KINDS = frozenset({"auth_fail", "no_sdk", "no_init_data"})
 
 
 @router.post("/telegram/webapp-diag")
@@ -738,19 +740,21 @@ async def api_telegram_webapp_diag(request: Request):
         )
     except Exception:
         logger.exception("webapp-diag persist failed")
-    try:
-        from app.services.ops_alerts import notify_ops_alert
+    # Skip noisy client JS (Script error / promise / boot) — still stored above.
+    if kind in _WEBAPP_DIAG_OPS_KINDS:
+        try:
+            from app.services.ops_alerts import notify_ops_alert
 
-        notify_ops_alert(
-            kind="exception",
-            path=path,
-            method="POST",
-            status_code=0,
-            message=message,
-            request=request,
-        )
-    except Exception:
-        logger.warning("webapp-diag alert failed", exc_info=True)
+            notify_ops_alert(
+                kind="exception",
+                path=path,
+                method="POST",
+                status_code=0,
+                message=message,
+                request=request,
+            )
+        except Exception:
+            logger.warning("webapp-diag alert failed", exc_info=True)
     return {"ok": True}
 
 

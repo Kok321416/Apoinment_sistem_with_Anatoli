@@ -25,6 +25,10 @@ settings = get_settings()
 _tg_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="tg-send")
 
 
+class NotifyDeliveryError(RuntimeError):
+    """Transient notify failure — outbox should retry."""
+
+
 def _norm_chat_id(value) -> str | None:
     if value is None:
         return None
@@ -225,9 +229,11 @@ def _notify_client_fallback(
 
 
 def notify_booking_status_changed(db: Session, booking: Booking, old_status: str | None = None) -> None:
+    """Notify on status change. Raises NotifyDeliveryError if client TG send failed (retryable)."""
     new_status = booking.status or ""
     if not new_status or new_status == "completed":
         return
+    client_tg_fail = False
     try:
         specialist_chat_id, specialist_token = _specialist_chat_for_booking(booking)
         client_chat = booking.telegram_id
@@ -249,6 +255,7 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
                 )
             )
             if not client_sent:
+                client_tg_fail = True
                 from app.services.booking_email import notify_client_status_email
                 from app.services.vk_messages import notify_client_status_vk
 
@@ -287,6 +294,9 @@ def notify_booking_status_changed(db: Session, booking: Booking, old_status: str
                 )
     except Exception as e:
         logger.exception("Status change notification error: %s", e)
+        raise NotifyDeliveryError("status_notify_error") from e
+    if client_tg_fail and new_status in ("confirmed", "cancelled"):
+        raise NotifyDeliveryError("client_status_tg_send_failed")
 
 
 def notify_booking_rescheduled(
@@ -415,9 +425,16 @@ def edit_telegram_message_reply_markup(
 
 
 def notify_specialist_new_booking(booking: Booking) -> bool:
+    """Send specialist new-booking TG. True=sent, False=skipped/failed (see logs)."""
     try:
         chat_id, token = _specialist_chat_for_booking(booking)
         if not chat_id:
+            _log_telegram_notification(
+                booking_id=getattr(booking, "id", None),
+                recipient_type="specialist",
+                status="skipped",
+                error_type="NoChatOrDisabled",
+            )
             return False
         text = format_new_booking_message_for_specialist(booking)
         return send_telegram_message(
@@ -434,10 +451,37 @@ def notify_specialist_new_booking(booking: Booking) -> bool:
 
 
 def on_booking_created(db: Session, booking: Booking) -> None:
+    """Notify specialist + client. Raises NotifyDeliveryError if specialist TG send failed."""
+    specialist_fail = False
     try:
-        notify_specialist_new_booking(booking)
+        chat_id, token = _specialist_chat_for_booking(booking)
+        if not chat_id:
+            _log_telegram_notification(
+                booking_id=getattr(booking, "id", None),
+                recipient_type="specialist",
+                status="skipped",
+                error_type="NoChatOrDisabled",
+            )
+            try:
+                from app.services.app_counters import increment_counter
+
+                increment_counter(db, "notify_specialist_skipped", by=1, commit=False)
+            except Exception:
+                pass
+        else:
+            ok = send_telegram_message(
+                chat_id,
+                format_new_booking_message_for_specialist(booking),
+                token,
+                reply_markup=_specialist_new_booking_keyboard(booking.id),
+                booking_id=booking.id,
+                recipient_type="specialist",
+            )
+            if not ok:
+                specialist_fail = True
     except Exception:
         logger.exception("on_booking_created specialist notify failed")
+        specialist_fail = True
     try:
         if booking.telegram_id:
             specialist_chat_id, _ = _specialist_chat_for_booking(booking)
@@ -453,11 +497,20 @@ def on_booking_created(db: Session, booking: Booking) -> None:
                 )
             else:
                 # Sync send: create path must finish before WSGI worker can recycle.
-                send_telegram_to_client(
+                client_ok = send_telegram_to_client(
                     booking.telegram_id,
                     format_client_booked_message(booking),
                     booking_id=getattr(booking, "id", None),
                 )
+                if not client_ok:
+                    from app.services.booking_email import notify_client_via_email_if_no_telegram
+                    from app.services.vk_messages import notify_client_booked_vk
+
+                    _notify_client_fallback(
+                        booking,
+                        send_vk=lambda: notify_client_booked_vk(booking),
+                        send_email=lambda: notify_client_via_email_if_no_telegram(booking),
+                    )
         else:
             _log_telegram_notification(
                 booking_id=getattr(booking, "id", None),
@@ -480,6 +533,8 @@ def on_booking_created(db: Session, booking: Booking) -> None:
         sync_booking_to_google(db, booking, created=True)
     except Exception:
         logger.exception("on_booking_created google sync failed")
+    if specialist_fail:
+        raise NotifyDeliveryError("specialist_tg_send_failed")
 
 
 def on_booking_updated(db: Session, booking: Booking, created: bool = False) -> None:

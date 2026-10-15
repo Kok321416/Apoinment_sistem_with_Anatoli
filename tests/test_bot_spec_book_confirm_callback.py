@@ -4,6 +4,39 @@ from __future__ import annotations
 from bot import bot
 
 
+def test_handle_specialist_booking_confirm_acks_before_api(monkeypatch):
+    """Callback answer must fire before site API so TG spinner stops instantly."""
+    order = []
+
+    monkeypatch.setattr(
+        bot,
+        "answer_callback_query",
+        lambda cqid, text=None, **kw: order.append(("answer", text)) or True,
+    )
+    monkeypatch.setattr(
+        bot,
+        "edit_message_reply_markup",
+        lambda chat_id, msg_id, markup: order.append(("edit", markup["inline_keyboard"][0][0]["text"]))
+        or True,
+    )
+    monkeypatch.setattr(
+        bot,
+        "post_site_api",
+        lambda path, data, timeout=8: (
+            order.append(("api", path))
+            or (200, {"success": True, "message": "Запись подтверждена", "booking_id": 5})
+        ),
+    )
+    monkeypatch.setattr(bot.settings, "site_url", "https://example.com")
+
+    bot.handle_specialist_booking_confirm_callback("900111", "cq1", "5", 42)
+
+    assert order[0] == ("answer", "✅ Принято")
+    assert order[1][0] == "edit"
+    assert order[1][1] == "📅 Перенести"
+    assert order[2] == ("api", "/api/telegram/specialist-booking-confirm")
+
+
 def test_handle_specialist_booking_confirm_updates_markup(monkeypatch):
     calls = {"answer": [], "edit": []}
 
@@ -29,7 +62,7 @@ def test_handle_specialist_booking_confirm_updates_markup(monkeypatch):
 
     bot.handle_specialist_booking_confirm_callback("900111", "cq1", "5", 42)
 
-    assert calls["answer"] == [("cq1", "✅ Запись подтверждена")]
+    assert calls["answer"] == [("cq1", "✅ Принято")]
     assert len(calls["edit"]) == 1
     chat_id, msg_id, markup = calls["edit"][0]
     assert chat_id == "900111"
@@ -63,20 +96,31 @@ def test_handle_specialist_booking_confirm_repeat_still_updates_markup(monkeypat
     assert calls["edit"][0]["inline_keyboard"][1][0]["callback_data"] == "spec_book_cancel_5"
 
 
-def test_handle_specialist_booking_confirm_unauthorized_alert(monkeypatch):
+def test_handle_specialist_booking_confirm_unauthorized_reverts(monkeypatch):
+    edits = []
+    messages = []
+
     monkeypatch.setattr(
         bot,
         "post_site_api",
         lambda path, data, timeout=8: (200, {"success": False, "error": "specialist not connected"}),
     )
-    alerts = []
+    monkeypatch.setattr(bot, "answer_callback_query", lambda *a, **k: True)
     monkeypatch.setattr(
         bot,
-        "answer_callback_query",
-        lambda cqid, text=None, show_alert=False: alerts.append((text, show_alert)) or True,
+        "edit_message_reply_markup",
+        lambda chat_id, msg_id, markup: edits.append(markup) or True,
     )
-    monkeypatch.setattr(bot, "edit_message_reply_markup", lambda *a, **k: True)
+    monkeypatch.setattr(
+        bot,
+        "send_telegram_message",
+        lambda chat_id, text, **kw: messages.append(text) or True,
+    )
+    monkeypatch.setattr(bot.settings, "site_url", "https://example.com")
 
     bot.handle_specialist_booking_confirm_callback("999", "cq1", "5", 42)
 
-    assert alerts == [("❌ specialist not connected", True)]
+    assert len(edits) == 2
+    assert edits[0]["inline_keyboard"][0][0]["text"] == "📅 Перенести"
+    assert edits[1]["inline_keyboard"][0][0]["callback_data"] == "spec_book_confirm_5"
+    assert messages == ["❌ specialist not connected"]

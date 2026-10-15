@@ -145,6 +145,28 @@ def mark_outbox_done(db: Session, outbox_id: int | None) -> None:
         logger.exception("mark_outbox_done failed id=%s", outbox_id)
 
 
+def mark_outbox_retry(db: Session, outbox_id: int | None, error: str) -> None:
+    """Leave row pending with backoff after a transient delivery failure."""
+    if not outbox_id:
+        return
+    try:
+        from app.models import NotifyOutbox
+
+        row = db.get(NotifyOutbox, int(outbox_id))
+        if not row or row.done_at:
+            return
+        row.attempts = int(row.attempts or 0) + 1
+        row.next_attempt_at = datetime.utcnow() + timedelta(
+            seconds=_backoff_seconds(row.attempts)
+        )
+        row.last_error = (error or "retry")[:500]
+        db.flush()
+        _bump(db, "notify_outbox_failed")
+        _bump(db, "notify_outbox_retried")
+    except Exception:
+        logger.exception("mark_outbox_retry failed id=%s", outbox_id)
+
+
 def _backoff_seconds(attempts: int) -> int:
     return min(3600, RETRY_BASE_SEC * max(1, 2 ** max(0, attempts - 1)))
 

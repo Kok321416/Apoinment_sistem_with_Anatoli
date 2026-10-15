@@ -54,6 +54,8 @@ def _enqueue(kind_fn, *args, **kwargs) -> int | None:
 
 
 def _run_on_booking_created(booking_id: int, *, outbox_id: int | None = None) -> None:
+    from app.services.telegram import NotifyDeliveryError
+
     sdb = SessionLocal()
     try:
         sb = _load_booking(sdb, booking_id)
@@ -64,17 +66,50 @@ def _run_on_booking_created(booking_id: int, *, outbox_id: int | None = None) ->
 
                 mark_outbox_done(sdb, outbox_id)
             sdb.commit()
+    except NotifyDeliveryError as e:
+        logger.warning(
+            "notify bridge on_booking_created delivery failed id=%s: %s", booking_id, e
+        )
+        try:
+            sdb.rollback()
+        except Exception:
+            pass
+        if outbox_id:
+            try:
+                from app.services.notify_outbox import mark_outbox_retry
+
+                mark_outbox_retry(sdb, outbox_id, str(e))
+                sdb.commit()
+            except Exception:
+                logger.exception("mark_outbox_retry after create failed id=%s", booking_id)
+                try:
+                    sdb.rollback()
+                except Exception:
+                    pass
     except Exception:
         logger.exception("notify bridge on_booking_created failed id=%s", booking_id)
         try:
             sdb.rollback()
         except Exception:
             pass
+        if outbox_id:
+            try:
+                from app.services.notify_outbox import mark_outbox_retry
+
+                mark_outbox_retry(sdb, outbox_id, "bridge_exception")
+                sdb.commit()
+            except Exception:
+                try:
+                    sdb.rollback()
+                except Exception:
+                    pass
     finally:
         sdb.close()
 
 
 def _run_status_changed(booking_id: int, old_status: str | None, *, outbox_id: int | None = None) -> None:
+    from app.services.telegram import NotifyDeliveryError
+
     sdb = SessionLocal()
     try:
         sb = _load_booking(sdb, booking_id)
@@ -85,12 +120,43 @@ def _run_status_changed(booking_id: int, old_status: str | None, *, outbox_id: i
 
                 mark_outbox_done(sdb, outbox_id)
             sdb.commit()
+    except NotifyDeliveryError as e:
+        logger.warning(
+            "notify bridge status_changed delivery failed id=%s: %s", booking_id, e
+        )
+        try:
+            sdb.rollback()
+        except Exception:
+            pass
+        if outbox_id:
+            try:
+                from app.services.notify_outbox import mark_outbox_retry
+
+                mark_outbox_retry(sdb, outbox_id, str(e))
+                sdb.commit()
+            except Exception:
+                logger.exception("mark_outbox_retry after status failed id=%s", booking_id)
+                try:
+                    sdb.rollback()
+                except Exception:
+                    pass
     except Exception:
         logger.exception("notify bridge status_changed failed id=%s", booking_id)
         try:
             sdb.rollback()
         except Exception:
             pass
+        if outbox_id:
+            try:
+                from app.services.notify_outbox import mark_outbox_retry
+
+                mark_outbox_retry(sdb, outbox_id, "bridge_exception")
+                sdb.commit()
+            except Exception:
+                try:
+                    sdb.rollback()
+                except Exception:
+                    pass
     finally:
         sdb.close()
 

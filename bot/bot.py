@@ -567,32 +567,50 @@ def handle_booking_link_callback(chat_id, user_id, callback_query_id, token_str)
 
 
 def handle_specialist_booking_confirm_callback(chat_id, callback_query_id, booking_id_str, message_id=None):
+    """Ack instantly so TG spinner stops; API + notify run after."""
     if not str(booking_id_str or "").isdigit():
         answer_callback_query(callback_query_id, "Некорректный запрос", show_alert=True)
         return
-    status, data = post_site_api(
-        "/api/telegram/specialist-booking-confirm",
-        {"telegram_chat_id": chat_id, "booking_id": booking_id_str},
-        timeout=8,
-    )
+    # Instant UX: stop loading spinner before slow site/API work.
+    answer_callback_query(callback_query_id, "✅ Принято")
+    bid = int(booking_id_str)
     try:
-        if status == 200 and data and data.get("success"):
-            msg = data.get("message") or "Запись подтверждена"
-            answer_callback_query(callback_query_id, f"✅ {msg}")
-            if message_id is not None:
-                try:
-                    from app.services.telegram import specialist_new_booking_keyboard_after_confirm
+        from app.services.telegram import (
+            specialist_new_booking_inline_keyboard,
+            specialist_new_booking_keyboard_after_confirm,
+        )
 
-                    markup = specialist_new_booking_keyboard_after_confirm(int(booking_id_str))
-                    edit_message_reply_markup(chat_id, message_id, markup)
-                except Exception as e:
-                    logger.warning("Specialist booking confirm markup update error: %s", e)
+        if message_id is not None:
+            edit_message_reply_markup(
+                chat_id, message_id, specialist_new_booking_keyboard_after_confirm(bid)
+            )
+    except Exception as e:
+        logger.warning("Specialist booking confirm optimistic markup error: %s", e)
+    try:
+        status, data = post_site_api(
+            "/api/telegram/specialist-booking-confirm",
+            {"telegram_chat_id": chat_id, "booking_id": booking_id_str},
+            timeout=8,
+        )
+        if status == 200 and data and data.get("success"):
             return
         err = (data or {}).get("error") or "Не удалось подтвердить запись"
-        answer_callback_query(callback_query_id, f"❌ {err}", show_alert=True)
+        if message_id is not None:
+            try:
+                from app.services.telegram import specialist_new_booking_inline_keyboard
+
+                edit_message_reply_markup(
+                    chat_id, message_id, specialist_new_booking_inline_keyboard(bid)
+                )
+            except Exception as e:
+                logger.warning("Specialist booking confirm revert markup error: %s", e)
+        send_telegram_message(chat_id, f"❌ {err}")
     except Exception as e:
         logger.warning("Specialist booking confirm error: %s", e)
-        answer_callback_query(callback_query_id, "Ошибка.")
+        try:
+            send_telegram_message(chat_id, "❌ Не удалось подтвердить запись")
+        except Exception:
+            pass
 
 
 def handle_specialist_booking_cancel_callback(chat_id, callback_query_id, booking_id_str, message_id=None):
